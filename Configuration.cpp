@@ -174,6 +174,7 @@
 #include "FrequencyLineEdit.hpp"
 #include "CandidateKeyFilter.hpp"
 #include "ForeignKeyDelegate.hpp"
+#include "TransceiverBase.hpp"
 #include "TransceiverFactory.hpp"
 #include "Transceiver.hpp"
 #include "Bands.hpp"
@@ -432,6 +433,8 @@ private:
 
   void delete_stations ();
   void insert_station ();
+
+  void check_tx_delay();
 
   Q_SLOT void on_psk_reporter_check_box_toggled(bool checked);
   Q_SLOT void on_enable_aprs_spotting_check_box_toggled(bool checked);
@@ -1875,6 +1878,7 @@ void Configuration::impl::read_settings ()
   ui_->tableFontButton->setText(QString("Font (%1 %2)").arg(next_table_font_.family()).arg(next_table_font_.pointSize()));
 
   txDelay_ = settings_->value ("TxDelay",0.2).toDouble();
+  check_tx_delay();
   save_directory_.setPath(settings_->value ("SaveDir", default_save_directory_.absolutePath ()).toString ());
 
   // retrieve audio channel info
@@ -2462,6 +2466,27 @@ bool Configuration::impl::validate ()
   return true;
 }
 
+void Configuration::impl::check_tx_delay() {
+    const double MAX_TX_DELAY = 0.5;
+    if(txDelay_ < TransceiverBase::PTT_DELAY_MS/1000.0) {
+        txDelay_ = TransceiverBase::PTT_DELAY_MS/1000.0;
+        QMessageBox::warning(
+            nullptr,
+            "TX Delay Too Low",
+            QString("A TX Delay below %1 ms will cause too late transmission, "
+                    "leading to initial symbol drop in turbo mode. - Replaced by %1 ms."
+                    ).arg(TransceiverBase::PTT_DELAY_MS));
+    } else if (MAX_TX_DELAY < txDelay_) {
+        txDelay_ = MAX_TX_DELAY;
+        QMessageBox::warning(
+            nullptr,
+            "TX Delay Too High",
+            QString("A TX Delay above %1 s is not supported."
+                    " - Replaced by %1 s."
+                    ).arg(MAX_TX_DELAY));
+    }
+}
+
 int Configuration::impl::exec ()
 {
   // macros can be modified in the main window
@@ -2704,6 +2729,7 @@ void Configuration::impl::accept ()
   spot_to_aprs_ = ui_->enable_aprs_spotting_check_box->isChecked();
   psk_reporter_tcpip_ = ui_->psk_reporter_tcpip_check_box->isChecked ();
   txDelay_ = ui_->sbTxDelay->value ();
+  check_tx_delay();
   write_logs_ = ui_->write_logs_check_box->isChecked();
   reset_activity_ = ui_->reset_activity_check_box->isChecked();
   check_for_updates_ = ui_->checkForUpdates_checkBox->isChecked();
