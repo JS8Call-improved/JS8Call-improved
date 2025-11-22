@@ -1,71 +1,66 @@
 #include "FrequencyLineEdit.hpp"
 
-#include <limits>
-
 #include <QDoubleValidator>
-#include <QString>
 #include <QLocale>
+#include <QString>
+#include <limits>
 
 #include "moc_FrequencyLineEdit.cpp"
 
 namespace
 {
-  class MHzValidator
-    : public QDoubleValidator
-  {
-  public:
-    MHzValidator (double bottom, double top, QObject * parent = nullptr)
-      : QDoubleValidator {bottom, top, 6, parent}
+class MHzValidator : public QDoubleValidator
+{
+public:
+    MHzValidator(double bottom, double top, QObject* parent = nullptr) :
+        QDoubleValidator { bottom, top, 6, parent }
     {
     }
 
-    State validate (QString& input, int& pos) const override
+    State validate(QString& input, int& pos) const override
     {
-      State result = QDoubleValidator::validate (input, pos);
-      if (Acceptable == result)
-        {
-          bool ok;
-          (void)QLocale {}.toDouble (input, &ok);
-          if (!ok)
-            {
-              result = Intermediate;
+        State result = QDoubleValidator::validate(input, pos);
+        if (Acceptable == result) {
+            bool ok;
+            (void)QLocale {}.toDouble(input, &ok);
+            if (!ok) {
+                result = Intermediate;
             }
         }
-      return result;
+        return result;
     }
-  };
+};
+} // namespace
+
+FrequencyLineEdit::FrequencyLineEdit(QWidget* parent) : QLineEdit(parent)
+{
+    setValidator(
+        new MHzValidator { 0., std::numeric_limits<Radio::Frequency>::max() / 10.e6, this });
 }
 
-FrequencyLineEdit::FrequencyLineEdit (QWidget * parent)
-  : QLineEdit (parent)
+auto FrequencyLineEdit::frequency() const -> Frequency
 {
-  setValidator (new MHzValidator {0., std::numeric_limits<Radio::Frequency>::max () / 10.e6, this});
+    return Radio::frequency(text(), 6);
 }
 
-auto FrequencyLineEdit::frequency () const -> Frequency
+void FrequencyLineEdit::frequency(Frequency f)
 {
-  return Radio::frequency (text (), 6);
+    setText(Radio::frequency_MHz_string(f));
 }
 
-void FrequencyLineEdit::frequency (Frequency f)
+FrequencyDeltaLineEdit::FrequencyDeltaLineEdit(QWidget* parent) : QLineEdit(parent)
 {
-  setText (Radio::frequency_MHz_string (f));
+    setValidator(new MHzValidator { -std::numeric_limits<FrequencyDelta>::max() / 10.e6,
+                                    std::numeric_limits<FrequencyDelta>::max() / 10.e6,
+                                    this });
 }
 
-
-FrequencyDeltaLineEdit::FrequencyDeltaLineEdit (QWidget * parent)
-  : QLineEdit (parent)
+auto FrequencyDeltaLineEdit::frequency_delta() const -> FrequencyDelta
 {
-  setValidator (new MHzValidator {-std::numeric_limits<FrequencyDelta>::max () / 10.e6,
-        std::numeric_limits<FrequencyDelta>::max () / 10.e6, this});
+    return Radio::frequency_delta(text(), 6);
 }
 
-auto FrequencyDeltaLineEdit::frequency_delta () const -> FrequencyDelta
+void FrequencyDeltaLineEdit::frequency_delta(FrequencyDelta d)
 {
-  return Radio::frequency_delta (text (), 6);
-}
-
-void FrequencyDeltaLineEdit::frequency_delta (FrequencyDelta d)
-{
-  setText (Radio::frequency_MHz_string (d));
+    setText(Radio::frequency_MHz_string(d));
 }

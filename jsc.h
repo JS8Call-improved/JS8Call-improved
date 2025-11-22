@@ -5,18 +5,20 @@
  * (C) 2018 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
  **/
 
-#include <QTextStream>
 #include <QList>
-#include <QStringList>
 #include <QMap>
 #include <QPair>
+#include <QStringList>
+#include <QTextStream>
 #include <QVector>
 
-typedef QPair<QVector<bool>, quint32> CodewordPair;        // Tuple(Codeword, N) where N = number of characters
-typedef QVector<bool> Codeword;                        // Codeword bit vector
+typedef QPair<QVector<bool>, quint32>
+    CodewordPair;               // Tuple(Codeword, N) where N = number of characters
+typedef QVector<bool> Codeword; // Codeword bit vector
 
-typedef struct Tuple{
-    char const * str;
+typedef struct Tuple
+{
+    char const* str;
     int size;
     int index;
 } Tuple;
@@ -32,9 +34,9 @@ public:
     static QList<CodewordPair> compress(QString text);
     static QString decompress(Codeword const& bits);
 
-    static bool exists(QString w, quint32 *pIndex);
-    static quint32 lookup(QString w, bool *ok);
-    static quint32 lookup(char const* b, bool *ok);
+    static bool exists(QString w, quint32* pIndex);
+    static quint32 lookup(QString w, bool* ok);
+    static quint32 lookup(char const* b, bool* ok);
 
     static const quint32 size = 262144;
     static const Tuple map[262144];

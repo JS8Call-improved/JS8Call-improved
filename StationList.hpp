@@ -1,14 +1,13 @@
 #ifndef STATION_LIST_HPP__
 #define STATION_LIST_HPP__
 
-#include <QSortFilterProxyModel>
 #include <QDateTime>
-#include <QString>
 #include <QList>
-
-#include "pimpl_h.hpp"
+#include <QSortFilterProxyModel>
+#include <QString>
 
 #include "Radio.hpp"
+#include "pimpl_h.hpp"
 
 class Bands;
 
@@ -38,73 +37,76 @@ class Bands;
 //
 //  Uses the Bands model to lookup band information.
 //
-class StationList final
-  : public QSortFilterProxyModel
+class StationList final : public QSortFilterProxyModel
 {
 public:
-  using Frequency = Radio::Frequency;
-  using FrequencyDelta = Radio::FrequencyDelta;
+    using Frequency = Radio::Frequency;
+    using FrequencyDelta = Radio::FrequencyDelta;
 
-  //
-  // Struct Station
-  //
-  //  Aggregation of fields that describe a radio station on a band.
-  //
-  struct Station
-  {
-    QString band_name_;
-    Frequency frequency_;
-    QDateTime switch_at_;
-    QDateTime switch_until_;
-    QString description_;
-  };
+    //
+    // Struct Station
+    //
+    //  Aggregation of fields that describe a radio station on a band.
+    //
+    struct Station
+    {
+        QString band_name_;
+        Frequency frequency_;
+        QDateTime switch_at_;
+        QDateTime switch_until_;
+        QString description_;
+    };
 
-  using Stations = QList<Station>;
+    using Stations = QList<Station>;
 
-  enum Column {band_column, frequency_column, switch_at_column, switch_until_column, description_column};
+    enum Column
+    {
+        band_column,
+        frequency_column,
+        switch_at_column,
+        switch_until_column,
+        description_column
+    };
 
-  explicit StationList (Bands const * bands, QObject * parent = nullptr);
-  explicit StationList (Bands const * bands, Stations, QObject * parent = nullptr);
-  ~StationList ();
+    explicit StationList(Bands const* bands, QObject* parent = nullptr);
+    explicit StationList(Bands const* bands, Stations, QObject* parent = nullptr);
+    ~StationList();
 
-  // Load and query contents.
-  Stations station_list (Stations);
-  Stations const& station_list () const;
+    // Load and query contents.
+    Stations station_list(Stations);
+    Stations const& station_list() const;
 
-  //
-  // Model API
-  //
-  QModelIndex add (Station);                 // Add a new Station
-  bool remove (Station);                     // Remove a Station
-  bool removeDisjointRows (QModelIndexList); // Remove one or more stations
+    //
+    // Model API
+    //
+    QModelIndex add(Station);                 // Add a new Station
+    bool remove(Station);                     // Remove a Station
+    bool removeDisjointRows(QModelIndexList); // Remove one or more stations
 
-  // Custom sort role.
-  static int constexpr SortRole = Qt::UserRole;
+    // Custom sort role.
+    static int constexpr SortRole = Qt::UserRole;
 
 private:
-  class impl;
-  pimpl<impl> m_;
+    class impl;
+    pimpl<impl> m_;
 };
 
 // Station equivalence
-inline
-bool operator == (StationList::Station const& lhs, StationList::Station const& rhs)
+inline bool operator==(StationList::Station const& lhs, StationList::Station const& rhs)
 {
-  return lhs.band_name_ == rhs.band_name_ &&
-    lhs.description_ == rhs.description_ &&
-    lhs.frequency_ == rhs.frequency_ &&
-    lhs.switch_at_ == rhs.switch_at_ &&
-    lhs.switch_until_ == rhs.switch_until_;
+    return lhs.band_name_ == rhs.band_name_ && lhs.description_ == rhs.description_
+        && lhs.frequency_ == rhs.frequency_ && lhs.switch_at_ == rhs.switch_at_
+        && lhs.switch_until_ == rhs.switch_until_;
 }
 
-QDataStream& operator << (QDataStream&, StationList::Station const&);
-QDataStream& operator >> (QDataStream&, StationList::Station&);
+QDataStream& operator<<(QDataStream&, StationList::Station const&);
+QDataStream& operator>>(QDataStream&, StationList::Station&);
 
-#if !defined (QT_NO_DEBUG_STREAM)
-QDebug operator << (QDebug debug, StationList::Station const&);
+#if !defined(QT_NO_DEBUG_STREAM)
+QDebug operator<<(QDebug debug, StationList::Station const&);
 #endif
 
-Q_DECLARE_METATYPE (StationList::Station);
-Q_DECLARE_METATYPE (StationList::Stations);
+Q_DECLARE_METATYPE(StationList::Station);
+Q_DECLARE_METATYPE(StationList::Stations);
 
 #endif

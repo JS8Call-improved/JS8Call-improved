@@ -1,16 +1,15 @@
 #include "qt_helpers.hpp"
 
-#include <QString>
 #include <QFont>
-#include <QWidget>
+#include <QString>
 #include <QStyle>
 #include <QVariant>
+#include <QWidget>
 
-QString font_as_stylesheet (QFont const& font)
+QString font_as_stylesheet(QFont const& font)
 {
-  QString font_weight;
-  switch (font.weight ())
-    {
+    QString font_weight;
+    switch (font.weight()) {
     case QFont::Thin: font_weight = "thin"; break;
     case QFont::ExtraLight: font_weight = "extralight"; break;
     case QFont::Light: font_weight = "light"; break;
@@ -21,21 +20,20 @@ QString font_as_stylesheet (QFont const& font)
     case QFont::ExtraBold: font_weight = "extrabold"; break;
     case QFont::Black: font_weight = "black"; break;
     }
-  return QString {
-      " font-family: %1;\n"
-      " font-size: %2pt;\n"
-      " font-style: %3;\n"
-      " font-weight: %4;\n"}
-  .arg (font.family ())
-     .arg (font.pointSize ())
-     .arg (font.styleName ())
-     .arg (font_weight);
+    return QString { " font-family: %1;\n"
+                     " font-size: %2pt;\n"
+                     " font-style: %3;\n"
+                     " font-weight: %4;\n" }
+        .arg(font.family())
+        .arg(font.pointSize())
+        .arg(font.styleName())
+        .arg(font_weight);
 }
 
-void update_dynamic_property (QWidget * widget, char const * property, QVariant const& value)
+void update_dynamic_property(QWidget* widget, char const* property, QVariant const& value)
 {
-  widget->setProperty (property, value);
-  widget->style ()->unpolish (widget);
-  widget->style ()->polish (widget);
-  widget->update ();
+    widget->setProperty(property, value);
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
 }

@@ -1,8 +1,8 @@
 #ifndef FOREIGN_KEY_DELEGATE_HPP_
 #define FOREIGN_KEY_DELEGATE_HPP_
 
-#include <QStyledItemDelegate>
 #include <QScopedPointer>
+#include <QStyledItemDelegate>
 
 class CandidateKeyFilter;
 
@@ -13,30 +13,31 @@ class CandidateKeyFilter;
 //	to one relationship. A QComboBox is used as an item delegate
 //	for the edit role.
 //
-class ForeignKeyDelegate final
-  : public QStyledItemDelegate
+class ForeignKeyDelegate final : public QStyledItemDelegate
 {
 public:
-  // many to many relationship
-  explicit ForeignKeyDelegate (QAbstractItemModel * referenced_model
-                               , int referenced_key_column
-                               , QObject * parent = nullptr
-                               , int referenced_key_role = Qt::EditRole);
+    // many to many relationship
+    explicit ForeignKeyDelegate(QAbstractItemModel* referenced_model,
+                                int referenced_key_column,
+                                QObject* parent = nullptr,
+                                int referenced_key_role = Qt::EditRole);
 
-  // one to many (referenced to referencing) relationship
-  explicit ForeignKeyDelegate (QAbstractItemModel * referenced_model
-                               , QAbstractItemModel const * referencing_model
-                               , int referenced_key_column
-                               , int referencing_key_column
-                               , QObject * parent = nullptr
-                               , int referenced_key_role = Qt::EditRole
-                               , int referencing_key_role = Qt::EditRole);
-  ~ForeignKeyDelegate ();
+    // one to many (referenced to referencing) relationship
+    explicit ForeignKeyDelegate(QAbstractItemModel* referenced_model,
+                                QAbstractItemModel const* referencing_model,
+                                int referenced_key_column,
+                                int referencing_key_column,
+                                QObject* parent = nullptr,
+                                int referenced_key_role = Qt::EditRole,
+                                int referencing_key_role = Qt::EditRole);
+    ~ForeignKeyDelegate();
 
-  QWidget * createEditor (QWidget * parent, QStyleOptionViewItem const&, QModelIndex const&) const override;
+    QWidget* createEditor(QWidget* parent,
+                          QStyleOptionViewItem const&,
+                          QModelIndex const&) const override;
 
 private:
-  QScopedPointer<CandidateKeyFilter> candidate_key_filter_;
+    QScopedPointer<CandidateKeyFilter> candidate_key_filter_;
 };
 
 #endif

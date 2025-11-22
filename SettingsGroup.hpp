@@ -13,22 +13,18 @@
 class SettingsGroup
 {
 public:
-  SettingsGroup (QSettings * settings, QString const& group)
-    : settings_ {settings}
-  {
-    settings_->beginGroup (group);
-  }
+    SettingsGroup(QSettings* settings, QString const& group) : settings_ { settings }
+    {
+        settings_->beginGroup(group);
+    }
 
-  SettingsGroup (SettingsGroup const&) = delete;
-  SettingsGroup& operator = (SettingsGroup const&) = delete;
+    SettingsGroup(SettingsGroup const&) = delete;
+    SettingsGroup& operator=(SettingsGroup const&) = delete;
 
-  ~SettingsGroup ()
-  {
-    settings_->endGroup ();
-  }
+    ~SettingsGroup() { settings_->endGroup(); }
 
 private:
-  QSettings * settings_;
+    QSettings* settings_;
 };
 
 #endif

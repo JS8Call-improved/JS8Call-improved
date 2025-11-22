@@ -1,91 +1,91 @@
 //---------------------------------------------------------- MainWindow
 #include "mainwindow.h"
+
+#include <QAction>
+#include <QActionGroup>
+#include <QByteArrayView>
+#include <QCursor>
+#include <QDesktopServices>
+#include <QDir>
+#include <QElapsedTimer>
+#include <QFileDialog>
+#include <QHostInfo>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QLoggingCategory>
+#include <QMdiSubWindow>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QPixmap>
+#include <QProgressDialog>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QScrollBar>
+#include <QSoundEffect>
+#include <QStandardPaths>
+#include <QStringBuilder>
+#include <QTimeZone>
+#include <QToolTip>
+#include <QUdpSocket>
+#include <QUrl>
+#include <QVariant>
+#include <QVector>
+#include <QVersionNumber>
+#include <QtConcurrent/QtConcurrentRun>
 #include <algorithm>
 #include <array>
+#include <boost/crc.hpp>
 #include <cmath>
 #include <complex>
 #include <cstring>
+#include <fftw3.h>
 #include <functional>
-#include <mutex>
 #include <iterator>
+#include <mutex>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <boost/crc.hpp>
-#include <fftw3.h>
-#include <QLineEdit>
-#include <QRegularExpressionValidator>
-#include <QRegularExpression>
-#include <QDesktopServices>
-#include <QNetworkAccessManager>
-#include <QNetworkRequest>
-#include <QNetworkReply>
-#include <QUrl>
-#include <QStandardPaths>
-#include <QDir>
-#include <QLoggingCategory>
-#include <QtConcurrent/QtConcurrentRun>
-#include <QProgressDialog>
-#include <QHostInfo>
-#include <QVector>
-#include <QCursor>
-#include <QToolTip>
-#include <QAction>
-#include <QActionGroup>
-#include <QSoundEffect>
-#include <QUdpSocket>
-#include <QVariant>
-#include <QPixmap>
-#include <QMdiSubWindow>
-#include <QFileDialog>
-#include <QInputDialog>
-#include <QScrollBar>
-#include <QVersionNumber>
-#include <QTimeZone>
-#include <QByteArrayView>
-#include <QElapsedTimer>
-#include <QStringBuilder>
 
-#include "revision_utils.hpp"
-#include "qt_helpers.hpp"
-#include "NetworkAccessManager.hpp"
-#include "soundout.h"
-#include "soundin.h"
-#include "Modulator.hpp"
+#include "Bands.hpp"
 #include "Decoder.h"
 #include "Detector.hpp"
-#include "about.h"
-#include "widegraph.h"
-#include "logqso.h"
-#include "decodedtext.h"
-#include "Radio.hpp"
-#include "Bands.hpp"
-#include "TransceiverFactory.hpp"
-#include "StationList.hpp"
-#include "MessageClient.hpp"
-#include "SignalMeter.hpp"
-#include "HelpTextWindow.hpp"
-#include "MultiSettings.hpp"
-#include "SelfDestructMessageBox.h"
-#include "messagereplydialog.h"
 #include "DriftingDateTime.h"
-#include "jsc_checker.h"
-#include "Inbox.h"
-#include "messagewindow.h"
-#include "NotificationAudio.h"
-#include "JS8Submode.hpp"
 #include "EventFilter.hpp"
 #include "Geodesic.hpp"
-
-#include "ui_mainwindow.h"
+#include "HelpTextWindow.hpp"
+#include "Inbox.h"
+#include "JS8Submode.hpp"
+#include "MessageClient.hpp"
+#include "Modulator.hpp"
+#include "MultiSettings.hpp"
+#include "NetworkAccessManager.hpp"
+#include "NotificationAudio.h"
+#include "Radio.hpp"
+#include "SelfDestructMessageBox.h"
+#include "SignalMeter.hpp"
+#include "StationList.hpp"
+#include "TransceiverFactory.hpp"
+#include "about.h"
+#include "decodedtext.h"
+#include "jsc_checker.h"
+#include "logqso.h"
+#include "messagereplydialog.h"
+#include "messagewindow.h"
 #include "moc_mainwindow.cpp"
+#include "qt_helpers.hpp"
+#include "revision_utils.hpp"
+#include "soundin.h"
+#include "soundout.h"
+#include "ui_mainwindow.h"
+#include "widegraph.h"
 
 Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 
 //TODO: Move to member:
-static char   message[29];
-static char   msgsent[29];
-static int    msgibits;
+static char message[29];
+static char msgsent[29];
+static int msgibits;
 
 
 // How often to poll the UI, in MS.
@@ -95,65 +95,70 @@ constexpr quint32 UI_POLL_INTERVAL_MS = 100;
 // How many milliseconds to wait before releasing PTT at end of transmission.
 constexpr int TX_SWITCHOFF_DELAY = 200;
 
-int volatile    itone[JS8_NUM_SYMBOLS];  // Audio tones for all Tx symbols
-struct dec_data dec_data;                // for sharing with Fortran
-struct specData specData;                // Used by plotter
-std::mutex      fftw_mutex;
+int volatile itone[JS8_NUM_SYMBOLS]; // Audio tones for all Tx symbols
+struct dec_data dec_data;            // for sharing with Fortran
+struct specData specData;            // Used by plotter
+std::mutex fftw_mutex;
 
 namespace
 {
-  namespace Default
-  {
-    constexpr Radio::Frequency DIAL_FREQUENCY = 14078000;
-    constexpr auto             FREQUENCY      = 1500;
-    constexpr auto             SUBMODE        = Varicode::JS8CallNormal;
-  }
+namespace Default
+{
+    constexpr Radio::Frequency DIAL_FREQUENCY = 14'078'000;
+    constexpr auto FREQUENCY = 1500;
+    constexpr auto SUBMODE = Varicode::JS8CallNormal;
+} // namespace Default
 
-  namespace State
-  {
+namespace State
+{
     constexpr auto RX = 1;
     constexpr auto TX = 2;
-  }
+} // namespace State
 
-  int ms_minute_error ()
-  {
-    auto const now    = DriftingDateTime::currentDateTimeLocal();
-    auto const time   = now.time();
+int ms_minute_error()
+{
+    auto const now = DriftingDateTime::currentDateTimeLocal();
+    auto const time = now.time();
     auto const second = time.second();
 
-    return now.msecsTo (now.addSecs (second > 30 ? 60 - second : -second)) - time.msec ();
-  }
+    return now.msecsTo(now.addSecs(second > 30 ? 60 - second : -second)) - time.msec();
+}
 
-  QString
-  since(QDateTime const & time)
-  {
-      auto const delta = time.secsTo(DriftingDateTime::currentDateTimeUtc());
+QString since(QDateTime const& time)
+{
+    auto const delta = time.secsTo(DriftingDateTime::currentDateTimeUtc());
 
-      if      (delta >= 60 * 60 * 24) return QString("%1d").arg(delta / (60 * 60 * 24));
-      else if (delta >= 60 * 60     ) return QString("%1h").arg(delta / (60 * 60     ));
-      else if (delta >= 60          ) return QString("%1m").arg(delta / (60          ));
-      else if (delta >= 15          ) return QString("%1s").arg(delta - (delta % 15  ));
-      else                            return QString("now");
-  }
+    if (delta >= 60 * 60 * 24)
+        return QString("%1d").arg(delta / (60 * 60 * 24));
+    else if (delta >= 60 * 60)
+        return QString("%1h").arg(delta / (60 * 60));
+    else if (delta >= 60)
+        return QString("%1m").arg(delta / (60));
+    else if (delta >= 15)
+        return QString("%1s").arg(delta - (delta % 15));
+    else
+        return QString("now");
+}
 
-  namespace State
-  {
-    constexpr QStringView Ready   = u"Ready";
-    constexpr QStringView Send    = u"Send";
+namespace State
+{
+    constexpr QStringView Ready = u"Ready";
+    constexpr QStringView Send = u"Send";
     constexpr QStringView Sending = u"Sending";
-    constexpr QStringView Tuning  = u"Tuning";
+    constexpr QStringView Tuning = u"Tuning";
 
-    QString
-    timed(QStringView const state,
-          int         const delay)
+    QString timed(QStringView const state, int const delay)
     {
         auto time = std::div(delay, 60);
 
-        if      (time.quot && time.rem) return QString("%1 (%2m %3s)").arg(state).arg(time.quot).arg(time.rem);
-        else if (time.quot)             return QString("%1 (%2m)"    ).arg(state).arg(time.quot);
-        else                            return QString("%1 (%2s)"    ).arg(state).arg(time.rem);
+        if (time.quot && time.rem)
+            return QString("%1 (%2m %3s)").arg(state).arg(time.quot).arg(time.rem);
+        else if (time.quot)
+            return QString("%1 (%2m)").arg(state).arg(time.quot);
+        else
+            return QString("%1 (%2s)").arg(state).arg(time.rem);
     }
-  }
+} // namespace State
 
 #if 0
   int round(int numToRound, int multiple)
@@ -173,77 +178,59 @@ namespace
   }
 #endif
 
-  int roundUp(int numToRound, int multiple)
-  {
-   if(multiple == 0)
-   {
-    return numToRound;
-   }
-
-   int roundDown = ( numToRound / multiple) * multiple;
-   return roundDown + multiple;
-  }
-
-  auto
-  replaceMacros(QString                const & text,
-                QMap<QString, QString> const & values,
-                bool                   const   prune)
-  {
-    QString output = text;
-
-    for (auto const [key, value] : values.asKeyValueRange())
-    {
-      output = output.replace(key, value.toUpper());
+int roundUp(int numToRound, int multiple)
+{
+    if (multiple == 0) {
+        return numToRound;
     }
 
-    return prune ? output.replace(QRegularExpression("[<](?:[^>]+)[>]"), "")
-                 : output;
-  }
+    int roundDown = (numToRound / multiple) * multiple;
+    return roundDown + multiple;
+}
 
-  // Copy at most size bytes into the array, filling any unused size
-  // with spaces if less than size bytes were available to copy. For
-  // convenience, return a one past the end iterator, i.e., equal to
-  // array + size.
+auto replaceMacros(QString const& text, QMap<QString, QString> const& values, bool const prune)
+{
+    QString output = text;
 
-  auto
-  copyByteData(QByteArrayView const bytes,
-               char         * const array,
-               qsizetype      const size)
-  {
-    return std::fill_n(std::copy_n(bytes.begin(),
-                                   std::min(size, bytes.size()),
-                                   array), size - bytes.size(), ' ');
-  }
+    for (auto const [key, value] : values.asKeyValueRange()) {
+        output = output.replace(key, value.toUpper());
+    }
 
-  // Copy at most size bytes into the array, padding out the message
-  // with spaces if less than size bytes were available to copy, and
-  // null-terminate it. Caller is responsible for ensuring that at
-  // least (size + 1) bytes of space are available.
+    return prune ? output.replace(QRegularExpression("[<](?:[^>]+)[>]"), "") : output;
+}
 
-  void
-  copyMessage(QStringView const string,
-              char      * const array,
-              qsizetype   const size = 28)
-  {
-    *copyByteData(string.toLocal8Bit(),
-                  array,
-                  size) = '\0';
-  }
+// Copy at most size bytes into the array, filling any unused size
+// with spaces if less than size bytes were available to copy. For
+// convenience, return a one past the end iterator, i.e., equal to
+// array + size.
 
-  // Emulation of the Fortran 'flat1' subroutine.
+auto copyByteData(QByteArrayView const bytes, char* const array, qsizetype const size)
+{
+    return std::fill_n(std::copy_n(bytes.begin(), std::min(size, bytes.size()), array),
+                       size - bytes.size(),
+                       ' ');
+}
 
-  void
-  flat1(float const * const savg,
-        int           const iz,
-        int           const nsmo,
-        float       * const slin)
-  {
+// Copy at most size bytes into the array, padding out the message
+// with spaces if less than size bytes were available to copy, and
+// null-terminate it. Caller is responsible for ensuring that at
+// least (size + 1) bytes of space are available.
+
+void copyMessage(QStringView const string, char* const array, qsizetype const size = 28)
+{
+    *copyByteData(string.toLocal8Bit(), array, size) = '\0';
+}
+
+// Emulation of the Fortran 'flat1' subroutine.
+
+void flat1(float const* const savg, int const iz, int const nsmo, float* const slin)
+{
     constexpr int x_size = 8192;
-    constexpr int nstep  = 20;
-    constexpr int nh     = nstep / 2;
+    constexpr int nstep = 20;
+    constexpr int nh = nstep / 2;
 
     // Define bounds for smoothing
-    int const ia =      nsmo / 2 + 1;
+    int const ia = nsmo / 2 + 1;
     int const ib = iz - nsmo / 2 - 1;
 
     std::vector<float> x(x_size, 0.0f);
@@ -252,1126 +239,1288 @@ namespace
 
     auto const rank = std::clamp(static_cast<int>(std::round(0.5f * nsmo)), 0, nsmo - 1);
 
-    for (int i = ia; i <= ib; i += nstep)
-    {
-      auto const data = &savg[i - nsmo / 2];
-      auto       temp = std::vector<float>(data, data + nsmo);
+    for (int i = ia; i <= ib; i += nstep) {
+        auto const data = &savg[i - nsmo / 2];
+        auto temp = std::vector<float>(data, data + nsmo);
 
-      std::nth_element(temp.begin(),
-                       temp.begin() + rank,
-                       temp.end());
+        std::nth_element(temp.begin(), temp.begin() + rank, temp.end());
 
-      x[i] = temp[rank];
+        x[i] = temp[rank];
 
-      std::fill(x.begin() + (i - nh),
-                x.begin() + (i + nh), x[i]);
+        std::fill(x.begin() + (i - nh), x.begin() + (i + nh), x[i]);
     }
 
     // Extend smoothed values to boundaries
-    std::fill(x.begin(),          x.begin() + ia, x[ia]);
+    std::fill(x.begin(), x.begin() + ia, x[ia]);
     std::fill(x.begin() + ib + 1, x.begin() + iz, x[ib]);
 
     // Compute scaling factor
-    float x0 = 0.001f * *std::max_element(x.begin() +      iz  / 10,
-                                          x.begin() + (9 * iz) / 10);
+    float x0 = 0.001f * *std::max_element(x.begin() + iz / 10, x.begin() + (9 * iz) / 10);
 
     // Normalize savg to compute slin
-    for (int i = 0; i < iz; ++i) slin[i] = savg[i] / (x[i] + x0);
-  }
+    for (int i = 0; i < iz; ++i)
+        slin[i] = savg[i] / (x[i] + x0);
+}
 
-  // Emulation of the Fortran 'smo' subroutine. However, doesn't copy the data
-  // back from b to a; rather, a is input and, b is output. Since we invariably
-  // call this twice, we can just swap the order of the arrays to achieve the
-  // same result without the extra two copy operations.
+// Emulation of the Fortran 'smo' subroutine. However, doesn't copy the data
+// back from b to a; rather, a is input and, b is output. Since we invariably
+// call this twice, we can just swap the order of the arrays to achieve the
+// same result without the extra two copy operations.
 
-  void
-  smo(float const * const a,
-      float       * const b,
-      int           const npts,
-      int           const nadd)
-  {
+void smo(float const* const a, float* const b, int const npts, int const nadd)
+{
     auto const nh = nadd / 2;
 
     // Smooth the array
-    for (int i = nh; i < npts - nh; ++i)
-    {
-      float sum = 0.0f;
-      for (int j = -nh; j <= nh; ++j)
-      {
-        sum += a[i + j];
-      }
-      b[i] = sum;
+    for (int i = nh; i < npts - nh; ++i) {
+        float sum = 0.0f;
+        for (int j = -nh; j <= nh; ++j) {
+            sum += a[i + j];
+        }
+        b[i] = sum;
     }
 
     // Set edges to zero
-    for (int i = 0;         i < nh;   ++i) b[i] = 0.0f; // Zero out leading edge
-    for (int i = npts - nh; i < npts; ++i) b[i] = 0.0f; // Zero out trailing edge
-  }
+    for (int i = 0; i < nh; ++i)
+        b[i] = 0.0f; // Zero out leading edge
+    for (int i = npts - nh; i < npts; ++i)
+        b[i] = 0.0f; // Zero out trailing edge
 }
+} // namespace
 
 //--------------------------------------------------- MainWindow constructor
-MainWindow::MainWindow(QString  const & program_info,
-                       QDir     const & temp_directory,
-                       bool     const   multiple,
-                       MultiSettings  * multi_settings,
-                       QWidget        * parent) :
-  QMainWindow(parent),
-  m_stopTxButtonIsLongterm{true},
-  m_hbButtonIsLongterm {true},
-  m_cqButtonIsLongterm {true},
-  m_network_manager {this},
-  m_valid {true},
-  m_multiple {multiple},
-  m_multi_settings {multi_settings},
-  m_configurations_button {0},
-  m_settings {multi_settings->settings ()},
-  m_settings_read {false},
-  ui(new Ui::MainWindow),
-  m_config {temp_directory, m_settings, this},
-  m_rigErrorMessageBox {MessageBox::Critical, tr ("Rig Control Error")
-      , MessageBox::Cancel | MessageBox::Ok | MessageBox::Retry},
-  m_wideGraph (new WideGraph(m_settings)),
-  // no parent so that it has a taskbar icon
-  m_logDlg (new LogQSO (program_title (), m_settings, &m_config, nullptr)),
-  m_lastDialFreq {0},
-  m_detector {new Detector {JS8_RX_SAMPLE_RATE, JS8_NTMAX}},
-  m_FFTSize {6912 / 2},         // conservative value to avoid buffer overruns
-  m_soundInput {new SoundInput},
-  m_modulator {new Modulator},
-  m_soundOutput {new SoundOutput},
-  m_notification {new NotificationAudio},
-  m_cq_loop {new TxLoop {"CQ calls"}},
-  m_hb_loop {new TxLoop {"HB calls"}},
-  m_decoder {this},
-  m_secBandChanged {0},
-  m_freqNominal {0},
-  m_freqTxNominal {0},
-  m_XIT {0},
-  m_sec0 {-1},
-  m_RxLog {1},      //Write Date and Time to RxLog
-  m_nutc0 {999999},
-  m_TRperiod {60},
-  m_inGain {0},
-  m_idleMinutes {0},
-  m_nSubMode {Default::SUBMODE},
-  m_frequency_list_fcal_iter {m_config.frequencies ()->begin ()},
-  m_i3bit {0},
-  m_btxok {false},
-  m_auto {false},
-  m_restart {false},
-  m_currentMessageType {-1},
-  m_lastMessageType {-1},
-  m_tuneup {false},
-  m_isTimeToSend {false},
-  m_ihsym {0},
-  m_px {0.0},
-  m_iptt0 {0},
-  m_btxok0 {false},
-  m_onAirFreq0 {0.0},
-  m_first_error {true},
-  tx_status_label {"Receiving"},
-  m_appDir {QApplication::applicationDirPath ()},
-  m_palette {"Linrad"},
-  m_txFrameCountEstimate {0},
-  m_txFrameCount {0},
-  m_txFrameCountSent {0},
-  m_txTextDirty {false},
-  m_driftMsMMA { 0 },
-  m_driftMsMMA_N { 0 },
-  m_previousFreq {0},
-  m_hbInterval {0},
-  m_cqInterval {0},
-  m_hbPaused { false },
-  m_msAudioOutputBuffered (0u),
-  m_framesAudioInputBuffered (JS8_RX_SAMPLE_RATE / 10),
-  m_audioThreadPriority (QThread::HighPriority),
-  m_notificationAudioThreadPriority (QThread::LowPriority),
-  m_decoderThreadPriority (QThread::HighPriority),
-  m_splitMode {false},
-  m_monitoring {false},
-  m_generateAudioWhenPttConfirmedByTX {false},
-  m_transmitting {false},
-  m_tune {false},
-  m_tx_watchdog {false},
-  m_block_pwr_tooltip {false},
-  m_PwrBandSetOK {true},
-  m_lastMonitoredFrequency {Default::DIAL_FREQUENCY},
-  m_messageClient {new MessageClient {m_config.udp_server_name(), m_config.udp_server_port(), this}},
-  m_messageServer {new MessageServer()},
-  m_n3fjpClient {new TCPClient{this}},
-  m_pskReporter {new PSKReporter {&m_config, program_info}},     // UR
-  m_spotClient {new SpotClient   {"spot.js8call.com", 50000, program_info}},
-  m_aprsClient {new APRSISClient {"rotate.aprs2.net", 14580}},
-  m_manual {&m_network_manager}
+MainWindow::MainWindow(QString const& program_info,
+                       QDir const& temp_directory,
+                       bool const multiple,
+                       MultiSettings* multi_settings,
+                       QWidget* parent) :
+    QMainWindow(parent),
+    m_stopTxButtonIsLongterm {
+        true
+},
+    m_hbButtonIsLongterm { true },
+    m_cqButtonIsLongterm { true },
+    m_network_manager { this },
+    m_valid { true },
+    m_multiple { multiple },
+    m_multi_settings { multi_settings },
+    m_configurations_button { 0 },
+    m_settings { multi_settings->settings() },
+    m_settings_read { false },
+    ui(new Ui::MainWindow),
+    m_config { temp_directory, m_settings, this },
+    m_rigErrorMessageBox { MessageBox::Critical,
+                           tr("Rig Control Error"),
+                           MessageBox::Cancel | MessageBox::Ok | MessageBox::Retry },
+    m_wideGraph(new WideGraph(m_settings)),
+    // no parent so that it has a taskbar icon
+    m_logDlg(new LogQSO(program_title(), m_settings, &m_config, nullptr)),
+    m_lastDialFreq { 0 },
+    m_detector { new Detector { JS8_RX_SAMPLE_RATE, JS8_NTMAX } },
+    m_FFTSize { 6912 / 2 }, // conservative value to avoid buffer overruns
+    m_soundInput { new SoundInput },
+    m_modulator { new Modulator },
+    m_soundOutput { new SoundOutput },
+    m_notification { new NotificationAudio },
+    m_cq_loop { new TxLoop { "CQ calls" } },
+    m_hb_loop { new TxLoop { "HB calls" } },
+    m_decoder { this },
+    m_secBandChanged { 0 },
+    m_freqNominal { 0 },
+    m_freqTxNominal { 0 },
+    m_XIT { 0 },
+    m_sec0 { -1 },
+    m_RxLog { 1 }, //Write Date and Time to RxLog
+    m_nutc0 { 999999 },
+    m_TRperiod { 60 },
+    m_inGain { 0 },
+    m_idleMinutes { 0 },
+    m_nSubMode { Default::SUBMODE },
+    m_frequency_list_fcal_iter { m_config.frequencies()->begin() },
+    m_i3bit { 0 },
+    m_btxok { false },
+    m_auto { false },
+    m_restart { false },
+    m_currentMessageType { -1 },
+    m_lastMessageType { -1 },
+    m_tuneup { false },
+    m_isTimeToSend { false },
+    m_ihsym { 0 },
+    m_px { 0.0 },
+    m_iptt0 { 0 },
+    m_btxok0 { false },
+    m_onAirFreq0 { 0.0 },
+    m_first_error { true },
+    tx_status_label { "Receiving" },
+    m_appDir { QApplication::applicationDirPath() },
+    m_palette { "Linrad" },
+    m_txFrameCountEstimate { 0 },
+    m_txFrameCount { 0 },
+    m_txFrameCountSent { 0 },
+    m_txTextDirty { false },
+    m_driftMsMMA { 0 },
+    m_driftMsMMA_N { 0 },
+    m_previousFreq { 0 },
+    m_hbInterval { 0 },
+    m_cqInterval { 0 },
+    m_hbPaused { false },
+    m_msAudioOutputBuffered(0u),
+    m_framesAudioInputBuffered(JS8_RX_SAMPLE_RATE / 10),
+    m_audioThreadPriority(QThread::HighPriority),
+    m_notificationAudioThreadPriority(QThread::LowPriority),
+    m_decoderThreadPriority(QThread::HighPriority),
+    m_splitMode { false },
+    m_monitoring { false },
+    m_generateAudioWhenPttConfirmedByTX { false },
+    m_transmitting { false },
+    m_tune { false },
+    m_tx_watchdog { false },
+    m_block_pwr_tooltip { false },
+    m_PwrBandSetOK { true },
+    m_lastMonitoredFrequency { Default::DIAL_FREQUENCY },
+    m_messageClient {
+        new MessageClient { m_config.udp_server_name(), m_config.udp_server_port(), this }
+    },
+    m_messageServer { new MessageServer() },
+    m_n3fjpClient { new TCPClient { this } },
+    m_pskReporter { new PSKReporter { &m_config, program_info } }, // UR
+    m_spotClient { new SpotClient { "spot.js8call.com", 50000, program_info } },
+    m_aprsClient { new APRSISClient { "rotate.aprs2.net", 14580 } },
+    m_manual { &m_network_manager }
 {
-  ui->setupUi(this);
+    ui->setupUi(this);
 
-  createStatusBar();
-  add_child_to_event_filter (this);
+    createStatusBar();
+    add_child_to_event_filter(this);
 
-  m_baseCall = Radio::base_callsign (m_config.my_callsign ());
-  m_opCall = m_config.opCall();
+    m_baseCall = Radio::base_callsign(m_config.my_callsign());
+    m_opCall = m_config.opCall();
 
-  // Closedown.
-  connect (ui->actionExit, &QAction::triggered, this, &QMainWindow::close);
+    // Closedown.
+    connect(ui->actionExit, &QAction::triggered, this, &QMainWindow::close);
 
-  // parts of the rig error message box that are fixed
-  m_rigErrorMessageBox.setInformativeText (tr ("Do you want to reconfigure the radio interface?"));
-  m_rigErrorMessageBox.setDefaultButton (MessageBox::Ok);
+    // parts of the rig error message box that are fixed
+    m_rigErrorMessageBox.setInformativeText(tr("Do you want to reconfigure the radio interface?"));
+    m_rigErrorMessageBox.setDefaultButton(MessageBox::Ok);
 
-  // start audio thread and hook up slots & signals for shutdown management
-  // these objects need to be in the audio thread so that invoking
-  // their slots is done in a thread safe way
-  m_soundOutput->moveToThread (&m_audioThread);
-  m_modulator->moveToThread (&m_audioThread);
-  m_soundInput->moveToThread (&m_audioThread);
-  m_detector->moveToThread (&m_audioThread);
+    // start audio thread and hook up slots & signals for shutdown management
+    // these objects need to be in the audio thread so that invoking
+    // their slots is done in a thread safe way
+    m_soundOutput->moveToThread(&m_audioThread);
+    m_modulator->moveToThread(&m_audioThread);
+    m_soundInput->moveToThread(&m_audioThread);
+    m_detector->moveToThread(&m_audioThread);
 
-  // notification audio operates in its own thread at a lower priority
-  m_notification->moveToThread(&m_notificationAudioThread);
+    // notification audio operates in its own thread at a lower priority
+    m_notification->moveToThread(&m_notificationAudioThread);
 
-  // Move the aprs client message server, psk reporter, and spot client
-  // to the network thread at a lower priority.
+    // Move the aprs client message server, psk reporter, and spot client
+    // to the network thread at a lower priority.
 
-  m_aprsClient->moveToThread(&m_networkThread);
-  m_messageServer->moveToThread(&m_networkThread);
-  m_pskReporter->moveToThread(&m_networkThread);
-  m_spotClient->moveToThread(&m_networkThread);
+    m_aprsClient->moveToThread(&m_networkThread);
+    m_messageServer->moveToThread(&m_networkThread);
+    m_pskReporter->moveToThread(&m_networkThread);
+    m_spotClient->moveToThread(&m_networkThread);
 
-  // hook up the message server slots and signals and disposal
-  connect (m_messageServer, &MessageServer::message, this, &MainWindow::tcpNetworkMessage);
-  connect (this, &MainWindow::apiSetMaxConnections, m_messageServer, &MessageServer::setMaxConnections);
-  connect (this, &MainWindow::apiSetServer,         m_messageServer, &MessageServer::setServer);
-  connect (this, &MainWindow::apiStartServer,       m_messageServer, &MessageServer::start);
-  connect (this, &MainWindow::apiStopServer,        m_messageServer, &MessageServer::stop);
-  connect (&m_config, &Configuration::tcp_server_changed,          m_messageServer, &MessageServer::setServerHost);
-  connect (&m_config, &Configuration::tcp_server_port_changed,     m_messageServer, &MessageServer::setServerPort);
-  connect (&m_config, &Configuration::tcp_max_connections_changed, m_messageServer, &MessageServer::setMaxConnections);
-  connect (&m_networkThread, &QThread::finished, m_messageServer, &QObject::deleteLater);
+    // hook up the message server slots and signals and disposal
+    connect(m_messageServer, &MessageServer::message, this, &MainWindow::tcpNetworkMessage);
+    connect(this,
+            &MainWindow::apiSetMaxConnections,
+            m_messageServer,
+            &MessageServer::setMaxConnections);
+    connect(this, &MainWindow::apiSetServer, m_messageServer, &MessageServer::setServer);
+    connect(this, &MainWindow::apiStartServer, m_messageServer, &MessageServer::start);
+    connect(this, &MainWindow::apiStopServer, m_messageServer, &MessageServer::stop);
+    connect(&m_config,
+            &Configuration::tcp_server_changed,
+            m_messageServer,
+            &MessageServer::setServerHost);
+    connect(&m_config,
+            &Configuration::tcp_server_port_changed,
+            m_messageServer,
+            &MessageServer::setServerPort);
+    connect(&m_config,
+            &Configuration::tcp_max_connections_changed,
+            m_messageServer,
+            &MessageServer::setMaxConnections);
+    connect(&m_networkThread, &QThread::finished, m_messageServer, &QObject::deleteLater);
 
-  // hook up the aprs client slots and signals and disposal
-  connect (this, &MainWindow::aprsClientEnqueueSpot,       m_aprsClient, &APRSISClient::enqueueSpot);
-  connect (this, &MainWindow::aprsClientEnqueueThirdParty, m_aprsClient, &APRSISClient::enqueueThirdParty);
-  connect (this, &MainWindow::aprsClientSendReports,       m_aprsClient, &APRSISClient::sendReports);
-  connect (this, &MainWindow::aprsClientSetLocalStation,   m_aprsClient, &APRSISClient::setLocalStation);
-  connect (this, &MainWindow::aprsClientSetPaused,         m_aprsClient, &APRSISClient::setPaused);
-  connect (this, &MainWindow::aprsClientSetServer,         m_aprsClient, &APRSISClient::setServer);
-  connect (this, &MainWindow::aprsClientSetSkipPercent,    m_aprsClient, &APRSISClient::setSkipPercent);
-  connect (&m_networkThread, &QThread::finished, m_aprsClient, &QObject::deleteLater);
+    // hook up the aprs client slots and signals and disposal
+    connect(this, &MainWindow::aprsClientEnqueueSpot, m_aprsClient, &APRSISClient::enqueueSpot);
+    connect(this,
+            &MainWindow::aprsClientEnqueueThirdParty,
+            m_aprsClient,
+            &APRSISClient::enqueueThirdParty);
+    connect(this, &MainWindow::aprsClientSendReports, m_aprsClient, &APRSISClient::sendReports);
+    connect(this,
+            &MainWindow::aprsClientSetLocalStation,
+            m_aprsClient,
+            &APRSISClient::setLocalStation);
+    connect(this, &MainWindow::aprsClientSetPaused, m_aprsClient, &APRSISClient::setPaused);
+    connect(this, &MainWindow::aprsClientSetServer, m_aprsClient, &APRSISClient::setServer);
+    connect(this,
+            &MainWindow::aprsClientSetSkipPercent,
+            m_aprsClient,
+            &APRSISClient::setSkipPercent);
+    connect(&m_networkThread, &QThread::finished, m_aprsClient, &QObject::deleteLater);
 
-  // hook up the psk reporter slots and signals and disposal
-  connect (m_pskReporter, &PSKReporter::errorOccurred, this, &MainWindow::pskReporterError);
-  connect (this, &MainWindow::pskReporterSendReport,       m_pskReporter, &PSKReporter::sendReport);
-  connect (this, &MainWindow::pskReporterAddRemoteStation, m_pskReporter, &PSKReporter::addRemoteStation);
-  connect (this, &MainWindow::pskReporterSetLocalStation,  m_pskReporter, &PSKReporter::setLocalStation);
-  connect (&m_networkThread, &QThread::started,  m_pskReporter, &PSKReporter::start);
-  connect (&m_networkThread, &QThread::finished, m_pskReporter, &QObject::deleteLater);
+    // hook up the psk reporter slots and signals and disposal
+    connect(m_pskReporter, &PSKReporter::errorOccurred, this, &MainWindow::pskReporterError);
+    connect(this, &MainWindow::pskReporterSendReport, m_pskReporter, &PSKReporter::sendReport);
+    connect(this,
+            &MainWindow::pskReporterAddRemoteStation,
+            m_pskReporter,
+            &PSKReporter::addRemoteStation);
+    connect(this,
+            &MainWindow::pskReporterSetLocalStation,
+            m_pskReporter,
+            &PSKReporter::setLocalStation);
+    connect(&m_networkThread, &QThread::started, m_pskReporter, &PSKReporter::start);
+    connect(&m_networkThread, &QThread::finished, m_pskReporter, &QObject::deleteLater);
 
-  // hook up the spot client signals and disposal
-  connect (this, &MainWindow::spotClientEnqueueCmd,       m_spotClient, &SpotClient::enqueueCmd);
-  connect (this, &MainWindow::spotClientEnqueueSpot,      m_spotClient, &SpotClient::enqueueSpot);
-  connect (this, &MainWindow::spotClientSetLocalStation,  m_spotClient, &SpotClient::setLocalStation);
-  connect (&m_networkThread, &QThread::started,  m_spotClient, &SpotClient::start);
-  connect (&m_networkThread, &QThread::finished, m_spotClient, &QObject::deleteLater);
+    // hook up the spot client signals and disposal
+    connect(this, &MainWindow::spotClientEnqueueCmd, m_spotClient, &SpotClient::enqueueCmd);
+    connect(this, &MainWindow::spotClientEnqueueSpot, m_spotClient, &SpotClient::enqueueSpot);
+    connect(this,
+            &MainWindow::spotClientSetLocalStation,
+            m_spotClient,
+            &SpotClient::setLocalStation);
+    connect(&m_networkThread, &QThread::started, m_spotClient, &SpotClient::start);
+    connect(&m_networkThread, &QThread::finished, m_spotClient, &QObject::deleteLater);
 
-  // hook up sound output stream slots & signals and disposal
-  connect (this, &MainWindow::initializeAudioOutputStream, m_soundOutput, &SoundOutput::setFormat);
-  connect (m_soundOutput, &SoundOutput::error, this, &MainWindow::showSoundOutError);
-  connect (m_soundOutput, &SoundOutput::error, &m_config, &Configuration::invalidate_audio_output_device);
-  connect (this, &MainWindow::outAttenuationChanged, m_soundOutput, &SoundOutput::setAttenuation);
-  connect (&m_audioThread, &QThread::finished, m_soundOutput, &QObject::deleteLater);
+    // hook up sound output stream slots & signals and disposal
+    connect(this, &MainWindow::initializeAudioOutputStream, m_soundOutput, &SoundOutput::setFormat);
+    connect(m_soundOutput, &SoundOutput::error, this, &MainWindow::showSoundOutError);
+    connect(m_soundOutput,
+            &SoundOutput::error,
+            &m_config,
+            &Configuration::invalidate_audio_output_device);
+    connect(this, &MainWindow::outAttenuationChanged, m_soundOutput, &SoundOutput::setAttenuation);
+    connect(&m_audioThread, &QThread::finished, m_soundOutput, &QObject::deleteLater);
 
-  connect (this, &MainWindow::initializeNotificationAudioOutputStream, m_notification, &NotificationAudio::setDevice);
-  connect (&m_config, &Configuration::test_notify, this, &MainWindow::tryNotify);
-  connect (this, &MainWindow::playNotification, m_notification, &NotificationAudio::play);
-  connect (&m_notificationAudioThread, &QThread::finished, m_notification, &QObject::deleteLater);
+    connect(this,
+            &MainWindow::initializeNotificationAudioOutputStream,
+            m_notification,
+            &NotificationAudio::setDevice);
+    connect(&m_config, &Configuration::test_notify, this, &MainWindow::tryNotify);
+    connect(this, &MainWindow::playNotification, m_notification, &NotificationAudio::play);
+    connect(&m_notificationAudioThread, &QThread::finished, m_notification, &QObject::deleteLater);
 
-  // hook up Modulator slots and disposal
-  connect (this, &MainWindow::transmitFrequency, m_modulator, &Modulator::setAudioFrequency);
-  connect (this, &MainWindow::endTransmitMessage, m_modulator, &Modulator::stop);
-  connect (this, &MainWindow::tune, m_modulator, &Modulator::tune);
-  connect (this, &MainWindow::sendMessage, m_modulator, &Modulator::start);
-  connect (&m_audioThread, &QThread::finished, m_modulator, &QObject::deleteLater);
+    // hook up Modulator slots and disposal
+    connect(this, &MainWindow::transmitFrequency, m_modulator, &Modulator::setAudioFrequency);
+    connect(this, &MainWindow::endTransmitMessage, m_modulator, &Modulator::stop);
+    connect(this, &MainWindow::tune, m_modulator, &Modulator::tune);
+    connect(this, &MainWindow::sendMessage, m_modulator, &Modulator::start);
+    connect(&m_audioThread, &QThread::finished, m_modulator, &QObject::deleteLater);
 
-  // hook up the audio input stream signals, slots and disposal
-  connect (this, &MainWindow::startAudioInputStream, m_soundInput, &SoundInput::start);
-  connect (this, &MainWindow::suspendAudioInputStream, m_soundInput, &SoundInput::suspend);
-  connect (this, &MainWindow::resumeAudioInputStream, m_soundInput, &SoundInput::resume);
-  connect (this, &MainWindow::finished, m_soundInput, &SoundInput::stop);
-  connect(m_soundInput, &SoundInput::error, this, &MainWindow::showSoundInError);
-  connect(m_soundInput, &SoundInput::error, &m_config, &Configuration::invalidate_audio_input_device);
-  // connect(m_soundInput, &SoundInput::status, this, &MainWindow::showStatusMessage);
-  connect (&m_audioThread, &QThread::finished, m_soundInput, &QObject::deleteLater);
+    // hook up the audio input stream signals, slots and disposal
+    connect(this, &MainWindow::startAudioInputStream, m_soundInput, &SoundInput::start);
+    connect(this, &MainWindow::suspendAudioInputStream, m_soundInput, &SoundInput::suspend);
+    connect(this, &MainWindow::resumeAudioInputStream, m_soundInput, &SoundInput::resume);
+    connect(this, &MainWindow::finished, m_soundInput, &SoundInput::stop);
+    connect(m_soundInput, &SoundInput::error, this, &MainWindow::showSoundInError);
+    connect(m_soundInput,
+            &SoundInput::error,
+            &m_config,
+            &Configuration::invalidate_audio_input_device);
+    // connect(m_soundInput, &SoundInput::status, this, &MainWindow::showStatusMessage);
+    connect(&m_audioThread, &QThread::finished, m_soundInput, &QObject::deleteLater);
 
-  connect (this, &MainWindow::finished, this, &MainWindow::close);
+    connect(this, &MainWindow::finished, this, &MainWindow::close);
 
-  // hook up the detector signals, slots and disposal
-  connect (this, &MainWindow::FFTSize, m_detector, &Detector::setBlockSize);
-  connect(m_detector, &Detector::framesWritten, this, &MainWindow::dataSink);
-  connect (&m_audioThread, &QThread::finished, m_detector, &QObject::deleteLater);
+    // hook up the detector signals, slots and disposal
+    connect(this, &MainWindow::FFTSize, m_detector, &Detector::setBlockSize);
+    connect(m_detector, &Detector::framesWritten, this, &MainWindow::dataSink);
+    connect(&m_audioThread, &QThread::finished, m_detector, &QObject::deleteLater);
 
-  // setup the waterfall
-  connect(m_wideGraph.data(), &WideGraph::f11f12, this, &MainWindow::f11f12);
-  connect(m_wideGraph.data(), &WideGraph::setXIT, this, &MainWindow::setXIT);
+    // setup the waterfall
+    connect(m_wideGraph.data(), &WideGraph::f11f12, this, &MainWindow::f11f12);
+    connect(m_wideGraph.data(), &WideGraph::setXIT, this, &MainWindow::setXIT);
 
-  connect (this, &MainWindow::finished, m_wideGraph.data (), &WideGraph::close);
+    connect(this, &MainWindow::finished, m_wideGraph.data(), &WideGraph::close);
 
-  // setup the log QSO dialog
-  connect (m_logDlg.data (), &LogQSO::acceptQSO, this, &MainWindow::acceptQSO);
-  connect (this, &MainWindow::finished, m_logDlg.data (), &LogQSO::close);
+    // setup the log QSO dialog
+    connect(m_logDlg.data(), &LogQSO::acceptQSO, this, &MainWindow::acceptQSO);
+    connect(this, &MainWindow::finished, m_logDlg.data(), &LogQSO::close);
 
-  // Network message handling
-  connect (m_messageClient, &MessageClient::message, this, &MainWindow::udpNetworkMessage);
+    // Network message handling
+    connect(m_messageClient, &MessageClient::message, this, &MainWindow::udpNetworkMessage);
 
-  // decoder queue handler
-  //connect (&m_decodeThread, &QThread::finished, m_notification, &QObject::deleteLater);
-  //connect(this, &MainWindow::decodedLineReady, this, &MainWindow::processDecodedLine);
-  connect(&m_decoder, &JS8::Decoder::decodeEvent, this, &MainWindow::processDecodeEvent);
+    // decoder queue handler
+    //connect (&m_decodeThread, &QThread::finished, m_notification, &QObject::deleteLater);
+    //connect(this, &MainWindow::decodedLineReady, this, &MainWindow::processDecodedLine);
+    connect(&m_decoder, &JS8::Decoder::decodeEvent, this, &MainWindow::processDecodeEvent);
 
-   m_dateTimeQSOOn = QDateTime{};
+    m_dateTimeQSOOn = QDateTime {};
 
-  // initialize decoded text font and hook up font change signals
-  // defer initialization until after construction otherwise menu
-  // fonts do not get set
-  QTimer::singleShot (0, this, &MainWindow::initialize_fonts);
-  connect (&m_config, &Configuration::gui_text_font_changed, [this] (QFont const& font) {
-      set_application_font (font);
-  });
-  connect (&m_config, &Configuration::table_font_changed, [this] (QFont const&) {
-      ui->tableWidgetRXAll->setFont(m_config.table_font());
-      ui->tableWidgetCalls->setFont(m_config.table_font());
-  });
-  connect (&m_config, &Configuration::rx_text_font_changed, [this] (QFont const&) {
-      setTextEditFont(ui->textEditRX, m_config.rx_text_font());
-  });
-  connect (&m_config, &Configuration::compose_text_font_changed, [this] (QFont const&) {
-      setTextEditFont(ui->extFreeTextMsgEdit, m_config.compose_text_font());
-  });
-  connect (&m_config, &Configuration::colors_changed, [this](){
-     setTextEditStyle(ui->textEditRX, m_config.color_rx_foreground(), m_config.color_rx_background(), m_config.rx_text_font());
-     setTextEditStyle(ui->extFreeTextMsgEdit, m_config.color_compose_foreground(), m_config.color_compose_background(), m_config.compose_text_font());
-     ui->extFreeTextMsgEdit->setFont(m_config.compose_text_font(), m_config.color_compose_foreground(), m_config.color_compose_background());
-
-     // rehighlight
-     auto d = ui->textEditRX->document();
-     if(d){
-         for(int i = 0; i < d->lineCount(); i++){
-             auto b = d->findBlockByLineNumber(i);
-
-             switch (b.userState())
-             {
-             case State::RX:
-                 highlightBlock(b, m_config.rx_text_font(), m_config.color_rx_foreground(), QColor(Qt::transparent));
-                 break;
-             case State::TX:
-                 highlightBlock(b, m_config.tx_text_font(), m_config.color_tx_foreground(), QColor(Qt::transparent));
-                 break;
-             }
-         }
-     }
-  });
-
-  setWindowTitle (program_title ());
-  buildColumnLabelMap();
-
-  // Hook up working frequencies.
-
-  ui->currentFreq->setCursor(QCursor(Qt::PointingHandCursor));
-  ui->currentFreq->display("14.078 000");
-  ui->currentFreq->installEventFilter(new EventFilter::MouseButtonPress([this](QMouseEvent * event)
-  {
-    QMenu * menu = new QMenu(ui->currentFreq);
-    buildFrequencyMenu(menu);
-    menu->popup(event->globalPosition().toPoint());
-    return true;
-  }, this));
-
-  ui->labDialFreqOffset->setCursor(QCursor(Qt::PointingHandCursor));
-  ui->labDialFreqOffset->installEventFilter(new EventFilter::MouseButtonPress([this](QMouseEvent *)
-  {
-    on_actionSetOffset_triggered();
-    return true;
-  }, this));
-
-  // Hook up callsign label click to open preferences
-
-  ui->labCallsign->setCursor(QCursor(Qt::PointingHandCursor));
-  ui->labCallsign->installEventFilter(new EventFilter::MouseButtonPress([this](QMouseEvent *)
-  {
-    openSettings(0);
-    return true;
-  }, this));
-
-  // hook up configuration signals
-  connect (&m_config, &Configuration::transceiver_update, this, &MainWindow::handle_transceiver_update);
-  connect (&m_config, &Configuration::transceiver_failure, this, &MainWindow::handle_transceiver_failure);
-  connect (&m_config, &Configuration::udp_server_name_changed, m_messageClient, &MessageClient::set_server_name);
-  connect (&m_config, &Configuration::udp_server_port_changed, m_messageClient, &MessageClient::set_server_port);
-  connect (&m_config, &Configuration::band_schedule_changed, this, [this](){
-    this->m_bandHopped = true;
-  });
-  connect (&m_config, &Configuration::auto_switch_bands_changed, this, [this](bool auto_switch_bands){
-	this->m_bandHopped = this->m_bandHopped || auto_switch_bands;
-  });
-  connect (&m_config, &Configuration::manual_band_hop_requested, this, &MainWindow::manualBandHop);
-  connect (&m_config, &Configuration::enumerating_audio_devices, [this]()
-  {
-    showStatusMessage (tr ("Enumerating audio devices"));
-  });
-
-  // set up configurations menu
-  connect (m_multi_settings, &MultiSettings::configurationNameChanged, [this] (QString const& name) {
-      if ("Default" != name) {
-        config_label.setText (name);
-        config_label.show ();
-      }
-      else {
-        config_label.hide ();
-      }
+    // initialize decoded text font and hook up font change signals
+    // defer initialization until after construction otherwise menu
+    // fonts do not get set
+    QTimer::singleShot(0, this, &MainWindow::initialize_fonts);
+    connect(&m_config, &Configuration::gui_text_font_changed, [this](QFont const& font) {
+        set_application_font(font);
     });
-  m_multi_settings->create_menu_actions (this, ui->menuConfig);
-  m_configurations_button = m_rigErrorMessageBox.addButton (tr ("Configurations...")
-                                                            , QMessageBox::ActionRole);
-  connect(ui->extFreeTextMsgEdit, &QTextEdit::textChanged, [this]()
-  {
-    currentTextChanged();
-  });
+    connect(&m_config, &Configuration::table_font_changed, [this](QFont const&) {
+        ui->tableWidgetRXAll->setFont(m_config.table_font());
+        ui->tableWidgetCalls->setFont(m_config.table_font());
+    });
+    connect(&m_config, &Configuration::rx_text_font_changed, [this](QFont const&) {
+        setTextEditFont(ui->textEditRX, m_config.rx_text_font());
+    });
+    connect(&m_config, &Configuration::compose_text_font_changed, [this](QFont const&) {
+        setTextEditFont(ui->extFreeTextMsgEdit, m_config.compose_text_font());
+    });
+    connect(&m_config, &Configuration::colors_changed, [this]() {
+        setTextEditStyle(ui->textEditRX,
+                         m_config.color_rx_foreground(),
+                         m_config.color_rx_background(),
+                         m_config.rx_text_font());
+        setTextEditStyle(ui->extFreeTextMsgEdit,
+                         m_config.color_compose_foreground(),
+                         m_config.color_compose_background(),
+                         m_config.compose_text_font());
+        ui->extFreeTextMsgEdit->setFont(m_config.compose_text_font(),
+                                        m_config.color_compose_foreground(),
+                                        m_config.color_compose_background());
 
-  m_guiTimer.setTimerType(Qt::PreciseTimer);
-  m_guiTimer.setSingleShot(true);
-  connect(&m_guiTimer, &QTimer::timeout, this, &MainWindow::guiUpdate);
-  m_guiTimer.start(UI_POLL_INTERVAL_MS);
+        // rehighlight
+        auto d = ui->textEditRX->document();
+        if (d) {
+            for (int i = 0; i < d->lineCount(); i++) {
+                auto b = d->findBlockByLineNumber(i);
 
-  pttReleaseTimer.setTimerType(Qt::PreciseTimer);
-  pttReleaseTimer.setSingleShot(true);
-  connect(&pttReleaseTimer, &QTimer::timeout, this, &MainWindow::stopTx2);
+                switch (b.userState()) {
+                case State::RX:
+                    highlightBlock(b,
+                                   m_config.rx_text_font(),
+                                   m_config.color_rx_foreground(),
+                                   QColor(Qt::transparent));
+                    break;
+                case State::TX:
+                    highlightBlock(b,
+                                   m_config.tx_text_font(),
+                                   m_config.color_tx_foreground(),
+                                   QColor(Qt::transparent));
+                    break;
+                }
+            }
+        }
+    });
 
-  logQSOTimer.setSingleShot(true);
-  connect(&logQSOTimer, &QTimer::timeout, this, &MainWindow::on_logQSOButton_clicked);
+    setWindowTitle(program_title());
+    buildColumnLabelMap();
 
-  tuneButtonTimer.setSingleShot(true);
-  connect(&tuneButtonTimer, &QTimer::timeout, this, &MainWindow::end_tuning);
+    // Hook up working frequencies.
 
-  tuneATU_Timer.setSingleShot(true);
-  connect(&tuneATU_Timer, &QTimer::timeout, this, &MainWindow::stopTuneATU);
+    ui->currentFreq->setCursor(QCursor(Qt::PointingHandCursor));
+    ui->currentFreq->display("14.078 000");
+    ui->currentFreq->installEventFilter(new EventFilter::MouseButtonPress(
+        [this](QMouseEvent* event) {
+            QMenu* menu = new QMenu(ui->currentFreq);
+            buildFrequencyMenu(menu);
+            menu->popup(event->globalPosition().toPoint());
+            return true;
+        },
+        this));
 
-  TxAgainTimer.setSingleShot(true);
-  connect(&TxAgainTimer, &QTimer::timeout, this, &MainWindow::TxAgain);
+    ui->labDialFreqOffset->setCursor(QCursor(Qt::PointingHandCursor));
+    ui->labDialFreqOffset->installEventFilter(new EventFilter::MouseButtonPress(
+        [this](QMouseEvent*) {
+            on_actionSetOffset_triggered();
+            return true;
+        },
+        this));
 
-  connect(m_wideGraph.data(), &WideGraph::changeFreq, this, &MainWindow::changeFreq);
-  connect(m_wideGraph.data(), &WideGraph::qsy,        this, &MainWindow::qsy);
+    // Hook up callsign label click to open preferences
 
-  // DriftingDateTime management:
-  connect(m_wideGraph.data(), &WideGraph::want_new_drift, &DriftingDateTimeSingleton::getSingleton(), &DriftingDateTimeSingleton::setDrift);
+    ui->labCallsign->setCursor(QCursor(Qt::PointingHandCursor));
+    ui->labCallsign->installEventFilter(new EventFilter::MouseButtonPress(
+        [this](QMouseEvent*) {
+            openSettings(0);
+            return true;
+        },
+        this));
 
-  // Distribute Drift change:
-  connect(&DriftingDateTimeSingleton::getSingleton(), &DriftingDateTimeSingleton::driftChanged, this, &MainWindow::onDriftChanged);
-  connect(&DriftingDateTimeSingleton::getSingleton(), &DriftingDateTimeSingleton::driftChanged, m_wideGraph.data(), &WideGraph::onDriftChanged);
-  connect(&DriftingDateTimeSingleton::getSingleton(), &DriftingDateTimeSingleton::driftChanged, m_cq_loop, &TxLoop::onDriftChange);
-  connect(&DriftingDateTimeSingleton::getSingleton(), &DriftingDateTimeSingleton::driftChanged, m_hb_loop, &TxLoop::onDriftChange);
+    // hook up configuration signals
+    connect(&m_config,
+            &Configuration::transceiver_update,
+            this,
+            &MainWindow::handle_transceiver_update);
+    connect(&m_config,
+            &Configuration::transceiver_failure,
+            this,
+            &MainWindow::handle_transceiver_failure);
+    connect(&m_config,
+            &Configuration::udp_server_name_changed,
+            m_messageClient,
+            &MessageClient::set_server_name);
+    connect(&m_config,
+            &Configuration::udp_server_port_changed,
+            m_messageClient,
+            &MessageClient::set_server_port);
+    connect(&m_config, &Configuration::band_schedule_changed, this, [this]() {
+        this->m_bandHopped = true;
+    });
+    connect(&m_config,
+            &Configuration::auto_switch_bands_changed,
+            this,
+            [this](bool auto_switch_bands) {
+                this->m_bandHopped = this->m_bandHopped || auto_switch_bands;
+            });
+    connect(&m_config, &Configuration::manual_band_hop_requested, this, &MainWindow::manualBandHop);
+    connect(&m_config, &Configuration::enumerating_audio_devices, [this]() {
+        showStatusMessage(tr("Enumerating audio devices"));
+    });
 
-  // HB and CQ loop:
-  // For now, disable HB loop while CQ loop runs and vice versa:
-  connect(m_cq_loop, &TxLoop::nextActivityChanged, this, [this](const QDateTime&){this->m_hb_loop->onLoopCancel();});
-  connect(m_hb_loop, &TxLoop::nextActivityChanged, this, [this](const QDateTime&){this->m_cq_loop->onLoopCancel();});
-  // It is not advisable to send a HB in one period and a CQ in the very next,
-  // or a CQ first and then a HB too soon, so that transmissions of people interested in the QSO might be drowned.
-  //
-  // We could conceivably devise a clean conflict resolution mechanism disallowing automatic transmissions of one type
-  // if an automatic transmission of the other type has happened recently.
-  // In the absence of such a mechanism, just do either one or the other.
-  //
-  // People who call CQ are expected to monitor somewhat closely, so they will have no problems triggering HBs at will.
+    // set up configurations menu
+    connect(m_multi_settings,
+            &MultiSettings::configurationNameChanged,
+            [this](QString const& name) {
+                if ("Default" != name) {
+                    config_label.setText(name);
+                    config_label.show();
+                } else {
+                    config_label.hide();
+                }
+            });
+    m_multi_settings->create_menu_actions(this, ui->menuConfig);
+    m_configurations_button
+        = m_rigErrorMessageBox.addButton(tr("Configurations..."), QMessageBox::ActionRole);
+    connect(ui->extFreeTextMsgEdit, &QTextEdit::textChanged, [this]() { currentTextChanged(); });
 
-  // Propagate tx submode changes to the CQ and HB loop:
-  connect(this, &MainWindow::submodeChanged, this->m_hb_loop, &TxLoop::onModeChange);
-  connect(this, &MainWindow::submodeChanged, this->m_cq_loop, &TxLoop::onModeChange);
+    m_guiTimer.setTimerType(Qt::PreciseTimer);
+    m_guiTimer.setSingleShot(true);
+    connect(&m_guiTimer, &QTimer::timeout, this, &MainWindow::guiUpdate);
+    m_guiTimer.start(UI_POLL_INTERVAL_MS);
 
-  // When the loops are switched off, tell the UI:
-  connect(m_hb_loop, &TxLoop::canceled, ui->hbMacroButton, [this](){this->ui->hbMacroButton->setChecked(false);});
-  connect(m_cq_loop, &TxLoop::canceled, ui->cqMacroButton, [this](){this->ui->cqMacroButton->setChecked(false);});
+    pttReleaseTimer.setTimerType(Qt::PreciseTimer);
+    pttReleaseTimer.setSingleShot(true);
+    connect(&pttReleaseTimer, &QTimer::timeout, this, &MainWindow::stopTx2);
 
-  // The loops can trigger transmissions. That is what they are for.
-  connect(m_hb_loop, &TxLoop::triggerTxNow, this, [this](){this->sendHB();});
-  connect(m_cq_loop, &TxLoop::triggerTxNow, this, [this](){this->sendCQ(true);});
+    logQSOTimer.setSingleShot(true);
+    connect(&logQSOTimer, &QTimer::timeout, this, &MainWindow::on_logQSOButton_clicked);
 
-  // Something like this would be nice to have:
-  // connect(m_config, &Configuration::txDelayChanged, m_cq_loop, &TxLoop::onTxDelayChange);
-  // connect(m_config, &Configuration::txDelayChanged, m_hb_loop, &TxLoop::onTxDelayChange);
-  // But the pertaining signals are not offered by Configuration,
-  // and the code was somewhat of a beast to get into to change that, so some equivalent is done
-  // in a pedestrian way via our polling routine.  That pedestrian code also handles
-  // conversion of incoming tx delay in (double) seconds to outgoing (qint64) milliseconds.
+    tuneButtonTimer.setSingleShot(true);
+    connect(&tuneButtonTimer, &QTimer::timeout, this, &MainWindow::end_tuning);
 
-  decodeBusy(false);
+    tuneATU_Timer.setSingleShot(true);
+    connect(&tuneATU_Timer, &QTimer::timeout, this, &MainWindow::stopTuneATU);
 
-  m_msg[0][0]=0;
+    TxAgainTimer.setSingleShot(true);
+    connect(&TxAgainTimer, &QTimer::timeout, this, &MainWindow::TxAgain);
 
-  displayDialFrequency();
-  readSettings();            //Restore user's setup params
+    connect(m_wideGraph.data(), &WideGraph::changeFreq, this, &MainWindow::changeFreq);
+    connect(m_wideGraph.data(), &WideGraph::qsy, this, &MainWindow::qsy);
 
-  {
-    std::lock_guard<std::mutex> lock(fftw_mutex);
-    fftwf_import_wisdom_from_filename(wisdomFileName());
-  }
+    // DriftingDateTime management:
+    connect(m_wideGraph.data(),
+            &WideGraph::want_new_drift,
+            &DriftingDateTimeSingleton::getSingleton(),
+            &DriftingDateTimeSingleton::setDrift);
 
-  m_networkThread.start(m_networkThreadPriority);
-  m_audioThread.start (m_audioThreadPriority);
-  m_notificationAudioThread.start(m_notificationAudioThreadPriority);
-  m_decoder.start(m_decoderThreadPriority);
+    // Distribute Drift change:
+    connect(&DriftingDateTimeSingleton::getSingleton(),
+            &DriftingDateTimeSingleton::driftChanged,
+            this,
+            &MainWindow::onDriftChanged);
+    connect(&DriftingDateTimeSingleton::getSingleton(),
+            &DriftingDateTimeSingleton::driftChanged,
+            m_wideGraph.data(),
+            &WideGraph::onDriftChanged);
+    connect(&DriftingDateTimeSingleton::getSingleton(),
+            &DriftingDateTimeSingleton::driftChanged,
+            m_cq_loop,
+            &TxLoop::onDriftChange);
+    connect(&DriftingDateTimeSingleton::getSingleton(),
+            &DriftingDateTimeSingleton::driftChanged,
+            m_hb_loop,
+            &TxLoop::onDriftChange);
 
-  Q_EMIT startAudioInputStream (m_config.audio_input_device (), m_framesAudioInputBuffered, m_detector, m_config.audio_input_channel ());
-  Q_EMIT initializeAudioOutputStream (m_config.audio_output_device (), AudioDevice::Mono == m_config.audio_output_channel () ? 1 : 2, m_msAudioOutputBuffered);
-  Q_EMIT initializeNotificationAudioOutputStream(m_config.notification_audio_output_device(), m_msAudioOutputBuffered);
-  Q_EMIT transmitFrequency (freq() - m_XIT);
+    // HB and CQ loop:
+    // For now, disable HB loop while CQ loop runs and vice versa:
+    connect(m_cq_loop, &TxLoop::nextActivityChanged, this, [this](const QDateTime&) {
+        this->m_hb_loop->onLoopCancel();
+    });
+    connect(m_hb_loop, &TxLoop::nextActivityChanged, this, [this](const QDateTime&) {
+        this->m_cq_loop->onLoopCancel();
+    });
+    // It is not advisable to send a HB in one period and a CQ in the very next,
+    // or a CQ first and then a HB too soon, so that transmissions of people interested in the QSO might be drowned.
+    //
+    // We could conceivably devise a clean conflict resolution mechanism disallowing automatic transmissions of one type
+    // if an automatic transmission of the other type has happened recently.
+    // In the absence of such a mechanism, just do either one or the other.
+    //
+    // People who call CQ are expected to monitor somewhat closely, so they will have no problems triggering HBs at will.
 
-  enable_DXCC_entity (m_config.DXCC ());  // sets text window proportions and (re)inits the logbook
+    // Propagate tx submode changes to the CQ and HB loop:
+    connect(this, &MainWindow::submodeChanged, this->m_hb_loop, &TxLoop::onModeChange);
+    connect(this, &MainWindow::submodeChanged, this->m_cq_loop, &TxLoop::onModeChange);
 
-  // this must be done before initializing the mode as some modes need
-  // to turn off split on the rig e.g. WSPR
-  m_config.transceiver_online ();
+    // When the loops are switched off, tell the UI:
+    connect(m_hb_loop, &TxLoop::canceled, ui->hbMacroButton, [this]() {
+        this->ui->hbMacroButton->setChecked(false);
+    });
+    connect(m_cq_loop, &TxLoop::canceled, ui->cqMacroButton, [this]() {
+        this->ui->cqMacroButton->setChecked(false);
+    });
 
-  setupJS8();
+    // The loops can trigger transmissions. That is what they are for.
+    connect(m_hb_loop, &TxLoop::triggerTxNow, this, [this]() { this->sendHB(); });
+    connect(m_cq_loop, &TxLoop::triggerTxNow, this, [this]() { this->sendCQ(true); });
 
-  Q_EMIT transmitFrequency (freq() - m_XIT);
+    // Something like this would be nice to have:
+    // connect(m_config, &Configuration::txDelayChanged, m_cq_loop, &TxLoop::onTxDelayChange);
+    // connect(m_config, &Configuration::txDelayChanged, m_hb_loop, &TxLoop::onTxDelayChange);
+    // But the pertaining signals are not offered by Configuration,
+    // and the code was somewhat of a beast to get into to change that, so some equivalent is done
+    // in a pedestrian way via our polling routine.  That pedestrian code also handles
+    // conversion of incoming tx delay in (double) seconds to outgoing (qint64) milliseconds.
 
-  statusChanged();
+    decodeBusy(false);
 
-  connect (&minuteTimer, &QTimer::timeout, this, &MainWindow::on_the_minute);
-  minuteTimer.setSingleShot (true);
-  minuteTimer.start (ms_minute_error () + 60 * 1000);
+    m_msg[0][0] = 0;
 
-  QTimer::singleShot (0, this, &MainWindow::checkStartupWarnings);
+    displayDialFrequency();
+    readSettings(); //Restore user's setup params
 
-  // UI Customizations & Tweaks
-  ui->horizontalLayoutBand->insertSpacing(1, 6);
-  ui->horizontalLayoutBand->insertWidget (2, m_wideGraph.data(), 1);
-  ui->horizontalLayoutBand->insertSpacing(3, 8);
-
-  // remove disabled menus from the menu bar
-  foreach(auto action, ui->menuBar->actions()){
-      if(action->isEnabled()){
-          continue;
-      }
-      ui->menuBar->removeAction(action);
-  }
-
-  //auto f = findFreeFreqOffset(1000, 2000, 50);
-  //setFreqOffsetForRestore(f, false);
-
-  ui->actionModeAutoreply->setChecked(m_config.autoreply_on_at_startup());
-  ui->spotButton->setChecked(m_config.spot_to_reporting_networks());
-
-  QActionGroup * modeActionGroup = new QActionGroup(this);
-  ui->actionModeJS8Normal->setActionGroup(modeActionGroup);
-  ui->actionModeJS8Fast->setActionGroup(modeActionGroup);
-  ui->actionModeJS8Turbo->setActionGroup(modeActionGroup);
-  ui->actionModeJS8Slow->setActionGroup(modeActionGroup);
-  ui->actionModeJS8Ultra->setActionGroup(modeActionGroup);
-
-  ui->modeButton->installEventFilter(new EventFilter::MouseButtonPress([this](QMouseEvent * event)
-  {
-    ui->menuModeJS8->popup(event->globalPosition().toPoint());
-    return true;
-  }, this));
-
-  if (!JS8_ENABLE_JS8A) ui->actionModeJS8Normal->setVisible(false);
-  if (!JS8_ENABLE_JS8B) ui->actionModeJS8Fast->setVisible(false);
-  if (!JS8_ENABLE_JS8C) ui->actionModeJS8Turbo->setVisible(false);
-  if (!JS8_ENABLE_JS8E) ui->actionModeJS8Slow->setVisible(false);
-  if (!JS8_ENABLE_JS8I) ui->actionModeJS8Ultra->setVisible(false);
-
-  // prep
-  prepareMonitorControls();
-  prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
-
-  ui->extFreeTextMsgEdit->installEventFilter(new EventFilter::EnterKeyPress([this](QKeyEvent * const event)
-  {
-    if (event->modifiers() & Qt::ShiftModifier) return false;
-    if (ui->extFreeTextMsgEdit->isReadOnly())   return false;
-
-    if (ui->extFreeTextMsgEdit->toPlainText().trimmed().isEmpty()) return true;
-    if (!ensureCanTransmit())                                      return true;
-    if (!ensureCallsignSet(true))                                  return true;
-
-    toggleTx(true);
-    return true;
-  }, this));
-
-  ui->textEditRX->viewport()->installEventFilter(new EventFilter::MouseButtonDblClick([this](QMouseEvent *)
-  {
-    QTimer::singleShot(150, this, [this]()
     {
-      // When we double click the rx window, we send the selected text to
-      // the log dialog when the text could be an snr value prefixed with
-      // a - or +, we extend the selection to include it.
+        std::lock_guard<std::mutex> lock(fftw_mutex);
+        fftwf_import_wisdom_from_filename(wisdomFileName());
+    }
 
-      auto textCursor = ui->textEditRX->textCursor();
-      auto text       = textCursor.selectedText();
+    m_networkThread.start(m_networkThreadPriority);
+    m_audioThread.start(m_audioThreadPriority);
+    m_notificationAudioThread.start(m_notificationAudioThreadPriority);
+    m_decoder.start(m_decoderThreadPriority);
 
-      if (text.isEmpty()) return;
+    Q_EMIT startAudioInputStream(m_config.audio_input_device(),
+                                 m_framesAudioInputBuffered,
+                                 m_detector,
+                                 m_config.audio_input_channel());
+    Q_EMIT initializeAudioOutputStream(m_config.audio_output_device(),
+                                       AudioDevice::Mono == m_config.audio_output_channel() ? 1 : 2,
+                                       m_msAudioOutputBuffered);
+    Q_EMIT initializeNotificationAudioOutputStream(m_config.notification_audio_output_device(),
+                                                   m_msAudioOutputBuffered);
+    Q_EMIT transmitFrequency(freq() - m_XIT);
 
-      auto const start = textCursor.selectionStart();
-      auto const end   = textCursor.selectionEnd();
+    enable_DXCC_entity(m_config.DXCC()); // sets text window proportions and (re)inits the logbook
 
-      textCursor.clearSelection();
-      textCursor.setPosition(start);
-      textCursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor);
-      textCursor.movePosition(QTextCursor::NextCharacter,     QTextCursor::KeepAnchor, 1 + end - start);
+    // this must be done before initializing the mode as some modes need
+    // to turn off split on the rig e.g. WSPR
+    m_config.transceiver_online();
 
-      if (auto const prev = textCursor.selectedText();
-                     prev.startsWith("-") ||
-                     prev.startsWith("+"))
-      {
-          ui->textEditRX->setTextCursor(textCursor);
-          text = prev;
-      }
+    setupJS8();
 
-      m_logDlg->acceptText(text);
+    Q_EMIT transmitFrequency(freq() - m_XIT);
+
+    statusChanged();
+
+    connect(&minuteTimer, &QTimer::timeout, this, &MainWindow::on_the_minute);
+    minuteTimer.setSingleShot(true);
+    minuteTimer.start(ms_minute_error() + 60 * 1000);
+
+    QTimer::singleShot(0, this, &MainWindow::checkStartupWarnings);
+
+    // UI Customizations & Tweaks
+    ui->horizontalLayoutBand->insertSpacing(1, 6);
+    ui->horizontalLayoutBand->insertWidget(2, m_wideGraph.data(), 1);
+    ui->horizontalLayoutBand->insertSpacing(3, 8);
+
+    // remove disabled menus from the menu bar
+    foreach (auto action, ui->menuBar->actions()) {
+        if (action->isEnabled()) {
+            continue;
+        }
+        ui->menuBar->removeAction(action);
+    }
+
+    //auto f = findFreeFreqOffset(1000, 2000, 50);
+    //setFreqOffsetForRestore(f, false);
+
+    ui->actionModeAutoreply->setChecked(m_config.autoreply_on_at_startup());
+    ui->spotButton->setChecked(m_config.spot_to_reporting_networks());
+
+    QActionGroup* modeActionGroup = new QActionGroup(this);
+    ui->actionModeJS8Normal->setActionGroup(modeActionGroup);
+    ui->actionModeJS8Fast->setActionGroup(modeActionGroup);
+    ui->actionModeJS8Turbo->setActionGroup(modeActionGroup);
+    ui->actionModeJS8Slow->setActionGroup(modeActionGroup);
+    ui->actionModeJS8Ultra->setActionGroup(modeActionGroup);
+
+    ui->modeButton->installEventFilter(new EventFilter::MouseButtonPress(
+        [this](QMouseEvent* event) {
+            ui->menuModeJS8->popup(event->globalPosition().toPoint());
+            return true;
+        },
+        this));
+
+    if (!JS8_ENABLE_JS8A)
+        ui->actionModeJS8Normal->setVisible(false);
+    if (!JS8_ENABLE_JS8B)
+        ui->actionModeJS8Fast->setVisible(false);
+    if (!JS8_ENABLE_JS8C)
+        ui->actionModeJS8Turbo->setVisible(false);
+    if (!JS8_ENABLE_JS8E)
+        ui->actionModeJS8Slow->setVisible(false);
+    if (!JS8_ENABLE_JS8I)
+        ui->actionModeJS8Ultra->setVisible(false);
+
+    // prep
+    prepareMonitorControls();
+    prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
+
+    ui->extFreeTextMsgEdit->installEventFilter(new EventFilter::EnterKeyPress(
+        [this](QKeyEvent* const event) {
+            if (event->modifiers() & Qt::ShiftModifier)
+                return false;
+            if (ui->extFreeTextMsgEdit->isReadOnly())
+                return false;
+
+            if (ui->extFreeTextMsgEdit->toPlainText().trimmed().isEmpty())
+                return true;
+            if (!ensureCanTransmit())
+                return true;
+            if (!ensureCallsignSet(true))
+                return true;
+
+            toggleTx(true);
+            return true;
+        },
+        this));
+
+    ui->textEditRX->viewport()->installEventFilter(new EventFilter::MouseButtonDblClick(
+        [this](QMouseEvent*) {
+            QTimer::singleShot(150, this, [this]() {
+                // When we double click the rx window, we send the selected text to
+                // the log dialog when the text could be an snr value prefixed with
+                // a - or +, we extend the selection to include it.
+
+                auto textCursor = ui->textEditRX->textCursor();
+                auto text = textCursor.selectedText();
+
+                if (text.isEmpty())
+                    return;
+
+                auto const start = textCursor.selectionStart();
+                auto const end = textCursor.selectionEnd();
+
+                textCursor.clearSelection();
+                textCursor.setPosition(start);
+                textCursor.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor);
+                textCursor.movePosition(QTextCursor::NextCharacter,
+                                        QTextCursor::KeepAnchor,
+                                        1 + end - start);
+
+                if (auto const prev = textCursor.selectedText();
+                    prev.startsWith("-") || prev.startsWith("+")) {
+                    ui->textEditRX->setTextCursor(textCursor);
+                    text = prev;
+                }
+
+                m_logDlg->acceptText(text);
+            });
+            return false;
+        },
+        this));
+
+    auto clearActionSep = new QAction(nullptr);
+    clearActionSep->setSeparator(true);
+
+    auto clearActionAll = new QAction(QString("Clear All"), nullptr);
+    connect(clearActionAll, &QAction::triggered, this, [this]() {
+        if (QMessageBox::Yes
+            != QMessageBox::question(this,
+                                     "Clear All Activity",
+                                     "Are you sure you would like to clear all activity?",
+                                     QMessageBox::Yes | QMessageBox::No)) {
+            return;
+        }
+
+        clearActivity();
     });
-    return false;
-  }, this));
 
-  auto clearActionSep = new QAction(nullptr);
-  clearActionSep->setSeparator(true);
+    // setup tablewidget context menus
+    auto clearAction1 = new QAction(QString("Clear"), ui->textEditRX);
+    connect(clearAction1, &QAction::triggered, this, [this]() { clearRXActivity(); });
 
-  auto clearActionAll = new QAction(QString("Clear All"), nullptr);
-  connect(clearActionAll, &QAction::triggered, this, [this](){
-      if (QMessageBox::Yes != QMessageBox::question(this, "Clear All Activity", "Are you sure you would like to clear all activity?", QMessageBox::Yes|QMessageBox::No)){
-          return;
-      }
+    auto saveAction = new QAction(QString("Save As..."), ui->textEditRX);
+    connect(saveAction, &QAction::triggered, this, [this]() {
+        auto writePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        auto writeDir = QDir(writePath);
+        auto defaultFilename = writeDir.absoluteFilePath(
+            QString("js8call-%1.txt")
+                .arg(DriftingDateTime::currentDateTimeUtc().toString("yyyyMMdd")));
 
-      clearActivity();
-  });
+        QString selectedFilter = "*.txt";
 
-  // setup tablewidget context menus
-  auto clearAction1 = new QAction(QString("Clear"), ui->textEditRX);
-  connect(clearAction1, &QAction::triggered, this, [this]()
-  {
-    clearRXActivity();
-  });
+        auto filename = QFileDialog::getSaveFileName(this,
+                                                     "Save As...",
+                                                     defaultFilename,
+                                                     "Text files (*.txt);; All files (*)",
+                                                     &selectedFilter);
+        if (filename.isEmpty()) {
+            return;
+        }
 
-  auto saveAction = new QAction(QString("Save As..."), ui->textEditRX);
-  connect(saveAction, &QAction::triggered, this, [this](){
-    auto writePath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    auto writeDir = QDir(writePath);
-    auto defaultFilename = writeDir.absoluteFilePath(QString("js8call-%1.txt").arg(DriftingDateTime::currentDateTimeUtc().toString("yyyyMMdd")));
+        auto text = ui->textEditRX->toPlainText();
+        QFile f(filename);
+        if (f.open(QIODevice::Truncate | QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream stream(&f);
+            stream << text;
+        }
+    });
 
-    QString selectedFilter = "*.txt";
+    ui->textEditRX->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->textEditRX,
+            &QTableWidget::customContextMenuRequested,
+            this,
+            [this, clearAction1, clearActionAll, saveAction](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->textEditRX);
 
-    auto filename = QFileDialog::getSaveFileName(this,
-        "Save As...",
-        defaultFilename,
-        "Text files (*.txt);; All files (*)",
-        &selectedFilter
-    );
-    if(filename.isEmpty()){
-        return;
-    }
+                buildEditMenu(menu, ui->textEditRX);
 
-    auto text = ui->textEditRX->toPlainText();
-    QFile f(filename);
-    if (f.open(QIODevice::Truncate | QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream stream(&f);
-        stream << text;
-    }
-  });
+                menu->addSeparator();
 
-  ui->textEditRX->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->textEditRX, &QTableWidget::customContextMenuRequested, this, [this, clearAction1, clearActionAll, saveAction](QPoint const &point){
-      QMenu * menu = new QMenu(ui->textEditRX);
+                menu->addAction(clearAction1);
+                menu->addAction(clearActionAll);
 
-      buildEditMenu(menu, ui->textEditRX);
+                menu->addSeparator();
+                menu->addAction(saveAction);
 
-      menu->addSeparator();
+                menu->popup(ui->textEditRX->mapToGlobal(point));
+            });
 
-      menu->addAction(clearAction1);
-      menu->addAction(clearActionAll);
+    auto clearAction2 = new QAction(QString("Clear"), ui->extFreeTextMsgEdit);
+    connect(clearAction2, &QAction::triggered, this, [this]() {
+        resetMessage();
+        m_lastTxMessage.clear();
+    });
 
-      menu->addSeparator();
-      menu->addAction(saveAction);
+    auto restoreAction = new QAction(QString("Restore Previous Message"), ui->extFreeTextMsgEdit);
+    connect(restoreAction, &QAction::triggered, this, [this]() { this->restoreMessage(); });
 
-      menu->popup(ui->textEditRX->mapToGlobal(point));
+    ui->extFreeTextMsgEdit->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->extFreeTextMsgEdit,
+            &QTableWidget::customContextMenuRequested,
+            this,
+            [this, clearAction2, clearActionAll, restoreAction](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->extFreeTextMsgEdit);
 
-  });
+                auto selectedCall = callsignSelected();
+                bool missingCallsign = selectedCall.isEmpty();
 
-  auto clearAction2 = new QAction(QString("Clear"), ui->extFreeTextMsgEdit);
-  connect(clearAction2, &QAction::triggered, this, [this]()
-  {
-    resetMessage();
-    m_lastTxMessage.clear();
-  });
+                buildSuggestionsMenu(menu, ui->extFreeTextMsgEdit, point);
 
-  auto restoreAction = new QAction(QString("Restore Previous Message"), ui->extFreeTextMsgEdit);
-  connect(restoreAction, &QAction::triggered, this, [this](){ this->restoreMessage(); });
+                restoreAction->setDisabled(m_lastTxMessage.isEmpty());
+                menu->addAction(restoreAction);
 
-  ui->extFreeTextMsgEdit->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->extFreeTextMsgEdit, &QTableWidget::customContextMenuRequested, this, [this, clearAction2, clearActionAll, restoreAction](QPoint const &point){
-    QMenu * menu = new QMenu(ui->extFreeTextMsgEdit);
+                auto savedMenu = menu->addMenu("Saved Messages...");
+                buildSavedMessagesMenu(savedMenu);
 
-    auto selectedCall = callsignSelected();
-    bool missingCallsign = selectedCall.isEmpty();
+                auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
+                directedMenu->setDisabled(missingCallsign);
+                buildQueryMenu(directedMenu, selectedCall);
 
-    buildSuggestionsMenu(menu, ui->extFreeTextMsgEdit, point);
+                auto relayMenu = menu->addMenu("Relay via...");
+                relayMenu->setDisabled(ui->extFreeTextMsgEdit->toPlainText().isEmpty()
+                                       || m_callActivity.isEmpty());
+                buildRelayMenu(relayMenu);
 
-    restoreAction->setDisabled(m_lastTxMessage.isEmpty());
-    menu->addAction(restoreAction);
+                menu->addSeparator();
 
-    auto savedMenu = menu->addMenu("Saved Messages...");
-    buildSavedMessagesMenu(savedMenu);
+                buildEditMenu(menu, ui->extFreeTextMsgEdit);
 
-    auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
-    directedMenu->setDisabled(missingCallsign);
-    buildQueryMenu(directedMenu, selectedCall);
+                menu->addSeparator();
 
-    auto relayMenu = menu->addMenu("Relay via...");
-    relayMenu->setDisabled(ui->extFreeTextMsgEdit->toPlainText().isEmpty() || m_callActivity.isEmpty());
-    buildRelayMenu(relayMenu);
+                menu->addAction(clearAction2);
+                menu->addAction(clearActionAll);
 
-    menu->addSeparator();
+                menu->popup(ui->extFreeTextMsgEdit->mapToGlobal(point));
 
-    buildEditMenu(menu, ui->extFreeTextMsgEdit);
-
-    menu->addSeparator();
-
-    menu->addAction(clearAction2);
-    menu->addAction(clearActionAll);
-
-    menu->popup(ui->extFreeTextMsgEdit->mapToGlobal(point));
-
-    displayActivity(true);
-  });
+                displayActivity(true);
+            });
 
 
+    auto clearAction3 = new QAction(QString("Clear"), ui->tableWidgetRXAll);
+    connect(clearAction3, &QAction::triggered, this, [this]() { clearBandActivity(); });
 
-  auto clearAction3 = new QAction(QString("Clear"), ui->tableWidgetRXAll);
-  connect(clearAction3, &QAction::triggered, this, [this]()
-  {
-    clearBandActivity();
-  });
+    auto removeActivity = new QAction(QString("Remove Activity"), ui->tableWidgetRXAll);
+    connect(removeActivity, &QAction::triggered, this, [this]() {
+        if (ui->tableWidgetRXAll->selectedItems().isEmpty()) {
+            return;
+        }
 
-  auto removeActivity = new QAction(QString("Remove Activity"), ui->tableWidgetRXAll);
-  connect(removeActivity, &QAction::triggered, this, [this](){
-      if(ui->tableWidgetRXAll->selectedItems().isEmpty()){
-          return;
-      }
-
-      auto selectedItems = ui->tableWidgetRXAll->selectedItems();
-      int selectedOffset = selectedItems.first()->data(Qt::UserRole).toInt();
-
-      m_bandActivity.remove(selectedOffset);
-      displayActivity(true);
-  });
-
-  auto logAction = new QAction(QString("Log..."), ui->tableWidgetCalls);
-  connect(logAction, &QAction::triggered, this, &MainWindow::on_logQSOButton_clicked);
-
-  // Disable default header mouseover and click behaviors, they are confusing to users because they give the
-  // appearance of allowing sorting by header clicks, which is not actually implemented
-  ui->tableWidgetRXAll->horizontalHeader()->setHighlightSections(false);
-  ui->tableWidgetRXAll->horizontalHeader()->setSectionsClickable(false);
-
-  ui->tableWidgetRXAll->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->tableWidgetRXAll->horizontalHeader(), &QHeaderView::customContextMenuRequested, this, [this](QPoint const &point){
-      QMenu * menu = new QMenu(ui->tableWidgetRXAll);
-
-      QMenu * sortByMenu = menu->addMenu("Sort By...");
-      buildBandActivitySortByMenu(sortByMenu);
-
-      QMenu * showColumnsMenu = menu->addMenu("Show Columns...");
-      buildShowColumnsMenu(showColumnsMenu, "band");
-
-      menu->popup(ui->tableWidgetRXAll->horizontalHeader()->mapToGlobal(point));
-  });
-
-
-  ui->tableWidgetRXAll->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->tableWidgetRXAll, &QTableWidget::customContextMenuRequested, this, [this, clearAction3, clearActionAll, removeActivity, logAction](QPoint const &point){
-    QMenu * menu = new QMenu(ui->tableWidgetRXAll);
-
-    // clear the selection of the call widget on right click
-    // but only if the table has rows.
-    if(ui->tableWidgetRXAll->rowAt(point.y()) != -1){
-        ui->tableWidgetCalls->selectionModel()->clearSelection();
-    }
-
-    QString selectedCall = callsignSelected();
-    bool missingCallsign = selectedCall.isEmpty();
-    bool isAllCall = isAllCallIncluded(selectedCall);
-
-    int selectedOffset = -1;
-    if(!ui->tableWidgetRXAll->selectedItems().isEmpty()){
         auto selectedItems = ui->tableWidgetRXAll->selectedItems();
-        selectedOffset = selectedItems.first()->data(Qt::UserRole).toInt();
-    }
+        int selectedOffset = selectedItems.first()->data(Qt::UserRole).toInt();
 
-    if(selectedOffset != -1){
-        auto qsyAction = menu->addAction(QString("Jump to %1Hz").arg(selectedOffset));
-        connect(qsyAction, &QAction::triggered, this, [this, selectedOffset](){
-            setFreqOffsetForRestore(selectedOffset, false);
-        });
-
-        if(m_wideGraph->filterEnabled()){
-            auto filterQsyAction = menu->addAction(QString("Center filter at %1Hz").arg(selectedOffset));
-            connect(filterQsyAction, &QAction::triggered, this, [this, selectedOffset](){
-                m_wideGraph->setFilterCenter(selectedOffset);
-            });
-        }
-
-        auto items = m_bandActivity.value(selectedOffset);
-        if(!items.isEmpty()){
-            int submode = items.last().submode;
-            auto speed = JS8::Submode::name(submode);
-            if(submode != m_nSubMode){
-                auto qrqAction = menu->addAction(QString("Jump to %1%2 speed").arg(speed.left(1)).arg(speed.mid(1).toLower()));
-                connect(qrqAction, &QAction::triggered, this, [this, submode](){
-                    setSubmode(submode);
-                });
-            }
-
-            int tdrift = -int(items.last().tdrift * 1000);
-            auto qtrAction = menu->addAction(QString("Jump to %1 ms time drift").arg(tdrift));
-            connect(qtrAction, &QAction::triggered, this, [this, tdrift](){
-                setDrift(tdrift);
-            });
-        }
-
-        menu->addSeparator();
-    }
-
-    menu->addAction(logAction);
-    logAction->setDisabled(missingCallsign || isAllCall);
-
-    menu->addSeparator();
-
-    auto savedMenu = menu->addMenu("Saved Messages...");
-    buildSavedMessagesMenu(savedMenu);
-
-    auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
-    directedMenu->setDisabled(missingCallsign);
-    buildQueryMenu(directedMenu, selectedCall);
-
-    auto relayAction = buildRelayAction(selectedCall);
-    relayAction->setText(QString("Relay via %1...").arg(selectedCall));
-    relayAction->setDisabled(missingCallsign);
-    menu->addActions({ relayAction });
-
-    auto deselectAction = menu->addAction(QString("Deselect %1").arg(selectedCall));
-    deselectAction->setDisabled(missingCallsign);
-    connect(deselectAction, &QAction::triggered, this, [this](){
-        ui->tableWidgetRXAll->clearSelection();
-        ui->tableWidgetCalls->clearSelection();
+        m_bandActivity.remove(selectedOffset);
+        displayActivity(true);
     });
 
-    menu->addSeparator();
+    auto logAction = new QAction(QString("Log..."), ui->tableWidgetCalls);
+    connect(logAction, &QAction::triggered, this, &MainWindow::on_logQSOButton_clicked);
 
-    removeActivity->setDisabled(selectedOffset == -1);
-    menu->addAction(removeActivity);
+    // Disable default header mouseover and click behaviors, they are confusing to users because they give the
+    // appearance of allowing sorting by header clicks, which is not actually implemented
+    ui->tableWidgetRXAll->horizontalHeader()->setHighlightSections(false);
+    ui->tableWidgetRXAll->horizontalHeader()->setSectionsClickable(false);
 
-    menu->addSeparator();
-    menu->addAction(clearAction3);
-    menu->addAction(clearActionAll);
+    ui->tableWidgetRXAll->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableWidgetRXAll->horizontalHeader(),
+            &QHeaderView::customContextMenuRequested,
+            this,
+            [this](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->tableWidgetRXAll);
 
-    menu->popup(ui->tableWidgetRXAll->mapToGlobal(point));
+                QMenu* sortByMenu = menu->addMenu("Sort By...");
+                buildBandActivitySortByMenu(sortByMenu);
 
-    displayActivity(true);
-  });
+                QMenu* showColumnsMenu = menu->addMenu("Show Columns...");
+                buildShowColumnsMenu(showColumnsMenu, "band");
 
-
-
-
-  auto clearAction4 = new QAction(QString("Clear"), ui->tableWidgetCalls);
-  connect(clearAction4, &QAction::triggered, this, [this]()
-  {
-    clearCallActivity();
-  });
-
-  auto addStation = new QAction(QString("Add New Station or Group..."), ui->tableWidgetCalls);
-  connect(addStation, &QAction::triggered, this, [this](){
-      bool ok = false;
-      QString callsign = QInputDialog::getText(this, tr("Add New Station or Group"),
-                                               tr("Station or Group Callsign:"), QLineEdit::Normal,
-                                               "", &ok).toUpper().trimmed();
-      if(!ok || callsign.trimmed().isEmpty()){
-         return;
-      }
-
-      // if we're adding allcall, turn off allcall avoidance
-      if(callsign == "@ALLCALL"){
-          m_config.set_avoid_allcall(false);
-      }
-      else if(callsign.startsWith("@")){
-          if(Varicode::isCompoundCallsign(callsign)){
-              m_config.addGroup(callsign);
-          } else {
-              MessageBox::critical_message (this, QString("%1 is not a valid group").arg(callsign));
-          }
-
-      } else {
-          if(Varicode::isValidCallsign(callsign, nullptr)){
-              CallDetail cd = {};
-              cd.call = callsign;
-              m_callActivity[callsign] = cd;
-          } else {
-              MessageBox::critical_message (this, QString("%1 is not a valid callsign or group").arg(callsign));
-          }
-      }
-
-      displayActivity(true);
-  });
-
-  auto removeStation = new QAction(QString("Remove Station"), ui->tableWidgetCalls);
-  connect(removeStation, &QAction::triggered, this, [this](){
-      QString selectedCall = callsignSelected();
-      if(selectedCall.isEmpty()){
-          return;
-      }
-
-      if (selectedCall == "@ALLCALL"){
-          m_config.set_avoid_allcall(true);
-      }
-      else if (selectedCall.startsWith("@")){
-          m_config.removeGroup(selectedCall);
-      }
-      else if(m_callActivity.contains(selectedCall)){
-          m_callActivity.remove(selectedCall);
-      }
-
-      displayActivity(true);
-  });
-
-  connect(ui->actionShow_Message_Inbox, &QAction::triggered, this, [this](){
-      QString selectedCall = callsignSelected();
-      if(selectedCall.isEmpty()){
-          selectedCall = "%";
-      }
-
-      Inbox inbox(inboxPath());
-      if(!inbox.open()){
-          return;
-      }
-
-      QList<QPair<int, Message> > msgs;
-
-      msgs.append(inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
-
-      msgs.append(inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
-
-      foreach(auto pair, inbox.values("UNREAD", "$.params.FROM", selectedCall, 0, 1000)){
-          msgs.append(pair);
-
-          // mark as read
-          auto msg = pair.second;
-          msg.setType("READ");
-          inbox.set(pair.first, msg);
-      }
-
-      std::stable_sort(msgs.begin(), msgs.end(), [](QPair<int, Message> const &a, QPair<int, Message> const &b){
-          return QVariant::compare(a.second.params().value("UTC"),
-                                   b.second.params().value("UTC")) == QPartialOrdering::Greater;
-      });
-
-      auto mw = new MessageWindow(this);
-      connect(mw, &MessageWindow::finished, this, [this](int){
-          refreshInboxCounts();
-          displayCallActivity();
-      });
-      connect(mw, &MessageWindow::deleteMessage, this, [this](int id){
-          Inbox inbox(inboxPath());
-          if(!inbox.open()){
-              return;
-          }
-
-          inbox.del(id);
-      });
-      connect(mw, &MessageWindow::replyMessage, this, [this, mw](const QString &text){
-          addMessageText(text, true, true);
-          refreshInboxCounts();
-          displayCallActivity();
-          mw->close();
-      });
-      mw->setCall(selectedCall);
-      mw->populateMessages(msgs);
-      mw->show();
-  });
-
-  auto historyAction = new QAction(QString("Show Message Inbox..."), ui->tableWidgetCalls);
-  connect(historyAction, &QAction::triggered, ui->actionShow_Message_Inbox, &QAction::trigger);
-
-  auto localMessageAction = new QAction(QString("Store Message..."), ui->tableWidgetCalls);
-  connect(localMessageAction, &QAction::triggered, this, [this](){
-      QString selectedCall = callsignSelected();
-      if(selectedCall.isEmpty()){
-          return;
-      }
-
-      auto m = new MessageReplyDialog(this);
-      m->setWindowTitle("Message");
-      m->setLabel(QString("Store this message locally for %1:").arg(selectedCall));
-      if(m->exec() != QMessageBox::Accepted){
-          return;
-      }
-
-      CommandDetail d = {};
-      d.cmd = " MSG ";
-      d.to = selectedCall;
-      d.from = m_config.my_callsign();
-      d.relayPath = d.from;
-      d.text = m->textValue();
-      d.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-      d.submode = m_nSubMode;
-
-      addCommandToStorage("STORE", d);
-  });
-
-  // Disable default header mouseover and click behaviors, they are confusing to users because they give the
-  // appearance of allowing sorting by header clicks, which is not actually implemented
-  ui->tableWidgetCalls->horizontalHeader()->setHighlightSections(false);
-  ui->tableWidgetCalls->horizontalHeader()->setSectionsClickable(false);
-
-  ui->tableWidgetCalls->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->tableWidgetCalls->horizontalHeader(), &QHeaderView::customContextMenuRequested, this, [this](QPoint const &point){
-      QMenu * menu = new QMenu(ui->tableWidgetCalls);
-
-      QMenu * sortByMenu = menu->addMenu("Sort By...");
-      buildCallActivitySortByMenu(sortByMenu);
-
-      QMenu * showColumnsMenu = menu->addMenu("Show Columns...");
-      buildShowColumnsMenu(showColumnsMenu, "call");
-
-      menu->popup(ui->tableWidgetCalls->horizontalHeader()->mapToGlobal(point));
-  });
-
-  ui->tableWidgetCalls->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->tableWidgetCalls, &QTableWidget::customContextMenuRequested, this, [this, logAction, historyAction, localMessageAction, clearAction4, clearActionAll, addStation, removeStation](QPoint const &point){
-    QMenu * menu = new QMenu(ui->tableWidgetCalls);
-
-    // clear the selection of the call widget on right click
-    // but only if the table has rows.
-    if(ui->tableWidgetCalls->rowAt(point.y()) != -1){
-        ui->tableWidgetRXAll->selectionModel()->clearSelection();
-    }
-
-    QString selectedCall = callsignSelected();
-    bool isAllCall = isAllCallIncluded(selectedCall);
-    //bool isGroupCall = isGroupCallIncluded(selectedCall);
-    bool missingCallsign = selectedCall.isEmpty();
-
-    if(!missingCallsign && !isAllCall){
-        int selectedOffset = m_callActivity[selectedCall].offset;
-        if(selectedOffset != -1){
-            auto qsyAction = menu->addAction(QString("Jump to %1Hz").arg(selectedOffset));
-            connect(qsyAction, &QAction::triggered, this, [this, selectedOffset](){
-                setFreqOffsetForRestore(selectedOffset, false);
+                menu->popup(ui->tableWidgetRXAll->horizontalHeader()->mapToGlobal(point));
             });
 
-            if(m_wideGraph->filterEnabled()){
-                auto filterQsyAction = menu->addAction(QString("Center filter at %1Hz").arg(selectedOffset));
-                connect(filterQsyAction, &QAction::triggered, this, [this, selectedOffset](){
-                    m_wideGraph->setFilterCenter(selectedOffset);
-                });
+
+    ui->tableWidgetRXAll->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(
+        ui->tableWidgetRXAll,
+        &QTableWidget::customContextMenuRequested,
+        this,
+        [this, clearAction3, clearActionAll, removeActivity, logAction](QPoint const& point) {
+            QMenu* menu = new QMenu(ui->tableWidgetRXAll);
+
+            // clear the selection of the call widget on right click
+            // but only if the table has rows.
+            if (ui->tableWidgetRXAll->rowAt(point.y()) != -1) {
+                ui->tableWidgetCalls->selectionModel()->clearSelection();
             }
 
-            int submode = m_callActivity[selectedCall].submode;
-            auto speed  = JS8::Submode::name(submode);
-            if(submode != m_nSubMode){
-                auto qrqAction = menu->addAction(QString("Jump to %1%2 speed").arg(speed.left(1)).arg(speed.mid(1).toLower()));
-                connect(qrqAction, &QAction::triggered, this, [this, submode](){
-                    setSubmode(submode);
-                });
+            QString selectedCall = callsignSelected();
+            bool missingCallsign = selectedCall.isEmpty();
+            bool isAllCall = isAllCallIncluded(selectedCall);
+
+            int selectedOffset = -1;
+            if (!ui->tableWidgetRXAll->selectedItems().isEmpty()) {
+                auto selectedItems = ui->tableWidgetRXAll->selectedItems();
+                selectedOffset = selectedItems.first()->data(Qt::UserRole).toInt();
             }
 
-            int tdrift = -int(m_callActivity[selectedCall].tdrift * 1000);
-            auto qtrAction = menu->addAction(QString("Jump to %1 ms time drift").arg(tdrift));
-            connect(qtrAction, &QAction::triggered, this, [this, tdrift](){
-                setDrift(tdrift);
+            if (selectedOffset != -1) {
+                auto qsyAction = menu->addAction(QString("Jump to %1Hz").arg(selectedOffset));
+                connect(qsyAction, &QAction::triggered, this, [this, selectedOffset]() {
+                    setFreqOffsetForRestore(selectedOffset, false);
+                });
+
+                if (m_wideGraph->filterEnabled()) {
+                    auto filterQsyAction
+                        = menu->addAction(QString("Center filter at %1Hz").arg(selectedOffset));
+                    connect(filterQsyAction, &QAction::triggered, this, [this, selectedOffset]() {
+                        m_wideGraph->setFilterCenter(selectedOffset);
+                    });
+                }
+
+                auto items = m_bandActivity.value(selectedOffset);
+                if (!items.isEmpty()) {
+                    int submode = items.last().submode;
+                    auto speed = JS8::Submode::name(submode);
+                    if (submode != m_nSubMode) {
+                        auto qrqAction = menu->addAction(QString("Jump to %1%2 speed")
+                                                             .arg(speed.left(1))
+                                                             .arg(speed.mid(1).toLower()));
+                        connect(qrqAction, &QAction::triggered, this, [this, submode]() {
+                            setSubmode(submode);
+                        });
+                    }
+
+                    int tdrift = -int(items.last().tdrift * 1000);
+                    auto qtrAction
+                        = menu->addAction(QString("Jump to %1 ms time drift").arg(tdrift));
+                    connect(qtrAction, &QAction::triggered, this, [this, tdrift]() {
+                        setDrift(tdrift);
+                    });
+                }
+
+                menu->addSeparator();
+            }
+
+            menu->addAction(logAction);
+            logAction->setDisabled(missingCallsign || isAllCall);
+
+            menu->addSeparator();
+
+            auto savedMenu = menu->addMenu("Saved Messages...");
+            buildSavedMessagesMenu(savedMenu);
+
+            auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
+            directedMenu->setDisabled(missingCallsign);
+            buildQueryMenu(directedMenu, selectedCall);
+
+            auto relayAction = buildRelayAction(selectedCall);
+            relayAction->setText(QString("Relay via %1...").arg(selectedCall));
+            relayAction->setDisabled(missingCallsign);
+            menu->addActions({ relayAction });
+
+            auto deselectAction = menu->addAction(QString("Deselect %1").arg(selectedCall));
+            deselectAction->setDisabled(missingCallsign);
+            connect(deselectAction, &QAction::triggered, this, [this]() {
+                ui->tableWidgetRXAll->clearSelection();
+                ui->tableWidgetCalls->clearSelection();
             });
 
             menu->addSeparator();
+
+            removeActivity->setDisabled(selectedOffset == -1);
+            menu->addAction(removeActivity);
+
+            menu->addSeparator();
+            menu->addAction(clearAction3);
+            menu->addAction(clearActionAll);
+
+            menu->popup(ui->tableWidgetRXAll->mapToGlobal(point));
+
+            displayActivity(true);
+        });
+
+
+    auto clearAction4 = new QAction(QString("Clear"), ui->tableWidgetCalls);
+    connect(clearAction4, &QAction::triggered, this, [this]() { clearCallActivity(); });
+
+    auto addStation = new QAction(QString("Add New Station or Group..."), ui->tableWidgetCalls);
+    connect(addStation, &QAction::triggered, this, [this]() {
+        bool ok = false;
+        QString callsign = QInputDialog::getText(this,
+                                                 tr("Add New Station or Group"),
+                                                 tr("Station or Group Callsign:"),
+                                                 QLineEdit::Normal,
+                                                 "",
+                                                 &ok)
+                               .toUpper()
+                               .trimmed();
+        if (!ok || callsign.trimmed().isEmpty()) {
+            return;
         }
-    }
 
-    menu->addAction(logAction);
-    logAction->setDisabled(missingCallsign || isAllCall);
+        // if we're adding allcall, turn off allcall avoidance
+        if (callsign == "@ALLCALL") {
+            m_config.set_avoid_allcall(false);
+        } else if (callsign.startsWith("@")) {
+            if (Varicode::isCompoundCallsign(callsign)) {
+                m_config.addGroup(callsign);
+            } else {
+                MessageBox::critical_message(this,
+                                             QString("%1 is not a valid group").arg(callsign));
+            }
 
-    menu->addAction(historyAction);
-    historyAction->setDisabled(missingCallsign || isAllCall || !hasMessageHistory(selectedCall));
+        } else {
+            if (Varicode::isValidCallsign(callsign, nullptr)) {
+                CallDetail cd = {};
+                cd.call = callsign;
+                m_callActivity[callsign] = cd;
+            } else {
+                MessageBox::critical_message(
+                    this,
+                    QString("%1 is not a valid callsign or group").arg(callsign));
+            }
+        }
 
-    menu->addAction(localMessageAction);
-    localMessageAction->setDisabled(missingCallsign || isAllCall);
-
-    menu->addSeparator();
-
-    auto savedMenu = menu->addMenu("Saved Messages...");
-    buildSavedMessagesMenu(savedMenu);
-
-    auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
-    directedMenu->setDisabled(missingCallsign);
-    buildQueryMenu(directedMenu, selectedCall);
-
-    auto relayAction = buildRelayAction(selectedCall);
-    relayAction->setText(QString("Relay via %1...").arg(selectedCall));
-    relayAction->setDisabled(missingCallsign || isAllCall);
-    menu->addActions({ relayAction });
-
-    auto deselect = menu->addAction(QString("Deselect %1").arg(selectedCall));
-    deselect->setDisabled(missingCallsign);
-    connect(deselect, &QAction::triggered, this, [this](){
-        ui->tableWidgetRXAll->clearSelection();
-        ui->tableWidgetCalls->clearSelection();
+        displayActivity(true);
     });
 
-    menu->addSeparator();
+    auto removeStation = new QAction(QString("Remove Station"), ui->tableWidgetCalls);
+    connect(removeStation, &QAction::triggered, this, [this]() {
+        QString selectedCall = callsignSelected();
+        if (selectedCall.isEmpty()) {
+            return;
+        }
 
-    menu->addAction(addStation);
-    removeStation->setDisabled(missingCallsign);
-    removeStation->setText(selectedCall.startsWith("@") ? "Remove Group" : "Remove Station");
-    menu->addAction(removeStation);
+        if (selectedCall == "@ALLCALL") {
+            m_config.set_avoid_allcall(true);
+        } else if (selectedCall.startsWith("@")) {
+            m_config.removeGroup(selectedCall);
+        } else if (m_callActivity.contains(selectedCall)) {
+            m_callActivity.remove(selectedCall);
+        }
 
-    menu->addSeparator();
-    menu->addAction(clearAction4);
-    menu->addAction(clearActionAll);
+        displayActivity(true);
+    });
 
-    menu->popup(ui->tableWidgetCalls->mapToGlobal(point));
-  });
+    connect(ui->actionShow_Message_Inbox, &QAction::triggered, this, [this]() {
+        QString selectedCall = callsignSelected();
+        if (selectedCall.isEmpty()) {
+            selectedCall = "%";
+        }
 
-  connect(ui->tableWidgetRXAll->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::tableSelectionChanged);
-  connect(ui->tableWidgetCalls->selectionModel(), &QItemSelectionModel::selectionChanged, this, &MainWindow::tableSelectionChanged);
+        Inbox inbox(inboxPath());
+        if (!inbox.open()) {
+            return;
+        }
 
-  auto p = ui->tableWidgetRXAll->palette();
-  p.setColor(QPalette::Inactive, QPalette::Highlight, p.color(QPalette::Active, QPalette::Highlight));
-  ui->tableWidgetRXAll->setPalette(p);
+        QList<QPair<int, Message>> msgs;
 
-  p = ui->tableWidgetCalls->palette();
-  p.setColor(QPalette::Inactive, QPalette::Highlight, p.color(QPalette::Active, QPalette::Highlight));
-  ui->tableWidgetCalls->setPalette(p);
+        msgs.append(inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
 
-  ui->hbMacroButton->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->hbMacroButton, &QPushButton::customContextMenuRequested, this, [this](QPoint const &point){
-      QMenu * menu = new QMenu(ui->hbMacroButton);
+        msgs.append(inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
 
-      buildHeartbeatMenu(menu);
+        foreach (auto pair, inbox.values("UNREAD", "$.params.FROM", selectedCall, 0, 1000)) {
+            msgs.append(pair);
 
-      menu->popup(ui->hbMacroButton->mapToGlobal(point));
-  });
+            // mark as read
+            auto msg = pair.second;
+            msg.setType("READ");
+            inbox.set(pair.first, msg);
+        }
 
-  ui->cqMacroButton->setContextMenuPolicy(Qt::CustomContextMenu);
-  connect(ui->cqMacroButton, &QPushButton::customContextMenuRequested, this, [this](QPoint const &point){
-      QMenu * menu = new QMenu(ui->cqMacroButton);
+        std::stable_sort(msgs.begin(),
+                         msgs.end(),
+                         [](QPair<int, Message> const& a, QPair<int, Message> const& b) {
+                             return QVariant::compare(a.second.params().value("UTC"),
+                                                      b.second.params().value("UTC"))
+                                 == QPartialOrdering::Greater;
+                         });
 
-      buildCQMenu(menu);
+        auto mw = new MessageWindow(this);
+        connect(mw, &MessageWindow::finished, this, [this](int) {
+            refreshInboxCounts();
+            displayCallActivity();
+        });
+        connect(mw, &MessageWindow::deleteMessage, this, [this](int id) {
+            Inbox inbox(inboxPath());
+            if (!inbox.open()) {
+                return;
+            }
 
-      menu->popup(ui->cqMacroButton->mapToGlobal(point));
-  });
+            inbox.del(id);
+        });
+        connect(mw, &MessageWindow::replyMessage, this, [this, mw](const QString& text) {
+            addMessageText(text, true, true);
+            refreshInboxCounts();
+            displayCallActivity();
+            mw->close();
+        });
+        mw->setCall(selectedCall);
+        mw->populateMessages(msgs);
+        mw->show();
+    });
 
-  // Don't block heartbeat's first run...
-  m_lastTxStartTime = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
+    auto historyAction = new QAction(QString("Show Message Inbox..."), ui->tableWidgetCalls);
+    connect(historyAction, &QAction::triggered, ui->actionShow_Message_Inbox, &QAction::trigger);
 
-  // But do block the decoder's first run until 50% through next transmit period
-  m_lastTxStopTime = nextTransmitCycle().addSecs(-m_TRperiod/2);
+    auto localMessageAction = new QAction(QString("Store Message..."), ui->tableWidgetCalls);
+    connect(localMessageAction, &QAction::triggered, this, [this]() {
+        QString selectedCall = callsignSelected();
+        if (selectedCall.isEmpty()) {
+            return;
+        }
 
-  int width = 75;
-  /*
+        auto m = new MessageReplyDialog(this);
+        m->setWindowTitle("Message");
+        m->setLabel(QString("Store this message locally for %1:").arg(selectedCall));
+        if (m->exec() != QMessageBox::Accepted) {
+            return;
+        }
+
+        CommandDetail d = {};
+        d.cmd = " MSG ";
+        d.to = selectedCall;
+        d.from = m_config.my_callsign();
+        d.relayPath = d.from;
+        d.text = m->textValue();
+        d.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+        d.submode = m_nSubMode;
+
+        addCommandToStorage("STORE", d);
+    });
+
+    // Disable default header mouseover and click behaviors, they are confusing to users because they give the
+    // appearance of allowing sorting by header clicks, which is not actually implemented
+    ui->tableWidgetCalls->horizontalHeader()->setHighlightSections(false);
+    ui->tableWidgetCalls->horizontalHeader()->setSectionsClickable(false);
+
+    ui->tableWidgetCalls->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableWidgetCalls->horizontalHeader(),
+            &QHeaderView::customContextMenuRequested,
+            this,
+            [this](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->tableWidgetCalls);
+
+                QMenu* sortByMenu = menu->addMenu("Sort By...");
+                buildCallActivitySortByMenu(sortByMenu);
+
+                QMenu* showColumnsMenu = menu->addMenu("Show Columns...");
+                buildShowColumnsMenu(showColumnsMenu, "call");
+
+                menu->popup(ui->tableWidgetCalls->horizontalHeader()->mapToGlobal(point));
+            });
+
+    ui->tableWidgetCalls->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableWidgetCalls,
+            &QTableWidget::customContextMenuRequested,
+            this,
+            [this,
+             logAction,
+             historyAction,
+             localMessageAction,
+             clearAction4,
+             clearActionAll,
+             addStation,
+             removeStation](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->tableWidgetCalls);
+
+                // clear the selection of the call widget on right click
+                // but only if the table has rows.
+                if (ui->tableWidgetCalls->rowAt(point.y()) != -1) {
+                    ui->tableWidgetRXAll->selectionModel()->clearSelection();
+                }
+
+                QString selectedCall = callsignSelected();
+                bool isAllCall = isAllCallIncluded(selectedCall);
+                //bool isGroupCall = isGroupCallIncluded(selectedCall);
+                bool missingCallsign = selectedCall.isEmpty();
+
+                if (!missingCallsign && !isAllCall) {
+                    int selectedOffset = m_callActivity[selectedCall].offset;
+                    if (selectedOffset != -1) {
+                        auto qsyAction
+                            = menu->addAction(QString("Jump to %1Hz").arg(selectedOffset));
+                        connect(qsyAction, &QAction::triggered, this, [this, selectedOffset]() {
+                            setFreqOffsetForRestore(selectedOffset, false);
+                        });
+
+                        if (m_wideGraph->filterEnabled()) {
+                            auto filterQsyAction = menu->addAction(
+                                QString("Center filter at %1Hz").arg(selectedOffset));
+                            connect(filterQsyAction,
+                                    &QAction::triggered,
+                                    this,
+                                    [this, selectedOffset]() {
+                                        m_wideGraph->setFilterCenter(selectedOffset);
+                                    });
+                        }
+
+                        int submode = m_callActivity[selectedCall].submode;
+                        auto speed = JS8::Submode::name(submode);
+                        if (submode != m_nSubMode) {
+                            auto qrqAction = menu->addAction(QString("Jump to %1%2 speed")
+                                                                 .arg(speed.left(1))
+                                                                 .arg(speed.mid(1).toLower()));
+                            connect(qrqAction, &QAction::triggered, this, [this, submode]() {
+                                setSubmode(submode);
+                            });
+                        }
+
+                        int tdrift = -int(m_callActivity[selectedCall].tdrift * 1000);
+                        auto qtrAction
+                            = menu->addAction(QString("Jump to %1 ms time drift").arg(tdrift));
+                        connect(qtrAction, &QAction::triggered, this, [this, tdrift]() {
+                            setDrift(tdrift);
+                        });
+
+                        menu->addSeparator();
+                    }
+                }
+
+                menu->addAction(logAction);
+                logAction->setDisabled(missingCallsign || isAllCall);
+
+                menu->addAction(historyAction);
+                historyAction->setDisabled(missingCallsign || isAllCall
+                                           || !hasMessageHistory(selectedCall));
+
+                menu->addAction(localMessageAction);
+                localMessageAction->setDisabled(missingCallsign || isAllCall);
+
+                menu->addSeparator();
+
+                auto savedMenu = menu->addMenu("Saved Messages...");
+                buildSavedMessagesMenu(savedMenu);
+
+                auto directedMenu = menu->addMenu(QString("Directed to %1...").arg(selectedCall));
+                directedMenu->setDisabled(missingCallsign);
+                buildQueryMenu(directedMenu, selectedCall);
+
+                auto relayAction = buildRelayAction(selectedCall);
+                relayAction->setText(QString("Relay via %1...").arg(selectedCall));
+                relayAction->setDisabled(missingCallsign || isAllCall);
+                menu->addActions({ relayAction });
+
+                auto deselect = menu->addAction(QString("Deselect %1").arg(selectedCall));
+                deselect->setDisabled(missingCallsign);
+                connect(deselect, &QAction::triggered, this, [this]() {
+                    ui->tableWidgetRXAll->clearSelection();
+                    ui->tableWidgetCalls->clearSelection();
+                });
+
+                menu->addSeparator();
+
+                menu->addAction(addStation);
+                removeStation->setDisabled(missingCallsign);
+                removeStation->setText(selectedCall.startsWith("@") ? "Remove Group" :
+                                                                      "Remove Station");
+                menu->addAction(removeStation);
+
+                menu->addSeparator();
+                menu->addAction(clearAction4);
+                menu->addAction(clearActionAll);
+
+                menu->popup(ui->tableWidgetCalls->mapToGlobal(point));
+            });
+
+    connect(ui->tableWidgetRXAll->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            &MainWindow::tableSelectionChanged);
+    connect(ui->tableWidgetCalls->selectionModel(),
+            &QItemSelectionModel::selectionChanged,
+            this,
+            &MainWindow::tableSelectionChanged);
+
+    auto p = ui->tableWidgetRXAll->palette();
+    p.setColor(QPalette::Inactive,
+               QPalette::Highlight,
+               p.color(QPalette::Active, QPalette::Highlight));
+    ui->tableWidgetRXAll->setPalette(p);
+
+    p = ui->tableWidgetCalls->palette();
+    p.setColor(QPalette::Inactive,
+               QPalette::Highlight,
+               p.color(QPalette::Active, QPalette::Highlight));
+    ui->tableWidgetCalls->setPalette(p);
+
+    ui->hbMacroButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->hbMacroButton,
+            &QPushButton::customContextMenuRequested,
+            this,
+            [this](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->hbMacroButton);
+
+                buildHeartbeatMenu(menu);
+
+                menu->popup(ui->hbMacroButton->mapToGlobal(point));
+            });
+
+    ui->cqMacroButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->cqMacroButton,
+            &QPushButton::customContextMenuRequested,
+            this,
+            [this](QPoint const& point) {
+                QMenu* menu = new QMenu(ui->cqMacroButton);
+
+                buildCQMenu(menu);
+
+                menu->popup(ui->cqMacroButton->mapToGlobal(point));
+            });
+
+    // Don't block heartbeat's first run...
+    m_lastTxStartTime = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
+
+    // But do block the decoder's first run until 50% through next transmit period
+    m_lastTxStopTime = nextTransmitCycle().addSecs(-m_TRperiod / 2);
+
+    int width = 75;
+    /*
   QList<QPushButton*> btns;
   foreach(auto child, ui->buttonGrid->children()){
       if(!child->isWidgetType()){
@@ -1387,117 +1536,127 @@ MainWindow::MainWindow(QString  const & program_info,
       btns.append(b);
   }
   */
-  foreach(auto child, ui->buttonGrid->children()){
-      if(!child->isWidgetType()){
-          continue;
-      }
+    foreach (auto child, ui->buttonGrid->children()) {
+        if (!child->isWidgetType()) {
+            continue;
+        }
 
-      if(!child->objectName().contains("Button")){
-          continue;
-      }
+        if (!child->objectName().contains("Button")) {
+            continue;
+        }
 
-      auto b = qobject_cast<QPushButton*>(child);
-      b->setCursor(QCursor(Qt::PointingHandCursor));
-  }
-  auto buttonLayout = ui->buttonGrid->layout();
-  auto gridButtonLayout = qobject_cast<QGridLayout*>(buttonLayout);
-  gridButtonLayout->setColumnMinimumWidth(0, width);
-  gridButtonLayout->setColumnMinimumWidth(1, width);
-  gridButtonLayout->setColumnMinimumWidth(2, width);
-  gridButtonLayout->setColumnStretch(0, 1);
-  gridButtonLayout->setColumnStretch(1, 1);
-  gridButtonLayout->setColumnStretch(2, 1);
-
-  // dial up and down buttons sizes
-  ui->dialFreqUpButton->setFixedSize(30, 24);
-  ui->dialFreqDownButton->setFixedSize(30, 24);
-
-  // Prepare spotting configuration...
-  prepareApi();
-  prepareSpotting();
-
-  displayActivity(true);
-
-  m_txTextDirtyDebounce.setSingleShot(true);
-  connect(&m_txTextDirtyDebounce, &QTimer::timeout, this, &MainWindow::refreshTextDisplay);
-  qCDebug(mainwindow_js8) << "Main window constructor has done all connect (aka plumbing) work.";
-
-  m_TxDelay = m_config.txDelay();
-  m_hb_loop->onTxDelayChange(llround(m_TxDelay * 1000.0));
-  m_cq_loop->onTxDelayChange(llround(m_TxDelay * 1000.0));
-  m_hb_loop->onPlumbingCompleted();
-  m_cq_loop->onPlumbingCompleted();
-  DriftingDateTimeSingleton::getSingleton().onPlumbingCompleted();
-  qCDebug(mainwindow_js8) << "Initialization with onPlumbingCompleted() has completed.";
-
-  QTimer::singleShot(500, this, &MainWindow::initializeDummyData);
-  QTimer::singleShot(500, this, &MainWindow::initializeGroupMessageDummyData);
-
-  // this must be the last statement of constructor
-  if (!m_valid) throw std::runtime_error {"Fatal initialization exception"};
-}
-
-void
-MainWindow::checkVersion(bool const alertOnUpToDate)
-{
-  auto m = new QNetworkAccessManager(this);
-  connect(m, &QNetworkAccessManager::finished, this, [this, alertOnUpToDate](QNetworkReply * reply){
-    if(reply->error()){
-        qCDebug(mainwindow_js8) << "Checking for Updates Error:" << reply->errorString();
-        return;
+        auto b = qobject_cast<QPushButton*>(child);
+        b->setCursor(QCursor(Qt::PointingHandCursor));
     }
+    auto buttonLayout = ui->buttonGrid->layout();
+    auto gridButtonLayout = qobject_cast<QGridLayout*>(buttonLayout);
+    gridButtonLayout->setColumnMinimumWidth(0, width);
+    gridButtonLayout->setColumnMinimumWidth(1, width);
+    gridButtonLayout->setColumnMinimumWidth(2, width);
+    gridButtonLayout->setColumnStretch(0, 1);
+    gridButtonLayout->setColumnStretch(1, 1);
+    gridButtonLayout->setColumnStretch(2, 1);
 
-    QString content = reply->readAll().trimmed();
+    // dial up and down buttons sizes
+    ui->dialFreqUpButton->setFixedSize(30, 24);
+    ui->dialFreqDownButton->setFixedSize(30, 24);
 
-    auto const currentVersion = QVersionNumber::fromString(version());
-    auto const networkVersion = QVersionNumber::fromString(content);
+    // Prepare spotting configuration...
+    prepareApi();
+    prepareSpotting();
 
-    qCDebug(mainwindow_js8) << "Checking Version" << currentVersion << "with" << networkVersion;
+    displayActivity(true);
 
-    if(currentVersion < networkVersion){
+    m_txTextDirtyDebounce.setSingleShot(true);
+    connect(&m_txTextDirtyDebounce, &QTimer::timeout, this, &MainWindow::refreshTextDisplay);
+    qCDebug(mainwindow_js8) << "Main window constructor has done all connect (aka plumbing) work.";
 
-        SelfDestructMessageBox * m = new SelfDestructMessageBox(60,
-          "New Updates Available",
-          QString("A new version (%1) of JS8Call is now available. Please see js8call.com for more details.").arg(content),
-          QMessageBox::Information,
-          QMessageBox::Ok,
-          QMessageBox::Ok,
-          false,
-          this);
+    m_TxDelay = m_config.txDelay();
+    m_hb_loop->onTxDelayChange(llround(m_TxDelay * 1000.0));
+    m_cq_loop->onTxDelayChange(llround(m_TxDelay * 1000.0));
+    m_hb_loop->onPlumbingCompleted();
+    m_cq_loop->onPlumbingCompleted();
+    DriftingDateTimeSingleton::getSingleton().onPlumbingCompleted();
+    qCDebug(mainwindow_js8) << "Initialization with onPlumbingCompleted() has completed.";
 
-        m->show();
+    QTimer::singleShot(500, this, &MainWindow::initializeDummyData);
+    QTimer::singleShot(500, this, &MainWindow::initializeGroupMessageDummyData);
 
-    } else if(alertOnUpToDate){
-
-        SelfDestructMessageBox * m = new SelfDestructMessageBox(60,
-          "No Updates Available",
-          QString("Your version (%1) of JS8Call is up-to-date.").arg(version()),
-          QMessageBox::Information,
-          QMessageBox::Ok,
-          QMessageBox::Ok,
-          false,
-          this);
-
-        m->show();
-    }
-  });
-
-  qCDebug(mainwindow_js8) << "Checking for Updates...";
-  QUrl url("http://files.js8call.com/version.txt");
-  QNetworkRequest r(url);
-  m->get(r);
+    // this must be the last statement of constructor
+    if (!m_valid)
+        throw std::runtime_error { "Fatal initialization exception" };
 }
 
-void MainWindow::checkStartupWarnings ()
+void MainWindow::checkVersion(bool const alertOnUpToDate)
 {
-  if(m_config.check_for_updates()){
-      checkVersion(false);
-  }
-  ensureCallsignSet(false);
+    auto m = new QNetworkAccessManager(this);
+    connect(m,
+            &QNetworkAccessManager::finished,
+            this,
+            [this, alertOnUpToDate](QNetworkReply* reply) {
+                if (reply->error()) {
+                    qCDebug(mainwindow_js8)
+                        << "Checking for Updates Error:" << reply->errorString();
+                    return;
+                }
+
+                QString content = reply->readAll().trimmed();
+
+                auto const currentVersion = QVersionNumber::fromString(version());
+                auto const networkVersion = QVersionNumber::fromString(content);
+
+                qCDebug(mainwindow_js8)
+                    << "Checking Version" << currentVersion << "with" << networkVersion;
+
+                if (currentVersion < networkVersion) {
+
+                    SelfDestructMessageBox* m = new SelfDestructMessageBox(
+                        60,
+                        "New Updates Available",
+                        QString("A new version (%1) of JS8Call is now available. Please see "
+                                "js8call.com for more details.")
+                            .arg(content),
+                        QMessageBox::Information,
+                        QMessageBox::Ok,
+                        QMessageBox::Ok,
+                        false,
+                        this);
+
+                    m->show();
+
+                } else if (alertOnUpToDate) {
+
+                    SelfDestructMessageBox* m = new SelfDestructMessageBox(
+                        60,
+                        "No Updates Available",
+                        QString("Your version (%1) of JS8Call is up-to-date.").arg(version()),
+                        QMessageBox::Information,
+                        QMessageBox::Ok,
+                        QMessageBox::Ok,
+                        false,
+                        this);
+
+                    m->show();
+                }
+            });
+
+    qCDebug(mainwindow_js8) << "Checking for Updates...";
+    QUrl url("http://files.js8call.com/version.txt");
+    QNetworkRequest r(url);
+    m->get(r);
 }
 
-void MainWindow::initializeDummyData(){
-    if(!QApplication::applicationName().contains("dummy")){
+void MainWindow::checkStartupWarnings()
+{
+    if (m_config.check_for_updates()) {
+        checkVersion(false);
+    }
+    ensureCallsignSet(false);
+}
+
+void MainWindow::initializeDummyData()
+{
+    if (!QApplication::applicationName().contains("dummy")) {
         return;
     }
 
@@ -1640,10 +1799,12 @@ void MainWindow::initializeDummyData(){
     logHeardGraph("KN4CRD", "K0OG");
     logHeardGraph("K0OG", "KN4CRD");
 
-    auto path = QDir::toNativeSeparators(m_config.writeable_data_dir ().absoluteFilePath(QString("test.db3")));
+    auto path = QDir::toNativeSeparators(
+        m_config.writeable_data_dir().absoluteFilePath(QString("test.db3")));
     auto inbox = Inbox(path);
-    if(inbox.open()){
-        qCDebug(mainwindow_js8) << "test inbox opened" << inbox.count("test", "$", "%") << "messages";
+    if (inbox.open()) {
+        qCDebug(mainwindow_js8) << "test inbox opened" << inbox.count("test", "$", "%")
+                                << "messages";
 
         // int i = inbox.append(Message("test", "booya1"));
 
@@ -1657,13 +1818,13 @@ void MainWindow::initializeDummyData(){
 
         qCDebug(mainwindow_js8) << inbox.del(i);
 
-        foreach(auto pair, inbox.values("test", "$", "%", 0, 5)){
+        foreach (auto pair, inbox.values("test", "$", "%", 0, 5)) {
             qCDebug(mainwindow_js8) << pair.first << QString(pair.second.toJson());
         }
     }
 
     auto d = DecodedText("SN5-lUuJkby0", Varicode::JS8CallFirst, 1);
-    qCDebug (mainwindow_js8) << "KN4CRD: K0OG ===>" << d.message();
+    qCDebug(mainwindow_js8) << "KN4CRD: K0OG ===>" << d.message();
 
     // qCDebug(mainwindow_js8) << Varicode::isValidCallsign("@GROUP1", nullptr);
     // qCDebug(mainwindow_js8) << Varicode::packAlphaNumeric50("VE7/KN4CRD");
@@ -1671,55 +1832,42 @@ void MainWindow::initializeDummyData(){
     // qCDebug(mainwindow_js8) << Varicode::unpackAlphaNumeric50(Varicode::packAlphaNumeric50("@GROUP/42"));
     // qCDebug(mainwindow_js8) << Varicode::unpackAlphaNumeric50(Varicode::packAlphaNumeric50("SP1ATOM"));
 
-    if(!m_config.my_groups().contains("@GROUP42")){
+    if (!m_config.my_groups().contains("@GROUP42")) {
         m_config.addGroup("@GROUP42");
     }
 
-    QList<QString> calls = {
-        "KN4CRD",
-        "VE7/KN4CRD",
-        "KN4CRD/P",
-        "KC9QNE",
-        "KI6SSI",
-        "K0OG",
-        "LB9YH",
-        "VE7/LB9YH",
-        "M0IAX",
-        "N0JDS",
-        "OH8STN",
-        "VA3OSO",
-        "VK1MIC",
-        "W0FW"
-    };
+    QList<QString> calls
+        = { "KN4CRD",    "VE7/KN4CRD", "KN4CRD/P", "KC9QNE", "KI6SSI", "K0OG",   "LB9YH",
+            "VE7/LB9YH", "M0IAX",      "N0JDS",    "OH8STN", "VA3OSO", "VK1MIC", "W0FW" };
 
     auto dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
 
     int i = 0;
-    foreach(auto call, calls){
+    foreach (auto call, calls) {
         CallDetail cd = {};
         cd.call = call;
         cd.through = i == 2 ? "KN4CRD" : "";
-        cd.dial = 7078000;
-        cd.offset = 500 + 100*i;
+        cd.dial = 7'078'000;
+        cd.offset = 500 + 100 * i;
         cd.snr = i == 3 ? -100 : i;
-        cd.ackTimestamp = i == 1 ? dt.addSecs(-900) : QDateTime{};
+        cd.ackTimestamp = i == 1 ? dt.addSecs(-900) : QDateTime {};
         cd.utcTimestamp = dt;
         cd.grid = i == 5 ? "J042" : i == 6 ? " FN42FN42FN" : "";
-        cd.tdrift = 0.1*i;
+        cd.tdrift = 0.1 * i;
         cd.submode = i % 3;
         logCallActivity(cd, false);
 
         ActivityDetail ad = {};
         ad.bits = Varicode::JS8CallFirst | Varicode::JS8CallLast;
         ad.snr = i == 3 ? -100 : i;
-        ad.dial = 7078000;
-        ad.offset = 500 + 100*i;
+        ad.dial = 7'078'000;
+        ad.offset = 500 + 100 * i;
         ad.text = QString("%1: %2 TEST MESSAGE").arg(call).arg(m_config.my_callsign());
         ad.utcTimestamp = dt;
         ad.submode = cd.submode;
-        m_bandActivity[500+100*i] = { ad };
+        m_bandActivity[500 + 100 * i] = { ad };
 
-        markOffsetDirected(500+100*i, false);
+        markOffsetDirected(500 + 100 * i, false);
 
         i++;
     }
@@ -1727,7 +1875,7 @@ void MainWindow::initializeDummyData(){
     ActivityDetail adHB1 = {};
     adHB1.bits = Varicode::JS8CallFirst;
     adHB1.snr = 0;
-    adHB1.dial = 7078000;
+    adHB1.dial = 7'078'000;
     adHB1.offset = 750;
     adHB1.text = QString("KN4CRD: HB AUTO EM73");
     adHB1.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
@@ -1737,7 +1885,7 @@ void MainWindow::initializeDummyData(){
     ActivityDetail adHB2 = {};
     adHB2.bits = Varicode::JS8CallLast;
     adHB2.snr = 0;
-    adHB2.dial = 7078000;
+    adHB2.dial = 7'078'000;
     adHB2.offset = 750;
     adHB2.text = QString(" MSG ID 1");
     adHB2.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
@@ -1756,290 +1904,315 @@ void MainWindow::initializeDummyData(){
 
     QString eot = m_config.eot();
 
-    displayTextForFreq(QString("KN4CRD: @ALLCALL? %1 ").arg(eot), 42, DriftingDateTime::currentDateTimeUtc().addSecs(-315), true, true, true);
-    displayTextForFreq(QString("J1Y: KN4CRD SNR -05 %1 ").arg(eot), 42, DriftingDateTime::currentDateTimeUtc().addSecs(-300), false, true, true);
-    displayTextForFreq(QString("HELLO BRAVE  NEW   WORLD    %1 ").arg(eot), 42, DriftingDateTime::currentDateTimeUtc().addSecs(-300), false, true, true);
+    displayTextForFreq(QString("KN4CRD: @ALLCALL? %1 ").arg(eot),
+                       42,
+                       DriftingDateTime::currentDateTimeUtc().addSecs(-315),
+                       true,
+                       true,
+                       true);
+    displayTextForFreq(QString("J1Y: KN4CRD SNR -05 %1 ").arg(eot),
+                       42,
+                       DriftingDateTime::currentDateTimeUtc().addSecs(-300),
+                       false,
+                       true,
+                       true);
+    displayTextForFreq(QString("HELLO BRAVE  NEW   WORLD    %1 ").arg(eot),
+                       42,
+                       DriftingDateTime::currentDateTimeUtc().addSecs(-300),
+                       false,
+                       true,
+                       true);
 
     auto now = DriftingDateTime::currentDateTimeUtc();
     displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now, false, true, true);
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now, false, true, true); // should be hidden (duplicate)
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot),
+                       780,
+                       now,
+                       false,
+                       true,
+                       true); // should be hidden (duplicate)
     displayTextForFreq(QString("OH8STN: JY1 ACK -12 %1 ").arg(eot), 780, now, false, true, true);
 
     displayTextForFreq(QString("KN4CRD: JY1 ACK -10 %1 ").arg(eot), 800, now, false, true, true);
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now.addSecs(120), false, true, true);
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot),
+                       780,
+                       now.addSecs(120),
+                       false,
+                       true,
+                       true);
 
-    displayTextForFreq(QString("HELLO\\nBRAVE\\nNEW\\nWORLD %1 ").arg(eot), 1500, now, false, true, true);
+    displayTextForFreq(QString("HELLO\\nBRAVE\\nNEW\\nWORLD %1 ").arg(eot),
+                       1500,
+                       now,
+                       false,
+                       true,
+                       true);
 
     displayActivity(true);
 }
 
 void MainWindow::initializeGroupMessageDummyData()
 {
-	if(!QApplication::applicationName().contains("dummy")){
-		return;
-	}
-
-	if(!m_config.my_groups().contains("@GROUP42")){
-		m_config.addGroup("@GROUP42");
-	}
-
-	auto dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
-
-	CommandDetail cmd = {};
-	cmd.cmd = " MSG TO:";
-	cmd.from = "KN4CRD";
-	cmd.to = "@GROUP42";
-	cmd.utcTimestamp = dt;
-	cmd.submode = Varicode::JS8CallNormal;
-	cmd.text = "@GROUP42 TEST MESSAGE TO GROUP";
-
-	m_rxCommandQueue.append(cmd);
-
-	processCommandActivity();
-
-	dt = DriftingDateTime::currentDateTimeUtc().addSecs(-150);
-
-	CommandDetail cmd1 = {};
-	cmd1.cmd = " MSG TO:";
-	cmd1.from = "KN4CRD";
-	cmd1.to = "@GROUP42";
-	cmd1.utcTimestamp = dt;
-	cmd1.submode = Varicode::JS8CallNormal;
-	cmd1.text = "@GROUP42 ANOTHER TEST MESSAGE TO GROUP";
-
-	m_rxCommandQueue.append(cmd1);
-
-	processCommandActivity();
-
-	CommandDetail cmd2 = {};
-	cmd2.cmd = " QUERY MSGS";
-	cmd2.from = "W1AW";
-	cmd2.to = "@GROUP42";
-	cmd2.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-	cmd2.submode = Varicode::JS8CallNormal;
-
-	m_rxCommandQueue.append(cmd2);
-
-	processCommandActivity();
-
-	int mid = getNextGroupMessageIdForCallsign("@GROUP42", "W1AW");
-
-	qCDebug(mainwindow_js8) << "Testing group messaging";
-	qCDebug(mainwindow_js8) << "Test message ID: " << mid;
-
-	std::string textString = "MSG ";
-	textString += std::to_string(mid);
-
-	qCDebug(mainwindow_js8) << "Text string: " << textString.c_str();
-
-	CommandDetail cmd3 = {};
-	cmd3.cmd = " QUERY";
-	cmd3.from = "W1AW";
-	cmd3.to = "@GROUP42";
-	cmd3.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-	cmd3.submode = Varicode::JS8CallNormal;
-	cmd3.text = textString.c_str();
-
-	m_rxCommandQueue.append(cmd3);
-
-	processCommandActivity();
-
-	dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
-
-	CommandDetail cmd4 = {};
-	cmd4.cmd = " MSG TO:";
-	cmd4.from = "KN4CRD";
-	cmd4.to = "K4RWR";
-	cmd4.utcTimestamp = dt;
-	cmd4.submode = Varicode::JS8CallNormal;
-	cmd4.text = "W1AW TEST MESSAGE TO STATION";
-
-	m_rxCommandQueue.append(cmd4);
-
-	processCommandActivity();
-
-	dt = DriftingDateTime::currentDateTimeUtc().addSecs(-150);
-
-	CommandDetail cmd5 = {};
-	cmd5.cmd = " MSG TO:";
-	cmd5.from = "KN4CRD";
-	cmd5.to = "K4RWR";
-	cmd5.utcTimestamp = dt;
-	cmd5.submode = Varicode::JS8CallNormal;
-	cmd5.text = "W1AW ANOTHER TEST MESSAGE TO STATION";
-
-	m_rxCommandQueue.append(cmd5);
-
-	processCommandActivity();
-
-	CommandDetail cmd6 = {};
-	cmd6.cmd = " QUERY MSGS";
-	cmd6.from = "W1AW";
-	cmd6.to = "K4RWR";
-	cmd6.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-	cmd6.submode = Varicode::JS8CallNormal;
-
-	m_rxCommandQueue.append(cmd6);
-
-	processCommandActivity();
-
-	mid = getNextMessageIdForCallsign("W1AW");
-
-	qCDebug(mainwindow_js8) << "Testing group messaging";
-	qCDebug(mainwindow_js8) << "Test message ID: " << mid;
-
-	textString = "MSG ";
-	textString += std::to_string(mid);
-
-	qCDebug(mainwindow_js8) << "Text string: " << textString.c_str();
-
-	CommandDetail cmd7 = {};
-	cmd7.cmd = " QUERY";
-	cmd7.from = "W1AW";
-	cmd7.to = "K4RWR";
-	cmd7.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-	cmd7.submode = Varicode::JS8CallNormal;
-	cmd7.text = textString.c_str();
-
-	m_rxCommandQueue.append(cmd7);
-
-	processCommandActivity();
-
-	displayActivity(true);
-}
-
-void MainWindow::initialize_fonts ()
-{
-  set_application_font (m_config.text_font ());
-
-  setTextEditFont(ui->textEditRX, m_config.rx_text_font());
-  setTextEditFont(ui->extFreeTextMsgEdit, m_config.tx_text_font());
-
-  displayActivity(true);
-}
-
-void MainWindow::on_the_minute ()
-{
-  if (minuteTimer.isSingleShot ())
-    {
-      minuteTimer.setSingleShot (false);
-      minuteTimer.start (60 * 1000); // run free
+    if (!QApplication::applicationName().contains("dummy")) {
+        return;
     }
-  else
-    {
-        auto const& ms_error = ms_minute_error ();
-        if (qAbs (ms_error) > 1000) // keep drift within +-1s
+
+    if (!m_config.my_groups().contains("@GROUP42")) {
+        m_config.addGroup("@GROUP42");
+    }
+
+    auto dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
+
+    CommandDetail cmd = {};
+    cmd.cmd = " MSG TO:";
+    cmd.from = "KN4CRD";
+    cmd.to = "@GROUP42";
+    cmd.utcTimestamp = dt;
+    cmd.submode = Varicode::JS8CallNormal;
+    cmd.text = "@GROUP42 TEST MESSAGE TO GROUP";
+
+    m_rxCommandQueue.append(cmd);
+
+    processCommandActivity();
+
+    dt = DriftingDateTime::currentDateTimeUtc().addSecs(-150);
+
+    CommandDetail cmd1 = {};
+    cmd1.cmd = " MSG TO:";
+    cmd1.from = "KN4CRD";
+    cmd1.to = "@GROUP42";
+    cmd1.utcTimestamp = dt;
+    cmd1.submode = Varicode::JS8CallNormal;
+    cmd1.text = "@GROUP42 ANOTHER TEST MESSAGE TO GROUP";
+
+    m_rxCommandQueue.append(cmd1);
+
+    processCommandActivity();
+
+    CommandDetail cmd2 = {};
+    cmd2.cmd = " QUERY MSGS";
+    cmd2.from = "W1AW";
+    cmd2.to = "@GROUP42";
+    cmd2.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+    cmd2.submode = Varicode::JS8CallNormal;
+
+    m_rxCommandQueue.append(cmd2);
+
+    processCommandActivity();
+
+    int mid = getNextGroupMessageIdForCallsign("@GROUP42", "W1AW");
+
+    qCDebug(mainwindow_js8) << "Testing group messaging";
+    qCDebug(mainwindow_js8) << "Test message ID: " << mid;
+
+    std::string textString = "MSG ";
+    textString += std::to_string(mid);
+
+    qCDebug(mainwindow_js8) << "Text string: " << textString.c_str();
+
+    CommandDetail cmd3 = {};
+    cmd3.cmd = " QUERY";
+    cmd3.from = "W1AW";
+    cmd3.to = "@GROUP42";
+    cmd3.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+    cmd3.submode = Varicode::JS8CallNormal;
+    cmd3.text = textString.c_str();
+
+    m_rxCommandQueue.append(cmd3);
+
+    processCommandActivity();
+
+    dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
+
+    CommandDetail cmd4 = {};
+    cmd4.cmd = " MSG TO:";
+    cmd4.from = "KN4CRD";
+    cmd4.to = "K4RWR";
+    cmd4.utcTimestamp = dt;
+    cmd4.submode = Varicode::JS8CallNormal;
+    cmd4.text = "W1AW TEST MESSAGE TO STATION";
+
+    m_rxCommandQueue.append(cmd4);
+
+    processCommandActivity();
+
+    dt = DriftingDateTime::currentDateTimeUtc().addSecs(-150);
+
+    CommandDetail cmd5 = {};
+    cmd5.cmd = " MSG TO:";
+    cmd5.from = "KN4CRD";
+    cmd5.to = "K4RWR";
+    cmd5.utcTimestamp = dt;
+    cmd5.submode = Varicode::JS8CallNormal;
+    cmd5.text = "W1AW ANOTHER TEST MESSAGE TO STATION";
+
+    m_rxCommandQueue.append(cmd5);
+
+    processCommandActivity();
+
+    CommandDetail cmd6 = {};
+    cmd6.cmd = " QUERY MSGS";
+    cmd6.from = "W1AW";
+    cmd6.to = "K4RWR";
+    cmd6.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+    cmd6.submode = Varicode::JS8CallNormal;
+
+    m_rxCommandQueue.append(cmd6);
+
+    processCommandActivity();
+
+    mid = getNextMessageIdForCallsign("W1AW");
+
+    qCDebug(mainwindow_js8) << "Testing group messaging";
+    qCDebug(mainwindow_js8) << "Test message ID: " << mid;
+
+    textString = "MSG ";
+    textString += std::to_string(mid);
+
+    qCDebug(mainwindow_js8) << "Text string: " << textString.c_str();
+
+    CommandDetail cmd7 = {};
+    cmd7.cmd = " QUERY";
+    cmd7.from = "W1AW";
+    cmd7.to = "K4RWR";
+    cmd7.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+    cmd7.submode = Varicode::JS8CallNormal;
+    cmd7.text = textString.c_str();
+
+    m_rxCommandQueue.append(cmd7);
+
+    processCommandActivity();
+
+    displayActivity(true);
+}
+
+void MainWindow::initialize_fonts()
+{
+    set_application_font(m_config.text_font());
+
+    setTextEditFont(ui->textEditRX, m_config.rx_text_font());
+    setTextEditFont(ui->extFreeTextMsgEdit, m_config.tx_text_font());
+
+    displayActivity(true);
+}
+
+void MainWindow::on_the_minute()
+{
+    if (minuteTimer.isSingleShot()) {
+        minuteTimer.setSingleShot(false);
+        minuteTimer.start(60 * 1000); // run free
+    } else {
+        auto const& ms_error = ms_minute_error();
+        if (qAbs(ms_error) > 1000) // keep drift within +-1s
         {
-          minuteTimer.setSingleShot (true);
-          minuteTimer.start (ms_error + 60 * 1000);
+            minuteTimer.setSingleShot(true);
+            minuteTimer.start(ms_error + 60 * 1000);
         }
     }
 
-  if (m_config.watchdog ())
-    {
-      incrementIdleTimer();
-    }
-  else
-    {
-      tx_watchdog (false);
+    if (m_config.watchdog()) {
+        incrementIdleTimer();
+    } else {
+        tx_watchdog(false);
     }
 }
 
-void MainWindow::tryBandHop(){
-  // see if we need to hop bands...
-  if(!m_config.auto_switch_bands()){
-      return;
-  }
+void MainWindow::tryBandHop()
+{
+    // see if we need to hop bands...
+    if (!m_config.auto_switch_bands()) {
+        return;
+    }
 
-  // make sure we're not transmitting
-  if(isMessageQueuedForTransmit()){
-      return;
-  }
+    // make sure we're not transmitting
+    if (isMessageQueuedForTransmit()) {
+        return;
+    }
 
-  // get the current band
-  auto dialFreq = dialFrequency();
+    // get the current band
+    auto dialFreq = dialFrequency();
 
-  auto currentBand = m_config.bands()->find(dialFreq);
+    auto currentBand = m_config.bands()->find(dialFreq);
 
-  // get the stations list
-  auto stations = m_config.stations()->station_list();
+    // get the stations list
+    auto stations = m_config.stations()->station_list();
 
-  // order stations by (switch_at, switch_until) time tuple
-  std::stable_sort(stations.begin(), stations.end(), [](StationList::Station const &a, StationList::Station const &b){
-    return (a.switch_at_ < b.switch_at_) || (a.switch_at_ == b.switch_at_ && a.switch_until_ < b.switch_until_);
-  });
+    // order stations by (switch_at, switch_until) time tuple
+    std::stable_sort(stations.begin(),
+                     stations.end(),
+                     [](StationList::Station const& a, StationList::Station const& b) {
+                         return (a.switch_at_ < b.switch_at_)
+                             || (a.switch_at_ == b.switch_at_ && a.switch_until_ < b.switch_until_);
+                     });
 
-  // we just set the date to a known y/m/d to make the comparisons easier
-  QDateTime d = DriftingDateTime::currentDateTimeUtc();
-  d.setDate(QDate(2000, 1, 1));
+    // we just set the date to a known y/m/d to make the comparisons easier
+    QDateTime d = DriftingDateTime::currentDateTimeUtc();
+    d.setDate(QDate(2000, 1, 1));
 
-  QDateTime startOfDay = QDateTime(QDate(2000, 1, 1), QTime(0, 0), QTimeZone::utc());
-  QDateTime endOfDay = QDateTime(QDate(2000, 1, 1), QTime(23, 59, 59, 999), QTimeZone::utc());
+    QDateTime startOfDay = QDateTime(QDate(2000, 1, 1), QTime(0, 0), QTimeZone::utc());
+    QDateTime endOfDay = QDateTime(QDate(2000, 1, 1), QTime(23, 59, 59, 999), QTimeZone::utc());
 
-  StationList::Station * hopStation = nullptr;
+    StationList::Station* hopStation = nullptr;
 
-  // See if we can find a needed band switch...
-  // In the case of overlapping windows, choose the latest one
-  foreach(auto station, stations){
-      // we can switch to this frequency if we're in the time range, inclusive of switch_at, exclusive of switch_until
-      // and if we are switching to a different frequency than the last hop. this allows us to switch bands at that time,
-      // but then later we can later switch to a different band if needed without the automatic band switching to take over
-      bool inTimeRange = (
-        (station.switch_at_ <= d && d <= station.switch_until_) ||          // <- normal range, 12-16 && 6-8, evaluated as 12 <= d <= 16 || 6 <= d <= 8
+    // See if we can find a needed band switch...
+    // In the case of overlapping windows, choose the latest one
+    foreach (auto station, stations) {
+        // we can switch to this frequency if we're in the time range, inclusive of switch_at, exclusive of switch_until
+        // and if we are switching to a different frequency than the last hop. this allows us to switch bands at that time,
+        // but then later we can later switch to a different band if needed without the automatic band switching to take over
+        bool inTimeRange
+            = ((station.switch_at_ <= d && d <= station.switch_until_)
+               || // <- normal range, 12-16 && 6-8, evaluated as 12 <= d <= 16 || 6 <= d <= 8
 
-        (station.switch_until_ < station.switch_at_ && (                    // <- say for a range of 12->2 & 2->12;  12->2,
-             (station.switch_at_ <= d && d <= endOfDay)         ||          //    should be evaluated as 12 <= d <= 23:59 || 00:00 <= d <= 2
-             (startOfDay <= d && d <= station.switch_until_)
-        ))
-      );
+               (station.switch_until_ < station.switch_at_
+                && ( // <- say for a range of 12->2 & 2->12;  12->2,
+                    (station.switch_at_ <= d && d <= endOfDay)
+                    || //    should be evaluated as 12 <= d <= 23:59 || 00:00 <= d <= 2
+                    (startOfDay <= d && d <= station.switch_until_))));
 
-	  if(inTimeRange)
-	  {
-		  delete hopStation;
-		  hopStation = new StationList::Station(station);
-	  }
-  }
+        if (inTimeRange) {
+            delete hopStation;
+            hopStation = new StationList::Station(station);
+        }
+    }
 
-  // If we have a candidate station, see if the hop is valid, and if so, do it
-  if(hopStation != nullptr)
-  {
-	  bool noOverride = (
-			  m_bandHopped || (!m_bandHopped && hopStation->frequency_ != m_bandHoppedFreq)
-	  );
+    // If we have a candidate station, see if the hop is valid, and if so, do it
+    if (hopStation != nullptr) {
+        bool noOverride
+            = (m_bandHopped || (!m_bandHopped && hopStation->frequency_ != m_bandHoppedFreq));
 
-	  bool freqIsDifferent = (hopStation->frequency_ != dialFreq);
+        bool freqIsDifferent = (hopStation->frequency_ != dialFreq);
 
-	  bool canSwitch = (
-			  noOverride      &&
-			  freqIsDifferent
-	  );
+        bool canSwitch = (noOverride && freqIsDifferent);
 
-	  // switch, if we can and the band is different than our current band
-	  if(canSwitch){
-		  Frequency frequency = hopStation->frequency_;
+        // switch, if we can and the band is different than our current band
+        if (canSwitch) {
+            Frequency frequency = hopStation->frequency_;
 
-		  m_bandHopped = false;
-		  m_bandHoppedFreq = frequency;
+            m_bandHopped = false;
+            m_bandHoppedFreq = frequency;
 
-		  SelfDestructMessageBox * m = new SelfDestructMessageBox(30,
-																  "Scheduled Frequency Change",
-																  QString("A scheduled frequency change has arrived. The rig frequency will be changed to %1 MHz in %2 second(s).").arg(Radio::frequency_MHz_string(frequency)),
-																  QMessageBox::Information,
-																  QMessageBox::Ok | QMessageBox::Cancel,
-																  QMessageBox::Ok,
-																  true,
-																  this);
+            SelfDestructMessageBox* m = new SelfDestructMessageBox(
+                30,
+                "Scheduled Frequency Change",
+                QString("A scheduled frequency change has arrived. The rig frequency will be "
+                        "changed to %1 MHz in %2 second(s).")
+                    .arg(Radio::frequency_MHz_string(frequency)),
+                QMessageBox::Information,
+                QMessageBox::Ok | QMessageBox::Cancel,
+                QMessageBox::Ok,
+                true,
+                this);
 
-		  connect(m, &SelfDestructMessageBox::finished, this, [this, m, frequency](){
-			  if(m->result() == QMessageBox::Ok)
-			  {
-				  m_bandHopped = true;
-				  setRig(frequency);
-			  }
-			  m->deleteLater();
-		  });
+            connect(m, &SelfDestructMessageBox::finished, this, [this, m, frequency]() {
+                if (m->result() == QMessageBox::Ok) {
+                    m_bandHopped = true;
+                    setRig(frequency);
+                }
+                m->deleteLater();
+            });
 
-		  m->show();
+            m->show();
 
 #if 0
 		  // TODO: jsherer - this is totally a hack because of the signal that gets emitted to clearActivity on band change...
@@ -2055,316 +2228,329 @@ void MainWindow::tryBandHop(){
           t->start();
 #endif
 
-		  return;
-	  }
+            return;
+        }
 
-	  delete hopStation;
-  }
+        delete hopStation;
+    }
 }
 
 void MainWindow::manualBandHop(const StationList::Station station)
 {
-	// make sure we're not transmitting
-	if(isMessageQueuedForTransmit()){
-		return;
-	}
+    // make sure we're not transmitting
+    if (isMessageQueuedForTransmit()) {
+        return;
+    }
 
-	Frequency frequency = station.frequency_;
+    Frequency frequency = station.frequency_;
 
-	m_bandHopped = true;
-	m_bandHoppedFreq = frequency;
-	setRig(frequency);
+    m_bandHopped = true;
+    m_bandHoppedFreq = frequency;
+    setRig(frequency);
 }
 
 //--------------------------------------------------- MainWindow destructor
 MainWindow::~MainWindow()
 {
-  {
-    std::lock_guard<std::mutex> lock(fftw_mutex);
-    fftwf_export_wisdom_to_filename(wisdomFileName());
-  }
+    {
+        std::lock_guard<std::mutex> lock(fftw_mutex);
+        fftwf_export_wisdom_to_filename(wisdomFileName());
+    }
 
-  m_networkThread.quit();
-  m_networkThread.wait();
+    m_networkThread.quit();
+    m_networkThread.wait();
 
-  m_audioThread.quit ();
-  m_audioThread.wait ();
+    m_audioThread.quit();
+    m_audioThread.wait();
 
-  m_notificationAudioThread.quit();
-  m_notificationAudioThread.wait();
+    m_notificationAudioThread.quit();
+    m_notificationAudioThread.wait();
 
-  m_decoder.quit();
+    m_decoder.quit();
 
-  remove_child_from_event_filter (this);
+    remove_child_from_event_filter(this);
 }
 
 //-------------------------------------------------------- writeSettings()
 void MainWindow::writeSettings()
 {
-  m_settings->beginGroup("MainWindow");
-  m_settings->setValue ("geometry", saveGeometry ());
-  m_settings->setValue ("geometryNoControls", m_geometryNoControls);
-  m_settings->setValue ("state", saveState ());
+    m_settings->beginGroup("MainWindow");
+    m_settings->setValue("geometry", saveGeometry());
+    m_settings->setValue("geometryNoControls", m_geometryNoControls);
+    m_settings->setValue("state", saveState());
 
-  m_settings->setValue("MainSplitter", ui->mainSplitter->saveState());
-  m_settings->setValue("TextHorizontalSplitter", ui->textHorizontalSplitter->saveState());
-  m_settings->setValue("BandActivityVisible", ui->tableWidgetRXAll->isVisible());
-  m_settings->setValue("BandHBActivityVisible", ui->actionShow_Band_Heartbeats_and_ACKs->isChecked());
-  m_settings->setValue("TextVerticalSplitter", ui->textVerticalSplitter->saveState());
-  m_settings->setValue("TimeDrift", DriftingDateTime::drift());
-  m_settings->setValue("ShowTooltips", ui->actionShow_Tooltips->isChecked());
-  m_settings->setValue("ShowStatusbar", ui->statusBar->isVisible());
-  m_settings->setValue("RXActivity", ui->textEditRX->toHtml());
+    m_settings->setValue("MainSplitter", ui->mainSplitter->saveState());
+    m_settings->setValue("TextHorizontalSplitter", ui->textHorizontalSplitter->saveState());
+    m_settings->setValue("BandActivityVisible", ui->tableWidgetRXAll->isVisible());
+    m_settings->setValue("BandHBActivityVisible",
+                         ui->actionShow_Band_Heartbeats_and_ACKs->isChecked());
+    m_settings->setValue("TextVerticalSplitter", ui->textVerticalSplitter->saveState());
+    m_settings->setValue("TimeDrift", DriftingDateTime::drift());
+    m_settings->setValue("ShowTooltips", ui->actionShow_Tooltips->isChecked());
+    m_settings->setValue("ShowStatusbar", ui->statusBar->isVisible());
+    m_settings->setValue("RXActivity", ui->textEditRX->toHtml());
 
-  m_settings->endGroup();
+    m_settings->endGroup();
 
-  m_settings->beginGroup("Common");
-  m_settings->setValue("Freq", freq());
-  m_settings->setValue("SubMode",m_nSubMode);
-  m_settings->setValue("SubModeHB", ui->actionModeJS8HB->isChecked());
-  m_settings->setValue("SubModeHBAck", ui->actionHeartbeatAcknowledgements->isChecked());
-  m_settings->setValue("SubModeMultiDecode", ui->actionModeMultiDecoder->isChecked());
-  m_settings->setValue("DialFreq", QVariant::fromValue(m_lastMonitoredFrequency));
-  m_settings->setValue("OutAttenuation", ui->outAttenuation->value ());
-  m_settings->setValue("pwrBandTxMemory",m_pwrBandTxMemory);
-  m_settings->setValue("pwrBandTuneMemory",m_pwrBandTuneMemory);
-  m_settings->setValue("SortBy", QVariant(m_sortCache));
-  m_settings->setValue("ShowColumns", QVariant(m_showColumnsCache));
-  m_settings->setValue("HBInterval", m_hbInterval);
-  m_settings->setValue("CQInterval", m_cqInterval);
-
-
-
+    m_settings->beginGroup("Common");
+    m_settings->setValue("Freq", freq());
+    m_settings->setValue("SubMode", m_nSubMode);
+    m_settings->setValue("SubModeHB", ui->actionModeJS8HB->isChecked());
+    m_settings->setValue("SubModeHBAck", ui->actionHeartbeatAcknowledgements->isChecked());
+    m_settings->setValue("SubModeMultiDecode", ui->actionModeMultiDecoder->isChecked());
+    m_settings->setValue("DialFreq", QVariant::fromValue(m_lastMonitoredFrequency));
+    m_settings->setValue("OutAttenuation", ui->outAttenuation->value());
+    m_settings->setValue("pwrBandTxMemory", m_pwrBandTxMemory);
+    m_settings->setValue("pwrBandTuneMemory", m_pwrBandTuneMemory);
+    m_settings->setValue("SortBy", QVariant(m_sortCache));
+    m_settings->setValue("ShowColumns", QVariant(m_showColumnsCache));
+    m_settings->setValue("HBInterval", m_hbInterval);
+    m_settings->setValue("CQInterval", m_cqInterval);
 
 
-  // TODO: jsherer - need any other customizations?
-  /*m_settings->setValue("PanelLeftGeometry", ui->tableWidgetRXAll->geometry());
+    // TODO: jsherer - need any other customizations?
+    /*m_settings->setValue("PanelLeftGeometry", ui->tableWidgetRXAll->geometry());
   m_settings->setValue("PanelRightGeometry", ui->tableWidgetCalls->geometry());
   m_settings->setValue("PanelTopGeometry", ui->extFreeTextMsg->geometry());
   m_settings->setValue("PanelBottomGeometry", ui->extFreeTextMsgEdit->geometry());
   m_settings->setValue("PanelWaterfallGeometry", ui->bandHorizontalWidget->geometry());*/
-  //m_settings->setValue("MainSplitter", QVariant::fromValue(ui->mainSplitter->sizes()));
+    //m_settings->setValue("MainSplitter", QVariant::fromValue(ui->mainSplitter->sizes()));
 
-  m_settings->endGroup();
+    m_settings->endGroup();
 
 
-  auto now = DriftingDateTime::currentDateTimeUtc();
-  int callsignAging = m_config.callsign_aging();
+    auto now = DriftingDateTime::currentDateTimeUtc();
+    int callsignAging = m_config.callsign_aging();
 
-  m_settings->beginGroup("CallActivity");
-  m_settings->remove(""); // remove all keys in current group
-  foreach(auto cd, m_callActivity.values()){
-      if (cd.call.trimmed().isEmpty()){
-          continue;
-      }
-      if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
-          continue;
-      }
-      m_settings->setValue(cd.call.trimmed(), QVariantMap{
-        {"snr", QVariant(cd.snr)},
-        {"grid", QVariant(cd.grid)},
-        {"dial", QVariant(cd.dial)},
-        {"freq", QVariant(cd.offset)},
-        {"tdrift", QVariant(cd.tdrift)},
+    m_settings->beginGroup("CallActivity");
+    m_settings->remove(""); // remove all keys in current group
+    foreach (auto cd, m_callActivity.values()) {
+        if (cd.call.trimmed().isEmpty()) {
+            continue;
+        }
+        if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+            continue;
+        }
+        m_settings->setValue(
+            cd.call.trimmed(),
+            QVariantMap {
+                { "snr",          QVariant(cd.snr)                                          },
+                { "grid",         QVariant(cd.grid)                                         },
+                { "dial",         QVariant(cd.dial)                                         },
+                { "freq",         QVariant(cd.offset)                                       },
+                { "tdrift",       QVariant(cd.tdrift)                                       },
 #if CACHE_CALL_DATETIME_AS_STRINGS
-        {"ackTimestamp", QVariant(cd.ackTimestamp.toString("yyyy-MM-dd hh:mm:ss"))},
-        {"utcTimestamp", QVariant(cd.utcTimestamp.toString("yyyy-MM-dd hh:mm:ss"))},
+                { "ackTimestamp", QVariant(cd.ackTimestamp.toString("yyyy-MM-dd hh:mm:ss")) },
+                { "utcTimestamp", QVariant(cd.utcTimestamp.toString("yyyy-MM-dd hh:mm:ss")) },
 #else
-        {"ackTimestamp", QVariant(cd.ackTimestamp)},
-        {"utcTimestamp", QVariant(cd.utcTimestamp)},
+                { "ackTimestamp", QVariant(cd.ackTimestamp) },
+                { "utcTimestamp", QVariant(cd.utcTimestamp) },
 #endif
-        {"submode", QVariant(cd.submode)},
-      });
-  }
-  m_settings->endGroup();
+                { "submode",      QVariant(cd.submode)                                      },
+        });
+    }
+    m_settings->endGroup();
 }
 
 //---------------------------------------------------------- readSettings()
 void MainWindow::readSettings()
 {
-  m_settings->beginGroup("MainWindow");
-  setMinimumSize(800, 400);
-  restoreGeometry (m_settings->value ("geometry", saveGeometry ()).toByteArray ());
-  setMinimumSize(800, 400);
+    m_settings->beginGroup("MainWindow");
+    setMinimumSize(800, 400);
+    restoreGeometry(m_settings->value("geometry", saveGeometry()).toByteArray());
+    setMinimumSize(800, 400);
 
-  m_geometryNoControls = m_settings->value ("geometryNoControls",saveGeometry()).toByteArray();
-  restoreState (m_settings->value ("state", saveState ()).toByteArray ());
+    m_geometryNoControls = m_settings->value("geometryNoControls", saveGeometry()).toByteArray();
+    restoreState(m_settings->value("state", saveState()).toByteArray());
 
-  auto mainSplitterState = m_settings->value("MainSplitter").toByteArray();
-  if(!mainSplitterState.isEmpty()){
-    ui->mainSplitter->restoreState(mainSplitterState);
-  }
-  auto horizontalState = m_settings->value("TextHorizontalSplitter").toByteArray();
-  if(!horizontalState.isEmpty()){
-    ui->textHorizontalSplitter->restoreState(horizontalState);
-    auto hsizes = ui->textHorizontalSplitter->sizes();
+    auto mainSplitterState = m_settings->value("MainSplitter").toByteArray();
+    if (!mainSplitterState.isEmpty()) {
+        ui->mainSplitter->restoreState(mainSplitterState);
+    }
+    auto horizontalState = m_settings->value("TextHorizontalSplitter").toByteArray();
+    if (!horizontalState.isEmpty()) {
+        ui->textHorizontalSplitter->restoreState(horizontalState);
+        auto hsizes = ui->textHorizontalSplitter->sizes();
 
-    ui->tableWidgetRXAll->setVisible(hsizes.at(0) > 0);
-    ui->tableWidgetCalls->setVisible(hsizes.at(2) > 0);
-  }
+        ui->tableWidgetRXAll->setVisible(hsizes.at(0) > 0);
+        ui->tableWidgetCalls->setVisible(hsizes.at(2) > 0);
+    }
 
-  m_bandActivityWasVisible = m_settings->value("BandActivityVisible", true).toBool();
-  ui->tableWidgetRXAll->setVisible(m_bandActivityWasVisible);
+    m_bandActivityWasVisible = m_settings->value("BandActivityVisible", true).toBool();
+    ui->tableWidgetRXAll->setVisible(m_bandActivityWasVisible);
 
-  auto verticalState = m_settings->value("TextVerticalSplitter").toByteArray();
-  if(!verticalState.isEmpty()){
-    ui->textVerticalSplitter->restoreState(verticalState);
-  }
-  setDrift(m_settings->value("TimeDrift", 0).toInt());
-  ui->actionShow_Waterfall_Controls->setChecked(m_wideGraph->controlsVisible());
-  ui->actionShow_Waterfall_Time_Drift_Controls->setChecked(m_wideGraph->timeControlsVisible());
-  ui->actionShow_Tooltips->setChecked(m_settings->value("ShowTooltips", true).toBool());
-  ui->actionShow_Statusbar->setChecked(m_settings->value("ShowStatusbar",true).toBool());
-  ui->statusBar->setVisible(ui->actionShow_Statusbar->isChecked());
-  ui->textEditRX->setHtml(m_config.reset_activity() ? "" : m_settings->value("RXActivity", "").toString());
-  ui->actionShow_Band_Heartbeats_and_ACKs->setChecked(m_settings->value("BandHBActivityVisible", true).toBool());
-  m_settings->endGroup();
+    auto verticalState = m_settings->value("TextVerticalSplitter").toByteArray();
+    if (!verticalState.isEmpty()) {
+        ui->textVerticalSplitter->restoreState(verticalState);
+    }
+    setDrift(m_settings->value("TimeDrift", 0).toInt());
+    ui->actionShow_Waterfall_Controls->setChecked(m_wideGraph->controlsVisible());
+    ui->actionShow_Waterfall_Time_Drift_Controls->setChecked(m_wideGraph->timeControlsVisible());
+    ui->actionShow_Tooltips->setChecked(m_settings->value("ShowTooltips", true).toBool());
+    ui->actionShow_Statusbar->setChecked(m_settings->value("ShowStatusbar", true).toBool());
+    ui->statusBar->setVisible(ui->actionShow_Statusbar->isChecked());
+    ui->textEditRX->setHtml(
+        m_config.reset_activity() ? "" : m_settings->value("RXActivity", "").toString());
+    ui->actionShow_Band_Heartbeats_and_ACKs->setChecked(
+        m_settings->value("BandHBActivityVisible", true).toBool());
+    m_settings->endGroup();
 
-  m_settings->beginGroup("Common");
+    m_settings->beginGroup("Common");
 
-  // set the frequency offset
-  setFreqOffsetForRestore(m_settings->value("Freq", Default::FREQUENCY).toInt(), false); // XXX
+    // set the frequency offset
+    setFreqOffsetForRestore(m_settings->value("Freq", Default::FREQUENCY).toInt(), false); // XXX
 
-  setSubmode(m_settings->value("SubMode", Default::SUBMODE).toInt());
-  ui->actionModeJS8HB->setChecked(m_settings->value("SubModeHB", false).toBool());
-  ui->actionHeartbeatAcknowledgements->setChecked(m_settings->value("SubModeHBAck", false).toBool());
-  ui->actionModeMultiDecoder->setChecked(m_settings->value("SubModeMultiDecode", true).toBool());
+    setSubmode(m_settings->value("SubMode", Default::SUBMODE).toInt());
+    ui->actionModeJS8HB->setChecked(m_settings->value("SubModeHB", false).toBool());
+    ui->actionHeartbeatAcknowledgements->setChecked(
+        m_settings->value("SubModeHBAck", false).toBool());
+    ui->actionModeMultiDecoder->setChecked(m_settings->value("SubModeMultiDecode", true).toBool());
 
-  m_lastMonitoredFrequency = m_settings->value ("DialFreq",
-    QVariant::fromValue<Frequency> (Default::DIAL_FREQUENCY)).value<Frequency> ();
-  setFreq(0); // ensure a change is signaled
-  setFreq(m_settings->value("Freq", Default::FREQUENCY).toInt());
-  // setup initial value of tx attenuator
-  m_block_pwr_tooltip = true;
-  ui->outAttenuation->setValue (m_settings->value ("OutAttenuation", 0).toInt ());
-  m_block_pwr_tooltip = false;
-  m_pwrBandTxMemory=m_settings->value("pwrBandTxMemory").toHash();
-  m_pwrBandTuneMemory=m_settings->value("pwrBandTuneMemory").toHash();
+    m_lastMonitoredFrequency
+        = m_settings->value("DialFreq", QVariant::fromValue<Frequency>(Default::DIAL_FREQUENCY))
+              .value<Frequency>();
+    setFreq(0); // ensure a change is signaled
+    setFreq(m_settings->value("Freq", Default::FREQUENCY).toInt());
+    // setup initial value of tx attenuator
+    m_block_pwr_tooltip = true;
+    ui->outAttenuation->setValue(m_settings->value("OutAttenuation", 0).toInt());
+    m_block_pwr_tooltip = false;
+    m_pwrBandTxMemory = m_settings->value("pwrBandTxMemory").toHash();
+    m_pwrBandTuneMemory = m_settings->value("pwrBandTuneMemory").toHash();
 
-  m_sortCache = m_settings->value("SortBy").toMap();
-  m_showColumnsCache = m_settings->value("ShowColumns").toMap();
-  m_hbInterval = m_settings->value("HBInterval", 0).toInt();
-  m_cqInterval = m_settings->value("CQInterval", 0).toInt();
+    m_sortCache = m_settings->value("SortBy").toMap();
+    m_showColumnsCache = m_settings->value("ShowColumns").toMap();
+    m_hbInterval = m_settings->value("HBInterval", 0).toInt();
+    m_cqInterval = m_settings->value("CQInterval", 0).toInt();
 
-  // TODO: jsherer - any other customizations?
-  //ui->mainSplitter->setSizes(m_settings->value("MainSplitter", QVariant::fromValue(ui->mainSplitter->sizes())).value<QList<int> >());
-  //ui->tableWidgetRXAll->restoreGeometry(m_settings->value("PanelLeftGeometry", ui->tableWidgetRXAll->saveGeometry()).toByteArray());
-  //ui->tableWidgetCalls->restoreGeometry(m_settings->value("PanelRightGeometry", ui->tableWidgetCalls->saveGeometry()).toByteArray());
-  //ui->extFreeTextMsg->setGeometry( m_settings->value("PanelTopGeometry", ui->extFreeTextMsg->geometry()).toRect());
-  //ui->extFreeTextMsgEdit->setGeometry( m_settings->value("PanelBottomGeometry", ui->extFreeTextMsgEdit->geometry()).toRect());
-  //ui->bandHorizontalWidget->setGeometry( m_settings->value("PanelWaterfallGeometry", ui->bandHorizontalWidget->geometry()).toRect());
-  //qCDebug(mainwindow_js8) << m_settings->value("PanelTopGeometry") << ui->extFreeTextMsg;
+    // TODO: jsherer - any other customizations?
+    //ui->mainSplitter->setSizes(m_settings->value("MainSplitter", QVariant::fromValue(ui->mainSplitter->sizes())).value<QList<int> >());
+    //ui->tableWidgetRXAll->restoreGeometry(m_settings->value("PanelLeftGeometry", ui->tableWidgetRXAll->saveGeometry()).toByteArray());
+    //ui->tableWidgetCalls->restoreGeometry(m_settings->value("PanelRightGeometry", ui->tableWidgetCalls->saveGeometry()).toByteArray());
+    //ui->extFreeTextMsg->setGeometry( m_settings->value("PanelTopGeometry", ui->extFreeTextMsg->geometry()).toRect());
+    //ui->extFreeTextMsgEdit->setGeometry( m_settings->value("PanelBottomGeometry", ui->extFreeTextMsgEdit->geometry()).toRect());
+    //ui->bandHorizontalWidget->setGeometry( m_settings->value("PanelWaterfallGeometry", ui->bandHorizontalWidget->geometry()).toRect());
+    //qCDebug(mainwindow_js8) << m_settings->value("PanelTopGeometry") << ui->extFreeTextMsg;
 
-  setTextEditStyle(ui->textEditRX, m_config.color_rx_foreground(), m_config.color_rx_background(), m_config.rx_text_font());
-  setTextEditStyle(ui->extFreeTextMsgEdit, m_config.color_compose_foreground(), m_config.color_compose_background(), m_config.compose_text_font());
-  ui->extFreeTextMsgEdit->setFont(m_config.compose_text_font(), m_config.color_compose_foreground(), m_config.color_compose_background());
+    setTextEditStyle(ui->textEditRX,
+                     m_config.color_rx_foreground(),
+                     m_config.color_rx_background(),
+                     m_config.rx_text_font());
+    setTextEditStyle(ui->extFreeTextMsgEdit,
+                     m_config.color_compose_foreground(),
+                     m_config.color_compose_background(),
+                     m_config.compose_text_font());
+    ui->extFreeTextMsgEdit->setFont(m_config.compose_text_font(),
+                                    m_config.color_compose_foreground(),
+                                    m_config.color_compose_background());
 
-  m_settings->endGroup();
+    m_settings->endGroup();
 
-  // use these initialisation settings to tune the audio o/p buffer
-  // size and audio thread priority
-  m_settings->beginGroup ("Tune");
-  m_msAudioOutputBuffered = m_settings->value ("Audio/OutputBufferMs").toInt ();
-  m_framesAudioInputBuffered = m_settings->value ("Audio/InputBufferFrames", JS8_RX_SAMPLE_RATE / 10).toInt ();
-  m_audioThreadPriority = static_cast<QThread::Priority> (m_settings->value ("Audio/ThreadPriority", QThread::TimeCriticalPriority).toInt () % 8);
-  m_notificationAudioThreadPriority = static_cast<QThread::Priority> (m_settings->value ("Audio/NotificationThreadPriority", QThread::LowPriority).toInt () % 8);
-  m_decoderThreadPriority = static_cast<QThread::Priority> (m_settings->value ("Audio/DecoderThreadPriority", QThread::HighPriority).toInt () % 8);
-  m_networkThreadPriority = static_cast<QThread::Priority> (m_settings->value ("Network/NetworkThreadPriority", QThread::LowPriority).toInt () % 8);
-  m_settings->endGroup ();
+    // use these initialisation settings to tune the audio o/p buffer
+    // size and audio thread priority
+    m_settings->beginGroup("Tune");
+    m_msAudioOutputBuffered = m_settings->value("Audio/OutputBufferMs").toInt();
+    m_framesAudioInputBuffered
+        = m_settings->value("Audio/InputBufferFrames", JS8_RX_SAMPLE_RATE / 10).toInt();
+    m_audioThreadPriority = static_cast<QThread::Priority>(
+        m_settings->value("Audio/ThreadPriority", QThread::TimeCriticalPriority).toInt() % 8);
+    m_notificationAudioThreadPriority = static_cast<QThread::Priority>(
+        m_settings->value("Audio/NotificationThreadPriority", QThread::LowPriority).toInt() % 8);
+    m_decoderThreadPriority = static_cast<QThread::Priority>(
+        m_settings->value("Audio/DecoderThreadPriority", QThread::HighPriority).toInt() % 8);
+    m_networkThreadPriority = static_cast<QThread::Priority>(
+        m_settings->value("Network/NetworkThreadPriority", QThread::LowPriority).toInt() % 8);
+    m_settings->endGroup();
 
-  if(m_config.reset_activity()){
-      // NOOP
-  } else {
-      m_settings->beginGroup("CallActivity");
-      foreach(auto call, m_settings->allKeys()){
+    if (m_config.reset_activity()) {
+        // NOOP
+    } else {
+        m_settings->beginGroup("CallActivity");
+        foreach (auto call, m_settings->allKeys()) {
 
-          auto values = m_settings->value(call).toMap();
+            auto values = m_settings->value(call).toMap();
 
-          auto snr = values.value("snr", -64).toInt();
-          auto grid = values.value("grid", "").toString();
-          auto dial = values.value("dial", 0).toInt();
-          auto freq = values.value("freq", 0).toInt();
-          auto tdrift = values.value("tdrift", 0).toFloat();
+            auto snr = values.value("snr", -64).toInt();
+            auto grid = values.value("grid", "").toString();
+            auto dial = values.value("dial", 0).toInt();
+            auto freq = values.value("freq", 0).toInt();
+            auto tdrift = values.value("tdrift", 0).toFloat();
 
 
 #if CACHE_CALL_DATETIME_AS_STRINGS
-          auto ackTimestampStr = values.value("ackTimestamp", "").toString();
-          auto ackTimestamp = QDateTime::fromString(ackTimestampStr, "yyyy-MM-dd hh:mm:ss");
-          ackTimestamp.setUtcOffset(0);
+            auto ackTimestampStr = values.value("ackTimestamp", "").toString();
+            auto ackTimestamp = QDateTime::fromString(ackTimestampStr, "yyyy-MM-dd hh:mm:ss");
+            ackTimestamp.setUtcOffset(0);
 
-          auto utcTimestampStr = values.value("utcTimestamp", "").toString();
-          auto utcTimestamp = QDateTime::fromString(utcTimestampStr, "yyyy-MM-dd hh:mm:ss");
-          utcTimestamp.setUtcOffset(0);
+            auto utcTimestampStr = values.value("utcTimestamp", "").toString();
+            auto utcTimestamp = QDateTime::fromString(utcTimestampStr, "yyyy-MM-dd hh:mm:ss");
+            utcTimestamp.setUtcOffset(0);
 #else
-          auto ackTimestamp = values.value("ackTimestamp").toDateTime();
-          auto utcTimestamp = values.value("utcTimestamp").toDateTime();
+            auto ackTimestamp = values.value("ackTimestamp").toDateTime();
+            auto utcTimestamp = values.value("utcTimestamp").toDateTime();
 #endif
-          auto submode = values.value("submode", Varicode::JS8CallNormal).toInt();
+            auto submode = values.value("submode", Varicode::JS8CallNormal).toInt();
 
-          CallDetail cd = {};
-          cd.call = call;
-          cd.snr = snr;
-          cd.grid = grid;
-          cd.dial = dial;
-          cd.offset = freq;
-          cd.tdrift = tdrift;
-          cd.ackTimestamp = ackTimestamp;
-          cd.utcTimestamp = utcTimestamp;
-          cd.submode = submode;
+            CallDetail cd = {};
+            cd.call = call;
+            cd.snr = snr;
+            cd.grid = grid;
+            cd.dial = dial;
+            cd.offset = freq;
+            cd.tdrift = tdrift;
+            cd.ackTimestamp = ackTimestamp;
+            cd.utcTimestamp = utcTimestamp;
+            cd.submode = submode;
 
-          logCallActivity(cd, false);
-      }
-      m_settings->endGroup();
-  }
+            logCallActivity(cd, false);
+        }
+        m_settings->endGroup();
+    }
 
-  m_settings_read = true;
+    m_settings_read = true;
 }
 
-void MainWindow::set_application_font (QFont const& font)
+void MainWindow::set_application_font(QFont const& font)
 {
-  qApp->setFont (font);
-  // set font in the application style sheet as well in case it has
-  // been modified in the style sheet which has priority
-  qApp->setStyleSheet (qApp->styleSheet () + "* {" + font_as_stylesheet (font) + '}');
-  for (auto& widget : qApp->topLevelWidgets ())
-    {
-      widget->updateGeometry ();
+    qApp->setFont(font);
+    // set font in the application style sheet as well in case it has
+    // been modified in the style sheet which has priority
+    qApp->setStyleSheet(qApp->styleSheet() + "* {" + font_as_stylesheet(font) + '}');
+    for (auto& widget : qApp->topLevelWidgets()) {
+        widget->updateGeometry();
     }
 }
-
 
 //-------------------------------------------------------------- dataSink()
 void MainWindow::dataSink(qint64 frames)
 {
-    constexpr int        NMAX  = JS8_NTMAX * 12000;
-    constexpr int        nfft3 = 16384;
-    constexpr std::array nch   = {1, 2, 4, 9, 18, 36, 72};
+    constexpr int NMAX = JS8_NTMAX * 12000;
+    constexpr int nfft3 = 16384;
+    constexpr std::array nch = { 1, 2, 4, 9, 18, 36, 72 };
 
     // symspec global vars
-    static int       ja   = 0;
-    static int       k0   = 999999999;
+    static int ja = 0;
+    static int k0 = 999'999'999;
     static WF::SPlot ssum = {};
-    static WF::SPlot s    = {};
+    static WF::SPlot s = {};
 
-    int k (frames);
-    if(k0 == 999999999)
-    {
-        m_ihsym = int((float)frames/(float)JS8_NSPS) * 2;
-        ja      = k;
-        k0      = k;
+    int k(frames);
+    if (k0 == 999'999'999) {
+        m_ihsym = int((float)frames / (float)JS8_NSPS) * 2;
+        ja = k;
+        k0 = k;
     }
 
     //qCDebug(mainwindow_js8) << "k" << k << "k0" << k0 << "delta" << k-k0;
 
     // Get power, spectrum, and ihsym
-    int const nsmo = m_wideGraph->smoothYellow()-1;
+    int const nsmo = m_wideGraph->smoothYellow() - 1;
 
     // make sure the ssum global is reset every period cycle
     static int lastCycle = -1;
-    int const  cycle     = JS8::Submode::computeCycleForDecode(m_nSubMode, k);
+    int const cycle = JS8::Submode::computeCycleForDecode(m_nSubMode, k);
 
-    if (cycle != lastCycle)
-    {
+    if (cycle != lastCycle) {
         qCDebug(decoder_js8) << "period loop, resetting ssum";
         ssum.fill(0.0f);
     }
@@ -2376,179 +2562,173 @@ void MainWindow::dataSink(qint64 frames)
 
     int const jstep = JS8_NSPS / 2;
 
-    if (k >= 2048 &&
-        k <= NMAX)
-    {
-      if (k < k0)
-      {
-        // Start a new data block
-        ja = 0;
-        ssum.fill(0.0f);
+    if (k >= 2048 && k <= NMAX) {
+        if (k < k0) {
+            // Start a new data block
+            ja = 0;
+            ssum.fill(0.0f);
+            m_ihsym = 0;
+            std::fill(std::begin(dec_data.d2) + k, std::end(dec_data.d2), 0);
+        }
+
+        float gain = pow(10.0f, 0.1f * m_inGain);
+        float sq = 0.0f;
+        float pxmax = 0.0f;
+
+        for (int i = k0; i < k; ++i) {
+            float x1 = dec_data.d2[i];
+            pxmax = std::max(pxmax, fabs(x1));
+            sq += x1 * x1;
+        }
+
+        m_px = sq > 0.0f ? 10.0f * log10(sq / (k - k0)) : 0.0f;
+        m_pxmax = pxmax > 0.0f ? 20.0f * log10(pxmax) : 0.0f;
+
+        k0 = k;
+        ja += jstep;
+
+        // Perform real to complex FFT; note that the Fortran code performed
+        // this operation in the four2a subroutine, which contains a cache
+        // of plans. However, since the FFTW3 library itself caches, this
+        // resulted in double caching, so as an experiment we're allowing
+        // the library to handle caching.
+        //
+        // Note that the FFTW library requires all calls but for the plan
+        // execution, i.e., fftwf_execute(), to be serialized. The library
+        // doesn't require prescriptive serialization, anything will do so
+        // long as the result is one thread at a time.
+        //
+        // Providing room for an extra complex value, i.e., a pair of floats,
+        // real and imaginary parts, allows us to use the same buffer for the
+        // FFT input and output.
+        //
+        // While the memory for the FFT can come from anywhere, if we ask the
+        // library for it, it'll guarantee that it's aligned for use of SIMD
+        // instructions, which will in turn allow it to use them.
+
+        fftwf_complex* fftw_complex;
+        float* fftw_real;
+        fftwf_plan fftw_plan;
+        {
+            std::lock_guard<std::mutex> lock(fftw_mutex);
+
+            fftw_complex = fftwf_alloc_complex(nfft3 / 2 + 1);
+
+            if (!fftw_complex) {
+                throw std::runtime_error("Failed to allocate FFT data");
+            }
+
+            fftw_real = reinterpret_cast<float*>(fftw_complex);
+            fftw_plan
+                = fftwf_plan_dft_r2c_1d(nfft3, fftw_real, fftw_complex, FFTW_ESTIMATE_PATIENT);
+
+            if (!fftw_plan) {
+                fftwf_free(fftw_complex);
+                throw std::runtime_error("Failed to create FFT plan");
+            }
+        }
+
+        // Copy data and apply the window, then execute the FFT.
+
+        for (int i = 0; i < nfft3; ++i) {
+            if (int j = ja + i - nfft3; j >= 0 && j < NMAX)
+                fftw_real[i] = 0.1f * dec_data.d2[j];
+        }
+
+        ++m_ihsym;
+
+        fftwf_execute(fftw_plan);
+
+        // Process the resulting spectrum.
+
+        m_df3 = 12000.0f / nfft3;
+
+        auto const iz = std::min(JS8_NSMAX, static_cast<int>(5000.0f / m_df3));
+        auto const cx = reinterpret_cast<std::complex<float>*>(fftw_complex);
+        auto const fac = std::pow(1.0f / nfft3, 2.0f);
+
+        for (int i = 0; i < iz; ++i) {
+            auto const sx = fac * std::norm(cx[i]);
+            ssum[i] += sx;
+            s[i] = 1000.0f * gain * sx;
+        }
+
+        // We're now done with the plan and the FFT storage. Even though
+        // the plan is being 'destroyed' here, the library will cache it
+        // at its discretion. As above, the calls must be serialized.
+
+        {
+            std::lock_guard<std::mutex> lock(fftw_mutex);
+            fftwf_destroy_plan(fftw_plan);
+            fftwf_free(fftw_complex);
+        }
+
+        // Update average spectra.
+
+        for (int i = 0; i < iz; ++i)
+            specData.savg[i] = ssum[i] / m_ihsym;
+
+        if (m_ihsym % 10 == 0) {
+            auto const mode4 = nch[nsmo];
+            auto const nsmo = 4 * std::min(10 * mode4, 150);
+
+            flat1(specData.savg, iz, nsmo, specData.slin);
+
+            if (mode4 >= 2) {
+                std::array<float, JS8_NSMAX> tmp;
+
+                smo(specData.slin, tmp.data(), iz, mode4);
+                smo(tmp.data(), specData.slin, iz, mode4);
+            }
+
+            std::fill(std::begin(specData.slin), std::begin(specData.slin) + 250, 0.0f);
+
+            auto const ia = static_cast<int>(500.0 / m_df3);
+            auto const ib = static_cast<int>(2700.0 / m_df3);
+            auto const smin
+                = *std::min_element(std::begin(specData.slin) + ia, std::begin(specData.slin) + ib);
+            auto const smax
+                = *std::max_element(std::begin(specData.slin), std::begin(specData.slin) + iz);
+            auto const scale = (smax > smin) ? 50.0f / (smax - smin) : 0.0f;
+
+            for (auto& val : specData.slin)
+                val = std::max(0.0f, scale * (val - smin));
+        }
+    } else if (k < 2048)
         m_ihsym = 0;
-        std::fill(std::begin(dec_data.d2) + k,
-                  std::end  (dec_data.d2),  0);
-      }
-
-      float gain  = pow(10.0f, 0.1f * m_inGain);
-      float sq    = 0.0f;
-      float pxmax = 0.0f;
-
-      for (int i = k0; i < k; ++i)
-      {
-        float x1 = dec_data.d2[i];
-        pxmax    = std::max(pxmax, fabs(x1));
-        sq      += x1 * x1;
-      }
-
-      m_px    = sq    > 0.0f ? 10.0f * log10(sq / (k - k0)) : 0.0f;
-      m_pxmax = pxmax > 0.0f ? 20.0f * log10(pxmax)         : 0.0f;
-
-      k0  = k;
-      ja += jstep;
-
-      // Perform real to complex FFT; note that the Fortran code performed
-      // this operation in the four2a subroutine, which contains a cache
-      // of plans. However, since the FFTW3 library itself caches, this
-      // resulted in double caching, so as an experiment we're allowing
-      // the library to handle caching.
-      //
-      // Note that the FFTW library requires all calls but for the plan
-      // execution, i.e., fftwf_execute(), to be serialized. The library
-      // doesn't require prescriptive serialization, anything will do so
-      // long as the result is one thread at a time.
-      //
-      // Providing room for an extra complex value, i.e., a pair of floats,
-      // real and imaginary parts, allows us to use the same buffer for the
-      // FFT input and output.
-      //
-      // While the memory for the FFT can come from anywhere, if we ask the
-      // library for it, it'll guarantee that it's aligned for use of SIMD
-      // instructions, which will in turn allow it to use them.
-
-      fftwf_complex * fftw_complex;
-      float         * fftw_real;
-      fftwf_plan      fftw_plan;
-      {
-        std::lock_guard<std::mutex> lock(fftw_mutex);
-
-        fftw_complex = fftwf_alloc_complex(nfft3 / 2 + 1);
-
-        if (!fftw_complex)
-        {
-          throw std::runtime_error("Failed to allocate FFT data");
-        }
-
-        fftw_real = reinterpret_cast<float *>(fftw_complex);
-        fftw_plan = fftwf_plan_dft_r2c_1d(nfft3,
-                                          fftw_real,
-                                          fftw_complex,
-                                          FFTW_ESTIMATE_PATIENT);
-
-        if (!fftw_plan)
-        {
-          fftwf_free(fftw_complex);
-          throw std::runtime_error("Failed to create FFT plan");
-        }
-      }
-
-      // Copy data and apply the window, then execute the FFT.
-
-      for (int i = 0; i < nfft3; ++i)
-      {
-        if (int j  = ja + i - nfft3;
-                j >= 0 &&
-                j < NMAX) fftw_real[i] = 0.1f * dec_data.d2[j];
-      }
-
-      ++m_ihsym;
-
-      fftwf_execute(fftw_plan);
-
-      // Process the resulting spectrum.
-
-      m_df3 = 12000.0f / nfft3;
-
-      auto const iz  = std::min(JS8_NSMAX, static_cast<int>(5000.0f / m_df3));
-      auto const cx  = reinterpret_cast<std::complex<float>*>(fftw_complex);
-      auto const fac = std::pow(1.0f / nfft3, 2.0f);
-
-      for (int i = 0; i < iz; ++i)
-      {
-        auto const sx = fac * std::norm(cx[i]);
-        ssum[i]      += sx;
-        s[i]          = 1000.0f * gain * sx;
-      }
-
-      // We're now done with the plan and the FFT storage. Even though
-      // the plan is being 'destroyed' here, the library will cache it
-      // at its discretion. As above, the calls must be serialized.
-
-      {
-        std::lock_guard<std::mutex> lock(fftw_mutex);
-        fftwf_destroy_plan(fftw_plan);
-        fftwf_free(fftw_complex);
-      }
-
-      // Update average spectra.
-
-      for (int i = 0; i < iz; ++i) specData.savg[i] = ssum[i] / m_ihsym;
-
-      if (m_ihsym % 10 == 0)
-      {
-        auto const mode4 = nch[nsmo];
-        auto const nsmo  = 4 * std::min(10 * mode4, 150);
-
-        flat1(specData.savg, iz, nsmo, specData.slin);
-
-        if (mode4 >= 2)
-        {
-          std::array<float, JS8_NSMAX> tmp;
-
-          smo(specData.slin, tmp.data(),    iz, mode4);
-          smo(tmp.data(),    specData.slin, iz, mode4);
-        }
-
-        std::fill(std::begin(specData.slin), std::begin(specData.slin) + 250, 0.0f);
-
-        auto const ia    = static_cast<int>( 500.0 / m_df3);
-        auto const ib    = static_cast<int>(2700.0 / m_df3);
-        auto const smin  = *std::min_element(std::begin(specData.slin) + ia, std::begin(specData.slin) + ib);
-        auto const smax  = *std::max_element(std::begin(specData.slin),      std::begin(specData.slin) + iz);
-        auto const scale = (smax > smin) ? 50.0f / (smax - smin) : 0.0f;
-
-        for (auto & val : specData.slin) val = std::max(0.0f, scale * (val - smin));
-      }
-    }
-    else if (k < 2048) m_ihsym = 0;
 
     // make sure ja is equal to k so if we jump ahead in the buffer, everything resolves correctly
     ja = k;
 
-    if(m_ihsym <= 0) return;
+    if (m_ihsym <= 0)
+        return;
 
-    if(ui) ui->signal_meter_widget->setValue(m_px, m_pxmax); // Update thermometer
+    if (ui)
+        ui->signal_meter_widget->setValue(m_px, m_pxmax); // Update thermometer
 
-    if(m_monitoring) m_wideGraph->dataSink(s, m_df3);
+    if (m_monitoring)
+        m_wideGraph->dataSink(s, m_df3);
 
     decode(k);
 }
 
 void MainWindow::showSoundInError(const QString& errorMsg)
 {
-  MessageBox::critical_message (this, tr ("Error in Sound Input"), errorMsg);
+    MessageBox::critical_message(this, tr("Error in Sound Input"), errorMsg);
 }
 
 void MainWindow::showSoundOutError(const QString& errorMsg)
 {
-  MessageBox::critical_message (this, tr ("Error in Sound Output"), errorMsg);
+    MessageBox::critical_message(this, tr("Error in Sound Output"), errorMsg);
 }
 
 void MainWindow::showStatusMessage(const QString& statusMsg)
 {
-  statusBar()->showMessage(statusMsg, 5000);
+    statusBar()->showMessage(statusMsg, 5000);
 }
 
-void MainWindow::on_menuModeJS8_aboutToShow(){
+void MainWindow::on_menuModeJS8_aboutToShow()
+{
     bool canChangeMode = !m_transmitting && m_txFrameCount == 0 && m_txFrameQueue.isEmpty();
     ui->actionModeJS8Normal->setEnabled(canChangeMode);
     ui->actionModeJS8Fast->setEnabled(canChangeMode);
@@ -2558,20 +2738,18 @@ void MainWindow::on_menuModeJS8_aboutToShow(){
 
     // dynamically replace the autoreply menu item text
     auto autoreplyText = ui->actionModeAutoreply->text();
-    if(m_config.autoreply_confirmation() && !autoreplyText.contains(" with Confirmation")){
+    if (m_config.autoreply_confirmation() && !autoreplyText.contains(" with Confirmation")) {
         autoreplyText.replace("Autoreply", "Autoreply with Confirmation");
         autoreplyText.replace("&AUTO", "&AUTO+CONF");
         ui->actionModeAutoreply->setText(autoreplyText);
-    }
-    else if(!m_config.autoreply_confirmation() && autoreplyText.contains(" with Confirmation")){
+    } else if (!m_config.autoreply_confirmation() && autoreplyText.contains(" with Confirmation")) {
         autoreplyText.replace(" with Confirmation", "");
         autoreplyText.replace("+CONF", "");
         ui->actionModeAutoreply->setText(autoreplyText);
     }
 }
 
-void
-MainWindow::on_menuControl_aboutToShow()
+void MainWindow::on_menuControl_aboutToShow()
 {
     auto freqMenu = new QMenu(this->menuBar());
     buildFrequencyMenu(freqMenu);
@@ -2591,30 +2769,36 @@ MainWindow::on_menuControl_aboutToShow()
     ui->actionEnable_Tuning_Tone_TUNE->setChecked(ui->tuneButton->isChecked());
 }
 
-void MainWindow::on_actionCheck_for_Updates_triggered(){
+void MainWindow::on_actionCheck_for_Updates_triggered()
+{
     checkVersion(true);
 }
 
-void MainWindow::on_actionEnable_Monitor_RX_toggled(bool checked){
+void MainWindow::on_actionEnable_Monitor_RX_toggled(bool checked)
+{
     ui->monitorButton->setChecked(checked);
 }
 
-void MainWindow::on_actionEnable_Transmitter_TX_toggled(bool checked){
+void MainWindow::on_actionEnable_Transmitter_TX_toggled(bool checked)
+{
     ui->monitorTxButton->setChecked(checked);
 }
 
-
-void MainWindow::on_actionEnable_Reporting_SPOT_toggled(bool checked){
+void MainWindow::on_actionEnable_Reporting_SPOT_toggled(bool checked)
+{
     ui->spotButton->setChecked(checked);
 }
 
-void MainWindow::on_actionEnable_Tuning_Tone_TUNE_toggled(bool checked){
+void MainWindow::on_actionEnable_Tuning_Tone_TUNE_toggled(bool checked)
+{
     ui->tuneButton->setChecked(checked);
     on_tuneButton_clicked(checked);
 }
 
-void MainWindow::on_menuWindow_aboutToShow(){
-    ui->actionShow_Fullscreen->setChecked((windowState() & Qt::WindowFullScreen) == Qt::WindowFullScreen);
+void MainWindow::on_menuWindow_aboutToShow()
+{
+    ui->actionShow_Fullscreen->setChecked((windowState() & Qt::WindowFullScreen)
+                                          == Qt::WindowFullScreen);
 
     ui->actionShow_Statusbar->setChecked(ui->statusBar && ui->statusBar->isVisible());
 
@@ -2625,25 +2809,27 @@ void MainWindow::on_menuWindow_aboutToShow(){
     auto vsizes = ui->mainSplitter->sizes();
     ui->actionShow_Frequency_Clock->setChecked(vsizes.first() > 0);
     ui->actionShow_Waterfall->setChecked(vsizes.last() > 0);
-    ui->actionShow_Waterfall_Controls->setChecked(ui->actionShow_Waterfall->isChecked() && m_wideGraph->controlsVisible());
-    ui->actionShow_Waterfall_Time_Drift_Controls->setChecked(ui->actionShow_Waterfall->isChecked() && m_wideGraph->timeControlsVisible());
+    ui->actionShow_Waterfall_Controls->setChecked(ui->actionShow_Waterfall->isChecked()
+                                                  && m_wideGraph->controlsVisible());
+    ui->actionShow_Waterfall_Time_Drift_Controls->setChecked(ui->actionShow_Waterfall->isChecked()
+                                                             && m_wideGraph->timeControlsVisible());
 
-    QMenu * sortBandMenu = new QMenu(this->menuBar()); //ui->menuWindow);
+    QMenu* sortBandMenu = new QMenu(this->menuBar()); //ui->menuWindow);
     buildBandActivitySortByMenu(sortBandMenu);
     ui->actionSort_Band_Activity->setMenu(sortBandMenu);
     ui->actionSort_Band_Activity->setEnabled(ui->actionShow_Band_Activity->isChecked());
 
-    QMenu * sortCallMenu = new QMenu(this->menuBar()); //ui->menuWindow);
+    QMenu* sortCallMenu = new QMenu(this->menuBar()); //ui->menuWindow);
     buildCallActivitySortByMenu(sortCallMenu);
     ui->actionSort_Call_Activity->setMenu(sortCallMenu);
     ui->actionSort_Call_Activity->setEnabled(ui->actionShow_Call_Activity->isChecked());
 
-    QMenu * showBandMenu = new QMenu(this->menuBar()); //ui->menuWindow);
+    QMenu* showBandMenu = new QMenu(this->menuBar()); //ui->menuWindow);
     buildShowColumnsMenu(showBandMenu, "band");
     ui->actionShow_Band_Activity_Columns->setMenu(showBandMenu);
     ui->actionShow_Band_Activity_Columns->setEnabled(ui->actionShow_Band_Activity->isChecked());
 
-    QMenu * showCallMenu = new QMenu(this->menuBar()); //ui->menuWindow);
+    QMenu* showCallMenu = new QMenu(this->menuBar()); //ui->menuWindow);
     buildShowColumnsMenu(showCallMenu, "call");
     ui->actionShow_Call_Activity_Columns->setMenu(showCallMenu);
     ui->actionShow_Call_Activity_Columns->setEnabled(ui->actionShow_Call_Activity->isChecked());
@@ -2651,55 +2837,70 @@ void MainWindow::on_menuWindow_aboutToShow(){
     ui->actionShow_Band_Heartbeats_and_ACKs->setEnabled(ui->actionShow_Band_Activity->isChecked());
 }
 
-void MainWindow::on_actionFocus_Message_Receive_Area_triggered(){
+void MainWindow::on_actionFocus_Message_Receive_Area_triggered()
+{
     ui->textEditRX->setFocus();
 }
 
-void MainWindow::on_actionFocus_Message_Reply_Area_triggered(){
+void MainWindow::on_actionFocus_Message_Reply_Area_triggered()
+{
     ui->extFreeTextMsgEdit->setFocus();
 }
 
-void MainWindow::on_actionFocus_Band_Activity_Table_triggered(){
+void MainWindow::on_actionFocus_Band_Activity_Table_triggered()
+{
     ui->tableWidgetRXAll->setFocus();
 }
 
-void MainWindow::on_actionFocus_Call_Activity_Table_triggered(){
+void MainWindow::on_actionFocus_Call_Activity_Table_triggered()
+{
     ui->tableWidgetCalls->setFocus();
 }
 
-void MainWindow::on_actionClear_All_Activity_triggered(){
+void MainWindow::on_actionClear_All_Activity_triggered()
+{
     clearActivity();
 }
 
-void MainWindow::on_actionClear_Band_Activity_triggered(){
+void MainWindow::on_actionClear_Band_Activity_triggered()
+{
     clearBandActivity();
 }
 
-void MainWindow::on_actionClear_RX_Activity_triggered(){
+void MainWindow::on_actionClear_RX_Activity_triggered()
+{
     clearRXActivity();
 }
 
-void MainWindow::on_actionClear_Call_Activity_triggered(){
+void MainWindow::on_actionClear_Call_Activity_triggered()
+{
     clearCallActivity();
 }
 
-void MainWindow::on_actionSetOffset_triggered(){
-    bool       ok          = false;
+void MainWindow::on_actionSetOffset_triggered()
+{
+    bool ok = false;
     auto const currentFreq = freq();
-    QString newFreq = QInputDialog::getText(this, tr("Set Frequency Offset"),
-                                             tr("Offset in Hz:"), QLineEdit::Normal,
-                                             QString("%1").arg(currentFreq), &ok).toUpper().trimmed();
+    QString newFreq = QInputDialog::getText(this,
+                                            tr("Set Frequency Offset"),
+                                            tr("Offset in Hz:"),
+                                            QLineEdit::Normal,
+                                            QString("%1").arg(currentFreq),
+                                            &ok)
+                          .toUpper()
+                          .trimmed();
     int offset = newFreq.toInt(&ok);
-    if(!ok){
-       return;
+    if (!ok) {
+        return;
     }
 
     setFreqOffsetForRestore(offset, false);
 }
 
-void MainWindow::on_actionShow_Fullscreen_triggered(bool checked){
+void MainWindow::on_actionShow_Fullscreen_triggered(bool checked)
+{
     auto state = windowState();
-    if(checked){
+    if (checked) {
         state |= Qt::WindowFullScreen;
     } else {
         state &= ~Qt::WindowFullScreen;
@@ -2707,82 +2908,94 @@ void MainWindow::on_actionShow_Fullscreen_triggered(bool checked){
     setWindowState(state);
 }
 
-void MainWindow::on_actionShow_Statusbar_triggered(bool checked){
-    if(!ui->statusBar){
+void MainWindow::on_actionShow_Statusbar_triggered(bool checked)
+{
+    if (!ui->statusBar) {
         return;
     }
 
     ui->statusBar->setVisible(checked);
 }
 
-void MainWindow::on_actionShow_Frequency_Clock_triggered(bool checked){
+void MainWindow::on_actionShow_Frequency_Clock_triggered(bool checked)
+{
     auto vsizes = ui->mainSplitter->sizes();
     vsizes[0] = checked ? ui->logHorizontalWidget->minimumHeight() : 0;
     ui->logHorizontalWidget->setVisible(checked);
     ui->mainSplitter->setSizes(vsizes);
 }
 
-void MainWindow::on_actionShow_Band_Activity_triggered(bool checked){
+void MainWindow::on_actionShow_Band_Activity_triggered(bool checked)
+{
     auto hsizes = ui->textHorizontalSplitter->sizes();
 
-    if(m_bandActivityWidth == 0){
-        m_bandActivityWidth = ui->textHorizontalSplitter->width()/4;
+    if (m_bandActivityWidth == 0) {
+        m_bandActivityWidth = ui->textHorizontalSplitter->width() / 4;
     }
 
-    if(m_callActivityWidth == 0){
-        m_callActivityWidth = ui->textHorizontalSplitter->width()/4;
+    if (m_callActivityWidth == 0) {
+        m_callActivityWidth = ui->textHorizontalSplitter->width() / 4;
     }
 
-    if(m_textActivityWidth == 0){
-        m_textActivityWidth = ui->textHorizontalSplitter->width()/2;
+    if (m_textActivityWidth == 0) {
+        m_textActivityWidth = ui->textHorizontalSplitter->width() / 2;
     }
 
-    if(checked){
+    if (checked) {
         hsizes[0] = m_bandActivityWidth;
         hsizes[1] = m_textActivityWidth;
-        if(hsizes[2]) hsizes[2] = m_callActivityWidth;
+        if (hsizes[2])
+            hsizes[2] = m_callActivityWidth;
 
     } else {
-        if(hsizes[0]) m_bandActivityWidth = hsizes[0];
-        if(hsizes[1]) m_textActivityWidth = hsizes[1];
-        if(hsizes[2]) m_callActivityWidth = hsizes[2];
+        if (hsizes[0])
+            m_bandActivityWidth = hsizes[0];
+        if (hsizes[1])
+            m_textActivityWidth = hsizes[1];
+        if (hsizes[2])
+            m_callActivityWidth = hsizes[2];
         hsizes[0] = 0;
     }
 
     ui->textHorizontalSplitter->setSizes(hsizes);
     ui->tableWidgetRXAll->setVisible(checked);
     m_bandActivityWasVisible = checked;
-
 }
 
-void MainWindow::on_actionShow_Band_Heartbeats_and_ACKs_triggered(bool){
+void MainWindow::on_actionShow_Band_Heartbeats_and_ACKs_triggered(bool)
+{
     displayBandActivity();
 }
 
-void MainWindow::on_actionShow_Call_Activity_triggered(bool checked){
+void MainWindow::on_actionShow_Call_Activity_triggered(bool checked)
+{
     auto hsizes = ui->textHorizontalSplitter->sizes();
 
-    if(m_bandActivityWidth == 0){
-        m_bandActivityWidth = ui->textHorizontalSplitter->width()/4;
+    if (m_bandActivityWidth == 0) {
+        m_bandActivityWidth = ui->textHorizontalSplitter->width() / 4;
     }
 
-    if(m_callActivityWidth == 0){
-        m_callActivityWidth = ui->textHorizontalSplitter->width()/4;
+    if (m_callActivityWidth == 0) {
+        m_callActivityWidth = ui->textHorizontalSplitter->width() / 4;
     }
 
-    if(m_textActivityWidth == 0){
-        m_textActivityWidth = ui->textHorizontalSplitter->width()/2;
+    if (m_textActivityWidth == 0) {
+        m_textActivityWidth = ui->textHorizontalSplitter->width() / 2;
     }
 
-    if(checked){
-        if(hsizes[0]) hsizes[0] = m_bandActivityWidth;
+    if (checked) {
+        if (hsizes[0])
+            hsizes[0] = m_bandActivityWidth;
         hsizes[1] = m_textActivityWidth;
         hsizes[2] = m_callActivityWidth;
 
     } else {
-        if(hsizes[0]) m_bandActivityWidth = hsizes[0];
-        if(hsizes[1]) m_textActivityWidth = hsizes[1];
-        if(hsizes[2]) m_callActivityWidth = hsizes[2];
+        if (hsizes[0])
+            m_bandActivityWidth = hsizes[0];
+        if (hsizes[1])
+            m_textActivityWidth = hsizes[1];
+        if (hsizes[2])
+            m_callActivityWidth = hsizes[2];
         hsizes[2] = 0;
     }
 
@@ -2790,14 +3003,15 @@ void MainWindow::on_actionShow_Call_Activity_triggered(bool checked){
     ui->tableWidgetCalls->setVisible(checked);
 }
 
-void MainWindow::on_actionShow_Waterfall_triggered(bool checked){
+void MainWindow::on_actionShow_Waterfall_triggered(bool checked)
+{
     auto vsizes = ui->mainSplitter->sizes();
 
-    if(m_waterfallHeight == 0){
-        m_waterfallHeight = ui->mainSplitter->height()/4;
+    if (m_waterfallHeight == 0) {
+        m_waterfallHeight = ui->mainSplitter->height() / 4;
     }
 
-    if(checked){
+    if (checked) {
         vsizes[vsizes.length() - 1] = m_waterfallHeight;
 
     } else {
@@ -2810,111 +3024,114 @@ void MainWindow::on_actionShow_Waterfall_triggered(bool checked){
     ui->bandHorizontalWidget->setVisible(checked);
 }
 
-void MainWindow::on_actionShow_Waterfall_Controls_triggered(bool checked){
+void MainWindow::on_actionShow_Waterfall_Controls_triggered(bool checked)
+{
     m_wideGraph->setControlsVisible(checked);
-    if(checked && !ui->bandHorizontalWidget->isVisible()){
+    if (checked && !ui->bandHorizontalWidget->isVisible()) {
         on_actionShow_Waterfall_triggered(checked);
     }
 }
 
-void MainWindow::on_actionShow_Waterfall_Time_Drift_Controls_triggered(bool checked){
+void MainWindow::on_actionShow_Waterfall_Time_Drift_Controls_triggered(bool checked)
+{
     m_wideGraph->setTimeControlsVisible(checked);
-    if(checked && !ui->bandHorizontalWidget->isVisible()){
+    if (checked && !ui->bandHorizontalWidget->isVisible()) {
         on_actionShow_Waterfall_triggered(checked);
     }
 }
 
-void MainWindow::on_actionReset_Window_Sizes_triggered(){
-   // auto size = this->centralWidget()->size();
+void MainWindow::on_actionReset_Window_Sizes_triggered()
+{
+    // auto size = this->centralWidget()->size();
 
-    ui->mainSplitter->setSizes({
-        ui->logHorizontalWidget->minimumHeight(),
-        ui->mainSplitter->height()/2,
-        ui->macroHorizonalWidget->minimumHeight(),
-        ui->mainSplitter->height()/4
-    });
+    ui->mainSplitter->setSizes({ ui->logHorizontalWidget->minimumHeight(),
+                                 ui->mainSplitter->height() / 2,
+                                 ui->macroHorizonalWidget->minimumHeight(),
+                                 ui->mainSplitter->height() / 4 });
 
-    ui->textHorizontalSplitter->setSizes({
-        ui->textHorizontalSplitter->width()/4,
-        ui->textHorizontalSplitter->width()/2,
-        ui->textHorizontalSplitter->width()/4
-    });
+    ui->textHorizontalSplitter->setSizes({ ui->textHorizontalSplitter->width() / 4,
+                                           ui->textHorizontalSplitter->width() / 2,
+                                           ui->textHorizontalSplitter->width() / 4 });
 
-    ui->textVerticalSplitter->setSizes({
-        ui->textVerticalSplitter->height()/2,
-        ui->textVerticalSplitter->height()/2
-    });
+    ui->textVerticalSplitter->setSizes(
+        { ui->textVerticalSplitter->height() / 2, ui->textVerticalSplitter->height() / 2 });
 }
 
-void MainWindow::on_actionSettings_triggered(){
+void MainWindow::on_actionSettings_triggered()
+{
     openSettings();
 }
 
-void MainWindow::openSettings(int tab){
+void MainWindow::openSettings(int tab)
+{
     m_config.select_tab(tab);
 
     // things that might change that we need know about
-    auto callsign = m_config.my_callsign ();
-    auto my_grid = m_config.my_grid ();
-    auto spot_on = m_config.spot_to_reporting_networks ();
-    if (QDialog::Accepted == m_config.exec ()) {
-        if (m_config.my_callsign () != callsign) {
-            m_baseCall = Radio::base_callsign (m_config.my_callsign ());
+    auto callsign = m_config.my_callsign();
+    auto my_grid = m_config.my_grid();
+    auto spot_on = m_config.spot_to_reporting_networks();
+    if (QDialog::Accepted == m_config.exec()) {
+        if (m_config.my_callsign() != callsign) {
+            m_baseCall = Radio::base_callsign(m_config.my_callsign());
         }
-        if (m_config.my_callsign () != callsign || m_config.my_grid () != my_grid) {
-            statusUpdate ();
+        if (m_config.my_callsign() != callsign || m_config.my_grid() != my_grid) {
+            statusUpdate();
         }
 
-        enable_DXCC_entity (m_config.DXCC ());  // sets text window proportions and (re)inits the logbook
+        enable_DXCC_entity(
+            m_config.DXCC()); // sets text window proportions and (re)inits the logbook
 
         prepareApi();
         prepareSpotting();
 
         // this will close the connection to PSKReporter if it has been
         // disabled
-        if (spot_on && !m_config.spot_to_reporting_networks ())
-        {
-          Q_EMIT pskReporterSendReport (true);
+        if (spot_on && !m_config.spot_to_reporting_networks()) {
+            Q_EMIT pskReporterSendReport(true);
         }
 
-        if(m_config.restart_audio_input () && !m_config.audio_input_device ().isNull ()) {
-            Q_EMIT startAudioInputStream (m_config.audio_input_device(),
-                                          m_framesAudioInputBuffered,
-                                          m_detector,
-                                          m_config.audio_input_channel());
+        if (m_config.restart_audio_input() && !m_config.audio_input_device().isNull()) {
+            Q_EMIT startAudioInputStream(m_config.audio_input_device(),
+                                         m_framesAudioInputBuffered,
+                                         m_detector,
+                                         m_config.audio_input_channel());
         }
 
-        if(m_config.restart_audio_output () && !m_config.audio_output_device ().isNull ()) {
-            Q_EMIT initializeAudioOutputStream (m_config.audio_output_device (),
-                AudioDevice::Mono == m_config.audio_output_channel () ? 1 : 2,
+        if (m_config.restart_audio_output() && !m_config.audio_output_device().isNull()) {
+            Q_EMIT initializeAudioOutputStream(
+                m_config.audio_output_device(),
+                AudioDevice::Mono == m_config.audio_output_channel() ? 1 : 2,
                 m_msAudioOutputBuffered);
         }
 
-        if(m_config.restart_notification_audio_output () && !m_config.notification_audio_output_device ().isNull ()) {
-            Q_EMIT initializeNotificationAudioOutputStream(m_config.notification_audio_output_device(),
+        if (m_config.restart_notification_audio_output()
+            && !m_config.notification_audio_output_device().isNull()) {
+            Q_EMIT initializeNotificationAudioOutputStream(
+                m_config.notification_audio_output_device(),
                 m_msAudioOutputBuffered);
         }
 
-        displayDialFrequency ();
+        displayDialFrequency();
         displayActivity(true);
 
-        setup_status_bar ();
+        setup_status_bar();
         setupJS8();
 
-        m_config.transceiver_online ();
+        m_config.transceiver_online();
 
         setXIT(freq());
 
-        m_opCall=m_config.opCall();
+        m_opCall = m_config.opCall();
     }
 }
 
-void MainWindow::prepareApi(){
+void MainWindow::prepareApi()
+{
     // the udp api is prepared by default (always listening)
 
     // so, we just need to prepare the tcp api
     bool enabled = m_config.tcpEnabled();
-    if(enabled){
+    if (enabled) {
         emit apiSetMaxConnections(m_config.tcp_max_connections());
         emit apiSetServer(m_config.tcp_server_name(), m_config.tcp_server_port());
         emit apiStartServer();
@@ -2923,8 +3140,9 @@ void MainWindow::prepareApi(){
     }
 }
 
-void MainWindow::prepareSpotting(){
-    if(m_config.spot_to_reporting_networks ()){
+void MainWindow::prepareSpotting()
+{
+    if (m_config.spot_to_reporting_networks()) {
         spotSetLocal();
         pskSetLocal();
         aprsSetLocal();
@@ -2938,7 +3156,8 @@ void MainWindow::prepareSpotting(){
     }
 }
 
-void MainWindow::on_spotButton_clicked(bool checked){
+void MainWindow::on_spotButton_clicked(bool checked)
+{
     // 1. save setting
     m_config.set_spot_to_reporting_networks(checked);
 
@@ -2947,116 +3166,121 @@ void MainWindow::on_spotButton_clicked(bool checked){
     prepareSpotting();
 }
 
-void MainWindow::on_monitorButton_clicked (bool checked)
+void MainWindow::on_monitorButton_clicked(bool checked)
 {
-  if (!m_transmitting) {
-    auto prior = m_monitoring;
-    monitor (checked);
-    if (checked && !prior) {
-      if (m_config.monitor_last_used ()) {
-              // put rig back where it was when last in control
-        setRig (m_lastMonitoredFrequency);
-        setXIT (freq());
-      }
-      setFreq(freq()); // ensure FreqCal triggers
+    if (!m_transmitting) {
+        auto prior = m_monitoring;
+        monitor(checked);
+        if (checked && !prior) {
+            if (m_config.monitor_last_used()) {
+                // put rig back where it was when last in control
+                setRig(m_lastMonitoredFrequency);
+                setXIT(freq());
+            }
+            setFreq(freq()); // ensure FreqCal triggers
+        }
+        //Get Configuration in/out of strict split and mode checking
+        Q_EMIT m_config.sync_transceiver(true, checked);
+    } else {
+        ui->monitorButton->setChecked(false); // disallow
     }
-      //Get Configuration in/out of strict split and mode checking
-    Q_EMIT m_config.sync_transceiver (true, checked);
-  } else {
-    ui->monitorButton->setChecked (false); // disallow
-  }
 }
 
-void MainWindow::monitor (bool state)
+void MainWindow::monitor(bool state)
 {
-  ui->monitorButton->setChecked (state);
+    ui->monitorButton->setChecked(state);
 
-  // make sure widegraph is running if we are monitoring, otherwise pause it.
-  m_wideGraph->setPaused(!state);
+    // make sure widegraph is running if we are monitoring, otherwise pause it.
+    m_wideGraph->setPaused(!state);
 
-  if (state) {
-    if (!m_monitoring) Q_EMIT resumeAudioInputStream ();
-  } else {
-    Q_EMIT suspendAudioInputStream ();
-  }
-  m_monitoring = state;
+    if (state) {
+        if (!m_monitoring)
+            Q_EMIT resumeAudioInputStream();
+    } else {
+        Q_EMIT suspendAudioInputStream();
+    }
+    m_monitoring = state;
 }
 
-void MainWindow::on_actionAbout_triggered()                  //Display "About"
+void MainWindow::on_actionAbout_triggered() //Display "About"
 {
-  CAboutDlg {this}.exec ();
+    CAboutDlg { this }.exec();
 }
 
-void MainWindow::on_monitorButton_toggled(bool){
+void MainWindow::on_monitorButton_toggled(bool)
+{
     resetPushButtonToggleText(ui->monitorButton);
 }
 
-void MainWindow::on_monitorTxButton_toggled(bool checked){
+void MainWindow::on_monitorTxButton_toggled(bool checked)
+{
     resetPushButtonToggleText(ui->monitorTxButton);
 
-    if(!checked){
-        qCDebug(mainwindow_js8)
-                << "on_monitorTxButton_toggled(" << checked << ") to stop TX.";
+    if (!checked) {
+        qCDebug(mainwindow_js8) << "on_monitorTxButton_toggled(" << checked << ") to stop TX.";
         on_stopTxButton_clicked();
     }
 }
 
-void MainWindow::on_tuneButton_toggled(bool){
+void MainWindow::on_tuneButton_toggled(bool)
+{
     resetPushButtonToggleText(ui->tuneButton);
 }
 
-void MainWindow::on_spotButton_toggled(bool){
+void MainWindow::on_spotButton_toggled(bool)
+{
     resetPushButtonToggleText(ui->spotButton);
 }
 
-void MainWindow::auto_tx_mode (bool state)
+void MainWindow::auto_tx_mode(bool state)
 {
-  qCDebug(mainwindow_js8) << "auto_tx_mode(" << state << ")";
-  m_auto = state;
-  statusUpdate();
-  if (state) {
-      // Let us not wait until the next polling slot, but prepare transmission now,
-      // even though that may waste a few CPU cycles
-      // through double work that will be done soon anyway:
-      prepareSending(DriftingDateTime::currentMSecsSinceEpoch());
-  } else {
-      // This function is called recursively from on_stopTxButton_clicked()!
-      bool previous_stopTxButtonisLongterm = m_stopTxButtonIsLongterm;
-      m_stopTxButtonIsLongterm = false;
-      on_stopTxButton_clicked();
-      m_stopTxButtonIsLongterm = previous_stopTxButtonisLongterm;
-  }
-  qCDebug(mainwindow_js8) << "auto_tx_mode(" << state << ") completed.";
+    qCDebug(mainwindow_js8) << "auto_tx_mode(" << state << ")";
+    m_auto = state;
+    statusUpdate();
+    if (state) {
+        // Let us not wait until the next polling slot, but prepare transmission now,
+        // even though that may waste a few CPU cycles
+        // through double work that will be done soon anyway:
+        prepareSending(DriftingDateTime::currentMSecsSinceEpoch());
+    } else {
+        // This function is called recursively from on_stopTxButton_clicked()!
+        bool previous_stopTxButtonisLongterm = m_stopTxButtonIsLongterm;
+        m_stopTxButtonIsLongterm = false;
+        on_stopTxButton_clicked();
+        m_stopTxButtonIsLongterm = previous_stopTxButtonisLongterm;
+    }
+    qCDebug(mainwindow_js8) << "auto_tx_mode(" << state << ") completed.";
 }
 
-void MainWindow::keyPressEvent (QKeyEvent * e)
+void MainWindow::keyPressEvent(QKeyEvent* e)
 {
     switch (e->key()) {
-        case Qt::Key_Escape:
-            on_stopTxButton_clicked();
-            stopTx();
-            return;
-        case Qt::Key_F5:
-            on_logQSOButton_clicked();
-            return;
+    case Qt::Key_Escape:
+        on_stopTxButton_clicked();
+        stopTx();
+        return;
+    case Qt::Key_F5: on_logQSOButton_clicked(); return;
     }
 
-    QMainWindow::keyPressEvent (e);
+    QMainWindow::keyPressEvent(e);
 }
 
-void
-MainWindow::f11f12(int const n)
+void MainWindow::f11f12(int const n)
 {
-  if (n == 11) setFreq(freq() - 1);
-  if (n == 12) setFreq(freq() + 1);
+    if (n == 11)
+        setFreq(freq() - 1);
+    if (n == 12)
+        setFreq(freq() + 1);
 }
 
-Radio::Frequency MainWindow::dialFrequency() {
-    return Frequency {m_rigState.ptt () && m_rigState.split () ?
-        m_rigState.tx_frequency () : m_rigState.frequency ()};
+Radio::Frequency MainWindow::dialFrequency()
+{
+    return Frequency { m_rigState.ptt() && m_rigState.split() ? m_rigState.tx_frequency() :
+                                                                m_rigState.frequency() };
 }
 
-void MainWindow::setSubmode(int submode){
+void MainWindow::setSubmode(int submode)
+{
     m_nSubMode = submode;
     ui->actionModeJS8Normal->setChecked(submode == Varicode::JS8CallNormal);
     ui->actionModeJS8Fast->setChecked(submode == Varicode::JS8CallFast);
@@ -3067,35 +3291,38 @@ void MainWindow::setSubmode(int submode){
     Q_EMIT submodeChanged(Varicode::intToSubmode(submode));
 }
 
-void MainWindow::updateCurrentBand(){
+void MainWindow::updateCurrentBand()
+{
     QVariant state = ui->readFreq->property("state");
-    if(!state.isValid()){
+    if (!state.isValid()) {
         return;
     }
 
     auto dial_frequency = dialFrequency();
-    auto const& band_name = m_config.bands ()->find(dial_frequency);
+    auto const& band_name = m_config.bands()->find(dial_frequency);
 
-    if (m_lastBand == band_name){
+    if (m_lastBand == band_name) {
         return;
     }
 
     cacheActivity(m_lastBand);
 
     // clear activity on startup if asked or on when the previous band is not empty
-    if(m_config.reset_activity() || !m_lastBand.isEmpty()){
+    if (m_config.reset_activity() || !m_lastBand.isEmpty()) {
         clearActivity();
     }
 
-    m_wideGraph->setBand (band_name);
+    m_wideGraph->setBand(band_name);
 
     qCDebug(mainwindow_js8) << "setting band" << band_name;
-    sendNetworkMessage("RIG.FREQ", "", {
-        {"_ID", QVariant(-1)},
-        {"BAND", QVariant(band_name)},
-        {"FREQ", QVariant((quint64)dialFrequency() + freq())},
-        {"DIAL", QVariant((quint64)dialFrequency())},
-        {"OFFSET", QVariant((quint64)freq())}
+    sendNetworkMessage("RIG.FREQ",
+                       "",
+                       {
+                           { "_ID",    QVariant(-1)                                },
+                           { "BAND",   QVariant(band_name)                         },
+                           { "FREQ",   QVariant((quint64)dialFrequency() + freq()) },
+                           { "DIAL",   QVariant((quint64)dialFrequency())          },
+                           { "OFFSET", QVariant((quint64)freq())                   }
     });
     m_lastBand = band_name;
 
@@ -3103,24 +3330,25 @@ void MainWindow::updateCurrentBand(){
     restoreActivity(m_lastBand);
 }
 
-void MainWindow::displayDialFrequency (){
+void MainWindow::displayDialFrequency()
+{
 #if 0
     qCDebug(mainwindow_js8) << "rx nominal" << m_freqNominal;
     qCDebug(mainwindow_js8) << "tx nominal" << m_freqTxNominal;
     qCDebug(mainwindow_js8) << "offset set to" << freq() << freq();
 #endif
 
-    auto dial_frequency  = dialFrequency();
+    auto dial_frequency = dialFrequency();
     auto audio_frequency = freq();
 
     // lookup band
-    auto const& band_name = m_config.bands ()->find (dial_frequency);
+    auto const& band_name = m_config.bands()->find(dial_frequency);
 
-    auto sFreq = Radio::pretty_frequency_MHz_string (dial_frequency);
+    auto sFreq = Radio::pretty_frequency_MHz_string(dial_frequency);
     ui->currentFreq->setDigitCount(sFreq.length());
     ui->currentFreq->display(sFreq);
 
-    if(m_splitMode && m_transmitting){
+    if (m_splitMode && m_transmitting) {
         audio_frequency -= m_XIT;
     }
     ui->labDialFreqOffset->setText(QString("%1 Hz").arg(audio_frequency));
@@ -3128,126 +3356,128 @@ void MainWindow::displayDialFrequency (){
 
 void MainWindow::statusChanged()
 {
-  statusUpdate ();
+    statusUpdate();
 }
 
-bool MainWindow::eventFilter (QObject * object, QEvent * event)
+bool MainWindow::eventFilter(QObject* object, QEvent* event)
 {
-  switch (event->type())
-    {
+    switch (event->type()) {
     case QEvent::KeyPress:
-      // fall through
+        // fall through
     case QEvent::MouseButtonPress:
-      // reset the Tx watchdog
-      resetIdleTimer();
-      tx_watchdog (false);
-      break;
+        // reset the Tx watchdog
+        resetIdleTimer();
+        tx_watchdog(false);
+        break;
 
     case QEvent::ChildAdded:
-      // ensure our child widgets get added to our event filter
-      add_child_to_event_filter (static_cast<QChildEvent *> (event)->child ());
-      break;
+        // ensure our child widgets get added to our event filter
+        add_child_to_event_filter(static_cast<QChildEvent*>(event)->child());
+        break;
 
     case QEvent::ChildRemoved:
-      // ensure our child widgets get d=removed from our event filter
-      remove_child_from_event_filter (static_cast<QChildEvent *> (event)->child ());
-      break;
+        // ensure our child widgets get d=removed from our event filter
+        remove_child_from_event_filter(static_cast<QChildEvent*>(event)->child());
+        break;
 
     case QEvent::ToolTip:
-      if(!ui->actionShow_Tooltips->isChecked()){
-          return true;
-      }
+        if (!ui->actionShow_Tooltips->isChecked()) {
+            return true;
+        }
 
-      break;
+        break;
 
     default: break;
     }
-  return QObject::eventFilter(object, event);
+    return QObject::eventFilter(object, event);
 }
 
-void MainWindow::createStatusBar()                           //createStatusBar
+void MainWindow::createStatusBar() //createStatusBar
 {
-  tx_status_label.setAlignment (Qt::AlignCenter);
-  tx_status_label.setMinimumSize (QSize  {150, 18});
-  tx_status_label.setStyleSheet ("QLabel{background-color: #22ff22}");
-  tx_status_label.setFrameStyle (QFrame::Panel | QFrame::Sunken);
-  statusBar()->addWidget (&tx_status_label);
+    tx_status_label.setAlignment(Qt::AlignCenter);
+    tx_status_label.setMinimumSize(QSize { 150, 18 });
+    tx_status_label.setStyleSheet("QLabel{background-color: #22ff22}");
+    tx_status_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    statusBar()->addWidget(&tx_status_label);
 
-  config_label.setAlignment (Qt::AlignCenter);
-  config_label.setMinimumSize (QSize {80, 18});
-  config_label.setFrameStyle (QFrame::Panel | QFrame::Sunken);
-  statusBar()->addWidget (&config_label);
-  config_label.hide ();         // only shown for non-default configuration
+    config_label.setAlignment(Qt::AlignCenter);
+    config_label.setMinimumSize(QSize { 80, 18 });
+    config_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    statusBar()->addWidget(&config_label);
+    config_label.hide(); // only shown for non-default configuration
 
-  mode_label.setAlignment (Qt::AlignCenter);
-  mode_label.setMinimumSize (QSize {80, 18});
-  mode_label.setStyleSheet ("QLabel{background-color: #6699ff}");
-  mode_label.setFrameStyle (QFrame::Panel | QFrame::Sunken);
-  mode_label.setText("JS8");
-  statusBar()->addWidget (&mode_label);
+    mode_label.setAlignment(Qt::AlignCenter);
+    mode_label.setMinimumSize(QSize { 80, 18 });
+    mode_label.setStyleSheet("QLabel{background-color: #6699ff}");
+    mode_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    mode_label.setText("JS8");
+    statusBar()->addWidget(&mode_label);
 
-  last_tx_label.setAlignment (Qt::AlignCenter);
-  last_tx_label.setMinimumSize (QSize {150, 18});
-  last_tx_label.setFrameStyle (QFrame::Panel | QFrame::Sunken);
-  statusBar()->addWidget (&last_tx_label);
+    last_tx_label.setAlignment(Qt::AlignCenter);
+    last_tx_label.setMinimumSize(QSize { 150, 18 });
+    last_tx_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    statusBar()->addWidget(&last_tx_label);
 
-  statusBar()->addPermanentWidget(&progressBar);
-  progressBar.setMinimumSize (QSize {100, 18});
-  progressBar.setFormat ("%v/%m");
+    statusBar()->addPermanentWidget(&progressBar);
+    progressBar.setMinimumSize(QSize { 100, 18 });
+    progressBar.setFormat("%v/%m");
 
-  statusBar()->addPermanentWidget(&wpm_label);
-  wpm_label.setMinimumSize (QSize {120, 18});
-  wpm_label.setFrameStyle (QFrame::Panel | QFrame::Sunken);
-  wpm_label.setAlignment(Qt::AlignCenter);
+    statusBar()->addPermanentWidget(&wpm_label);
+    wpm_label.setMinimumSize(QSize { 120, 18 });
+    wpm_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    wpm_label.setAlignment(Qt::AlignCenter);
 }
 
-void
-MainWindow::setup_status_bar()
+void MainWindow::setup_status_bar()
 {
-  last_tx_label.clear();
+    last_tx_label.clear();
 }
 
-void MainWindow::closeEvent(QCloseEvent * e)
+void MainWindow::closeEvent(QCloseEvent* e)
 {
-  m_valid = false;              // suppresses subprocess errors
-  m_config.transceiver_offline ();
-  writeSettings ();
-  m_guiTimer.stop ();
-  m_prefixes.reset ();
-  m_shortcuts.reset ();
-  m_mouseCmnds.reset ();
-  Q_EMIT finished ();
+    m_valid = false; // suppresses subprocess errors
+    m_config.transceiver_offline();
+    writeSettings();
+    m_guiTimer.stop();
+    m_prefixes.reset();
+    m_shortcuts.reset();
+    m_mouseCmnds.reset();
+    Q_EMIT finished();
 
-  QMainWindow::closeEvent (e);
+    QMainWindow::closeEvent(e);
 }
 
-void MainWindow::on_dialFreqUpButton_clicked(){
+void MainWindow::on_dialFreqUpButton_clicked()
+{
     setRig(m_freqNominal + 250);
 }
 
-void MainWindow::on_dialFreqDownButton_clicked(){
+void MainWindow::on_dialFreqDownButton_clicked()
+{
     setRig(m_freqNominal - 250);
 }
 
-void MainWindow::on_actionAdd_Log_Entry_triggered(){
-  on_logQSOButton_clicked();
+void MainWindow::on_actionAdd_Log_Entry_triggered()
+{
+    on_logQSOButton_clicked();
 }
 
 void MainWindow::on_actionCopyright_Notice_triggered()
 {
-  auto const& message = tr("If you make fair use of any part of this program under terms of the GNU "
-                           "General Public License, you must display the following copyright "
-                           "notice prominently in your derivative work:\n\n"
-                           "\"The algorithms, source code, look-and-feel of WSJT-X and related "
-                           "programs, and protocol specifications for the modes FSK441, FT8, JT4, "
-                           "JT6M, JT9, JT65, JTMS, QRA64, ISCAT, MSK144 are Copyright (C) "
-                           "2001-2018 by one or more of the following authors: Joseph Taylor, "
-                           "K1JT; Bill Somerville, G4WJS; Steven Franke, K9AN; Nico Palermo, "
-                           "IV3NWV; Greg Beam, KI7MT; Michael Black, W9MDB; Edson Pereira, PY2SDR; "
-                           "Philip Karn, KA9Q; and other members of the WSJT Development Group.\n\n"
-                           "Further, the source code of JS8Call contains material Copyright (C) "
-                           "2018-2019 by Jordan Sherer, KN4CRD.\"");
-  MessageBox::warning_message(this, message);
+    auto const& message
+        = tr("If you make fair use of any part of this program under terms of the GNU "
+             "General Public License, you must display the following copyright "
+             "notice prominently in your derivative work:\n\n"
+             "\"The algorithms, source code, look-and-feel of WSJT-X and related "
+             "programs, and protocol specifications for the modes FSK441, FT8, JT4, "
+             "JT6M, JT9, JT65, JTMS, QRA64, ISCAT, MSK144 are Copyright (C) "
+             "2001-2018 by one or more of the following authors: Joseph Taylor, "
+             "K1JT; Bill Somerville, G4WJS; Steven Franke, K9AN; Nico Palermo, "
+             "IV3NWV; Greg Beam, KI7MT; Michael Black, W9MDB; Edson Pereira, PY2SDR; "
+             "Philip Karn, KA9Q; and other members of the WSJT Development Group.\n\n"
+             "Further, the source code of JS8Call contains material Copyright (C) "
+             "2018-2019 by Jordan Sherer, KN4CRD.\"");
+    MessageBox::warning_message(this, message);
 }
 
 /**
@@ -3263,29 +3493,27 @@ void MainWindow::on_actionCopyright_Notice_triggered()
  * @param pCycle - output pointer to the next cycle when decode is ready
  * @return true if decode is ready for this submode, false otherwise
  */
-bool
-MainWindow::isDecodeReady(int    const submode,
-                          qint32 const k,
-                          qint32 const k0,
-                          qint32     * pCurrentDecodeStart,
-                          qint32     * pNextDecodeStart,
-                          qint32     * pStart,
-                          qint32     * pSz,
-                          qint32     * pCycle)
+bool MainWindow::isDecodeReady(int const submode,
+                               qint32 const k,
+                               qint32 const k0,
+                               qint32* pCurrentDecodeStart,
+                               qint32* pNextDecodeStart,
+                               qint32* pStart,
+                               qint32* pSz,
+                               qint32* pCycle)
 {
-    if (pCurrentDecodeStart == nullptr ||
-        pNextDecodeStart    == nullptr)
-    {
+    if (pCurrentDecodeStart == nullptr || pNextDecodeStart == nullptr) {
         return false;
     }
 
-    qint32 const cycleFrames  = JS8::Submode::samplesPerPeriod(submode);
+    qint32 const cycleFrames = JS8::Submode::samplesPerPeriod(submode);
     qint32 const framesNeeded = JS8::Submode::samplesNeeded(submode);
     qint32 const currentCycle = JS8::Submode::computeCycleForDecode(submode, k);
-    qint32 const delta        = qAbs(k - k0);
+    qint32 const delta = qAbs(k - k0);
 
-    if(delta > cycleFrames){
-        qCDebug(decoder_js8) << "-->" << JS8::Submode::name(submode) << "buffer advance delta" << delta;
+    if (delta > cycleFrames) {
+        qCDebug(decoder_js8) << "-->" << JS8::Submode::name(submode) << "buffer advance delta"
+                             << delta;
     }
 
     // say, current decode start is 360000 and the next is 540000 (right before we loop)
@@ -3308,59 +3536,57 @@ MainWindow::isDecodeReady(int    const submode,
     // k < max(0, 360000-350000+150000) false
 
     // are we in the space between the end of the last decode and the start of the next decode?
-    bool const deadAir = (k < *pCurrentDecodeStart &&
-                          k < qMax(0, *pCurrentDecodeStart-cycleFrames+framesNeeded));
+    bool const deadAir = (k < *pCurrentDecodeStart
+                          && k < qMax(0, *pCurrentDecodeStart - cycleFrames + framesNeeded));
 
     // on buffer loop or init, prepare proper next decode start
-    if(
-        (deadAir)                    ||
-        (k < k0)                     ||
-        (delta > cycleFrames)        ||
-        (*pCurrentDecodeStart == -1) ||
-        (*pNextDecodeStart    == -1)
-    ){
+    if ((deadAir) || (k < k0) || (delta > cycleFrames) || (*pCurrentDecodeStart == -1)
+        || (*pNextDecodeStart == -1)) {
         *pCurrentDecodeStart = currentCycle * cycleFrames;
-        *pNextDecodeStart    = *pCurrentDecodeStart + cycleFrames;
+        *pNextDecodeStart = *pCurrentDecodeStart + cycleFrames;
     }
 
     bool const ready = *pCurrentDecodeStart + framesNeeded <= k;
 
-    if(ready){
-        qCDebug(decoder_js8) << "-->" << JS8::Submode::name(submode) << "from" << *pCurrentDecodeStart << "to" << *pCurrentDecodeStart+framesNeeded << "k" << k << "k0" << k0;
+    if (ready) {
+        qCDebug(decoder_js8) << "-->" << JS8::Submode::name(submode) << "from"
+                             << *pCurrentDecodeStart << "to" << *pCurrentDecodeStart + framesNeeded
+                             << "k" << k << "k0" << k0;
 
-        if(pCycle) *pCycle = currentCycle;
-        if(pStart) *pStart = *pCurrentDecodeStart;
-        if(pSz)    *pSz    = qMax(framesNeeded, k-(*pCurrentDecodeStart));
+        if (pCycle)
+            *pCycle = currentCycle;
+        if (pStart)
+            *pStart = *pCurrentDecodeStart;
+        if (pSz)
+            *pSz = qMax(framesNeeded, k - (*pCurrentDecodeStart));
 
         *pCurrentDecodeStart = *pNextDecodeStart;
-        *pNextDecodeStart    = *pCurrentDecodeStart + cycleFrames;
+        *pNextDecodeStart = *pCurrentDecodeStart + cycleFrames;
     }
 
     return ready;
 }
-
 
 /**
  * @brief MainWindow::decode
  *        try decoding
  * @return true if the decoder was activated, false otherwise
  */
-bool MainWindow::decode(qint32 k){
-    static int k0 = 9999999;
+bool MainWindow::decode(qint32 k)
+{
+    static int k0 = 9'999'999;
     int kZero = k0;
     k0 = k;
     qCDebug(decoder_js8) << "decoder checking if ready..."
-                         << "k" << k << "k0" << kZero
-                         << "busy?" << m_decoderBusy
-                         << "lock exists?"
-                         << ( QFile{m_config.temp_dir ().absoluteFilePath (".lock")}.exists());
+                         << "k" << k << "k0" << kZero << "busy?" << m_decoderBusy << "lock exists?"
+                         << (QFile { m_config.temp_dir().absoluteFilePath(".lock") }.exists());
 
-    if(k == kZero){
+    if (k == kZero) {
         qCDebug(decoder_js8) << "--> decoder stream has not advanced";
         return false;
     }
 
-    if(!m_monitoring){
+    if (!m_monitoring) {
         qCDebug(decoder_js8) << "--> decoder stream is not active";
         return false;
     }
@@ -3369,13 +3595,15 @@ bool MainWindow::decode(qint32 k){
 
 #if JS8_USE_EXPERIMENTAL_DECODE_TIMING
     ready = decodeEnqueueReady(k, kZero);
-    if(ready || !m_decoderQueue.isEmpty()){
-        qCDebug(decoder_js8) << "--> decoder is ready to be run with" << m_decoderQueue.count() << "decode periods";
+    if (ready || !m_decoderQueue.isEmpty()) {
+        qCDebug(decoder_js8) << "--> decoder is ready to be run with" << m_decoderQueue.count()
+                             << "decode periods";
     }
 #else
     ready = decodeEnqueueReadyExperiment(k, kZero);
-    if(ready || !m_decoderQueue.isEmpty()){
-        qCDebug(decoder_js8) << "--> decoder is ready to be run with" << m_decoderQueue.count() << "decode periods";
+    if (ready || !m_decoderQueue.isEmpty()) {
+        qCDebug(decoder_js8) << "--> decoder is ready to be run with" << m_decoderQueue.count()
+                             << "decode periods";
     }
 #endif
 
@@ -3384,7 +3612,7 @@ bool MainWindow::decode(qint32 k){
     //
 
     // pause decoder if we are currently transmitting
-    if(m_transmitting){
+    if (m_transmitting) {
         // We used to use isMessageQueuedForTransmit, and some form of checking for queued messages
         // but, that just caused problems with missing decodes, so we only pause if we are actually
         // actively transmitting.
@@ -3392,13 +3620,14 @@ bool MainWindow::decode(qint32 k){
         return false;
     }
 
-    if(m_decoderBusyStartTime.isValid() && m_decoderBusyStartTime.msecsTo(QDateTime::currentDateTimeUtc()) < 1000){
+    if (m_decoderBusyStartTime.isValid()
+        && m_decoderBusyStartTime.msecsTo(QDateTime::currentDateTimeUtc()) < 1000) {
         qCDebug(decoder_js8) << "--> decoder paused for 1000 ms after last decode start";
         return false;
     }
 
     int threshold = m_nSubMode == Varicode::JS8CallSlow ? 4000 : 2000; // two seconds
-    if(isInDecodeDelayThreshold(threshold)){
+    if (isInDecodeDelayThreshold(threshold)) {
         qCDebug(decoder_js8) << "--> decoder paused for" << threshold << "ms after transmit stop";
         return false;
     }
@@ -3406,7 +3635,7 @@ bool MainWindow::decode(qint32 k){
     // critical section (modifying dec_data)
 
     qint32 submode = -1;
-    if(!decodeProcessQueue(&submode)){
+    if (!decodeProcessQueue(&submode)) {
         return false;
     }
 
@@ -3423,7 +3652,8 @@ bool MainWindow::decode(qint32 k){
  * @param k0 - the previous frame count
  * @return true if decoder ranges were queued, false otherwise
  */
-bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
+bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0)
+{
     // compute the next decode for each submode
     // enqueue those decodes that are "ready"
     // on an interval, issue a decode
@@ -3459,31 +3689,66 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
     static qint32 currentDecodeStartA = -1;
     static qint32 nextDecodeStartA = -1;
     qCDebug(decoder_js8) << "? NORMAL   " << currentDecodeStartA << nextDecodeStartA;
-    couldDecodeA = isDecodeReady(Varicode::JS8CallNormal, k, k0, &currentDecodeStartA, &nextDecodeStartA, &startA, &szA, &cycleA);
+    couldDecodeA = isDecodeReady(Varicode::JS8CallNormal,
+                                 k,
+                                 k0,
+                                 &currentDecodeStartA,
+                                 &nextDecodeStartA,
+                                 &startA,
+                                 &szA,
+                                 &cycleA);
 
     static qint32 currentDecodeStartB = -1;
     static qint32 nextDecodeStartB = -1;
     qCDebug(decoder_js8) << "? FAST     " << currentDecodeStartB << nextDecodeStartB;
-    couldDecodeB = isDecodeReady(Varicode::JS8CallFast, k, k0, &currentDecodeStartB, &nextDecodeStartB, &startB, &szB, &cycleB);
+    couldDecodeB = isDecodeReady(Varicode::JS8CallFast,
+                                 k,
+                                 k0,
+                                 &currentDecodeStartB,
+                                 &nextDecodeStartB,
+                                 &startB,
+                                 &szB,
+                                 &cycleB);
 
     static qint32 currentDecodeStartC = -1;
     static qint32 nextDecodeStartC = -1;
     qCDebug(decoder_js8) << "? TURBO    " << currentDecodeStartC << nextDecodeStartC;
-    couldDecodeC = isDecodeReady(Varicode::JS8CallTurbo, k, k0, &currentDecodeStartC, &nextDecodeStartC, &startC, &szC, &cycleC);
+    couldDecodeC = isDecodeReady(Varicode::JS8CallTurbo,
+                                 k,
+                                 k0,
+                                 &currentDecodeStartC,
+                                 &nextDecodeStartC,
+                                 &startC,
+                                 &szC,
+                                 &cycleC);
 
     static qint32 currentDecodeStartE = -1;
     static qint32 nextDecodeStartE = -1;
     qCDebug(decoder_js8) << "? SLOW     " << currentDecodeStartE << nextDecodeStartE;
-    couldDecodeE = isDecodeReady(Varicode::JS8CallSlow, k, k0, &currentDecodeStartE, &nextDecodeStartE, &startE, &szE, &cycleE);
+    couldDecodeE = isDecodeReady(Varicode::JS8CallSlow,
+                                 k,
+                                 k0,
+                                 &currentDecodeStartE,
+                                 &nextDecodeStartE,
+                                 &startE,
+                                 &szE,
+                                 &cycleE);
 
 #if JS8_ENABLE_JS8I
     static qint32 currentDecodeStartI = -1;
     static qint32 nextDecodeStartI = -1;
     qCDebug(decoder_js8) << "? ULTRA    " << currentDecodeStartI << nextDecodeStartI;
-    couldDecodeI = isDecodeReady(Varicode::JS8CallUltra, k, k0, &currentDecodeStartI, &nextDecodeStartI, &startI, &szI, &cycleI);
+    couldDecodeI = isDecodeReady(Varicode::JS8CallUltra,
+                                 k,
+                                 k0,
+                                 &currentDecodeStartI,
+                                 &nextDecodeStartI,
+                                 &startI,
+                                 &szI,
+                                 &cycleI);
 #endif
 
-    if(couldDecodeA){
+    if (couldDecodeA) {
         DecodeParams d;
         d.submode = Varicode::JS8CallNormal;
         d.start = startA;
@@ -3492,7 +3757,7 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
         decodes++;
     }
 
-    if(couldDecodeB){
+    if (couldDecodeB) {
         DecodeParams d;
         d.submode = Varicode::JS8CallFast;
         d.start = startB;
@@ -3501,7 +3766,7 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
         decodes++;
     }
 
-    if(couldDecodeC){
+    if (couldDecodeC) {
         DecodeParams d;
         d.submode = Varicode::JS8CallTurbo;
         d.start = startC;
@@ -3510,7 +3775,7 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
         decodes++;
     }
 
-    if(couldDecodeE){
+    if (couldDecodeE) {
         DecodeParams d;
         d.submode = Varicode::JS8CallSlow;
         d.start = startE;
@@ -3520,7 +3785,7 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
     }
 
 #if JS8_ENABLE_JS8I
-    if(couldDecodeI){
+    if (couldDecodeI) {
         DecodeParams d;
         d.submode = Varicode::JS8CallUltra;
         d.start = startI;
@@ -3544,7 +3809,8 @@ bool MainWindow::decodeEnqueueReady(qint32 k, qint32 k0){
  * @param k0 - the previous frame count
  * @return true if decoder ranges were queued, false otherwise
  */
-bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/){
+bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/)
+{
     // TODO: make this non-static field of MainWindow?
     // map of last decode positions for each submode
     // static QMap<qint32, qint32> m_lastDecodeStartMap;
@@ -3552,16 +3818,16 @@ bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/){
     // TODO: make this non-static field of MainWindow?
     // map of submodes to decode + optional alternate decode positions
     static QMap<qint32, QList<qint32>> submodes = {
-        {Varicode::JS8CallSlow,   {0}},
-        {Varicode::JS8CallNormal, {0}},
-        {Varicode::JS8CallFast,   {0}}, // NORMAL: 0, 10, 20    --- ALT: 15, 25
-        {Varicode::JS8CallTurbo,  {0}}, // NORMAL: 0, 6, 12, 18 --- ALT: 15, 21, 27
+        { Varicode::JS8CallSlow,   { 0 } },
+        { Varicode::JS8CallNormal, { 0 } },
+        { Varicode::JS8CallFast,   { 0 } }, // NORMAL: 0, 10, 20    --- ALT: 15, 25
+        { Varicode::JS8CallTurbo,  { 0 } }, // NORMAL: 0, 6, 12, 18 --- ALT: 15, 21, 27
 #if JS8_ENABLE_JS8I
-        {Varicode::JS8CallUltra,  {0}},
+        { Varicode::JS8CallUltra,  { 0 } },
 #endif
     };
 
-    static qint32 maxSamples       = JS8_RX_SAMPLE_SIZE;
+    static qint32 maxSamples = JS8_RX_SAMPLE_SIZE;
     static qint32 oneSecondSamples = JS8_RX_SAMPLE_RATE;
 
     int decodes = 0;
@@ -3572,52 +3838,58 @@ bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/){
     // do we need to process alternate positions?
     bool skipAlt = true;
 
-    foreach(auto submode, submodes.keys()){
+    foreach (auto submode, submodes.keys()) {
         // do we have a better way to check this?
         bool everySecond = m_wideGraph->shouldAutoSyncSubmode(submode);
 
         // skip if multi is disabled and this mode is not the current submode and we're not autosyncing this mode
-        if(!everySecond && !multi && submode != m_nSubMode){
+        if (!everySecond && !multi && submode != m_nSubMode) {
             continue;
         }
 
         // check all alternate decode positions
-        foreach(auto alt, submodes.value(submode)){
+        foreach (auto alt, submodes.value(submode)) {
             // skip alt decode positions if needed
-            if(skipAlt && alt != 0){
+            if (skipAlt && alt != 0) {
                 continue;
             }
 
             // skip alts if we are decoding every second
-            if(everySecond && alt != 0){
+            if (everySecond && alt != 0) {
                 continue;
             }
 
-            qint32 const cycle             = JS8::Submode::computeAltCycleForDecode(submode, k, alt*oneSecondSamples);
-            qint32 const cycleFrames       = JS8::Submode::samplesPerPeriod(submode);
-            qint32 const cycleFramesNeeded = JS8::Submode::samplesForSymbols(submode); //computeFramesNeededForDecode(submode) - oneSecondSamples;
-            qint32       cycleFramesReady  = k - (cycle * cycleFrames);
-            if(cycleFramesReady < 0){
+            qint32 const cycle
+                = JS8::Submode::computeAltCycleForDecode(submode, k, alt * oneSecondSamples);
+            qint32 const cycleFrames = JS8::Submode::samplesPerPeriod(submode);
+            qint32 const cycleFramesNeeded = JS8::Submode::samplesForSymbols(
+                submode); //computeFramesNeededForDecode(submode) - oneSecondSamples;
+            qint32 cycleFramesReady = k - (cycle * cycleFrames);
+            if (cycleFramesReady < 0) {
                 cycleFramesReady = k + (maxSamples - (cycle * cycleFrames));
             }
 
-            if(!m_lastDecodeStartMap.contains(submode)){
+            if (!m_lastDecodeStartMap.contains(submode)) {
                 m_lastDecodeStartMap[submode] = cycle * cycleFrames;
             }
 
             qint32 lastDecodeStart = m_lastDecodeStartMap[submode];
             qint32 incrementedBy = k - lastDecodeStart;
-            if(k < lastDecodeStart){
+            if (k < lastDecodeStart) {
                 incrementedBy = maxSamples - lastDecodeStart + k;
             }
-            qCDebug(decoder_js8) << JS8::Submode::name(submode) << "alt" << alt << "cycle" << cycle << "cycle frames" << cycleFrames << "cycle start" << cycle*cycleFrames << "cycle end" << (cycle+1)*cycleFrames << "k" << k << "frames ready" << cycleFramesReady << "incremeted by" << incrementedBy;
+            qCDebug(decoder_js8) << JS8::Submode::name(submode) << "alt" << alt << "cycle" << cycle
+                                 << "cycle frames" << cycleFrames << "cycle start"
+                                 << cycle * cycleFrames << "cycle end" << (cycle + 1) * cycleFrames
+                                 << "k" << k << "frames ready" << cycleFramesReady
+                                 << "incremeted by" << incrementedBy;
 
-            if(everySecond && incrementedBy >= oneSecondSamples){
+            if (everySecond && incrementedBy >= oneSecondSamples) {
                 DecodeParams d;
                 d.submode = submode;
                 d.sz = cycleFrames;
                 d.start = k - d.sz;
-                if(d.start < 0){
+                if (d.start < 0) {
                     d.start += maxSamples;
                 }
                 m_decoderQueue.append(d);
@@ -3625,15 +3897,19 @@ bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/){
 
                 // keep track of last decode position
                 m_lastDecodeStartMap[submode] = k;
-            }
-            else if(
-                (incrementedBy >= 1.5*oneSecondSamples && cycleFramesReady >= cycleFramesNeeded)                        || // within every 3/2 seconds for normal positions
-                (incrementedBy >= oneSecondSamples     && cycleFramesReady >= cycleFramesNeeded - 1.5*oneSecondSamples) || // within the last 3/2 seconds of a new cycle
-                (incrementedBy >= oneSecondSamples     && cycleFramesReady < 1.5*oneSecondSamples)                         // within the first 3/2 seconds of a new cycle
-            ){
+            } else if ((incrementedBy >= 1.5 * oneSecondSamples
+                        && cycleFramesReady >= cycleFramesNeeded)
+                       || // within every 3/2 seconds for normal positions
+                       (incrementedBy >= oneSecondSamples
+                        && cycleFramesReady >= cycleFramesNeeded - 1.5 * oneSecondSamples)
+                       || // within the last 3/2 seconds of a new cycle
+                       (incrementedBy >= oneSecondSamples
+                        && cycleFramesReady
+                            < 1.5 * oneSecondSamples) // within the first 3/2 seconds of a new cycle
+            ) {
                 DecodeParams d;
                 d.submode = submode;
-                d.start = cycle*cycleFrames;
+                d.start = cycle * cycleFrames;
                 d.sz = cycleFramesReady;
                 m_decoderQueue.append(d);
                 decodes++;
@@ -3654,16 +3930,19 @@ bool MainWindow::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/){
  * @param pSubmode - the lowest speed submode in this iteration
  * @return true if the decoder is ready to be run, false otherwise
  */
-bool MainWindow::decodeProcessQueue(qint32 *pSubmode){
+bool MainWindow::decodeProcessQueue(qint32* pSubmode)
+{
     // critical section
     QMutexLocker mutex(m_detector->getMutex());
 
-    if(m_decoderBusy){
+    if (m_decoderBusy) {
         int seconds = m_decoderBusyStartTime.secsTo(QDateTime::currentDateTimeUtc());
-        if(seconds > 60){
-            qCDebug(decoder_js8) << "--> decoder should be killed!" << QString("(%1 seconds)").arg(seconds);
-        } else if(seconds > 30){
-            qCDebug(decoder_js8) << "--> decoder is hanging!" << QString("(%1 seconds)").arg(seconds);
+        if (seconds > 60) {
+            qCDebug(decoder_js8) << "--> decoder should be killed!"
+                                 << QString("(%1 seconds)").arg(seconds);
+        } else if (seconds > 30) {
+            qCDebug(decoder_js8) << "--> decoder is hanging!"
+                                 << QString("(%1 seconds)").arg(seconds);
         } else {
             qCDebug(decoder_js8) << "--> decoder is busy!";
         }
@@ -3671,7 +3950,7 @@ bool MainWindow::decodeProcessQueue(qint32 *pSubmode){
         return false;
     }
 
-    if(m_decoderQueue.isEmpty()){
+    if (m_decoderQueue.isEmpty()) {
         qCDebug(decoder_js8) << "--> decoder has nothing to process!";
         return false;
     }
@@ -3680,32 +3959,33 @@ bool MainWindow::decodeProcessQueue(qint32 *pSubmode){
     int maxDecodes = 1;
 
     bool multi = ui->actionModeMultiDecoder->isChecked();
-    if(multi){
+    if (multi) {
         maxDecodes = JS8_ENABLE_JS8I ? 5 : 4;
     }
 
     int count = m_decoderQueue.count();
-    if(count > maxDecodes){
-        qCDebug(decoder_js8) << "--> decoder skipping at least 1 decode cycle" << "count" << count << "max" << maxDecodes;
+    if (count > maxDecodes) {
+        qCDebug(decoder_js8) << "--> decoder skipping at least 1 decode cycle" << "count" << count
+                             << "max" << maxDecodes;
     }
 
     // default to no submodes being decoded, then bitwise OR the modes together to decode them all at once
     dec_data.params.nsubmodes = 0;
 
-    while(!m_decoderQueue.isEmpty()){
+    while (!m_decoderQueue.isEmpty()) {
         auto params = m_decoderQueue.front();
         m_decoderQueue.removeFirst();
 
         // skip if we are not in multi mode and the submode doesn't equal the global submode
-        if(!multi && params.submode != m_nSubMode){
+        if (!multi && params.submode != m_nSubMode) {
             continue;
         }
 
-        if(submode == -1 || params.submode < submode){
+        if (submode == -1 || params.submode < submode) {
             submode = params.submode;
         }
 
-        switch(params.submode){
+        switch (params.submode) {
         case Varicode::JS8CallNormal:
             dec_data.params.kposA = params.start;
             dec_data.params.kszA = params.sz;
@@ -3736,33 +4016,37 @@ bool MainWindow::decodeProcessQueue(qint32 *pSubmode){
         }
     }
 
-    if(submode == -1){
+    if (submode == -1) {
         qCDebug(decoder_js8) << "--> decoder has no segments to decode!";
         return false;
     }
 
-    dec_data.params.syncStats = (m_wideGraph->shouldDisplayDecodeAttempts() || m_wideGraph->isAutoSyncEnabled());
-    dec_data.params.newdat    = 1;
+    dec_data.params.syncStats
+        = (m_wideGraph->shouldDisplayDecodeAttempts() || m_wideGraph->isAutoSyncEnabled());
+    dec_data.params.newdat = 1;
 
     auto const period_unsigned = JS8::Submode::period(submode);
     // Need to use a signed integer here,
-    auto const period_signed = (int) period_unsigned;
+    auto const period_signed = (int)period_unsigned;
     // as (2 - period_unsigned) results in an enourmeous number close to 2**32.
-    auto const t       = DriftingDateTime::currentDateTimeUtc().addSecs(2 - period_signed);
-    auto const ihr    = t.toString("hh").toInt();
-    auto const imin   = t.toString("mm").toInt();
-    auto const isec   = t.toString("ss").toInt();
+    auto const t = DriftingDateTime::currentDateTimeUtc().addSecs(2 - period_signed);
+    auto const ihr = t.toString("hh").toInt();
+    auto const imin = t.toString("mm").toInt();
+    auto const isec = t.toString("ss").toInt();
 
     dec_data.params.nutc = code_time(ihr, imin, isec - isec % period_unsigned);
     dec_data.params.nfqso = freq();
-    dec_data.params.nfa   = m_wideGraph->filterEnabled() ? m_wideGraph->filterMinimum() : 0;
-    dec_data.params.nfb   = m_wideGraph->filterEnabled() ? m_wideGraph->filterMaximum() : 5000;
+    dec_data.params.nfa = m_wideGraph->filterEnabled() ? m_wideGraph->filterMinimum() : 0;
+    dec_data.params.nfb = m_wideGraph->filterEnabled() ? m_wideGraph->filterMaximum() : 5000;
 
-    if (dec_data.params.nutc   <  m_nutc0) m_RxLog = 1;       //Date and Time to ALL.TXT
-    if (dec_data.params.newdat == 1)       m_nutc0 = dec_data.params.nutc;
+    if (dec_data.params.nutc < m_nutc0)
+        m_RxLog = 1; //Date and Time to ALL.TXT
+    if (dec_data.params.newdat == 1)
+        m_nutc0 = dec_data.params.nutc;
 
     // keep track of the minimum submode
-    if(pSubmode) *pSubmode = submode;
+    if (pSubmode)
+        *pSubmode = submode;
 
     return true;
 }
@@ -3774,30 +4058,32 @@ bool MainWindow::decodeProcessQueue(qint32 *pSubmode){
  */
 void MainWindow::decodeStart()
 {
-  // critical section
-  QMutexLocker mutex(m_detector->getMutex());
+    // critical section
+    QMutexLocker mutex(m_detector->getMutex());
 
-  if (m_decoderBusy)
-  {
-      qCDebug(decoder_js8) << "--> decoder cannot start...busy (busy flag)";
-      return;
-  }
+    if (m_decoderBusy) {
+        qCDebug(decoder_js8) << "--> decoder cannot start...busy (busy flag)";
+        return;
+    }
 
-  // Mark the decoder busy; decodeDone is responsible for marking
-  // the decode _not_ busy
+    // Mark the decoder busy; decodeDone is responsible for marking
+    // the decode _not_ busy
 
-  decodeBusy(true);
-  qCDebug(decoder_js8) << "--> decoder starting"
-                       << " --> kin:" << dec_data.params.kin
-                       << " --> newdat:" << dec_data.params.newdat
-                       << " --> nsubmodes:" << dec_data.params.nsubmodes
-                       << " --> A:" << dec_data.params.kposA << dec_data.params.kposA + dec_data.params.kszA << QString("(%1)").arg(dec_data.params.kszA)
-                       << " --> B:" << dec_data.params.kposB << dec_data.params.kposB + dec_data.params.kszB << QString("(%1)").arg(dec_data.params.kszB)
-                       << " --> C:" << dec_data.params.kposC << dec_data.params.kposC + dec_data.params.kszC << QString("(%1)").arg(dec_data.params.kszC)
-                       << " --> E:" << dec_data.params.kposE << dec_data.params.kposE + dec_data.params.kszE << QString("(%1)").arg(dec_data.params.kszE)
-                       << " --> I:" << dec_data.params.kposI << dec_data.params.kposI + dec_data.params.kszI << QString("(%1)").arg(dec_data.params.kszI);
+    decodeBusy(true);
+    qCDebug(decoder_js8)
+        << "--> decoder starting"
+        << " --> kin:" << dec_data.params.kin << " --> newdat:" << dec_data.params.newdat
+        << " --> nsubmodes:" << dec_data.params.nsubmodes << " --> A:" << dec_data.params.kposA
+        << dec_data.params.kposA + dec_data.params.kszA << QString("(%1)").arg(dec_data.params.kszA)
+        << " --> B:" << dec_data.params.kposB << dec_data.params.kposB + dec_data.params.kszB
+        << QString("(%1)").arg(dec_data.params.kszB) << " --> C:" << dec_data.params.kposC
+        << dec_data.params.kposC + dec_data.params.kszC << QString("(%1)").arg(dec_data.params.kszC)
+        << " --> E:" << dec_data.params.kposE << dec_data.params.kposE + dec_data.params.kszE
+        << QString("(%1)").arg(dec_data.params.kszE) << " --> I:" << dec_data.params.kposI
+        << dec_data.params.kposI + dec_data.params.kszI
+        << QString("(%1)").arg(dec_data.params.kszI);
 
-  m_decoder.decode();
+    m_decoder.decode();
 }
 
 /**
@@ -3805,45 +4091,44 @@ void MainWindow::decodeStart()
  *        mark the decoder as currently busy (to prevent overlapping decodes)
  * @param b - true if busy, false otherwise
  */
-void
-MainWindow::decodeBusy(bool b)                             //decodeBusy()
+void MainWindow::decodeBusy(bool b) //decodeBusy()
 {
-  m_decoderBusy = b;
+    m_decoderBusy = b;
 
-  if (m_decoderBusy)
-  {
-    tx_status_label.setText("Decoding");
+    if (m_decoderBusy) {
+        tx_status_label.setText("Decoding");
 
-    m_decoderBusyStartTime = QDateTime::currentDateTimeUtc(); //DriftingDateTime::currentDateTimeUtc();
-    m_decoderBusyFreq      = dialFrequency();
-    m_decoderBusyBand      = m_config.bands()->find (m_decoderBusyFreq);
-  }
+        m_decoderBusyStartTime
+            = QDateTime::currentDateTimeUtc(); //DriftingDateTime::currentDateTimeUtc();
+        m_decoderBusyFreq = dialFrequency();
+        m_decoderBusyBand = m_config.bands()->find(m_decoderBusyFreq);
+    }
 }
 
 /**
  * @brief MainWindow::decodeDone
  *        clean up after a decode is finished
  */
-void
-MainWindow::decodeDone()
+void MainWindow::decodeDone()
 {
-  // critical section
-  QMutexLocker mutex(m_detector->getMutex());
+    // critical section
+    QMutexLocker mutex(m_detector->getMutex());
 
-  dec_data.params.newdat = false;
-  m_RxLog                = 0;
+    dec_data.params.newdat = false;
+    m_RxLog = 0;
 
-  // cleanup old cached messages (messages > submode period old)
+    // cleanup old cached messages (messages > submode period old)
 
-  std::erase_if(m_messageDupeCache, [](auto const & it)
-  {
-    return it.second.secsTo(QDateTime::currentDateTimeUtc()) > JS8::Submode::period(it.first.submode);
-  });
+    std::erase_if(m_messageDupeCache, [](auto const& it) {
+        return it.second.secsTo(QDateTime::currentDateTimeUtc())
+            > JS8::Submode::period(it.first.submode);
+    });
 
-  decodeBusy(false);
+    decodeBusy(false);
 }
 
-QDateTime MainWindow::nextTransmitCycle(){
+QDateTime MainWindow::nextTransmitCycle()
+{
     auto timestamp = DriftingDateTime::currentDateTimeUtc();
 
     // remove milliseconds
@@ -3852,100 +4137,91 @@ QDateTime MainWindow::nextTransmitCycle(){
     timestamp.setTime(t);
 
     // round to 15 second increment
-    int secondsSinceEpoch = (timestamp.toMSecsSinceEpoch()/1000);
+    int secondsSinceEpoch = (timestamp.toMSecsSinceEpoch() / 1000);
     int delta = roundUp(secondsSinceEpoch, m_TRperiod) + 1 - secondsSinceEpoch;
     timestamp = timestamp.addSecs(delta);
 
     return timestamp;
 }
 
-QList<int> generateOffsets(int minOffset, int maxOffset){
+QList<int> generateOffsets(int minOffset, int maxOffset)
+{
     QList<int> offsets;
 
     // TODO: these offsets aren't ordered correctly...
 
-    for(int i = minOffset; i <= maxOffset; i++){
+    for (int i = minOffset; i <= maxOffset; i++) {
         offsets.append(i);
     }
     return offsets;
 }
 
-void
-MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
+void MainWindow::processDecodeEvent(JS8::Event::Variant const& event)
 {
-  static QList<qint32> driftQueue;
-  static qint32        syncStart = -1;
+    static QList<qint32> driftQueue;
+    static qint32 syncStart = -1;
 
-  std::visit([this](auto && e)
-  {
-      using T = std::decay_t<decltype(e)>;
+    std::visit(
+        [this](auto&& e) {
+            using T = std::decay_t<decltype(e)>;
 
-      if constexpr (std::is_same_v<T, JS8::Event::DecodeStarted>)
-      {
-        if (m_wideGraph->shouldDisplayDecodeAttempts())
-        {
-          m_wideGraph->drawHorizontalLine(QColor(Qt::yellow), 0, 5);
-        }
-      }
-      else if constexpr (std::is_same_v<T, JS8::Event::SyncStart>)
-      {
-        syncStart = e.position;
-      }
-      else if constexpr (std::is_same_v<T, JS8::Event::SyncState>)
-      {
-        if (m_wideGraph->shouldDisplayDecodeAttempts())
-        {
-          auto const drawDecodeLine = [this,
-                                       freq = static_cast<int>(e.frequency),
-                                       mode = e.mode](QColor const & color)
-          {
-            m_wideGraph->drawDecodeLine(color,
-                                        freq,
-                                        freq + JS8::Submode::bandwidth(mode));
-          };
+            if constexpr (std::is_same_v<T, JS8::Event::DecodeStarted>) {
+                if (m_wideGraph->shouldDisplayDecodeAttempts()) {
+                    m_wideGraph->drawHorizontalLine(QColor(Qt::yellow), 0, 5);
+                }
+            } else if constexpr (std::is_same_v<T, JS8::Event::SyncStart>) {
+                syncStart = e.position;
+            } else if constexpr (std::is_same_v<T, JS8::Event::SyncState>) {
+                if (m_wideGraph->shouldDisplayDecodeAttempts()) {
+                    auto const drawDecodeLine = [this,
+                                                 freq = static_cast<int>(e.frequency),
+                                                 mode = e.mode](QColor const& color) {
+                        m_wideGraph->drawDecodeLine(color,
+                                                    freq,
+                                                    freq + JS8::Submode::bandwidth(mode));
+                    };
 
-          if (e.type == JS8::Event::SyncState::Type::DECODED)
-          {
-            drawDecodeLine(Qt::red);
-          }
-          else if (auto const xdtMs   = static_cast<int>(e.dt * 1000);
-                     std::abs(xdtMs) <= 2000)
-          {
-            if      (e.sync.candidate <  10) drawDecodeLine(Qt::darkCyan);
-            else if (e.sync.candidate <= 15) drawDecodeLine(Qt::cyan);
-            else if (e.sync.candidate <= 21) drawDecodeLine(Qt::white);
-          }
-        }
-      }
-      else if constexpr (std::is_same_v<T, JS8::Event::DecodeFinished>)
-      {
-        qCDebug(decoder_js8) << "decode duration" << m_decoderBusyStartTime.msecsTo(QDateTime::currentDateTimeUtc()) << "ms";
+                    if (e.type == JS8::Event::SyncState::Type::DECODED) {
+                        drawDecodeLine(Qt::red);
+                    } else if (auto const xdtMs = static_cast<int>(e.dt * 1000);
+                               std::abs(xdtMs) <= 2000) {
+                        if (e.sync.candidate < 10)
+                            drawDecodeLine(Qt::darkCyan);
+                        else if (e.sync.candidate <= 15)
+                            drawDecodeLine(Qt::cyan);
+                        else if (e.sync.candidate <= 21)
+                            drawDecodeLine(Qt::white);
+                    }
+                }
+            } else if constexpr (std::is_same_v<T, JS8::Event::DecodeFinished>) {
+                qCDebug(decoder_js8)
+                    << "decode duration"
+                    << m_decoderBusyStartTime.msecsTo(QDateTime::currentDateTimeUtc()) << "ms";
 
-        // TODO: move this into a function
-        if(!driftQueue.isEmpty())
-        {
-          if(m_driftMsMMA_N == 0)
-          {
-              m_driftMsMMA_N = 1;
-              m_driftMsMMA = DriftingDateTime::drift();
-          }
+                // TODO: move this into a function
+                if (!driftQueue.isEmpty()) {
+                    if (m_driftMsMMA_N == 0) {
+                        m_driftMsMMA_N = 1;
+                        m_driftMsMMA = DriftingDateTime::drift();
+                    }
 
-          // let the widegraph know for timing control
-          m_wideGraph->notifyDriftedSignalsDecoded(driftQueue.count());
+                    // let the widegraph know for timing control
+                    m_wideGraph->notifyDriftedSignalsDecoded(driftQueue.count());
 
-          while(!driftQueue.isEmpty())
-          {
-            qint32 newDrift = driftQueue.first();
-            driftQueue.removeFirst();
+                    while (!driftQueue.isEmpty()) {
+                        qint32 newDrift = driftQueue.first();
+                        driftQueue.removeFirst();
 
-            m_driftMsMMA = (((m_driftMsMMA_N-1) * m_driftMsMMA) + newDrift) / m_driftMsMMA_N;
-            if(m_driftMsMMA_N < 60) m_driftMsMMA_N++; // cap it to 60 observations
-          }
+                        m_driftMsMMA
+                            = (((m_driftMsMMA_N - 1) * m_driftMsMMA) + newDrift) / m_driftMsMMA_N;
+                        if (m_driftMsMMA_N < 60)
+                            m_driftMsMMA_N++; // cap it to 60 observations
+                    }
 
-          // XXX The following lines do nothing; it's a completely dead store. For
-          //     now, just #ifdefing them out, but they were in the 2.2.1-devel code,
-          //     and presumably they were important; need to see what the intent was
-          //     here.
+                // XXX The following lines do nothing; it's a completely dead store. For
+                //     now, just #ifdefing them out, but they were in the 2.2.1-devel code,
+                //     and presumably they were important; need to see what the intent was
+                //     here.
 #if 0
           qint32 driftLimitMs = JS8::Submode::period(Varicode::JS8CallNormal) * 1000;
           qint32 newDriftMs   = m_driftMsMMA;
@@ -3956,40 +4232,34 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
           }
 #endif
 
-          setDrift(m_driftMsMMA);
-          //writeNoticeTextToUI(QDateTime::currentDateTimeUtc(), QString("Automatic Drift: %1").arg(driftAvg));
-        }
+                    setDrift(m_driftMsMMA);
+                    //writeNoticeTextToUI(QDateTime::currentDateTimeUtc(), QString("Automatic Drift: %1").arg(driftAvg));
+                }
 
-        m_bDecoded = e.decoded > 0;
-        decodeDone();
-      }
-      else if constexpr (std::is_same_v<T, JS8::Event::Decoded>)
-      {
-        // A frame is valid if we haven't seen the same frame in the past 1/2
-        // decode period.
-        //
-        // Note: Success here depends on decodes ordered such that frequencies
-        //       near `dec_data.params.nfqso` arrive here first, so it's key to
-        //       process the decode candidates in an ordered manner, likely by
-        //       sorting the raw take from the initial selection pass.
+                m_bDecoded = e.decoded > 0;
+                decodeDone();
+            } else if constexpr (std::is_same_v<T, JS8::Event::Decoded>) {
+                // A frame is valid if we haven't seen the same frame in the past 1/2
+                // decode period.
+                //
+                // Note: Success here depends on decodes ordered such that frequencies
+                //       near `dec_data.params.nfqso` arrive here first, so it's key to
+                //       process the decode candidates in an ordered manner, likely by
+                //       sorting the raw take from the initial selection pass.
 
-        DecodedText   decodedtext(e);
-        FrameCacheKey dedupeKey(decodedtext.submode(),
-                                decodedtext.frame());
+                DecodedText decodedtext(e);
+                FrameCacheKey dedupeKey(decodedtext.submode(), decodedtext.frame());
 
-        if (auto const it  = m_messageDupeCache.find(dedupeKey);
-                       it != m_messageDupeCache.end())
-        {
-            if (it->second.secsTo(QDateTime::currentDateTimeUtc()) < 0.5 * JS8::Submode::period(decodedtext.submode()))
-            {
-                qCDebug(mainwindow_js8) << "duplicate frame at"
-                         << it->second
-                         << "using key"
-                         << QString("%1:%2").arg(dedupeKey.submode)
-                                            .arg(dedupeKey.frame);
-                return;
-            }
-        }
+                if (auto const it = m_messageDupeCache.find(dedupeKey);
+                    it != m_messageDupeCache.end()) {
+                    if (it->second.secsTo(QDateTime::currentDateTimeUtc())
+                        < 0.5 * JS8::Submode::period(decodedtext.submode())) {
+                        qCDebug(mainwindow_js8)
+                            << "duplicate frame at" << it->second << "using key"
+                            << QString("%1:%2").arg(dedupeKey.submode).arg(dedupeKey.frame);
+                        return;
+                    }
+                }
 #if 0
         // frames are valid if they meet our minimum rx threshold for the submode
         bool bValidFrame = decodedtext.snr() >= JS8::Submode::rxSNRThreshold(decodedtext.submode());
@@ -4001,352 +4271,390 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
             return;
         }
 #else
-        qCDebug(mainwindow_js8) << JS8::Submode::name(decodedtext.submode()) << "decoded text" << decodedtext.message();
+                qCDebug(mainwindow_js8) << JS8::Submode::name(decodedtext.submode())
+                                        << "decoded text" << decodedtext.message();
 #endif
-        // TODO: move this into a function
-        // compute time drift for non-dupe messages
-        if(m_wideGraph->shouldAutoSyncSubmode(decodedtext.submode())){
-            int m = decodedtext.submode();
-            float xdt = decodedtext.dt();
+                // TODO: move this into a function
+                // compute time drift for non-dupe messages
+                if (m_wideGraph->shouldAutoSyncSubmode(decodedtext.submode())) {
+                    int m = decodedtext.submode();
+                    float xdt = decodedtext.dt();
 
-            // if we're here at this point, we _should_ be operating a decode every second
-            //
-            // so we need to figure out where:
-            //
-            //   1) this current decode started
-            //   2) when that cycle _should_ have started
-            //   3) compute the delta
-            //   4) apply the drift
+                    // if we're here at this point, we _should_ be operating a decode every second
+                    //
+                    // so we need to figure out where:
+                    //
+                    //   1) this current decode started
+                    //   2) when that cycle _should_ have started
+                    //   3) compute the delta
+                    //   4) apply the drift
 
-            qint32 periodMs = 1000 * JS8::Submode::period(m);
+                    qint32 periodMs = 1000 * JS8::Submode::period(m);
 
-            //writeNoticeTextToUI(now, QString("Decode at %1 (kin: %2, lastDecoded: %3)").arg(syncStart).arg(dec_data.params.kin).arg(m_lastDecodeStartMap.value(m)));
+                    //writeNoticeTextToUI(now, QString("Decode at %1 (kin: %2, lastDecoded: %3)").arg(syncStart).arg(dec_data.params.kin).arg(m_lastDecodeStartMap.value(m)));
 
-            float expectedStartDelay = JS8::Submode::startDelayMS(m) / 1000.0;
+                    float expectedStartDelay = JS8::Submode::startDelayMS(m) / 1000.0;
 
-            float decodedSignalTime = (float)syncStart/(float)JS8_RX_SAMPLE_RATE;
+                    float decodedSignalTime = (float)syncStart / (float)JS8_RX_SAMPLE_RATE;
 
-            //writeNoticeTextToUI(now, QString("--> started at %1 seconds into the start of my drifted minute").arg(decodedSignalTime));
+                    //writeNoticeTextToUI(now, QString("--> started at %1 seconds into the start of my drifted minute").arg(decodedSignalTime));
 
-            //writeNoticeTextToUI(now, QString("--> we add a time delta of %1 seconds into the start of the cycle").arg(xdt));
+                    //writeNoticeTextToUI(now, QString("--> we add a time delta of %1 seconds into the start of the cycle").arg(xdt));
 
-            // adjust for expected start delay
-            decodedSignalTime -= expectedStartDelay;
+                    // adjust for expected start delay
+                    decodedSignalTime -= expectedStartDelay;
 
-            // adjust for time delta
-            decodedSignalTime += xdt;
+                    // adjust for time delta
+                    decodedSignalTime += xdt;
 
-            // ensure that we are within a 60 second minute
-            if(decodedSignalTime < 0){
-                decodedSignalTime += 60.0f;
-            } else if(decodedSignalTime > 60){
-                decodedSignalTime -= 60.0f;
-            }
+                    // ensure that we are within a 60 second minute
+                    if (decodedSignalTime < 0) {
+                        decodedSignalTime += 60.0f;
+                    } else if (decodedSignalTime > 60) {
+                        decodedSignalTime -= 60.0f;
+                    }
 
-            //writeNoticeTextToUI(now, QString("--> so signal adjusted started at %1 seconds into the start of my drifted minute").arg(decodedSignalTime));
+                    //writeNoticeTextToUI(now, QString("--> so signal adjusted started at %1 seconds into the start of my drifted minute").arg(decodedSignalTime));
 
-            qint32 decodedSignalTimeMs = 1000 * decodedSignalTime;
-            qint32 cycleStartTimeMs = (decodedSignalTimeMs / periodMs) * periodMs;
-            qint32 driftMs = cycleStartTimeMs - decodedSignalTimeMs;
+                    qint32 decodedSignalTimeMs = 1000 * decodedSignalTime;
+                    qint32 cycleStartTimeMs = (decodedSignalTimeMs / periodMs) * periodMs;
+                    qint32 driftMs = cycleStartTimeMs - decodedSignalTimeMs;
 
-            //writeNoticeTextToUI(now, QString("--> which is a drift adjustment of %1 milliseconds").arg(driftMs));
+                    //writeNoticeTextToUI(now, QString("--> which is a drift adjustment of %1 milliseconds").arg(driftMs));
 
-            // if we have a large negative offset (say -14000), use the positive inverse of +1000
-            if(driftMs + periodMs < qAbs(driftMs)){
-                driftMs += periodMs;
-            }
-            // if we have a large positive offset (say 14000, use the negative inverse of -1000)
-            else if(qAbs(driftMs - periodMs) < driftMs){
-                driftMs -= periodMs;
-            }
+                    // if we have a large negative offset (say -14000), use the positive inverse of +1000
+                    if (driftMs + periodMs < qAbs(driftMs)) {
+                        driftMs += periodMs;
+                    }
+                    // if we have a large positive offset (say 14000, use the negative inverse of -1000)
+                    else if (qAbs(driftMs - periodMs) < driftMs) {
+                        driftMs -= periodMs;
+                    }
 
-            //writeNoticeTextToUI(now, QString("--> which is a corrected drift adjustment of %1 milliseconds").arg(driftMs));
+                    //writeNoticeTextToUI(now, QString("--> which is a corrected drift adjustment of %1 milliseconds").arg(driftMs));
 
-            qint32 newDrift = DriftingDateTime::drift() + driftMs;
-            if(newDrift < 0){
-                newDrift %= -periodMs;
-            } else {
-                newDrift %= periodMs;
-            }
+                    qint32 newDrift = DriftingDateTime::drift() + driftMs;
+                    if (newDrift < 0) {
+                        newDrift %= -periodMs;
+                    } else {
+                        newDrift %= periodMs;
+                    }
 
-            //writeNoticeTextToUI(now, QString("--> which is rounded to a total drift of %1 milliseconds for this period").arg(newDrift));
+                    //writeNoticeTextToUI(now, QString("--> which is rounded to a total drift of %1 milliseconds for this period").arg(newDrift));
 
-            driftQueue.append(newDrift);
-        }
-
-        // if the frame is valid, cache it!
-        m_messageDupeCache.insert_or_assign(dedupeKey, QDateTime::currentDateTimeUtc());
-
-        // log valid frames to ALL.txt (and correct their timestamp format)
-        auto freq = dialFrequency();
-
-        // if we changed frequencies, use the old frequency that we started the decode with
-        if(m_decoderBusyFreq != freq){
-            freq = m_decoderBusyFreq;
-        }
-
-        auto date = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
-        writeAllTxt(date + " " + decodedtext.string() + " " + decodedtext.message());
-
-        ActivityDetail d = {};
-        CallDetail cd = {};
-        CommandDetail cmd = {};
-        CallDetail td = {};
-
-        // Parse General Activity
-      #if 1
-        bool shouldParseGeneralActivity = true;
-        if(shouldParseGeneralActivity && !decodedtext.messageWords().isEmpty()){
-          int offset = decodedtext.frequencyOffset();
-
-          if(!m_bandActivity.contains(offset)){
-              int const range = JS8::Submode::rxThreshold(decodedtext.submode());
-
-              QList<int> offsets = generateOffsets(offset-range, offset+range);
-
-              foreach(int prevOffset, offsets){
-                  if(!m_bandActivity.contains(prevOffset)){ continue; }
-                  m_bandActivity[offset] = m_bandActivity[prevOffset];
-                  m_bandActivity.remove(prevOffset);
-                  break;
-              }
-          }
-
-          //ActivityDetail d = {};
-          d.isLowConfidence = decodedtext.isLowConfidence();
-          d.isCompound = decodedtext.isCompound();
-          d.isDirected = decodedtext.isDirectedMessage();
-          d.bits = decodedtext.bits();
-          d.dial = freq;
-          d.offset = offset;
-          d.text = decodedtext.message();
-          d.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-          d.snr = decodedtext.snr();
-          d.isBuffered = false;
-          d.submode = decodedtext.submode();
-          d.tdrift = m_wideGraph->shouldAutoSyncSubmode(d.submode) ? DriftingDateTime::drift()/1000.0 : decodedtext.dt();
-
-          // if we have any "first" frame, and a buffer is already established, clear it...
-          int prevBufferOffset = -1;
-          if(((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst) && hasExistingMessageBuffer(decodedtext.submode(), d.offset, true, &prevBufferOffset)){
-              qCDebug(mainwindow_js8) << "first message encountered, clearing existing buffer" << prevBufferOffset;
-              m_messageBuffer.remove(d.offset);
-          }
-
-          // if we have a data frame, and a message buffer has been established, buffer it...
-          if(hasExistingMessageBuffer(decodedtext.submode(), d.offset, true, &prevBufferOffset) && !decodedtext.isCompound() && !decodedtext.isDirectedMessage()){
-              qCDebug(mainwindow_js8) << "buffering data" << d.dial << d.offset << d.text;
-              d.isBuffered = true;
-              m_messageBuffer[d.offset].msgs.append(d);
-              // TODO: incremental display if it's "to" me.
-          }
-
-          m_rxActivityQueue.append(d);
-          m_bandActivity[offset].append(d);
-          while(m_bandActivity[offset].count() > 10){
-              m_bandActivity[offset].removeFirst();
-          }
-        }
-      #endif
-
-        // Process compound callsign commands (put them in cache)"
-      #if 1
-        qCDebug(mainwindow_js8) << "decoded" << decodedtext.frameType() << decodedtext.isCompound() << decodedtext.isDirectedMessage() << decodedtext.isHeartbeat();
-        bool shouldProcessCompound = true;
-        if(shouldProcessCompound && decodedtext.isCompound() && !decodedtext.isDirectedMessage()){
-          cd.call = decodedtext.compoundCall();
-          cd.grid = decodedtext.extra(); // compound calls via pings may contain grid...
-          cd.snr = decodedtext.snr();
-          cd.dial = freq;
-          cd.offset = decodedtext.frequencyOffset();
-          cd.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-          cd.bits = decodedtext.bits();
-          cd.submode = decodedtext.submode();
-          cd.tdrift = m_wideGraph->shouldAutoSyncSubmode(d.submode) ? DriftingDateTime::drift()/1000.0 : decodedtext.dt();
-
-          // Only respond to HEARTBEATS...remember that CQ messages are "Alt" pings
-          if(decodedtext.isHeartbeat()){
-              if(decodedtext.isAlt()){
-                  // this is a cq with a standard or compound call, ala "KN4CRD/P: @ALLCALL CQ CQ CQ"
-                  cd.cqTimestamp = DriftingDateTime::currentDateTimeUtc();
-
-                  // convert CQ to a directed command and process...
-                  cmd.from = cd.call;
-                  cmd.to = "@ALLCALL";
-                  cmd.cmd = " CQ";
-                  cmd.snr = cd.snr;
-                  cmd.bits = cd.bits;
-                  cmd.grid = cd.grid;
-                  cmd.dial = cd.dial;
-                  cmd.offset = cd.offset;
-                  cmd.utcTimestamp = cd.utcTimestamp;
-                  cmd.tdrift = cd.tdrift;
-                  cmd.submode = cd.submode;
-                  cmd.text = decodedtext.message();
-
-                  // TODO: check bits so we only auto respond to "finished" cqs
-                  m_rxCommandQueue.append(cmd);
-
-                  // since this is no longer processed here we omit logging it here.
-                  // if we change this behavior, we'd change this back to logging here.
-                  // logCallActivity(cd, true);
-
-                  // notification for cq
-                  tryNotify("cq");
-
-              } else {
-                  // convert HEARTBEAT to a directed command and process...
-                  cmd.from = cd.call;
-                  cmd.to = "@HB";
-                  cmd.cmd = " HEARTBEAT";
-                  cmd.snr = cd.snr;
-                  cmd.bits = cd.bits;
-                  cmd.grid = cd.grid;
-                  cmd.dial = cd.dial;
-                  cmd.offset = cd.offset;
-                  cmd.utcTimestamp = cd.utcTimestamp;
-                  cmd.tdrift = cd.tdrift;
-                  cmd.submode = cd.submode;
-
-                  // TODO: check bits so we only auto respond to "finished" heartbeats
-                  m_rxCommandQueue.append(cmd);
-
-                  // notification for hb
-                  tryNotify("hb");
-              }
-
-          } else {
-              qCDebug(mainwindow_js8) << "buffering compound call" << cd.offset << cd.call << cd.bits;
-
-              hasExistingMessageBuffer(cd.submode, cd.offset, true, nullptr);
-              m_messageBuffer[cd.offset].compound.append(cd);
-          }
-        }
-      #endif
-
-        // Parse commands
-        // KN4CRD K1JT ?
-      #if 1
-        bool shouldProcessDirected = true;
-        if(shouldProcessDirected && decodedtext.isDirectedMessage()){
-            auto parts = decodedtext.directedMessage();
-
-            cmd.from = parts.at(0);
-            cmd.to = parts.at(1);
-            cmd.cmd = parts.at(2);
-            cmd.dial = freq;
-            cmd.offset = decodedtext.frequencyOffset();
-            cmd.snr = decodedtext.snr();
-            cmd.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
-            cmd.bits = decodedtext.bits();
-            cmd.extra = parts.length() > 2 ? parts.mid(3).join(" ") : "";
-            cmd.submode = decodedtext.submode();
-            cmd.tdrift = m_wideGraph->shouldAutoSyncSubmode(cmd.submode) ? DriftingDateTime::drift()/1000.0 : decodedtext.dt();
-
-            // if the command is a buffered command and its not the last frame OR we have from or to in a separate message (compound call)
-            if((Varicode::isCommandBuffered(cmd.cmd) && (cmd.bits & Varicode::JS8CallLast) != Varicode::JS8CallLast) || cmd.from == "<....>" || cmd.to == "<....>"){
-              qCDebug(mainwindow_js8) << "buffering cmd" << cmd.dial << cmd.offset << cmd.cmd << cmd.from << cmd.to;
-
-              // log complete buffered callsigns immediately
-              if(cmd.from != "<....>" && cmd.to != "<....>"){
-                  CallDetail cmdcd = {};
-                  cmdcd.call = cmd.from;
-                  cmdcd.bits = cmd.bits;
-                  cmdcd.snr = cmd.snr;
-                  cmdcd.dial = cmd.dial;
-                  cmdcd.offset = cmd.offset;
-                  cmdcd.utcTimestamp = cmd.utcTimestamp;
-                  cmdcd.ackTimestamp = cmd.to == m_config.my_callsign() ? cmd.utcTimestamp : QDateTime{};
-                  cmdcd.tdrift = cmd.tdrift;
-                  cmdcd.submode = cmd.submode;
-                  logCallActivity(cmdcd, false);
-                  logHeardGraph(cmd.from, cmd.to);
-              }
-
-              // merge any existing buffer to this frequency
-              hasExistingMessageBuffer(cmd.submode, cmd.offset, true, nullptr);
-
-              if(cmd.to == m_config.my_callsign()){
-                  d.shouldDisplay = true;
-              }
-
-              m_messageBuffer[cmd.offset].cmd = cmd;
-              m_messageBuffer[cmd.offset].msgs.clear();
-            } else {
-              m_rxCommandQueue.append(cmd);
-            }
-
-            // check to see if this is a station we've heard 3rd party
-            bool shouldCaptureThirdPartyCallsigns = false;
-            if(shouldCaptureThirdPartyCallsigns && Radio::base_callsign(cmd.to) != Radio::base_callsign(m_config.my_callsign())){
-                QString relayCall = QString("%1|%2").arg(Radio::base_callsign(cmd.from)).arg(Radio::base_callsign(cmd.to));
-                int snr = -100;
-                if(parts.length() == 4){
-                    snr = QString(parts.at(3)).toInt();
+                    driftQueue.append(newDrift);
                 }
 
-                //CallDetail td = {};
-                td.through = cmd.from;
-                td.call = cmd.to;
-                td.grid = "";
-                td.snr = snr;
-                td.dial = cmd.dial;
-                td.offset = cmd.offset;
-                td.utcTimestamp = cmd.utcTimestamp;
-                td.tdrift = cmd.tdrift;
-                td.submode = cmd.submode;
-                logCallActivity(td, true);
-                logHeardGraph(cmd.from, cmd.to);
+                // if the frame is valid, cache it!
+                m_messageDupeCache.insert_or_assign(dedupeKey, QDateTime::currentDateTimeUtc());
+
+                // log valid frames to ALL.txt (and correct their timestamp format)
+                auto freq = dialFrequency();
+
+                // if we changed frequencies, use the old frequency that we started the decode with
+                if (m_decoderBusyFreq != freq) {
+                    freq = m_decoderBusyFreq;
+                }
+
+                auto date = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
+                writeAllTxt(date + " " + decodedtext.string() + " " + decodedtext.message());
+
+                ActivityDetail d = {};
+                CallDetail cd = {};
+                CommandDetail cmd = {};
+                CallDetail td = {};
+
+            // Parse General Activity
+#if 1
+                bool shouldParseGeneralActivity = true;
+                if (shouldParseGeneralActivity && !decodedtext.messageWords().isEmpty()) {
+                    int offset = decodedtext.frequencyOffset();
+
+                    if (!m_bandActivity.contains(offset)) {
+                        int const range = JS8::Submode::rxThreshold(decodedtext.submode());
+
+                        QList<int> offsets = generateOffsets(offset - range, offset + range);
+
+                        foreach (int prevOffset, offsets) {
+                            if (!m_bandActivity.contains(prevOffset)) {
+                                continue;
+                            }
+                            m_bandActivity[offset] = m_bandActivity[prevOffset];
+                            m_bandActivity.remove(prevOffset);
+                            break;
+                        }
+                    }
+
+                    //ActivityDetail d = {};
+                    d.isLowConfidence = decodedtext.isLowConfidence();
+                    d.isCompound = decodedtext.isCompound();
+                    d.isDirected = decodedtext.isDirectedMessage();
+                    d.bits = decodedtext.bits();
+                    d.dial = freq;
+                    d.offset = offset;
+                    d.text = decodedtext.message();
+                    d.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+                    d.snr = decodedtext.snr();
+                    d.isBuffered = false;
+                    d.submode = decodedtext.submode();
+                    d.tdrift = m_wideGraph->shouldAutoSyncSubmode(d.submode) ?
+                        DriftingDateTime::drift() / 1000.0 :
+                        decodedtext.dt();
+
+                    // if we have any "first" frame, and a buffer is already established, clear it...
+                    int prevBufferOffset = -1;
+                    if (((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst)
+                        && hasExistingMessageBuffer(decodedtext.submode(),
+                                                    d.offset,
+                                                    true,
+                                                    &prevBufferOffset)) {
+                        qCDebug(mainwindow_js8)
+                            << "first message encountered, clearing existing buffer"
+                            << prevBufferOffset;
+                        m_messageBuffer.remove(d.offset);
+                    }
+
+                    // if we have a data frame, and a message buffer has been established, buffer it...
+                    if (hasExistingMessageBuffer(decodedtext.submode(),
+                                                 d.offset,
+                                                 true,
+                                                 &prevBufferOffset)
+                        && !decodedtext.isCompound() && !decodedtext.isDirectedMessage()) {
+                        qCDebug(mainwindow_js8) << "buffering data" << d.dial << d.offset << d.text;
+                        d.isBuffered = true;
+                        m_messageBuffer[d.offset].msgs.append(d);
+                        // TODO: incremental display if it's "to" me.
+                    }
+
+                    m_rxActivityQueue.append(d);
+                    m_bandActivity[offset].append(d);
+                    while (m_bandActivity[offset].count() > 10) {
+                        m_bandActivity[offset].removeFirst();
+                    }
+                }
+#endif
+
+            // Process compound callsign commands (put them in cache)"
+#if 1
+                qCDebug(mainwindow_js8)
+                    << "decoded" << decodedtext.frameType() << decodedtext.isCompound()
+                    << decodedtext.isDirectedMessage() << decodedtext.isHeartbeat();
+                bool shouldProcessCompound = true;
+                if (shouldProcessCompound && decodedtext.isCompound()
+                    && !decodedtext.isDirectedMessage()) {
+                    cd.call = decodedtext.compoundCall();
+                    cd.grid = decodedtext.extra(); // compound calls via pings may contain grid...
+                    cd.snr = decodedtext.snr();
+                    cd.dial = freq;
+                    cd.offset = decodedtext.frequencyOffset();
+                    cd.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+                    cd.bits = decodedtext.bits();
+                    cd.submode = decodedtext.submode();
+                    cd.tdrift = m_wideGraph->shouldAutoSyncSubmode(d.submode) ?
+                        DriftingDateTime::drift() / 1000.0 :
+                        decodedtext.dt();
+
+                    // Only respond to HEARTBEATS...remember that CQ messages are "Alt" pings
+                    if (decodedtext.isHeartbeat()) {
+                        if (decodedtext.isAlt()) {
+                            // this is a cq with a standard or compound call, ala "KN4CRD/P: @ALLCALL CQ CQ CQ"
+                            cd.cqTimestamp = DriftingDateTime::currentDateTimeUtc();
+
+                            // convert CQ to a directed command and process...
+                            cmd.from = cd.call;
+                            cmd.to = "@ALLCALL";
+                            cmd.cmd = " CQ";
+                            cmd.snr = cd.snr;
+                            cmd.bits = cd.bits;
+                            cmd.grid = cd.grid;
+                            cmd.dial = cd.dial;
+                            cmd.offset = cd.offset;
+                            cmd.utcTimestamp = cd.utcTimestamp;
+                            cmd.tdrift = cd.tdrift;
+                            cmd.submode = cd.submode;
+                            cmd.text = decodedtext.message();
+
+                            // TODO: check bits so we only auto respond to "finished" cqs
+                            m_rxCommandQueue.append(cmd);
+
+                            // since this is no longer processed here we omit logging it here.
+                            // if we change this behavior, we'd change this back to logging here.
+                            // logCallActivity(cd, true);
+
+                            // notification for cq
+                            tryNotify("cq");
+
+                        } else {
+                            // convert HEARTBEAT to a directed command and process...
+                            cmd.from = cd.call;
+                            cmd.to = "@HB";
+                            cmd.cmd = " HEARTBEAT";
+                            cmd.snr = cd.snr;
+                            cmd.bits = cd.bits;
+                            cmd.grid = cd.grid;
+                            cmd.dial = cd.dial;
+                            cmd.offset = cd.offset;
+                            cmd.utcTimestamp = cd.utcTimestamp;
+                            cmd.tdrift = cd.tdrift;
+                            cmd.submode = cd.submode;
+
+                            // TODO: check bits so we only auto respond to "finished" heartbeats
+                            m_rxCommandQueue.append(cmd);
+
+                            // notification for hb
+                            tryNotify("hb");
+                        }
+
+                    } else {
+                        qCDebug(mainwindow_js8)
+                            << "buffering compound call" << cd.offset << cd.call << cd.bits;
+
+                        hasExistingMessageBuffer(cd.submode, cd.offset, true, nullptr);
+                        m_messageBuffer[cd.offset].compound.append(cd);
+                    }
+                }
+#endif
+
+            // Parse commands
+            // KN4CRD K1JT ?
+#if 1
+                bool shouldProcessDirected = true;
+                if (shouldProcessDirected && decodedtext.isDirectedMessage()) {
+                    auto parts = decodedtext.directedMessage();
+
+                    cmd.from = parts.at(0);
+                    cmd.to = parts.at(1);
+                    cmd.cmd = parts.at(2);
+                    cmd.dial = freq;
+                    cmd.offset = decodedtext.frequencyOffset();
+                    cmd.snr = decodedtext.snr();
+                    cmd.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
+                    cmd.bits = decodedtext.bits();
+                    cmd.extra = parts.length() > 2 ? parts.mid(3).join(" ") : "";
+                    cmd.submode = decodedtext.submode();
+                    cmd.tdrift = m_wideGraph->shouldAutoSyncSubmode(cmd.submode) ?
+                        DriftingDateTime::drift() / 1000.0 :
+                        decodedtext.dt();
+
+                    // if the command is a buffered command and its not the last frame OR we have from or to in a separate message (compound call)
+                    if ((Varicode::isCommandBuffered(cmd.cmd)
+                         && (cmd.bits & Varicode::JS8CallLast) != Varicode::JS8CallLast)
+                        || cmd.from == "<....>" || cmd.to == "<....>") {
+                        qCDebug(mainwindow_js8) << "buffering cmd" << cmd.dial << cmd.offset
+                                                << cmd.cmd << cmd.from << cmd.to;
+
+                        // log complete buffered callsigns immediately
+                        if (cmd.from != "<....>" && cmd.to != "<....>") {
+                            CallDetail cmdcd = {};
+                            cmdcd.call = cmd.from;
+                            cmdcd.bits = cmd.bits;
+                            cmdcd.snr = cmd.snr;
+                            cmdcd.dial = cmd.dial;
+                            cmdcd.offset = cmd.offset;
+                            cmdcd.utcTimestamp = cmd.utcTimestamp;
+                            cmdcd.ackTimestamp = cmd.to == m_config.my_callsign() ?
+                                cmd.utcTimestamp :
+                                QDateTime {};
+                            cmdcd.tdrift = cmd.tdrift;
+                            cmdcd.submode = cmd.submode;
+                            logCallActivity(cmdcd, false);
+                            logHeardGraph(cmd.from, cmd.to);
+                        }
+
+                        // merge any existing buffer to this frequency
+                        hasExistingMessageBuffer(cmd.submode, cmd.offset, true, nullptr);
+
+                        if (cmd.to == m_config.my_callsign()) {
+                            d.shouldDisplay = true;
+                        }
+
+                        m_messageBuffer[cmd.offset].cmd = cmd;
+                        m_messageBuffer[cmd.offset].msgs.clear();
+                    } else {
+                        m_rxCommandQueue.append(cmd);
+                    }
+
+                    // check to see if this is a station we've heard 3rd party
+                    bool shouldCaptureThirdPartyCallsigns = false;
+                    if (shouldCaptureThirdPartyCallsigns
+                        && Radio::base_callsign(cmd.to)
+                            != Radio::base_callsign(m_config.my_callsign())) {
+                        QString relayCall = QString("%1|%2")
+                                                .arg(Radio::base_callsign(cmd.from))
+                                                .arg(Radio::base_callsign(cmd.to));
+                        int snr = -100;
+                        if (parts.length() == 4) {
+                            snr = QString(parts.at(3)).toInt();
+                        }
+
+                        //CallDetail td = {};
+                        td.through = cmd.from;
+                        td.call = cmd.to;
+                        td.grid = "";
+                        td.snr = snr;
+                        td.dial = cmd.dial;
+                        td.offset = cmd.offset;
+                        td.utcTimestamp = cmd.utcTimestamp;
+                        td.tdrift = cmd.tdrift;
+                        td.submode = cmd.submode;
+                        logCallActivity(td, true);
+                        logHeardGraph(cmd.from, cmd.to);
+                    }
+                }
+#endif
             }
-        }
-      #endif
-    }
-  }, event);
+        },
+        event);
 }
 
-bool
-MainWindow::hasExistingMessageBufferToMe(int * const pOffset)
+bool MainWindow::hasExistingMessageBufferToMe(int* const pOffset)
 {
-  for (auto const [offset, buffer] : m_messageBuffer.asKeyValueRange())
-  {
-    // if this is a valid buffer and it's to me...
-    if (buffer.cmd.utcTimestamp.isValid() && (buffer.cmd.to == m_config.my_callsign() ||
-                                              buffer.cmd.to == Radio::base_callsign(m_config.my_callsign())))
-    {
-      if (pOffset) *pOffset = offset;
-      return true;
+    for (auto const [offset, buffer] : m_messageBuffer.asKeyValueRange()) {
+        // if this is a valid buffer and it's to me...
+        if (buffer.cmd.utcTimestamp.isValid()
+            && (buffer.cmd.to == m_config.my_callsign()
+                || buffer.cmd.to == Radio::base_callsign(m_config.my_callsign()))) {
+            if (pOffset)
+                *pOffset = offset;
+            return true;
+        }
     }
-  }
 
-  return false;
+    return false;
 }
 
-bool MainWindow::hasExistingMessageBuffer(int submode, int offset, bool drift, int *pPrevOffset){
-    if(m_messageBuffer.contains(offset)){
-        if(pPrevOffset) *pPrevOffset = offset;
+bool MainWindow::hasExistingMessageBuffer(int submode, int offset, bool drift, int* pPrevOffset)
+{
+    if (m_messageBuffer.contains(offset)) {
+        if (pPrevOffset)
+            *pPrevOffset = offset;
         return true;
     }
 
     int const range = JS8::Submode::rxThreshold(submode);
 
-    QList<int> offsets = generateOffsets(offset-range, offset+range);
+    QList<int> offsets = generateOffsets(offset - range, offset + range);
 
-    foreach(int prevOffset, offsets){
-        if(!m_messageBuffer.contains(prevOffset)){ continue; }
+    foreach (int prevOffset, offsets) {
+        if (!m_messageBuffer.contains(prevOffset)) {
+            continue;
+        }
 
-        if(drift){
+        if (drift) {
             m_messageBuffer[offset] = m_messageBuffer[prevOffset];
             m_messageBuffer.remove(prevOffset);
         }
 
-        if(pPrevOffset) *pPrevOffset = prevOffset;
+        if (pPrevOffset)
+            *pPrevOffset = prevOffset;
         return true;
     }
 
     return false;
 }
 
-bool MainWindow::hasClosedExistingMessageBuffer(int offset){
+bool MainWindow::hasClosedExistingMessageBuffer(int offset)
+{
 #if 0
     int range = 10;
     if(m_nSubMode == Varicode::JS8CallFast){ range = 16; }
@@ -4355,37 +4663,43 @@ bool MainWindow::hasClosedExistingMessageBuffer(int offset){
     return offset - range <= m_lastClosedMessageBufferOffset && m_lastClosedMessageBufferOffset <= offset + range;
 #elif 0
     int range = 10;
-    if(m_nSubMode == Varicode::JS8CallFast){ range = 16; }
-    if(m_nSubMode == Varicode::JS8CallTurbo){ range = 32; }
+    if (m_nSubMode == Varicode::JS8CallFast) {
+        range = 16;
+    }
+    if (m_nSubMode == Varicode::JS8CallTurbo) {
+        range = 32;
+    }
 
-    return m_lastClosedMessageBufferOffset - range <= offset && offset <= m_lastClosedMessageBufferOffset + range;
+    return m_lastClosedMessageBufferOffset - range <= offset
+        && offset <= m_lastClosedMessageBufferOffset + range;
 #else
     Q_UNUSED(offset);
 #endif
     return false;
 }
 
-void MainWindow::logCallActivity(CallDetail d, bool spot){
+void MainWindow::logCallActivity(CallDetail d, bool spot)
+{
     // don't log empty calls
-    if(d.call.trimmed().isEmpty()){
+    if (d.call.trimmed().isEmpty()) {
         return;
     }
 
     // don't log relay calls
-    if(d.call.contains(">")){
+    if (d.call.contains(">")) {
         return;
     }
 
-    if(m_callActivity.contains(d.call)){
+    if (m_callActivity.contains(d.call)) {
         // update (keep grid)
         CallDetail old = m_callActivity[d.call];
-        if(d.grid.isEmpty() && !old.grid.isEmpty()){
+        if (d.grid.isEmpty() && !old.grid.isEmpty()) {
             d.grid = old.grid;
         }
-        if(!d.ackTimestamp.isValid() && old.ackTimestamp.isValid()){
+        if (!d.ackTimestamp.isValid() && old.ackTimestamp.isValid()) {
             d.ackTimestamp = old.ackTimestamp;
         }
-        if(!d.cqTimestamp.isValid() && old.cqTimestamp.isValid()){
+        if (!d.cqTimestamp.isValid() && old.cqTimestamp.isValid()) {
             d.cqTimestamp = old.cqTimestamp;
         }
         m_callActivity[d.call] = d;
@@ -4394,7 +4708,7 @@ void MainWindow::logCallActivity(CallDetail d, bool spot){
         m_callActivity[d.call] = d;
 
         // notification of old and new callsigns
-        if(m_logBook.hasWorkedBefore(d.call, "")){
+        if (m_logBook.hasWorkedBefore(d.call, "")) {
             tryNotify("call_old");
         } else {
             tryNotify("call_new");
@@ -4402,159 +4716,176 @@ void MainWindow::logCallActivity(CallDetail d, bool spot){
     }
 
     // enqueue for spotting to psk reporter
-    if(spot){
+    if (spot) {
         m_rxCallQueue.append(d);
     }
 }
 
-void MainWindow::logHeardGraph(QString from, QString to){
+void MainWindow::logHeardGraph(QString from, QString to)
+{
     auto my_callsign = m_config.my_callsign();
 
     // hearing
-    if(m_heardGraphOutgoing.contains(my_callsign)){
+    if (m_heardGraphOutgoing.contains(my_callsign)) {
         m_heardGraphOutgoing[my_callsign].insert(from);
     } else {
         m_heardGraphOutgoing[my_callsign].insert(from);
     }
 
     // heard by
-    if(m_heardGraphIncoming.contains(from)){
+    if (m_heardGraphIncoming.contains(from)) {
         m_heardGraphIncoming[from].insert(my_callsign);
     } else {
         m_heardGraphIncoming[from] = { my_callsign };
     }
 
-    if(to == "@ALLCALL"){
+    if (to == "@ALLCALL") {
         return;
     }
 
     // hearing
-    if(m_heardGraphOutgoing.contains(from)){
+    if (m_heardGraphOutgoing.contains(from)) {
         m_heardGraphOutgoing[from].insert(to);
     } else {
         m_heardGraphOutgoing[from] = { to };
     }
 
     // heard by
-    if(m_heardGraphIncoming.contains(to)){
+    if (m_heardGraphIncoming.contains(to)) {
         m_heardGraphIncoming[to].insert(from);
     } else {
         m_heardGraphIncoming[to] = { from };
     }
 }
 
-QString MainWindow::lookupCallInCompoundCache(QString const &call){
+QString MainWindow::lookupCallInCompoundCache(QString const& call)
+{
     QString myBaseCall = Radio::base_callsign(m_config.my_callsign());
-    if(call == myBaseCall){
+    if (call == myBaseCall) {
         return m_config.my_callsign();
     }
     return m_compoundCallCache.value(call, call);
 }
 
-void
-MainWindow::spotReport(int     const   submode,
-                       int     const   dial,
-                       int     const   offset,
-                       int     const   snr,
-                       QString const & callsign,
-                       QString const & grid)
+void MainWindow::spotReport(int const submode,
+                            int const dial,
+                            int const offset,
+                            int const snr,
+                            QString const& callsign,
+                            QString const& grid)
 {
-  if (!m_config.spot_to_reporting_networks() ||
-      (m_config.spot_blacklist().contains(callsign) ||
-       m_config.spot_blacklist().contains(Radio::base_callsign(callsign)))) return;
+    if (!m_config.spot_to_reporting_networks()
+        || (m_config.spot_blacklist().contains(callsign)
+            || m_config.spot_blacklist().contains(Radio::base_callsign(callsign))))
+        return;
 
-  Q_EMIT spotClientEnqueueSpot (callsign, grid, submode, dial, offset, snr);
+    Q_EMIT spotClientEnqueueSpot(callsign, grid, submode, dial, offset, snr);
 }
 
-void
-MainWindow::spotCmd(CommandDetail const & cmd)
+void MainWindow::spotCmd(CommandDetail const& cmd)
 {
-  if (!m_config.spot_to_reporting_networks() ||
-      (m_config.spot_blacklist().contains(cmd.from) ||
-       m_config.spot_blacklist().contains(Radio::base_callsign(cmd.from)))) return;
+    if (!m_config.spot_to_reporting_networks()
+        || (m_config.spot_blacklist().contains(cmd.from)
+            || m_config.spot_blacklist().contains(Radio::base_callsign(cmd.from))))
+        return;
 
-  QString cmdStr = cmd.cmd;
+    QString cmdStr = cmd.cmd;
 
-  if (!cmdStr.trimmed().isEmpty())
-  {
-    cmdStr = Varicode::lstrip(cmd.cmd);
-  }
+    if (!cmdStr.trimmed().isEmpty()) {
+        cmdStr = Varicode::lstrip(cmd.cmd);
+    }
 
-  Q_EMIT spotClientEnqueueCmd (cmdStr,
-                               cmd.from,
-                               cmd.to,
-                               cmd.relayPath,
-                               cmd.text,
-                               cmd.grid,
-                               cmd.extra,
-                               cmd.submode,
-                               cmd.dial,
-                               cmd.offset,
-                               cmd.snr);
+    Q_EMIT spotClientEnqueueCmd(cmdStr,
+                                cmd.from,
+                                cmd.to,
+                                cmd.relayPath,
+                                cmd.text,
+                                cmd.grid,
+                                cmd.extra,
+                                cmd.submode,
+                                cmd.dial,
+                                cmd.offset,
+                                cmd.snr);
 }
 
 // KN4CRD: @APRSIS CMD :EMAIL-2  :email@domain.com booya{1
-void MainWindow::spotAprsCmd(CommandDetail const & cmd){
-    if(!m_config.spot_to_reporting_networks()) return;
-    if(!m_config.spot_to_aprs()) return;
-    if(m_config.spot_blacklist().contains(cmd.from) || m_config.spot_blacklist().contains(Radio::base_callsign(cmd.from))) return;
+void MainWindow::spotAprsCmd(CommandDetail const& cmd)
+{
+    if (!m_config.spot_to_reporting_networks())
+        return;
+    if (!m_config.spot_to_aprs())
+        return;
+    if (m_config.spot_blacklist().contains(cmd.from)
+        || m_config.spot_blacklist().contains(Radio::base_callsign(cmd.from)))
+        return;
 
-    if(cmd.cmd != " CMD") return;
+    if (cmd.cmd != " CMD")
+        return;
 
     qCDebug(mainwindow_js8) << "APRSISClient Enqueueing Third Party Text" << cmd.from << cmd.text;
 
-    auto by_call   = APRSISClient::replaceCallsignSuffixWithSSID(m_config.my_callsign(), Radio::base_callsign(m_config.my_callsign()));
-    auto from_call = APRSISClient::replaceCallsignSuffixWithSSID(cmd.from,               Radio::base_callsign(cmd.from));
+    auto by_call
+        = APRSISClient::replaceCallsignSuffixWithSSID(m_config.my_callsign(),
+                                                      Radio::base_callsign(m_config.my_callsign()));
+    auto from_call
+        = APRSISClient::replaceCallsignSuffixWithSSID(cmd.from, Radio::base_callsign(cmd.from));
 
     // we use a queued signal here so we can process these spots in a network thread
     // to prevent blocking the gui/decoder while waiting on TCP
     emit aprsClientEnqueueThirdParty(by_call, from_call, cmd.text);
 }
 
-void MainWindow::spotAprsGrid(int dial, int offset, int snr, QString callsign, QString grid){
-    if(!m_config.spot_to_reporting_networks()) return;
-    if(!m_config.spot_to_aprs()) return;
-    if(m_config.spot_blacklist().contains(callsign) || m_config.spot_blacklist().contains(Radio::base_callsign(callsign))) return;
-    if(grid.length() < 4) return;
+void MainWindow::spotAprsGrid(int dial, int offset, int snr, QString callsign, QString grid)
+{
+    if (!m_config.spot_to_reporting_networks())
+        return;
+    if (!m_config.spot_to_aprs())
+        return;
+    if (m_config.spot_blacklist().contains(callsign)
+        || m_config.spot_blacklist().contains(Radio::base_callsign(callsign)))
+        return;
+    if (grid.length() < 4)
+        return;
 
     Frequency frequency = dial + offset;
 
-    auto comment = QString("%1MHz %2dB").arg(Radio::frequency_MHz_string(frequency)).arg(Varicode::formatSNR(snr));
-    if(callsign.contains("/")){
+    auto comment = QString("%1MHz %2dB")
+                       .arg(Radio::frequency_MHz_string(frequency))
+                       .arg(Varicode::formatSNR(snr));
+    if (callsign.contains("/")) {
         comment = QString("%1 %2").arg(callsign).arg(comment);
     }
 
-    auto by_call = APRSISClient::replaceCallsignSuffixWithSSID(m_config.my_callsign(), Radio::base_callsign(m_config.my_callsign()));
-    auto from_call = APRSISClient::replaceCallsignSuffixWithSSID(callsign, Radio::base_callsign(callsign));
+    auto by_call
+        = APRSISClient::replaceCallsignSuffixWithSSID(m_config.my_callsign(),
+                                                      Radio::base_callsign(m_config.my_callsign()));
+    auto from_call
+        = APRSISClient::replaceCallsignSuffixWithSSID(callsign, Radio::base_callsign(callsign));
 
     // we use a queued signal here so we can process these spots in a network thread
     // to prevent blocking the gui/decoder while waiting on TCP
     emit aprsClientEnqueueSpot(by_call, from_call, grid, comment);
 }
 
-void
-MainWindow::pskLogReport(QString 	const & mode,
-                         int     	const   dial,
-                         int     	const   offset,
-                         int     	const   snr,
-                         QString 	const & callsign,
-                         QString 	const & grid,
-						 QDateTime	const & utcTimestamp)
+void MainWindow::pskLogReport(QString const& mode,
+                              int const dial,
+                              int const offset,
+                              int const snr,
+                              QString const& callsign,
+                              QString const& grid,
+                              QDateTime const& utcTimestamp)
 {
-  if (!m_config.spot_to_reporting_networks() ||
-      (m_config.spot_blacklist().contains(callsign) ||
-       m_config.spot_blacklist().contains(Radio::base_callsign(callsign)))) return;
+    if (!m_config.spot_to_reporting_networks()
+        || (m_config.spot_blacklist().contains(callsign)
+            || m_config.spot_blacklist().contains(Radio::base_callsign(callsign))))
+        return;
 
-  Q_EMIT pskReporterAddRemoteStation (callsign,
-                                      grid,
-                                      dial + offset,
-                                      mode,
-                                      snr,
-									  utcTimestamp);
+    Q_EMIT pskReporterAddRemoteStation(callsign, grid, dial + offset, mode, snr, utcTimestamp);
 }
 
-void MainWindow::refuseToSendIn30mWSPRBand() {
-    if(m_transmitting or m_auto or m_tune) {
+void MainWindow::refuseToSendIn30mWSPRBand()
+{
+    if (m_transmitting or m_auto or m_tune) {
         m_dateTimeLastTX = DriftingDateTime::currentDateTimeLocal();
 
         // Don't transmit another mode in the 30 m WSPR sub-band
@@ -4562,39 +4893,36 @@ void MainWindow::refuseToSendIn30mWSPRBand() {
 
         //qCDebug(mainwindow_js8) << "transmitting on" << onAirFreq;
 
-        if (10139900 <= onAirFreq && onAirFreq <= 10140320)
-        {
-            qCWarning(mainwindow_js8) << "QRG" << onAirFreq
+        if (10'139'900 <= onAirFreq && onAirFreq <= 10'140'320) {
+            qCWarning(mainwindow_js8)
+                << "QRG" << onAirFreq
                 << "found to be in WSPR guard band 10139.9 - 10140.32 kHz "
-                "where this programm will not transmit, so  canceling all transmissions.";
+                   "where this programm will not transmit, so  canceling all transmissions.";
             m_isTimeToSend = false;
-            if (m_auto) auto_tx_mode (false);
-            if(m_hb_loop->isActive()) {
+            if (m_auto)
+                auto_tx_mode(false);
+            if (m_hb_loop->isActive()) {
                 m_hb_loop->onLoopCancel();
             }
-            if(m_cq_loop->isActive()) {
+            if (m_cq_loop->isActive()) {
                 m_cq_loop->onLoopCancel();
             }
-            if (onAirFreq != m_onAirFreq0)
-            {
+            if (onAirFreq != m_onAirFreq0) {
                 m_onAirFreq0 = onAirFreq;
-                QTimer::singleShot (
-                    0,
-                    [this]{
-                        MessageBox::warning_message(
-                            this,
-                            tr("WSPR Guard Band"),
-                            tr("Please choose another Tx frequency."
-                                " The app will not knowingly transmit another"
-                                " mode in the WSPR sub-band on 30m."));
-                    }
-                );
+                QTimer::singleShot(0, [this] {
+                    MessageBox::warning_message(this,
+                                                tr("WSPR Guard Band"),
+                                                tr("Please choose another Tx frequency."
+                                                   " The app will not knowingly transmit another"
+                                                   " mode in the WSPR sub-band on 30m."));
+                });
             }
         }
     }
 }
 
-void MainWindow::prepareSending(qint64 nowMS) {
+void MainWindow::prepareSending(qint64 nowMS)
+{
     // TX Duration in seconds.
     const double tx_duration = JS8::Submode::txDuration(m_nSubMode);
     const unsigned period = JS8::Submode::period(m_nSubMode);
@@ -4606,9 +4934,9 @@ void MainWindow::prepareSending(qint64 nowMS) {
     const bool time_is_in_tx_delay = (period - tx_delay) <= seconds_into_the_period;
 
     // Are we during the time we might be sending?
-    const bool m_timeToSend =
-        ((0 <= seconds_into_the_period) and (seconds_into_the_period < tx_duration)) or
-        time_is_in_tx_delay or m_tune;
+    const bool m_timeToSend
+        = ((0 <= seconds_into_the_period) and (seconds_into_the_period < tx_duration))
+        or time_is_in_tx_delay or m_tune;
 
     auto const msgLength = QStringView(m_nextFreeTextMsg).trimmed().length();
 
@@ -4626,10 +4954,10 @@ void MainWindow::prepareSending(qint64 nowMS) {
 
     // the late threshold is the dead air time minus the tx delay time
     float lateThreshold = ratio - (m_config.txDelay() / m_TRperiod);
-    if(m_nSubMode == Varicode::JS8CallFast) {
+    if (m_nSubMode == Varicode::JS8CallFast) {
         // for the faster mode, only allow 3/4 late threshold
         lateThreshold *= 0.75;
-    } else if(m_nSubMode == Varicode::JS8CallTurbo || m_nSubMode == Varicode::JS8CallUltra) {
+    } else if (m_nSubMode == Varicode::JS8CallTurbo || m_nSubMode == Varicode::JS8CallUltra) {
         // for the turbo and ultra mode, only allow 1/2 late threshold
         lateThreshold *= 0.5;
     };
@@ -4639,7 +4967,10 @@ void MainWindow::prepareSending(qint64 nowMS) {
     //                         << "time_is_in_tx_delay" << time_is_in_tx_delay << "fraction_of_tx_slot" << fraction_of_tx_slot
     //                         << "m_iptt" << m_iptt << "m_timeToSend" << m_timeToSend << "msgLength" << msgLength << "m_tune" << m_tune;
 
-    if(m_iptt == 0 && ((m_timeToSend && (fraction_of_tx_slot < lateThreshold or time_is_in_tx_delay) && 0 < msgLength) || m_tune)) {
+    if (m_iptt == 0
+        && ((m_timeToSend && (fraction_of_tx_slot < lateThreshold or time_is_in_tx_delay)
+             && 0 < msgLength)
+            || m_tune)) {
         // This signals the transmitter to switch to sending.
         // When that has happened, we get a callback from handle_transceiver_update, which will start the audio.
         m_iptt = 1;
@@ -4650,51 +4981,46 @@ void MainWindow::prepareSending(qint64 nowMS) {
     }
 
     // TODO: stop
-    if(!m_timeToSend and !m_tune) m_btxok=false;       //Time to stop transmitting
+    if (!m_timeToSend and !m_tune)
+        m_btxok = false; //Time to stop transmitting
 
 
     // Calculate Tx tones when needed
-    if((m_iptt == 1 && m_iptt0 == 0) || m_restart) {
+    if ((m_iptt == 1 && m_iptt0 == 0) || m_restart) {
         //----------------------------------------------------------------------
 
         copyMessage(m_nextFreeTextMsg, message);
 
-        if (m_lastMessageSent != m_currentMessage ||
-            m_lastMessageType != m_currentMessageType)
-        {
+        if (m_lastMessageSent != m_currentMessage || m_lastMessageType != m_currentMessageType) {
             m_lastMessageSent = m_currentMessage;
             m_lastMessageType = m_currentMessageType;
         }
 
         m_currentMessageType = 0;
 
-        if(m_tune)
-        {
+        if (m_tune) {
             itone[0] = 0;
-        }
-        else
-        {
+        } else {
             JS8::encode(m_i3bit,
                         JS8::Costas::array(JS8::Submode::costas(m_nSubMode)),
                         message,
-                        const_cast<int *>(reinterpret_cast<volatile int *>(itone))); // XXX ick...
+                        const_cast<int*>(reinterpret_cast<volatile int*>(itone))); // XXX ick...
 
             std::fill_n(std::begin(msgsent), 22, ' ');
             std::copy_n(std::begin(message), 12, std::begin(msgsent));
 
-            if(mainwindow_js8().isDebugEnabled())
-            {
+            if (mainwindow_js8().isDebugEnabled()) {
                 qCDebug(mainwindow_js8) << "-> msg:" << message;
                 qCDebug(mainwindow_js8) << "-> bit:" << m_i3bit;
-                for (int i = 0;                   i < 7;               ++i)
+                for (int i = 0; i < 7; ++i)
                     qCDebug(mainwindow_js8) << "-> tone" << i << "=" << itone[i];
                 for (int i = JS8_NUM_SYMBOLS - 7; i < JS8_NUM_SYMBOLS; ++i)
                     qCDebug(mainwindow_js8) << "-> tone" << i << "=" << itone[i];
             }
 
-            msgibits             = m_i3bit;
-            msgsent[22]          = 0;
-            m_currentMessage     = QString::fromLatin1(msgsent).trimmed();
+            msgibits = m_i3bit;
+            msgsent[22] = 0;
+            m_currentMessage = QString::fromLatin1(msgsent).trimmed();
             m_currentMessageBits = msgibits;
 
             emitTones();
@@ -4704,75 +5030,71 @@ void MainWindow::prepareSending(qint64 nowMS) {
             m_currentMessage = "TUNE";
             m_currentMessageType = -1;
         }
-        if(m_restart) {
-            write_transmit_entry ("ALL.TXT");
+        if (m_restart) {
+            write_transmit_entry("ALL.TXT");
         }
 
-        auto msg_parts = m_currentMessage.split (' ', Qt::SkipEmptyParts);
-        if (msg_parts.size () > 2) {
+        auto msg_parts = m_currentMessage.split(' ', Qt::SkipEmptyParts);
+        if (msg_parts.size() > 2) {
             // clean up short code forms
-            msg_parts[0].remove (QChar {'<'});
-            msg_parts[1].remove (QChar {'>'});
+            msg_parts[0].remove(QChar { '<' });
+            msg_parts[1].remove(QChar { '>' });
         }
 
-        if ((m_currentMessageType < 6 || 7 == m_currentMessageType)
-            && msg_parts.length() >= 3
-            && (msg_parts[1] == m_config.my_callsign () ||
-                msg_parts[1] == m_baseCall))
-        {
+        if ((m_currentMessageType < 6 || 7 == m_currentMessageType) && msg_parts.length() >= 3
+            && (msg_parts[1] == m_config.my_callsign() || msg_parts[1] == m_baseCall)) {
             int i1;
             bool ok;
             i1 = msg_parts[2].toInt(&ok);
-            if(ok and i1>=-50 and i1<50)
-            {
+            if (ok and i1 >= -50 and i1 < 50) {
                 m_rptSent = msg_parts[2];
             } else {
-                if (msg_parts[2].mid (0, 1) == "R")
-                {
-                    i1 = msg_parts[2].mid (1).toInt (&ok);
-                    if (ok and i1 >= -50 and i1 < 50)
-                    {
-                        m_rptSent = msg_parts[2].mid (1);
+                if (msg_parts[2].mid(0, 1) == "R") {
+                    i1 = msg_parts[2].mid(1).toInt(&ok);
+                    if (ok and i1 >= -50 and i1 < 50) {
+                        m_rptSent = msg_parts[2].mid(1);
                     }
                 }
             }
         }
-        m_restart=false;
+        m_restart = false;
         //----------------------------------------------------------------------
     }
 
     if (m_iptt == 1 && m_iptt0 == 0) {
-        auto const& current_message = QString::fromLatin1 (msgsent);
-        if(m_config.watchdog () && current_message != m_msgSent0) {
+        auto const& current_message = QString::fromLatin1(msgsent);
+        if (m_config.watchdog() && current_message != m_msgSent0) {
             // new messages don't reset the idle timer :|
             // tx_watchdog (false);  // in case we are auto sequencing
             m_msgSent0 = current_message;
         }
 
-        if(!m_tune) {
-            write_transmit_entry ("ALL.TXT");
+        if (!m_tune) {
+            write_transmit_entry("ALL.TXT");
         }
 
         // TODO: jsherer - perhaps an on_transmitting signal?
         m_lastTxStartTime = DriftingDateTime::currentDateTimeUtc();
 
         m_transmitting = true;
-        transmitDisplay (true);
-        statusUpdate ();
+        transmitDisplay(true);
+        statusUpdate();
     }
 
     // TODO: stop
-    if(!m_btxok && m_btxok0 && m_iptt == 1) stopTx();
+    if (!m_btxok && m_btxok0 && m_iptt == 1)
+        stopTx();
 }
 
-void MainWindow::updateClockUI(const QDateTime & now) {
+void MainWindow::updateClockUI(const QDateTime& now)
+{
     qint64 drift = DriftingDateTime::drift();
     QStringList parts;
-    parts << (now.time().toString() + (!drift ? " " : QString(" (%1%2ms)").arg(drift > 0 ? "+" : "").arg(drift)));
+    parts << (now.time().toString()
+              + (!drift ? " " : QString(" (%1%2ms)").arg(drift > 0 ? "+" : "").arg(drift)));
     parts << now.date().toString("yyyy MMM dd");
     ui->labUTC->setText(parts.join("\n"));
 }
-
 
 //------------------------------------------------------------- //guiUpdate()
 void MainWindow::guiUpdate()
@@ -4784,7 +5106,7 @@ void MainWindow::guiUpdate()
 
     // Propagate any tx delay change to m_hb_loop and m_cq_loop.
     double tx_delay_now = m_config.txDelay();
-    if(tx_delay_now != m_TxDelay) {
+    if (tx_delay_now != m_TxDelay) {
         m_TxDelay = tx_delay_now;
         qint64 tx_delay_ms = std::lround(tx_delay_now * 1000);
         m_hb_loop->onTxDelayChange(tx_delay_ms);
@@ -4800,12 +5122,12 @@ void MainWindow::guiUpdate()
     }
 
     //Once per second:
-    if(seconds_since_epoch != m_sec0) {
+    if (seconds_since_epoch != m_sec0) {
         m_sec0 = seconds_since_epoch;
 
         updateClockUI(now);
 
-        if(m_monitoring or m_transmitting) {
+        if (m_monitoring or m_transmitting) {
             // We are lucky that TX delay starts well into the second
             // and lasts less than a second. So as long as we
             // do this near the begining of a second, we will never hit
@@ -4817,22 +5139,22 @@ void MainWindow::guiUpdate()
             progressBar.setValue(0);
         }
 
-        if(m_transmitting) {
+        if (m_transmitting) {
             tx_status_label.setStyleSheet("QLabel{background-color: #ff2222; color:#000}");
-            if(m_tune) {
+            if (m_tune) {
                 tx_status_label.setText("Tx: TUNE");
             } else {
                 auto message = DecodedText(msgsent, msgibits, m_nSubMode).message();
                 tx_status_label.setText(QString("Tx: %1").arg(message).left(40).trimmed());
             }
             transmitDisplay(true);
-        } else if(m_monitoring) {
+        } else if (m_monitoring) {
             if (m_tx_watchdog) {
-                tx_status_label.setStyleSheet ("QLabel{background-color: #000; color:#fff}");
-                tx_status_label.setText ("Idle timeout");
+                tx_status_label.setStyleSheet("QLabel{background-color: #000; color:#fff}");
+                tx_status_label.setText("Idle timeout");
             } else {
                 tx_status_label.setStyleSheet("QLabel{background-color: #22ff22}");
-                tx_status_label.setText (m_decoderBusy ? "Decoding" : "Receiving");
+                tx_status_label.setText(m_decoderBusy ? "Decoding" : "Receiving");
             }
             transmitDisplay(false);
         } else if (!m_tx_watchdog) {
@@ -4841,26 +5163,24 @@ void MainWindow::guiUpdate()
         }
 
         auto callLabel = m_config.my_callsign();
-        if(m_config.use_dynamic_grid() && !m_config.my_grid().isEmpty()){
+        if (m_config.use_dynamic_grid() && !m_config.my_grid().isEmpty()) {
             callLabel = QString("%1 - %2").arg(callLabel).arg(m_config.my_grid());
         }
         ui->labCallsign->setText(callLabel);
 
-        if(!m_monitoring) {
-            ui->signal_meter_widget->setValue(0,0);
+        if (!m_monitoring) {
+            ui->signal_meter_widget->setValue(0, 0);
         }
 
         // once per period
-        if(seconds_since_epoch % period == 0) {
+        if (seconds_since_epoch % period == 0) {
             tryBandHop();
         }
 
         // Need to do processing at the end of the period
         // or when there is something in m_rxActivityQueue.
-        bool forceDirty =
-            (seconds_since_epoch % period == 0) ||
-            ((seconds_since_epoch - 1) % period == 0) ||
-            !m_rxActivityQueue.isEmpty();
+        bool forceDirty = (seconds_since_epoch % period == 0)
+            || ((seconds_since_epoch - 1) % period == 0) || !m_rxActivityQueue.isEmpty();
 
         // update the dial frequency once per second..
         displayDialFrequency();
@@ -4868,7 +5188,7 @@ void MainWindow::guiUpdate()
         updateCQButtonDisplay();
 
         // once per second...but not when we're transmitting, unless it's in the first second...
-        if(!m_transmitting || (seconds_since_epoch % period == 0)){
+        if (!m_transmitting || (seconds_since_epoch % period == 0)) {
             // process all received activity...
             processActivity(forceDirty);
 
@@ -4884,7 +5204,7 @@ void MainWindow::guiUpdate()
 
     displayTransmit();
 
-    m_iptt0  = m_iptt;
+    m_iptt0 = m_iptt;
     m_btxok0 = m_btxok;
 
     // Set the time to hit the start of the next UI_POLL_INTERVAL_MS slot.
@@ -4899,99 +5219,101 @@ void MainWindow::guiUpdate()
 void MainWindow::startTx()
 {
 #if IDLE_BLOCKS_TX
-  if(m_tx_watchdog){
-      return;
-  }
+    if (m_tx_watchdog) {
+        return;
+    }
 #endif
 
-  auto text = ui->extFreeTextMsgEdit->toPlainText();
-  if(!ensureCreateMessageReady(text)){
-    return;
-  }
+    auto text = ui->extFreeTextMsgEdit->toPlainText();
+    if (!ensureCreateMessageReady(text)) {
+        return;
+    }
 
-  if(!prepareNextMessageFrame()){
-    return;
-  }
+    if (!prepareNextMessageFrame()) {
+        return;
+    }
 
-  m_dateTimeQSOOn = QDateTime{};
-  if (m_transmitting) m_restart=true;
+    m_dateTimeQSOOn = QDateTime {};
+    if (m_transmitting)
+        m_restart = true;
 
-  if (!m_auto) auto_tx_mode(true);
+    if (!m_auto)
+        auto_tx_mode(true);
 
-  // disallow editing of the text while transmitting
-  // ui->extFreeTextMsgEdit->setReadOnly(true);
-  update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", true);
+    // disallow editing of the text while transmitting
+    // ui->extFreeTextMsgEdit->setReadOnly(true);
+    update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", true);
 
-  // update the tx button display
-  updateTxButtonDisplay();
+    // update the tx button display
+    updateTxButtonDisplay();
 }
 
 void MainWindow::transmit()
 {
-  if (m_modulator->isIdle())
-  {
-    qDebug(mainwindow_js8) << "Asking the modulator to emit audio.";
-    Q_EMIT sendMessage (freq() - m_XIT,
-                        m_nSubMode,
-                        m_TxDelay,
-                        m_soundOutput,
-                        m_config.audio_output_channel());
-    ui->signal_meter_widget->setValue(0, 0);
-  } else {
-      qDebug(mainwindow_js8) << "Not asking the modulator to emit audio as modulator isn't idle.";
-  }
+    if (m_modulator->isIdle()) {
+        qDebug(mainwindow_js8) << "Asking the modulator to emit audio.";
+        Q_EMIT sendMessage(freq() - m_XIT,
+                           m_nSubMode,
+                           m_TxDelay,
+                           m_soundOutput,
+                           m_config.audio_output_channel());
+        ui->signal_meter_widget->setValue(0, 0);
+    } else {
+        qDebug(mainwindow_js8) << "Not asking the modulator to emit audio as modulator isn't idle.";
+    }
 }
 
 void MainWindow::stopTx()
 {
-  Q_EMIT endTransmitMessage ();
+    Q_EMIT endTransmitMessage();
 
-  auto dt = DecodedText(m_currentMessage.trimmed(), m_currentMessageBits, m_nSubMode);
-  last_tx_label.setText("Last Tx: " + dt.message()); //m_currentMessage.trimmed());
+    auto dt = DecodedText(m_currentMessage.trimmed(), m_currentMessageBits, m_nSubMode);
+    last_tx_label.setText("Last Tx: " + dt.message()); //m_currentMessage.trimmed());
 
-  // TODO: uncomment if we want to mark after the frame is sent.
-  //// // start message marker
-  //// // - keep track of the total message sent so far, and mark it having been sent
-  //// m_totalTxMessage.append(dt.message());
-  //// ui->extFreeTextMsgEdit->setCharsSent(m_totalTxMessage.length());
-  //// qCDebug(mainwindow_js8) << "total sent:\n" << m_totalTxMessage;
-  //// // end message marker
+    // TODO: uncomment if we want to mark after the frame is sent.
+    //// // start message marker
+    //// // - keep track of the total message sent so far, and mark it having been sent
+    //// m_totalTxMessage.append(dt.message());
+    //// ui->extFreeTextMsgEdit->setCharsSent(m_totalTxMessage.length());
+    //// qCDebug(mainwindow_js8) << "total sent:\n" << m_totalTxMessage;
+    //// // end message marker
 
-  m_btxok          = false;
-  m_transmitting   = false;
-  m_iptt           = 0;
-  m_lastTxStopTime = DriftingDateTime::currentDateTimeUtc();
-  if (!m_tx_watchdog) {
-    tx_status_label.setStyleSheet("");
-    tx_status_label.setText("");
-  }
+    m_btxok = false;
+    m_transmitting = false;
+    m_iptt = 0;
+    m_lastTxStopTime = DriftingDateTime::currentDateTimeUtc();
+    if (!m_tx_watchdog) {
+        tx_status_label.setStyleSheet("");
+        tx_status_label.setText("");
+    }
 
 #if IDLE_BLOCKS_TX
-  bool shouldContinue = !m_tx_watchdog && prepareNextMessageFrame();
+    bool shouldContinue = !m_tx_watchdog && prepareNextMessageFrame();
 #else
-  bool shouldContinue = prepareNextMessageFrame();
+    bool shouldContinue = prepareNextMessageFrame();
 #endif
-  if(!shouldContinue){
-      // TODO: jsherer - split this up...
-      ui->extFreeTextMsgEdit->clear();
-      ui->extFreeTextMsgEdit->setReadOnly(false);
-      update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", false);
-      bool previous_stopTxButtonIsLongterm = m_stopTxButtonIsLongterm;
-      m_stopTxButtonIsLongterm = false;
-      on_stopTxButton_clicked();
-      m_stopTxButtonIsLongterm = previous_stopTxButtonIsLongterm;
-      tryRestoreFreqOffset();
-  }
+    if (!shouldContinue) {
+        // TODO: jsherer - split this up...
+        ui->extFreeTextMsgEdit->clear();
+        ui->extFreeTextMsgEdit->setReadOnly(false);
+        update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", false);
+        bool previous_stopTxButtonIsLongterm = m_stopTxButtonIsLongterm;
+        m_stopTxButtonIsLongterm = false;
+        on_stopTxButton_clicked();
+        m_stopTxButtonIsLongterm = previous_stopTxButtonIsLongterm;
+        tryRestoreFreqOffset();
+    }
 
-  pttReleaseTimer.start(TX_SWITCHOFF_DELAY);                       //end-of-transmission sequencer delay stopTx2
-  monitor (true);
-  statusUpdate ();
+    pttReleaseTimer.start(TX_SWITCHOFF_DELAY); //end-of-transmission sequencer delay stopTx2
+    monitor(true);
+    statusUpdate();
 }
 
 /**
  *  stopTx2 is called from stopTx to open the PTT
  */
-void MainWindow::stopTx2(){
+void MainWindow::stopTx2()
+{
     // GM8JCF: m_txFrameCount is set to the number of frames to be transmitted when the send button is pressed
     // and remains at that count until the last frame is transmitted.
     // So, we keep the PTT ON so long as m_txFrameCount is non-zero
@@ -4999,7 +5321,7 @@ void MainWindow::stopTx2(){
     qCDebug(mainwindow_js8) << "stopTx2 frames left" << m_txFrameCount;
 
     // If we're holding the PTT and there are more frames to transmit, do not emit the PTT signal
-    if(!m_tune && m_config.hold_ptt() && m_txFrameCount > 0){
+    if (!m_tune && m_config.hold_ptt() && m_txFrameCount > 0) {
         return;
     }
 
@@ -5009,10 +5331,11 @@ void MainWindow::stopTx2(){
 
 void MainWindow::TxAgain()
 {
-  auto_tx_mode(true);
+    auto_tx_mode(true);
 }
 
-void MainWindow::cacheActivity(QString key){
+void MainWindow::cacheActivity(QString key)
+{
     m_callActivityBandCache[key] = m_callActivity;
     m_bandActivityBandCache[key] = m_bandActivity;
     m_rxTextBandCache[key] = ui->textEditRX->toHtml();
@@ -5020,31 +5343,33 @@ void MainWindow::cacheActivity(QString key){
     m_heardGraphOutgoingBandCache[key] = m_heardGraphOutgoing;
 }
 
-void MainWindow::restoreActivity(QString key){
-    if(m_callActivityBandCache.contains(key)){
+void MainWindow::restoreActivity(QString key)
+{
+    if (m_callActivityBandCache.contains(key)) {
         m_callActivity = m_callActivityBandCache[key];
     }
 
-    if(m_bandActivityBandCache.contains(key)){
+    if (m_bandActivityBandCache.contains(key)) {
         m_bandActivity = m_bandActivityBandCache[key];
     }
 
-    if(m_rxTextBandCache.contains(key)){
+    if (m_rxTextBandCache.contains(key)) {
         ui->textEditRX->setHtml(m_rxTextBandCache[key]);
     }
 
-    if(m_heardGraphIncomingBandCache.contains(key)){
+    if (m_heardGraphIncomingBandCache.contains(key)) {
         m_heardGraphIncoming = m_heardGraphIncomingBandCache[key];
     }
 
-    if(m_heardGraphOutgoingBandCache.contains(key)){
+    if (m_heardGraphOutgoingBandCache.contains(key)) {
         m_heardGraphOutgoing = m_heardGraphOutgoingBandCache[key];
     }
 
     displayActivity(true);
 }
 
-void MainWindow::clearActivity(){
+void MainWindow::clearActivity()
+{
     qCDebug(mainwindow_js8) << "clear activity";
 
     m_callSeenHeartbeat.clear();
@@ -5066,7 +5391,8 @@ void MainWindow::clearActivity(){
     displayActivity(true);
 }
 
-void MainWindow::clearBandActivity(){
+void MainWindow::clearBandActivity()
+{
     qCDebug(mainwindow_js8) << "clear band activity";
     m_bandActivity.clear();
     ui->tableWidgetRXAll->setRowCount(0);
@@ -5075,7 +5401,8 @@ void MainWindow::clearBandActivity(){
     displayBandActivity();
 }
 
-void MainWindow::clearRXActivity(){
+void MainWindow::clearRXActivity()
+{
     qCDebug(mainwindow_js8) << "clear rx activity";
 
     m_rxFrameBlockNumbers.clear();
@@ -5089,7 +5416,8 @@ void MainWindow::clearRXActivity(){
     update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", false);
 }
 
-void MainWindow::clearCallActivity(){
+void MainWindow::clearCallActivity()
+{
     qCDebug(mainwindow_js8) << "clear call activity";
 
     m_callActivity.clear();
@@ -5099,22 +5427,25 @@ void MainWindow::clearCallActivity(){
 
     ui->tableWidgetCalls->setRowCount(0);
 
-	bool showIconColumn = false;
+    bool showIconColumn = false;
     createGroupCallsignTableRows(ui->tableWidgetCalls, "", showIconColumn);
 
     resetTimeDeltaAverage();
     displayCallActivity();
 }
 
-void MainWindow::createGroupCallsignTableRows(QTableWidget *table, QString const &selectedCall, bool &showIconColumn){
+void MainWindow::createGroupCallsignTableRows(QTableWidget* table,
+                                              QString const& selectedCall,
+                                              bool& showIconColumn)
+{
     int count = 0;
     auto now = DriftingDateTime::currentDateTimeUtc();
     int callsignAging = m_config.callsign_aging();
 
     int startCol = 1;
 
-    foreach(auto cd, m_callActivity.values()){
-        if (cd.call.trimmed().isEmpty()){
+    foreach (auto cd, m_callActivity.values()) {
+        if (cd.call.trimmed().isEmpty()) {
             continue;
         }
         if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
@@ -5123,9 +5454,10 @@ void MainWindow::createGroupCallsignTableRows(QTableWidget *table, QString const
         count++;
     }
 
-    table->horizontalHeaderItem(startCol)->setText(count == 0 ? columnLabel("Callsigns") : QString(columnLabel("Callsigns (%1)")).arg(count));
+    table->horizontalHeaderItem(startCol)->setText(
+        count == 0 ? columnLabel("Callsigns") : QString(columnLabel("Callsigns (%1)")).arg(count));
 
-    if(!m_config.avoid_allcall()){
+    if (!m_config.avoid_allcall()) {
         table->insertRow(table->rowCount());
 
         auto emptyItem = new QTableWidgetItem("");
@@ -5137,30 +5469,28 @@ void MainWindow::createGroupCallsignTableRows(QTableWidget *table, QString const
 
         table->setItem(table->rowCount() - 1, startCol, item);
         table->setSpan(table->rowCount() - 1, startCol, 1, table->columnCount());
-        if(selectedCall == "@ALLCALL"){
-            table->item(table->rowCount()-1, 0)->setSelected(true);
-            table->item(table->rowCount()-1, startCol)->setSelected(true);
+        if (selectedCall == "@ALLCALL") {
+            table->item(table->rowCount() - 1, 0)->setSelected(true);
+            table->item(table->rowCount() - 1, startCol)->setSelected(true);
         }
     }
 
     auto groups = m_config.my_groups().values();
     std::sort(groups.begin(), groups.end());
-    foreach(auto group, groups){
-		int col = 0;
+    foreach (auto group, groups) {
+        int col = 0;
         table->insertRow(table->rowCount());
 
-		bool hasMessage = m_rxInboxCountCache.value(group, 0) > 0;
+        bool hasMessage = m_rxInboxCountCache.value(group, 0) > 0;
 
-		auto iconItem = new QTableWidgetItem(hasMessage ? "\u2691" : "");
-		iconItem->setData(Qt::UserRole, QVariant(group));
-		iconItem->setToolTip(
-				hasMessage ? "Message Available" :
-				"");
-		iconItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-		table->setItem(table->rowCount() - 1, col++, iconItem);
-		if(hasMessage){
-			showIconColumn = true;
-		}
+        auto iconItem = new QTableWidgetItem(hasMessage ? "\u2691" : "");
+        iconItem->setData(Qt::UserRole, QVariant(group));
+        iconItem->setToolTip(hasMessage ? "Message Available" : "");
+        iconItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+        table->setItem(table->rowCount() - 1, col++, iconItem);
+        if (hasMessage) {
+            showIconColumn = true;
+        }
 
         auto item = new QTableWidgetItem(group);
         item->setData(Qt::UserRole, QVariant(group));
@@ -5168,32 +5498,38 @@ void MainWindow::createGroupCallsignTableRows(QTableWidget *table, QString const
         table->setItem(table->rowCount() - 1, col, item);
         table->setSpan(table->rowCount() - 1, col, 1, table->columnCount());
 
-        if(selectedCall == group){
-            table->item(table->rowCount()-1, 0)->setSelected(true);
-            table->item(table->rowCount()-1, col)->setSelected(true);
+        if (selectedCall == group) {
+            table->item(table->rowCount() - 1, 0)->setSelected(true);
+            table->item(table->rowCount() - 1, col)->setSelected(true);
         }
     }
 }
 
-void MainWindow::displayTextForFreq(QString text, int freq, QDateTime date, bool isTx, bool isNewLine, bool isLast){
-    int lowFreq = freq/10*10;
+void MainWindow::displayTextForFreq(QString text,
+                                    int freq,
+                                    QDateTime date,
+                                    bool isTx,
+                                    bool isNewLine,
+                                    bool isLast)
+{
+    int lowFreq = freq / 10 * 10;
     int highFreq = lowFreq + 10;
 
     int block = -1;
 
-    if(m_rxFrameBlockNumbers.contains(freq)){
+    if (m_rxFrameBlockNumbers.contains(freq)) {
         block = m_rxFrameBlockNumbers[freq];
-    } else if(m_rxFrameBlockNumbers.contains(lowFreq)){
+    } else if (m_rxFrameBlockNumbers.contains(lowFreq)) {
         block = m_rxFrameBlockNumbers[lowFreq];
         freq = lowFreq;
-    } else if(m_rxFrameBlockNumbers.contains(highFreq)){
+    } else if (m_rxFrameBlockNumbers.contains(highFreq)) {
         block = m_rxFrameBlockNumbers[highFreq];
         freq = highFreq;
     }
 
     qCDebug(mainwindow_js8) << "existing block?" << block << freq;
 
-    if(isNewLine){
+    if (isNewLine) {
         m_rxFrameBlockNumbers.remove(freq);
         m_rxFrameBlockNumbers.remove(lowFreq);
         m_rxFrameBlockNumbers.remove(highFreq);
@@ -5203,7 +5539,7 @@ void MainWindow::displayTextForFreq(QString text, int freq, QDateTime date, bool
     block = writeMessageTextToUI(date, text, freq, isTx, block);
 
     // never cache tx or last lines
-    if(/*isTx || */isLast) {
+    if (/*isTx || */ isLast) {
         // reset the cache so we're always progressing forward
         m_rxFrameBlockNumbers.clear();
     } else {
@@ -5213,10 +5549,11 @@ void MainWindow::displayTextForFreq(QString text, int freq, QDateTime date, bool
     }
 }
 
-void MainWindow::writeNoticeTextToUI(QDateTime date, QString text){
+void MainWindow::writeNoticeTextToUI(QDateTime date, QString text)
+{
     auto c = ui->textEditRX->textCursor();
     c.movePosition(QTextCursor::End);
-    if(c.block().length() > 1){
+    if (c.block().length() > 1) {
         c.insertBlock();
     }
 
@@ -5230,12 +5567,13 @@ void MainWindow::writeNoticeTextToUI(QDateTime date, QString text){
     ui->textEditRX->verticalScrollBar()->setValue(ui->textEditRX->verticalScrollBar()->maximum());
 }
 
-int MainWindow::writeMessageTextToUI(QDateTime date, QString text, int freq, bool isTx, int block){
+int MainWindow::writeMessageTextToUI(QDateTime date, QString text, int freq, bool isTx, int block)
+{
     auto c = ui->textEditRX->textCursor();
 
     // find an existing block (that does not contain an EOT marker)
     bool found = false;
-    if(block != -1){
+    if (block != -1) {
         QTextBlock b = c.document()->findBlockByNumber(block);
         c.setPosition(b.position());
         c.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
@@ -5244,30 +5582,31 @@ int MainWindow::writeMessageTextToUI(QDateTime date, QString text, int freq, boo
         c.clearSelection();
         c.movePosition(QTextCursor::EndOfBlock, QTextCursor::MoveAnchor);
 
-        if(!blockText.contains(m_config.eot())){
+        if (!blockText.contains(m_config.eot())) {
             found = true;
         }
     }
 
-    if(!found){
+    if (!found) {
         c.movePosition(QTextCursor::End);
-        if(c.block().length() > 1){
+        if (c.block().length() > 1) {
             c.insertBlock();
         }
     }
 
     // fixup duplicate acks
     auto tc = c.document()->find(text);
-    if(!tc.isNull() && tc.selectedText() == text && (text.contains(" ACK ") || text.contains(" HEARTBEAT SNR "))){
+    if (!tc.isNull() && tc.selectedText() == text
+        && (text.contains(" ACK ") || text.contains(" HEARTBEAT SNR "))) {
         tc.select(QTextCursor::BlockUnderCursor);
 
-        if(tc.selectedText().trimmed().startsWith(date.time().toString())){
+        if (tc.selectedText().trimmed().startsWith(date.time().toString())) {
             qCDebug(mainwindow_js8) << "found" << tc.selectedText() << "so not displaying...";
             return tc.blockNumber();
         }
     }
 
-    if(found){
+    if (found) {
         c.clearSelection();
         c.insertText(text);
     } else {
@@ -5278,12 +5617,18 @@ int MainWindow::writeMessageTextToUI(QDateTime date, QString text, int freq, boo
         c.insertHtml(QString("%1 - (%2) - %3").arg(date.time().toString()).arg(freq).arg(text));
     }
 
-    if(isTx){
+    if (isTx) {
         c.block().setUserState(State::TX);
-        highlightBlock(c.block(), m_config.tx_text_font(), m_config.color_tx_foreground(), QColor(Qt::transparent));
+        highlightBlock(c.block(),
+                       m_config.tx_text_font(),
+                       m_config.color_tx_foreground(),
+                       QColor(Qt::transparent));
     } else {
         c.block().setUserState(State::RX);
-        highlightBlock(c.block(), m_config.rx_text_font(), m_config.color_rx_foreground(), QColor(Qt::transparent));
+        highlightBlock(c.block(),
+                       m_config.rx_text_font(),
+                       m_config.color_rx_foreground(),
+                       QColor(Qt::transparent));
     }
 
     ui->textEditRX->ensureCursorVisible();
@@ -5292,21 +5637,24 @@ int MainWindow::writeMessageTextToUI(QDateTime date, QString text, int freq, boo
     return c.blockNumber();
 }
 
-bool MainWindow::isMessageQueuedForTransmit(){
+bool MainWindow::isMessageQueuedForTransmit()
+{
     return m_transmitting || m_txFrameCount > 0;
 }
 
-bool MainWindow::isInDecodeDelayThreshold(int ms){
-    if(!m_lastTxStopTime.isValid() || m_lastTxStopTime.isNull()){
+bool MainWindow::isInDecodeDelayThreshold(int ms)
+{
+    if (!m_lastTxStopTime.isValid() || m_lastTxStopTime.isNull()) {
         return false;
     }
 
     return m_lastTxStopTime.msecsTo(DriftingDateTime::currentDateTimeUtc()) < ms;
 }
 
-void MainWindow::prependMessageText(QString text){
+void MainWindow::prependMessageText(QString text)
+{
     // don't add message text if we already have a transmission queued...
-    if(isMessageQueuedForTransmit()){
+    if (isMessageQueuedForTransmit()) {
         return;
     }
 
@@ -5315,18 +5663,19 @@ void MainWindow::prependMessageText(QString text){
     c.insertText(text);
 }
 
-void MainWindow::addMessageText(QString text, bool clear, bool selectFirstPlaceholder){
+void MainWindow::addMessageText(QString text, bool clear, bool selectFirstPlaceholder)
+{
     // don't add message text if we already have a transmission queued...
-    if(isMessageQueuedForTransmit()){
+    if (isMessageQueuedForTransmit()) {
         return;
     }
 
-    if(clear){
+    if (clear) {
         ui->extFreeTextMsgEdit->clear();
     }
 
     QTextCursor c = ui->extFreeTextMsgEdit->textCursor();
-    if(c.hasSelection()){
+    if (c.hasSelection()) {
         c.removeSelectedText();
     }
 
@@ -5338,15 +5687,16 @@ void MainWindow::addMessageText(QString text, bool clear, bool selectFirstPlaceh
 
     c.setPosition(pos);
 
-    if(!isSpace){
+    if (!isSpace) {
         c.insertText(" ");
     }
 
     c.insertText(text);
 
-    if(selectFirstPlaceholder){
-        auto match = QRegularExpression("(\\[[^\\]]+\\])").match(ui->extFreeTextMsgEdit->toPlainText());
-        if(match.hasMatch()){
+    if (selectFirstPlaceholder) {
+        auto match
+            = QRegularExpression("(\\[[^\\]]+\\])").match(ui->extFreeTextMsgEdit->toPlainText());
+        if (match.hasMatch()) {
             c.setPosition(match.capturedStart());
             c.setPosition(match.capturedEnd(), QTextCursor::KeepAnchor);
             ui->extFreeTextMsgEdit->setTextCursor(c);
@@ -5356,63 +5706,81 @@ void MainWindow::addMessageText(QString text, bool clear, bool selectFirstPlaceh
     ui->extFreeTextMsgEdit->setFocus();
 }
 
-void MainWindow::confirmThenEnqueueMessage(int timeout, int priority, QString message, int offset, Callback c){
-    SelfDestructMessageBox * m = new SelfDestructMessageBox(timeout,
-      "Autoreply Confirmation Required",
-      QString("A transmission is queued for autoreply:\n\n%1\n\nWould you like to send this transmission?").arg(message),
-      QMessageBox::Question,
-      QMessageBox::Yes | QMessageBox::No,
-      QMessageBox::No,
-      false,
-      this);
+void MainWindow::confirmThenEnqueueMessage(int timeout,
+                                           int priority,
+                                           QString message,
+                                           int offset,
+                                           Callback c)
+{
+    SelfDestructMessageBox* m = new SelfDestructMessageBox(
+        timeout,
+        "Autoreply Confirmation Required",
+        QString("A transmission is queued for autoreply:\n\n%1\n\nWould you like to send this "
+                "transmission?")
+            .arg(message),
+        QMessageBox::Question,
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No,
+        false,
+        this);
 
-    connect(m, &SelfDestructMessageBox::finished, this, [this, m, priority, message, offset, c](int){
-        // make sure we delete the message box later...
-        m->deleteLater();
+    connect(m,
+            &SelfDestructMessageBox::finished,
+            this,
+            [this, m, priority, message, offset, c](int) {
+                // make sure we delete the message box later...
+                m->deleteLater();
 
-        if(m->result() == QMessageBox::Yes){
-            enqueueMessage(priority, message, offset, c);
-        }
-    });
+                if (m->result() == QMessageBox::Yes) {
+                    enqueueMessage(priority, message, offset, c);
+                }
+            });
 
     m->setWindowModality(Qt::NonModal);
     m->show();
 }
 
-void MainWindow::enqueueMessage(int priority, QString message, int offset, Callback c){
-    m_txMessageQueue.enqueue(
-        PrioritizedMessage{
-            DriftingDateTime::currentDateTimeUtc(), priority, message, offset, c
-        }
-    );
+void MainWindow::enqueueMessage(int priority, QString message, int offset, Callback c)
+{
+    m_txMessageQueue.enqueue(PrioritizedMessage { DriftingDateTime::currentDateTimeUtc(),
+                                                  priority,
+                                                  message,
+                                                  offset,
+                                                  c });
 }
 
-void MainWindow::resetMessage(){
+void MainWindow::resetMessage()
+{
     resetMessageUI();
     resetMessageTransmitQueue();
 }
 
-void MainWindow::resetMessageUI(){
+void MainWindow::resetMessageUI()
+{
     m_nextFreeTextMsg.clear();
     ui->extFreeTextMsgEdit->clear();
     ui->extFreeTextMsgEdit->setReadOnly(false);
 
-    update_dynamic_property (ui->extFreeTextMsgEdit, "transmitting", false);
+    update_dynamic_property(ui->extFreeTextMsgEdit, "transmitting", false);
 
-    if(ui->startTxButton->isChecked()){
+    if (ui->startTxButton->isChecked()) {
         ui->startTxButton->setChecked(false);
     }
 }
 
-bool MainWindow::ensureCallsignSet(bool alert){
-    if(m_config.my_callsign().trimmed().isEmpty()){
-        if(alert) MessageBox::warning_message(this, tr ("Please enter your callsign in the settings."));
+bool MainWindow::ensureCallsignSet(bool alert)
+{
+    if (m_config.my_callsign().trimmed().isEmpty()) {
+        if (alert)
+            MessageBox::warning_message(this, tr("Please enter your callsign in the settings."));
         openSettings();
         return false;
     }
 
-    if(m_config.my_grid().trimmed().isEmpty()){
-        if(alert) MessageBox::warning_message(this, tr ("Please enter your grid locator in the settings."));
+    if (m_config.my_grid().trimmed().isEmpty()) {
+        if (alert)
+            MessageBox::warning_message(this,
+                                        tr("Please enter your grid locator in the settings."));
         openSettings();
         return false;
     }
@@ -5420,53 +5788,57 @@ bool MainWindow::ensureCallsignSet(bool alert){
     return true;
 }
 
-bool MainWindow::ensureKeyNotStuck(QString const& text){
+bool MainWindow::ensureKeyNotStuck(QString const& text)
+{
     // be annoying and drop messages with all the same character to reduce spam...
-    if(text.length() > 5 && QString(text).replace(text.at(0), "").trimmed().isEmpty()){
+    if (text.length() > 5 && QString(text).replace(text.at(0), "").trimmed().isEmpty()) {
         return false;
     }
 
     return true;
 }
 
-bool MainWindow::ensureNotIdle(){
-    if (!m_config.watchdog()){
+bool MainWindow::ensureNotIdle()
+{
+    if (!m_config.watchdog()) {
         return true;
     }
 
-    if(m_idleMinutes < m_config.watchdog ()){
+    if (m_idleMinutes < m_config.watchdog()) {
         return true;
     }
 
-    tx_watchdog (true);       // disable transmit and auto replies
+    tx_watchdog(true); // disable transmit and auto replies
     return false;
 }
 
-bool MainWindow::ensureCanTransmit(){
+bool MainWindow::ensureCanTransmit()
+{
     return ui->monitorTxButton->isChecked();
 }
 
-bool MainWindow::ensureCreateMessageReady(const QString &text){
-    if(text.isEmpty()){
+bool MainWindow::ensureCreateMessageReady(const QString& text)
+{
+    if (text.isEmpty()) {
         return false;
     }
 
-    if(!ensureCanTransmit()){
+    if (!ensureCanTransmit()) {
         on_stopTxButton_clicked();
         return false;
     }
 
-    if(!ensureCallsignSet()){
+    if (!ensureCallsignSet()) {
         on_stopTxButton_clicked();
         return false;
     }
 
-    if(!ensureNotIdle()){
+    if (!ensureNotIdle()) {
         on_stopTxButton_clicked();
         return false;
     }
 
-    if(!ensureKeyNotStuck(text)){
+    if (!ensureKeyNotStuck(text)) {
         on_stopTxButton_clicked();
 
         ui->monitorButton->setChecked(false);
@@ -5474,8 +5846,8 @@ bool MainWindow::ensureCreateMessageReady(const QString &text){
         on_monitorButton_clicked(false);
         on_monitorTxButton_toggled(false);
 
-        foreach(auto obj, this->children()){
-            if(obj->isWidgetType()){
+        foreach (auto obj, this->children()) {
+            if (obj->isWidgetType()) {
                 auto wid = qobject_cast<QWidget*>(obj);
                 wid->setEnabled(false);
             }
@@ -5487,98 +5859,111 @@ bool MainWindow::ensureCreateMessageReady(const QString &text){
     return true;
 }
 
-QString MainWindow::createMessage(QString const& text, bool *pDisableTypeahead){
-    return createMessageTransmitQueue(replaceMacros(text, buildMacroValues(), false), true, false, pDisableTypeahead);
+QString MainWindow::createMessage(QString const& text, bool* pDisableTypeahead)
+{
+    return createMessageTransmitQueue(replaceMacros(text, buildMacroValues(), false),
+                                      true,
+                                      false,
+                                      pDisableTypeahead);
 }
 
-QString MainWindow::appendMessage(QString const& text, bool isData, bool *pDisableTypeahead){
-    return createMessageTransmitQueue(replaceMacros(text, buildMacroValues(), false), false, isData, pDisableTypeahead);
+QString MainWindow::appendMessage(QString const& text, bool isData, bool* pDisableTypeahead)
+{
+    return createMessageTransmitQueue(replaceMacros(text, buildMacroValues(), false),
+                                      false,
+                                      isData,
+                                      pDisableTypeahead);
 }
 
-QString MainWindow::createMessageTransmitQueue(QString const& text, bool reset, bool isData, bool *pDisableTypeahead){
-  if(reset){
-      resetMessageTransmitQueue();
-  }
+QString MainWindow::createMessageTransmitQueue(QString const& text,
+                                               bool reset,
+                                               bool isData,
+                                               bool* pDisableTypeahead)
+{
+    if (reset) {
+        resetMessageTransmitQueue();
+    }
 
-  auto frames = buildMessageFrames(text, isData, pDisableTypeahead);
+    auto frames = buildMessageFrames(text, isData, pDisableTypeahead);
 
-  QStringList lines;
-  foreach(auto frame, frames){
-      auto dt = DecodedText(frame.first, frame.second, m_nSubMode);
-      lines.append(dt.message());
-  }
+    QStringList lines;
+    foreach (auto frame, frames) {
+        auto dt = DecodedText(frame.first, frame.second, m_nSubMode);
+        lines.append(dt.message());
+    }
 
-  m_txFrameQueue.append(frames);
-  m_txFrameCount += frames.length();
+    m_txFrameQueue.append(frames);
+    m_txFrameCount += frames.length();
 
-  // TODO: jsherer - move this outside of create message transmit queue
-  // if we're transmitting a message to be displayed, we should bump the repeat buttons...
-  // "Bump the repeat buttons" from 2018
-  // probably translates to "stop automatic transmission loops" in 2025:
-  // qCDebug(mainwindow_js8) << "Cancel HB and CQ transmit loops in createMessageTransmitQueue";
-  // m_cq_loop->onLoopCancel();
-  // m_hb_loop->onLoopCancel();
-  // But the loops cause this code to be executed as part of their
-  // normal operation, when the first transmission is sent.
-  // So the cancelation makes it impossible to iterate through the loop a second time.
+    // TODO: jsherer - move this outside of create message transmit queue
+    // if we're transmitting a message to be displayed, we should bump the repeat buttons...
+    // "Bump the repeat buttons" from 2018
+    // probably translates to "stop automatic transmission loops" in 2025:
+    // qCDebug(mainwindow_js8) << "Cancel HB and CQ transmit loops in createMessageTransmitQueue";
+    // m_cq_loop->onLoopCancel();
+    // m_hb_loop->onLoopCancel();
+    // But the loops cause this code to be executed as part of their
+    // normal operation, when the first transmission is sent.
+    // So the cancelation makes it impossible to iterate through the loop a second time.
 
-  // return the text
-  return lines.join("");
+    // return the text
+    return lines.join("");
 }
 
-void MainWindow::restoreMessage(){
-    if(m_lastTxMessage.isEmpty()){
+void MainWindow::restoreMessage()
+{
+    if (m_lastTxMessage.isEmpty()) {
         return;
     }
     addMessageText(Varicode::rstrip(m_lastTxMessage), true);
 }
 
-void MainWindow::resetMessageTransmitQueue(){
-  m_txFrameCount = 0;
-  m_txFrameCountSent = 0;
-  m_txFrameQueue.clear();
-  m_txMessageQueue.clear();
-
-  // reset the total message sent
-  m_totalTxMessage.clear();
-}
-
-QPair<QString, int> MainWindow::popMessageFrame(){
-  if(m_txFrameQueue.isEmpty()){
-      return QPair<QString, int>{};
-  }
-  return m_txFrameQueue.dequeue();
-}
-
-void
-MainWindow::currentTextChanged()
+void MainWindow::resetMessageTransmitQueue()
 {
-  auto const text = ui->extFreeTextMsgEdit->toPlainText();
+    m_txFrameCount = 0;
+    m_txFrameCountSent = 0;
+    m_txFrameQueue.clear();
+    m_txMessageQueue.clear();
 
-  // keep track of dirty flags
-  m_txTextDirty = text != m_txTextDirtyLastText;
-  m_txTextDirtyLastText = text;
-
-  // immediately update the display
-  updateButtonDisplay();
-  updateTextDisplay();
+    // reset the total message sent
+    m_totalTxMessage.clear();
 }
 
-void
-MainWindow::tableSelectionChanged(QItemSelection const &,
-                                  QItemSelection const &)
+QPair<QString, int> MainWindow::popMessageFrame()
 {
-  currentTextChanged();
-
-  auto const selectedCall = callsignSelected();
-
-  if(selectedCall != m_prevSelectedCallsign)
-  {
-    callsignSelectedChanged(m_prevSelectedCallsign, selectedCall);
-  }
+    if (m_txFrameQueue.isEmpty()) {
+        return QPair<QString, int> {};
+    }
+    return m_txFrameQueue.dequeue();
 }
 
-QList<QPair<QString, int>> MainWindow::buildMessageFrames(const QString &text, bool isData, bool *pDisableTypeahead){
+void MainWindow::currentTextChanged()
+{
+    auto const text = ui->extFreeTextMsgEdit->toPlainText();
+
+    // keep track of dirty flags
+    m_txTextDirty = text != m_txTextDirtyLastText;
+    m_txTextDirtyLastText = text;
+
+    // immediately update the display
+    updateButtonDisplay();
+    updateTextDisplay();
+}
+
+void MainWindow::tableSelectionChanged(QItemSelection const&, QItemSelection const&)
+{
+    currentTextChanged();
+
+    auto const selectedCall = callsignSelected();
+
+    if (selectedCall != m_prevSelectedCallsign) {
+        callsignSelectedChanged(m_prevSelectedCallsign, selectedCall);
+    }
+}
+
+QList<QPair<QString, int>>
+    MainWindow::buildMessageFrames(const QString& text, bool isData, bool* pDisableTypeahead)
+{
     // prepare selected callsign for directed message
     QString selectedCall = callsignSelected();
 
@@ -5592,17 +5977,16 @@ QList<QPair<QString, int>> MainWindow::buildMessageFrames(const QString &text, b
     bool forceData = m_txFrameCountSent > 0 && isData;
 
     Varicode::MessageInfo info;
-    auto frames = Varicode::buildMessageFrames(
-        mycall,
-        mygrid,
-        selectedCall,
-        text,
-        forceIdentify,
-        forceData,
-        m_nSubMode,
-        &info);
+    auto frames = Varicode::buildMessageFrames(mycall,
+                                               mygrid,
+                                               selectedCall,
+                                               text,
+                                               forceIdentify,
+                                               forceData,
+                                               m_nSubMode,
+                                               &info);
 
-    if(pDisableTypeahead){
+    if (pDisableTypeahead) {
         // checksummed commands should not allow typeahead
         *pDisableTypeahead = (!info.dirCmd.isEmpty() && Varicode::isCommandChecksumed(info.dirCmd));
     }
@@ -5620,140 +6004,137 @@ QList<QPair<QString, int>> MainWindow::buildMessageFrames(const QString &text, b
 
 bool MainWindow::prepareNextMessageFrame()
 {
-  // check to see if the last i3bit was a last bit
-  bool i3bitLast = (m_i3bit & Varicode::JS8CallLast) == Varicode::JS8CallLast;
+    // check to see if the last i3bit was a last bit
+    bool i3bitLast = (m_i3bit & Varicode::JS8CallLast) == Varicode::JS8CallLast;
 
-  // TODO: should this be user configurable?
-  bool shouldForceDataForTypeahead = !i3bitLast;
+    // TODO: should this be user configurable?
+    bool shouldForceDataForTypeahead = !i3bitLast;
 
-  // reset i3
-  m_i3bit = Varicode::JS8Call;
+    // reset i3
+    m_i3bit = Varicode::JS8Call;
 
-  // typeahead
-  bool shouldDisableTypeahead = false;
-  if(ui->extFreeTextMsgEdit->isDirty() && !ui->extFreeTextMsgEdit->isEmpty()){
-      // block edit events while computing next frame
-      QString newText;
-      ui->extFreeTextMsgEdit->setReadOnly(true);
-      {
-          auto sent = ui->extFreeTextMsgEdit->sentText();
-          auto unsent = ui->extFreeTextMsgEdit->unsentText();
-          qCDebug(mainwindow_js8) << "text dirty for typeahead\n" << sent << "\n" << unsent;
-          m_txFrameQueue.clear();
-          m_txFrameCount = 0;
+    // typeahead
+    bool shouldDisableTypeahead = false;
+    if (ui->extFreeTextMsgEdit->isDirty() && !ui->extFreeTextMsgEdit->isEmpty()) {
+        // block edit events while computing next frame
+        QString newText;
+        ui->extFreeTextMsgEdit->setReadOnly(true);
+        {
+            auto sent = ui->extFreeTextMsgEdit->sentText();
+            auto unsent = ui->extFreeTextMsgEdit->unsentText();
+            qCDebug(mainwindow_js8) << "text dirty for typeahead\n" << sent << "\n" << unsent;
+            m_txFrameQueue.clear();
+            m_txFrameCount = 0;
 
-          newText = appendMessage(unsent, shouldForceDataForTypeahead, &shouldDisableTypeahead);
+            newText = appendMessage(unsent, shouldForceDataForTypeahead, &shouldDisableTypeahead);
 
-          // if this was the last frame, append a newline
-          if(i3bitLast){
-              m_totalTxMessage.append("\n");
-              newText.prepend("\n");
-          }
+            // if this was the last frame, append a newline
+            if (i3bitLast) {
+                m_totalTxMessage.append("\n");
+                newText.prepend("\n");
+            }
 
-          qCDebug (mainwindow_js8) << "unsent replaced to" << "\n" << newText;
-      }
-      ui->extFreeTextMsgEdit->setReadOnly(shouldDisableTypeahead);
-      ui->extFreeTextMsgEdit->replaceUnsentText(newText, true);
-      ui->extFreeTextMsgEdit->setClean();
-  }
+            qCDebug(mainwindow_js8) << "unsent replaced to" << "\n" << newText;
+        }
+        ui->extFreeTextMsgEdit->setReadOnly(shouldDisableTypeahead);
+        ui->extFreeTextMsgEdit->replaceUnsentText(newText, true);
+        ui->extFreeTextMsgEdit->setClean();
+    }
 
-  QPair<QString, int> f = popMessageFrame();
-  auto frame = f.first;
-  auto bits = f.second;
+    QPair<QString, int> f = popMessageFrame();
+    auto frame = f.first;
+    auto bits = f.second;
 
-  // if not the first frame, ensure first bit is not set
-  if(m_txFrameCountSent > 0){
-      bits &= ~Varicode::JS8CallFirst;
-  }
+    // if not the first frame, ensure first bit is not set
+    if (m_txFrameCountSent > 0) {
+        bits &= ~Varicode::JS8CallFirst;
+    }
 
-  // if last frame, ensure the last bit is set
-  if(m_txFrameQueue.isEmpty()){
-      bits |= Varicode::JS8CallLast;
-  }
+    // if last frame, ensure the last bit is set
+    if (m_txFrameQueue.isEmpty()) {
+        bits |= Varicode::JS8CallLast;
+    }
 
-  if(frame.isEmpty()){
-    m_nextFreeTextMsg.clear();
+    if (frame.isEmpty()) {
+        m_nextFreeTextMsg.clear();
+        updateTxButtonDisplay();
+        return false;
+    }
+
+    // append this frame to the total message sent so far
+    auto dt = DecodedText(frame, bits, m_nSubMode);
+    m_totalTxMessage.append(dt.message());
+    ui->extFreeTextMsgEdit->setCharsSent(m_totalTxMessage.length());
+    m_txFrameCountSent += 1;
+    m_lastTxMessage = m_totalTxMessage;
+    qCDebug(mainwindow_js8) << "total sent:" << m_txFrameCountSent << "\n" << m_totalTxMessage;
+
+    // display the frame...
+    if (m_txFrameQueue.isEmpty()) {
+        displayTextForFreq(QString("%1 %2 ").arg(dt.message()).arg(m_config.eot()),
+                           freq(),
+                           DriftingDateTime::currentDateTimeUtc(),
+                           true,
+                           false,
+                           true);
+    } else {
+        displayTextForFreq(dt.message(),
+                           freq(),
+                           DriftingDateTime::currentDateTimeUtc(),
+                           true,
+                           m_txFrameCountSent == 1,
+                           false);
+    }
+
+    m_nextFreeTextMsg = frame;
+    m_i3bit = bits;
+
     updateTxButtonDisplay();
-    return false;
-  }
 
-  // append this frame to the total message sent so far
-  auto dt = DecodedText(frame, bits, m_nSubMode);
-  m_totalTxMessage.append(dt.message());
-  ui->extFreeTextMsgEdit->setCharsSent(m_totalTxMessage.length());
-  m_txFrameCountSent += 1;
-  m_lastTxMessage = m_totalTxMessage;
-  qCDebug(mainwindow_js8) << "total sent:" << m_txFrameCountSent << "\n" << m_totalTxMessage;
-
-  // display the frame...
-  if (m_txFrameQueue.isEmpty())
-  {
-    displayTextForFreq(QString("%1 %2 ").arg(dt.message()).arg(m_config.eot()),
-                       freq(),
-                       DriftingDateTime::currentDateTimeUtc(),
-                       true,
-                       false,
-                       true);
-  }
-  else
-  {
-    displayTextForFreq(dt.message(),
-                       freq(),
-                       DriftingDateTime::currentDateTimeUtc(),
-                       true,
-                       m_txFrameCountSent == 1,
-                       false);
-  }
-
-  m_nextFreeTextMsg = frame;
-  m_i3bit           = bits;
-
-  updateTxButtonDisplay();
-
-  return true;
+    return true;
 }
 
-bool
-MainWindow::isFreqOffsetFree(int const f,
-                             int const bw)
+bool MainWindow::isFreqOffsetFree(int const f, int const bw)
 {
-  // if this frequency is our current frequency, or it's in our
-  // directed cache, it's free.
+    // if this frequency is our current frequency, or it's in our
+    // directed cache, it's free.
 
-  if ((freq() == f) || isDirectedOffset(f, nullptr)) return true;
+    if ((freq() == f) || isDirectedOffset(f, nullptr))
+        return true;
 
-  // Run through the band activity; if there's no activity for a given
-  // offset, or we last received on it more than 30 seconds ago, then
-  // it's free. If it's an occupied slot within the bandwidth of where
-  // we'd like to transmit, then it's not free.
+    // Run through the band activity; if there's no activity for a given
+    // offset, or we last received on it more than 30 seconds ago, then
+    // it's free. If it's an occupied slot within the bandwidth of where
+    // we'd like to transmit, then it's not free.
 
-  auto const now = DriftingDateTime::currentDateTimeUtc();
+    auto const now = DriftingDateTime::currentDateTimeUtc();
 
-  for (auto [offset, activity] : m_bandActivity.asKeyValueRange())
-  {
-    if (activity.isEmpty() ||
-        activity.last().utcTimestamp.secsTo(now) >= 30) continue;
+    for (auto [offset, activity] : m_bandActivity.asKeyValueRange()) {
+        if (activity.isEmpty() || activity.last().utcTimestamp.secsTo(now) >= 30)
+            continue;
 
-    if (qAbs(offset - f) < bw) return false;
-  }
+        if (qAbs(offset - f) < bw)
+            return false;
+    }
 
-  return true;
+    return true;
 }
 
-int MainWindow::findFreeFreqOffset(int fmin, int fmax, int bw){
-    int nslots = (fmax-fmin)/bw;
+int MainWindow::findFreeFreqOffset(int fmin, int fmax, int bw)
+{
+    int nslots = (fmax - fmin) / bw;
 
     int f = fmin;
-    for(int i = 0; i < nslots; i++){
+    for (int i = 0; i < nslots; i++) {
         f = fmin + bw * (QRandomGenerator::global()->generate() % nslots);
-        if(isFreqOffsetFree(f, bw)){
+        if (isFreqOffsetFree(f, bw)) {
             return f;
         }
     }
 
-    for(int i = 0; i < nslots; i++){
-        f = fmin + (QRandomGenerator::global()->generate() % (fmax-fmin));
-        if(isFreqOffsetFree(f, bw)){
+    for (int i = 0; i < nslots; i++) {
+        f = fmin + (QRandomGenerator::global()->generate() % (fmax - fmin));
+        if (isFreqOffsetFree(f, bw)) {
             return f;
         }
     }
@@ -5873,7 +6254,7 @@ void MainWindow::prepareHeartbeat(){
 
 void MainWindow::on_startTxButton_toggled(bool checked)
 {
-    if(checked){
+    if (checked) {
         startTx();
     } else {
         resetMessage();
@@ -5882,180 +6263,216 @@ void MainWindow::on_startTxButton_toggled(bool checked)
     }
 }
 
-void MainWindow::toggleTx(bool start){
-    if(start && ui->startTxButton->isChecked()) { return; }
-    if(!start && !ui->startTxButton->isChecked()) { return; }
+void MainWindow::toggleTx(bool start)
+{
+    if (start && ui->startTxButton->isChecked()) {
+        return;
+    }
+    if (!start && !ui->startTxButton->isChecked()) {
+        return;
+    }
     qCDebug(mainwindow_js8) << "toggleTx(" << start << ") setting the TX button.";
     ui->startTxButton->setChecked(start);
 }
 
-void MainWindow::on_logQSOButton_clicked()                 //Log QSO button
+void MainWindow::on_logQSOButton_clicked() //Log QSO button
 {
-  QString call = callsignSelected();
-  if(m_callSelectedTime.contains(call)){
-    m_dateTimeQSOOn = m_callSelectedTime[call];
-  }
-  if (!m_dateTimeQSOOn.isValid ()) {
-    m_dateTimeQSOOn = DriftingDateTime::currentDateTimeUtc();
-  }
-  auto dateTimeQSOOff = DriftingDateTime::currentDateTimeUtc();
-  if (dateTimeQSOOff < m_dateTimeQSOOn) dateTimeQSOOff = m_dateTimeQSOOn;
-
-  if(call.startsWith("@")){
-      call = "";
-  }
-  QString grid="";
-  if(m_callActivity.contains(call)){
-      grid = m_callActivity[call].grid;
-  }
-  QString opCall=m_opCall;
-  if(opCall.isEmpty()){
-      opCall = m_config.my_callsign();
-  }
-
-  QString comments = ui->textEditRX->textCursor().selectedText();
-
-  // don't reset the log window if the call hasn't changed.
-  if(!m_logDlg->currentCall().isEmpty() && call.trimmed() == m_logDlg->currentCall()){
-      m_logDlg->show();
-      return;
-  }
-
-  m_logDlg->initLogQSO (call.trimmed(), grid.trimmed(), "JS8", m_rptSent, m_rptRcvd,
-                        m_dateTimeQSOOn, dateTimeQSOOff, m_freqNominal + freq(),
-                        m_config.my_callsign(), m_config.my_grid(),
-                        opCall, comments);
-}
-
-void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, QString const& grid
-                            , Frequency dial_freq, QString const& mode, QString const &submode
-                            , QString const& rpt_sent, QString const& rpt_received
-                            , QString const& comments
-                            , QString const& name, QDateTime const& QSO_date_on, QString const& operator_call
-                            , QString const& my_call, QString const& my_grid, QByteArray const& ADIF, QVariantMap const &additionalFields)
-{
-  QString date = QSO_date_on.toString("yyyyMMdd");
-  m_logBook.addAsWorked (m_hisCall, m_config.bands ()->find (m_freqNominal), mode, submode, grid, date, name, comments);
-
-  // Log to JS8Call API
-  if(canSendNetworkMessage()){
-      sendNetworkMessage("LOG.QSO", QString(ADIF), {
-          {"_ID", QVariant(-1)},
-          {"UTC.ON", QVariant(QSO_date_on.toMSecsSinceEpoch())},
-          {"UTC.OFF", QVariant(QSO_date_off.toMSecsSinceEpoch())},
-          {"CALL", QVariant(call)},
-          {"GRID", QVariant(grid)},
-          {"FREQ", QVariant(dial_freq)},
-          {"MODE", QVariant(mode)},
-          {"SUBMODE", QVariant(submode)},
-          {"RPT.SENT", QVariant(rpt_sent)},
-          {"RPT.RECV", QVariant(rpt_received)},
-          {"NAME", QVariant(name)},
-          {"COMMENTS", QVariant(comments)},
-          {"STATION.OP", QVariant(operator_call)},
-          {"STATION.CALL", QVariant(my_call)},
-          {"STATION.GRID", QVariant(my_grid)},
-          {"EXTRA", additionalFields}
-      });
-  }
-
-  // Log to N1MM Logger
-  if (m_config.broadcast_to_n1mm() && m_config.valid_n1mm_info())  {
-    const QHostAddress n1mmhost = QHostAddress(m_config.n1mm_server_name());
-    QUdpSocket _sock;
-    auto rzult = _sock.writeDatagram (ADIF + " <eor>", n1mmhost, quint16(m_config.n1mm_server_port()));
-    if (rzult == -1) {
-      bool hidden = m_logDlg->isHidden();
-      m_logDlg->setHidden(true);
-      MessageBox::warning_message (this, tr ("Error sending log to N1MM"),
-                                   tr ("Write returned \"%1\"").arg (rzult));
-      m_logDlg->setHidden(hidden);
+    QString call = callsignSelected();
+    if (m_callSelectedTime.contains(call)) {
+        m_dateTimeQSOOn = m_callSelectedTime[call];
     }
-  }
+    if (!m_dateTimeQSOOn.isValid()) {
+        m_dateTimeQSOOn = DriftingDateTime::currentDateTimeUtc();
+    }
+    auto dateTimeQSOOff = DriftingDateTime::currentDateTimeUtc();
+    if (dateTimeQSOOff < m_dateTimeQSOOn)
+        dateTimeQSOOff = m_dateTimeQSOOn;
 
-  // Log to N3FJP Logger
-  if(m_config.broadcast_to_n3fjp() && m_config.valid_n3fjp_info()){
-      QString data = QString(
-        "<CMD>"
-        "<ADDDIRECT>"
-        "<EXCLUDEDUPES>TRUE</EXCLUDEDUPES>"
-        "<STAYOPEN>FALSE</STAYOPEN>"
-        "<fldDateStr>%1</fldDateStr>"
-        "<fldTimeOnStr>%2</fldTimeOnStr>"
-        "<fldCall>%3</fldCall>"
-        "<fldGridR>%4</fldGridR>"
-        "<fldBand>%5</fldBand>"
-        "<fldFrequency>%6</fldFrequency>"
-        "<fldMode>JS8</fldMode>"
-        "<fldOperator>%7</fldOperator>"
-        "<fldNameR>%8</fldNameR>"
-        "<fldComments>%9</fldComments>"
-        "<fldRstS>%10</fldRstS>"
-        "<fldRstR>%11</fldRstR>"
-        "%12"
-        "</CMD>");
+    if (call.startsWith("@")) {
+        call = "";
+    }
+    QString grid = "";
+    if (m_callActivity.contains(call)) {
+        grid = m_callActivity[call].grid;
+    }
+    QString opCall = m_opCall;
+    if (opCall.isEmpty()) {
+        opCall = m_config.my_callsign();
+    }
 
-      data = data.arg(QSO_date_on.toString("yyyy/MM/dd"));
-      data = data.arg(QSO_date_on.toString("H:mm"));
-      data = data.arg(call);
-      data = data.arg(grid);
-      data = data.arg(m_config.bands ()->find(dial_freq).replace("m", ""));
-      data = data.arg(Radio::frequency_MHz_string(dial_freq));
-      data = data.arg(operator_call);
-      data = data.arg(name);
-      data = data.arg(comments);
-      data = data.arg(rpt_sent);
-      data = data.arg(rpt_received);
+    QString comments = ui->textEditRX->textCursor().selectedText();
 
-      int other = 0;
-      QStringList additional;
-      if(!additionalFields.isEmpty()){
-          foreach(auto key, additionalFields.keys()){
-              QString n3key;
-              if(N3FJP_ADIF_MAP.contains(key)){
-                  n3key = N3FJP_ADIF_MAP.value(key);
-              } else {
-                  other++;
-                  n3key = N3FJP_ADIF_MAP.value(QString("*%1").arg(other));
-              }
+    // don't reset the log window if the call hasn't changed.
+    if (!m_logDlg->currentCall().isEmpty() && call.trimmed() == m_logDlg->currentCall()) {
+        m_logDlg->show();
+        return;
+    }
 
-              if(n3key.isEmpty()){
-                  break;
-              }
-              auto value = additionalFields[key].toString();
-              additional.append(QString("<%1>%2</%1>").arg(n3key).arg(value));
-          }
-      }
-      data = data.arg(additional.join(""));
-
-      auto host = m_config.n3fjp_server_name();
-      auto port = m_config.n3fjp_server_port();
-
-      if(m_n3fjpClient->sendNetworkMessage(host, port, data.toLocal8Bit(), true, 500)){
-          QTimer::singleShot(300, this, [this, host, port](){
-            m_n3fjpClient->sendNetworkMessage(host, port, "<CMD><CHECKLOG></CMD>", true, 100);
-            m_n3fjpClient->sendNetworkMessage(host, port, "\r\n", true, 100);
-          });
-      } else {
-          bool hidden = m_logDlg->isHidden();
-          m_logDlg->setHidden(true);
-          MessageBox::warning_message (this, tr ("Error sending log to N3FJP"),
-                                       tr ("Write failed for \"%1:%2\"").arg (host).arg(port));
-          m_logDlg->setHidden(hidden);
-      }
-  }
-
-  // reload the logbook data
-  m_logBook.init();
-
-  clearCallsignSelected();
-
-  displayCallActivity();
-
-  m_dateTimeQSOOn = QDateTime {};
+    m_logDlg->initLogQSO(call.trimmed(),
+                         grid.trimmed(),
+                         "JS8",
+                         m_rptSent,
+                         m_rptRcvd,
+                         m_dateTimeQSOOn,
+                         dateTimeQSOOff,
+                         m_freqNominal + freq(),
+                         m_config.my_callsign(),
+                         m_config.my_grid(),
+                         opCall,
+                         comments);
 }
 
-void MainWindow::on_actionModeJS8HB_toggled(bool){
+void MainWindow::acceptQSO(QDateTime const& QSO_date_off,
+                           QString const& call,
+                           QString const& grid,
+                           Frequency dial_freq,
+                           QString const& mode,
+                           QString const& submode,
+                           QString const& rpt_sent,
+                           QString const& rpt_received,
+                           QString const& comments,
+                           QString const& name,
+                           QDateTime const& QSO_date_on,
+                           QString const& operator_call,
+                           QString const& my_call,
+                           QString const& my_grid,
+                           QByteArray const& ADIF,
+                           QVariantMap const& additionalFields)
+{
+    QString date = QSO_date_on.toString("yyyyMMdd");
+    m_logBook.addAsWorked(m_hisCall,
+                          m_config.bands()->find(m_freqNominal),
+                          mode,
+                          submode,
+                          grid,
+                          date,
+                          name,
+                          comments);
+
+    // Log to JS8Call API
+    if (canSendNetworkMessage()) {
+        sendNetworkMessage("LOG.QSO",
+                           QString(ADIF),
+                           {
+                               { "_ID",          QVariant(-1)                               },
+                               { "UTC.ON",       QVariant(QSO_date_on.toMSecsSinceEpoch())  },
+                               { "UTC.OFF",      QVariant(QSO_date_off.toMSecsSinceEpoch()) },
+                               { "CALL",         QVariant(call)                             },
+                               { "GRID",         QVariant(grid)                             },
+                               { "FREQ",         QVariant(dial_freq)                        },
+                               { "MODE",         QVariant(mode)                             },
+                               { "SUBMODE",      QVariant(submode)                          },
+                               { "RPT.SENT",     QVariant(rpt_sent)                         },
+                               { "RPT.RECV",     QVariant(rpt_received)                     },
+                               { "NAME",         QVariant(name)                             },
+                               { "COMMENTS",     QVariant(comments)                         },
+                               { "STATION.OP",   QVariant(operator_call)                    },
+                               { "STATION.CALL", QVariant(my_call)                          },
+                               { "STATION.GRID", QVariant(my_grid)                          },
+                               { "EXTRA",        additionalFields                           }
+        });
+    }
+
+    // Log to N1MM Logger
+    if (m_config.broadcast_to_n1mm() && m_config.valid_n1mm_info()) {
+        const QHostAddress n1mmhost = QHostAddress(m_config.n1mm_server_name());
+        QUdpSocket _sock;
+        auto rzult
+            = _sock.writeDatagram(ADIF + " <eor>", n1mmhost, quint16(m_config.n1mm_server_port()));
+        if (rzult == -1) {
+            bool hidden = m_logDlg->isHidden();
+            m_logDlg->setHidden(true);
+            MessageBox::warning_message(this,
+                                        tr("Error sending log to N1MM"),
+                                        tr("Write returned \"%1\"").arg(rzult));
+            m_logDlg->setHidden(hidden);
+        }
+    }
+
+    // Log to N3FJP Logger
+    if (m_config.broadcast_to_n3fjp() && m_config.valid_n3fjp_info()) {
+        QString data = QString("<CMD>"
+                               "<ADDDIRECT>"
+                               "<EXCLUDEDUPES>TRUE</EXCLUDEDUPES>"
+                               "<STAYOPEN>FALSE</STAYOPEN>"
+                               "<fldDateStr>%1</fldDateStr>"
+                               "<fldTimeOnStr>%2</fldTimeOnStr>"
+                               "<fldCall>%3</fldCall>"
+                               "<fldGridR>%4</fldGridR>"
+                               "<fldBand>%5</fldBand>"
+                               "<fldFrequency>%6</fldFrequency>"
+                               "<fldMode>JS8</fldMode>"
+                               "<fldOperator>%7</fldOperator>"
+                               "<fldNameR>%8</fldNameR>"
+                               "<fldComments>%9</fldComments>"
+                               "<fldRstS>%10</fldRstS>"
+                               "<fldRstR>%11</fldRstR>"
+                               "%12"
+                               "</CMD>");
+
+        data = data.arg(QSO_date_on.toString("yyyy/MM/dd"));
+        data = data.arg(QSO_date_on.toString("H:mm"));
+        data = data.arg(call);
+        data = data.arg(grid);
+        data = data.arg(m_config.bands()->find(dial_freq).replace("m", ""));
+        data = data.arg(Radio::frequency_MHz_string(dial_freq));
+        data = data.arg(operator_call);
+        data = data.arg(name);
+        data = data.arg(comments);
+        data = data.arg(rpt_sent);
+        data = data.arg(rpt_received);
+
+        int other = 0;
+        QStringList additional;
+        if (!additionalFields.isEmpty()) {
+            foreach (auto key, additionalFields.keys()) {
+                QString n3key;
+                if (N3FJP_ADIF_MAP.contains(key)) {
+                    n3key = N3FJP_ADIF_MAP.value(key);
+                } else {
+                    other++;
+                    n3key = N3FJP_ADIF_MAP.value(QString("*%1").arg(other));
+                }
+
+                if (n3key.isEmpty()) {
+                    break;
+                }
+                auto value = additionalFields[key].toString();
+                additional.append(QString("<%1>%2</%1>").arg(n3key).arg(value));
+            }
+        }
+        data = data.arg(additional.join(""));
+
+        auto host = m_config.n3fjp_server_name();
+        auto port = m_config.n3fjp_server_port();
+
+        if (m_n3fjpClient->sendNetworkMessage(host, port, data.toLocal8Bit(), true, 500)) {
+            QTimer::singleShot(300, this, [this, host, port]() {
+                m_n3fjpClient->sendNetworkMessage(host, port, "<CMD><CHECKLOG></CMD>", true, 100);
+                m_n3fjpClient->sendNetworkMessage(host, port, "\r\n", true, 100);
+            });
+        } else {
+            bool hidden = m_logDlg->isHidden();
+            m_logDlg->setHidden(true);
+            MessageBox::warning_message(this,
+                                        tr("Error sending log to N3FJP"),
+                                        tr("Write failed for \"%1:%2\"").arg(host).arg(port));
+            m_logDlg->setHidden(hidden);
+        }
+    }
+
+    // reload the logbook data
+    m_logBook.init();
+
+    clearCallsignSelected();
+
+    displayCallActivity();
+
+    m_dateTimeQSOOn = QDateTime {};
+}
+
+void MainWindow::on_actionModeJS8HB_toggled(bool)
+{
     // prep hb mode
 
     prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
@@ -6064,7 +6481,8 @@ void MainWindow::on_actionModeJS8HB_toggled(bool){
     setupJS8();
 }
 
-void MainWindow::on_actionHeartbeatAcknowledgements_toggled(bool){
+void MainWindow::on_actionHeartbeatAcknowledgements_toggled(bool)
+{
     // prep hb ack mode
 
     prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
@@ -6073,7 +6491,8 @@ void MainWindow::on_actionHeartbeatAcknowledgements_toggled(bool){
     setupJS8();
 }
 
-void MainWindow::on_actionModeMultiDecoder_toggled(bool checked){
+void MainWindow::on_actionModeMultiDecoder_toggled(bool checked)
+{
     Q_UNUSED(checked);
 
     displayActivity(true);
@@ -6081,27 +6500,33 @@ void MainWindow::on_actionModeMultiDecoder_toggled(bool checked){
     setupJS8();
 }
 
-void MainWindow::on_actionModeJS8Normal_triggered(){
+void MainWindow::on_actionModeJS8Normal_triggered()
+{
     setupJS8();
 }
 
-void MainWindow::on_actionModeJS8Fast_triggered(){
+void MainWindow::on_actionModeJS8Fast_triggered()
+{
     setupJS8();
 }
 
-void MainWindow::on_actionModeJS8Turbo_triggered(){
+void MainWindow::on_actionModeJS8Turbo_triggered()
+{
     setupJS8();
 }
 
-void MainWindow::on_actionModeJS8Slow_triggered(){
+void MainWindow::on_actionModeJS8Slow_triggered()
+{
     setupJS8();
 }
 
-void MainWindow::on_actionModeJS8Ultra_triggered(){
+void MainWindow::on_actionModeJS8Ultra_triggered()
+{
     setupJS8();
 }
 
-void MainWindow::on_actionModeAutoreply_toggled(bool){
+void MainWindow::on_actionModeAutoreply_toggled(bool)
+{
     // update the HB ack option (needs autoreply on)
     prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
 
@@ -6109,29 +6534,30 @@ void MainWindow::on_actionModeAutoreply_toggled(bool){
     setupJS8();
 }
 
-bool
-MainWindow::canCurrentModeSendHeartbeat() const
+bool MainWindow::canCurrentModeSendHeartbeat() const
 {
-  return (m_nSubMode == Varicode::JS8CallFast   ||
-          m_nSubMode == Varicode::JS8CallNormal ||
-          m_nSubMode == Varicode::JS8CallSlow);
+    return (m_nSubMode == Varicode::JS8CallFast || m_nSubMode == Varicode::JS8CallNormal
+            || m_nSubMode == Varicode::JS8CallSlow);
 }
 
-void MainWindow::prepareMonitorControls(){
+void MainWindow::prepareMonitorControls()
+{
     // on_monitorButton_toggled(!m_config.monitor_off_at_startup());
     ui->monitorTxButton->setChecked(!m_config.transmit_off_at_startup());
 }
 
-void MainWindow::prepareHeartbeatMode(bool enabled) {
+void MainWindow::prepareHeartbeatMode(bool enabled)
+{
     // Not all submodes supports HBs.
     ui->hbMacroButton->setVisible(enabled);
-    if(!enabled) {
+    if (!enabled) {
         m_hb_loop->onLoopCancel();
         ui->hbMacroButton->setChecked(false);
     }
     ui->actionHeartbeat->setEnabled(enabled);
     ui->actionModeJS8HB->setEnabled(canCurrentModeSendHeartbeat());
-    ui->actionHeartbeatAcknowledgements->setEnabled(enabled && ui->actionModeAutoreply->isChecked());
+    ui->actionHeartbeatAcknowledgements->setEnabled(enabled
+                                                    && ui->actionModeAutoreply->isChecked());
 
 #if 0
     if(enabled){
@@ -6167,109 +6593,119 @@ void MainWindow::prepareHeartbeatMode(bool enabled) {
     updateButtonDisplay();
 }
 
-void
-MainWindow::setupJS8()
+void MainWindow::setupJS8()
 {
-  m_nSubMode = Varicode::JS8CallNormal;
+    m_nSubMode = Varicode::JS8CallNormal;
 
-  if      (ui->actionModeJS8Normal->isChecked()) m_nSubMode = Varicode::JS8CallNormal;
-  else if (ui->actionModeJS8Fast->isChecked())   m_nSubMode = Varicode::JS8CallFast;
-  else if (ui->actionModeJS8Turbo->isChecked())  m_nSubMode = Varicode::JS8CallTurbo;
-  else if (ui->actionModeJS8Slow->isChecked())   m_nSubMode = Varicode::JS8CallSlow;
-  else if (ui->actionModeJS8Ultra->isChecked())  m_nSubMode = Varicode::JS8CallUltra;
+    if (ui->actionModeJS8Normal->isChecked())
+        m_nSubMode = Varicode::JS8CallNormal;
+    else if (ui->actionModeJS8Fast->isChecked())
+        m_nSubMode = Varicode::JS8CallFast;
+    else if (ui->actionModeJS8Turbo->isChecked())
+        m_nSubMode = Varicode::JS8CallTurbo;
+    else if (ui->actionModeJS8Slow->isChecked())
+        m_nSubMode = Varicode::JS8CallSlow;
+    else if (ui->actionModeJS8Ultra->isChecked())
+        m_nSubMode = Varicode::JS8CallUltra;
 
-  // Only enable heartbeat for modes that support it
-  prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
+    // Only enable heartbeat for modes that support it
+    prepareHeartbeatMode(canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked());
 
-  updateModeButtonText();
+    updateModeButtonText();
 
-  m_wideGraph->setSubMode(m_nSubMode);
-  m_wideGraph->setFilterMinimumBandwidth(JS8::Submode::bandwidth(m_nSubMode) +
-                                         JS8::Submode::rxThreshold(m_nSubMode) * 2);
+    m_wideGraph->setSubMode(m_nSubMode);
+    m_wideGraph->setFilterMinimumBandwidth(JS8::Submode::bandwidth(m_nSubMode)
+                                           + JS8::Submode::rxThreshold(m_nSubMode) * 2);
 
-  enable_DXCC_entity (m_config.DXCC ());
-  m_config.frequencies ()->filter (m_config.region (), Mode::JS8);
-  m_FFTSize = JS8_NSPS / 2;
-  Q_EMIT FFTSize (m_FFTSize);
-  setup_status_bar ();
-  m_TRperiod = JS8::Submode::period(m_nSubMode);
-  m_wideGraph->show();
+    enable_DXCC_entity(m_config.DXCC());
+    m_config.frequencies()->filter(m_config.region(), Mode::JS8);
+    m_FFTSize = JS8_NSPS / 2;
+    Q_EMIT FFTSize(m_FFTSize);
+    setup_status_bar();
+    m_TRperiod = JS8::Submode::period(m_nSubMode);
+    m_wideGraph->show();
 
-  Q_ASSERT(JS8_NTMAX == 60);
-  m_wideGraph->setPeriod(m_TRperiod);
-  m_detector->setTRPeriod(JS8_NTMAX); // TODO - not thread safe
+    Q_ASSERT(JS8_NTMAX == 60);
+    m_wideGraph->setPeriod(m_TRperiod);
+    m_detector->setTRPeriod(JS8_NTMAX); // TODO - not thread safe
 
-  updateTextDisplay();
-  refreshTextDisplay();
-  statusChanged();
+    updateTextDisplay();
+    refreshTextDisplay();
+    statusChanged();
 }
 
-void
-MainWindow::setFreq(int const n)
+void MainWindow::setFreq(int const n)
 {
-  m_freq = n;
-  m_wideGraph->setFreq(n);
-  Q_EMIT transmitFrequency (n - m_XIT);
-  statusUpdate ();
+    m_freq = n;
+    m_wideGraph->setFreq(n);
+    Q_EMIT transmitFrequency(n - m_XIT);
+    statusUpdate();
 }
 
-void MainWindow::on_actionErase_ALL_TXT_triggered()          //Erase ALL.TXT
+void MainWindow::on_actionErase_ALL_TXT_triggered() //Erase ALL.TXT
 {
-  int ret = MessageBox::query_message (this, tr ("Confirm Erase"),
-                                         tr ("Are you sure you want to erase file ALL.TXT?"));
-  if(ret==MessageBox::Yes) {
-    QFile f {m_config.writeable_data_dir ().absoluteFilePath ("ALL.TXT")};
-    f.remove();
-    m_RxLog=1;
-  }
+    int ret = MessageBox::query_message(this,
+                                        tr("Confirm Erase"),
+                                        tr("Are you sure you want to erase file ALL.TXT?"));
+    if (ret == MessageBox::Yes) {
+        QFile f { m_config.writeable_data_dir().absoluteFilePath("ALL.TXT") };
+        f.remove();
+        m_RxLog = 1;
+    }
 }
 
 void MainWindow::on_actionErase_js8call_log_adi_triggered()
 {
-  int ret = MessageBox::query_message (this, tr ("Confirm Erase"),
-                                       tr ("Are you sure you want to erase file js8call_log.adi?"));
-  if(ret==MessageBox::Yes) {
-    QFile f {m_config.writeable_data_dir ().absoluteFilePath ("js8call_log.adi")};
-    f.remove();
+    int ret = MessageBox::query_message(this,
+                                        tr("Confirm Erase"),
+                                        tr("Are you sure you want to erase file js8call_log.adi?"));
+    if (ret == MessageBox::Yes) {
+        QFile f { m_config.writeable_data_dir().absoluteFilePath("js8call_log.adi") };
+        f.remove();
 
-    m_logBook.init();
-  }
-}
-
-void MainWindow::on_actionOpen_log_directory_triggered ()
-{
-  QDesktopServices::openUrl (QUrl::fromLocalFile (m_config.writeable_data_dir ().absolutePath ()));
-}
-
-void MainWindow::band_changed ()
-{
-  if (m_config.pwrBandTxMemory() && !m_tune) {
-    if (m_pwrBandTxMemory.contains(m_lastBand)) {
-      ui->outAttenuation->setValue(m_pwrBandTxMemory[m_lastBand].toInt());
+        m_logBook.init();
     }
-    else {
-      m_pwrBandTxMemory[m_lastBand] = ui->outAttenuation->value();
-    }
-  }
 }
 
-void MainWindow::enable_DXCC_entity (bool /*on*/)
+void MainWindow::on_actionOpen_log_directory_triggered()
 {
-  m_logBook.init();                        // re-read the log and cty.dat files
-  updateGeometry ();
+    QDesktopServices::openUrl(QUrl::fromLocalFile(m_config.writeable_data_dir().absolutePath()));
 }
 
-void MainWindow::buildFrequencyMenu(QMenu *menu){
+void MainWindow::band_changed()
+{
+    if (m_config.pwrBandTxMemory() && !m_tune) {
+        if (m_pwrBandTxMemory.contains(m_lastBand)) {
+            ui->outAttenuation->setValue(m_pwrBandTxMemory[m_lastBand].toInt());
+        } else {
+            m_pwrBandTxMemory[m_lastBand] = ui->outAttenuation->value();
+        }
+    }
+}
+
+void MainWindow::enable_DXCC_entity(bool /*on*/)
+{
+    m_logBook.init(); // re-read the log and cty.dat files
+    updateGeometry();
+}
+
+void MainWindow::buildFrequencyMenu(QMenu* menu)
+{
     auto custom = menu->addAction("Set a Custom Frequency...");
 
-    connect(custom, &QAction::triggered, this, [this](){
+    connect(custom, &QAction::triggered, this, [this]() {
         bool ok = false;
         auto currentFreq = Radio::frequency_MHz_string(dialFrequency());
-        QString newFreq = QInputDialog::getText(this, tr("Set a Custom Frequency"),
-                                                 tr("Frequency in MHz:"), QLineEdit::Normal,
-                                                 currentFreq, &ok).toUpper().trimmed();
-        if(!ok){
-           return;
+        QString newFreq = QInputDialog::getText(this,
+                                                tr("Set a Custom Frequency"),
+                                                tr("Frequency in MHz:"),
+                                                QLineEdit::Normal,
+                                                currentFreq,
+                                                &ok)
+                              .toUpper()
+                              .trimmed();
+        if (!ok) {
+            return;
         }
 
         setRig(Radio::frequency(newFreq, 6));
@@ -6278,25 +6714,30 @@ void MainWindow::buildFrequencyMenu(QMenu *menu){
     menu->addSeparator();
 
     auto frequencies = m_config.frequencies()->frequency_list();
-    std::sort(frequencies.begin(), frequencies.end(), [](FrequencyList_v2::Item &a, FrequencyList_v2::Item &b) {
-        return a.frequency_ < b.frequency_;
-    });
+    std::sort(frequencies.begin(),
+              frequencies.end(),
+              [](FrequencyList_v2::Item& a, FrequencyList_v2::Item& b) {
+                  return a.frequency_ < b.frequency_;
+              });
 
-    foreach(auto f, frequencies){
+    foreach (auto f, frequencies) {
         auto freq = Radio::pretty_frequency_MHz_string(f.frequency_);
-        auto const& band = m_config.bands ()->find (f.frequency_);
+        auto const& band = m_config.bands()->find(f.frequency_);
 
-        auto a = menu->addAction(QString("%1:%2%2%3 MHz").arg(band).arg(QString(" ").repeated(5-band.length())).arg(freq));
-        connect(a, &QAction::triggered, this, [this, f](){
-            setRig(f.frequency_);
-        });
+        auto a = menu->addAction(QString("%1:%2%2%3 MHz")
+                                     .arg(band)
+                                     .arg(QString(" ").repeated(5 - band.length()))
+                                     .arg(freq));
+        connect(a, &QAction::triggered, this, [this, f]() { setRig(f.frequency_); });
     }
 }
 
-void MainWindow::buildHeartbeatMenu(QMenu *menu){
-    if(m_hbInterval > 0){
-        auto startStop = menu->addAction(ui->hbMacroButton->isChecked() ? "Stop Heartbeat Timer" : "Start Heartbeat Timer");
-        connect(startStop, &QAction::triggered, this, [this](){ ui->hbMacroButton->toggle(); });
+void MainWindow::buildHeartbeatMenu(QMenu* menu)
+{
+    if (m_hbInterval > 0) {
+        auto startStop = menu->addAction(ui->hbMacroButton->isChecked() ? "Stop Heartbeat Timer" :
+                                                                          "Start Heartbeat Timer");
+        connect(startStop, &QAction::triggered, this, [this]() { ui->hbMacroButton->toggle(); });
         menu->addSeparator();
     }
 
@@ -6307,10 +6748,12 @@ void MainWindow::buildHeartbeatMenu(QMenu *menu){
     connect(now, &QAction::triggered, this, &MainWindow::sendHB);
 }
 
-void MainWindow::buildCQMenu(QMenu *menu){
-    if(m_cqInterval > 0){
-        auto startStop = menu->addAction(ui->cqMacroButton->isChecked() ? "Stop CQ Timer" : "Start CQ Timer");
-        connect(startStop, &QAction::triggered, this, [this](){ ui->cqMacroButton->toggle(); });
+void MainWindow::buildCQMenu(QMenu* menu)
+{
+    if (m_cqInterval > 0) {
+        auto startStop
+            = menu->addAction(ui->cqMacroButton->isChecked() ? "Stop CQ Timer" : "Start CQ Timer");
+        connect(startStop, &QAction::triggered, this, [this]() { ui->cqMacroButton->toggle(); });
         menu->addSeparator();
     }
 
@@ -6318,22 +6761,27 @@ void MainWindow::buildCQMenu(QMenu *menu){
 
     menu->addSeparator();
     auto now = menu->addAction("Send CQ Now");
-    connect(now, &QAction::triggered, this, [this](){ sendCQ(false); });
+    connect(now, &QAction::triggered, this, [this]() { sendCQ(false); });
 }
 
-void MainWindow::buildRepeatMenu(QMenu *menu, QPushButton * button, bool isLowInterval, int * interval){
+void MainWindow::buildRepeatMenu(QMenu* menu,
+                                 QPushButton* button,
+                                 bool isLowInterval,
+                                 int* interval)
+{
     QList<QPair<QString, int>> items = {
-        {"On demand / do not repeat",  0},
-        {"Repeat every 1 minute",      1},
-        {"Repeat every 5 minutes",     5},
-        {"Repeat every 10 minutes",   10},
-        {"Repeat every 15 minutes",   15},
-        {"Repeat every 30 minutes",   30},
-        {"Repeat every 60 minutes",   60},
-        {"Repeat every N minutes (Custom Interval)", -1}, // this needs to be last because of isSet bool
+        { "On demand / do not repeat",                0  },
+        { "Repeat every 1 minute",                    1  },
+        { "Repeat every 5 minutes",                   5  },
+        { "Repeat every 10 minutes",                  10 },
+        { "Repeat every 15 minutes",                  15 },
+        { "Repeat every 30 minutes",                  30 },
+        { "Repeat every 60 minutes",                  60 },
+        { "Repeat every N minutes (Custom Interval)",
+         -1                                              }, // this needs to be last because of isSet bool
     };
 
-    if(isLowInterval){
+    if (isLowInterval) {
         items.removeAt(6); // remove the sixty minute interval
         items.removeAt(5); // remove the thirty minute interval
     } else {
@@ -6343,19 +6791,19 @@ void MainWindow::buildRepeatMenu(QMenu *menu, QPushButton * button, bool isLowIn
 
     auto customFormat = QString("Repeat every %1 minutes (Custom Interval)");
 
-    QActionGroup * group = new QActionGroup(menu);
+    QActionGroup* group = new QActionGroup(menu);
 
     bool isSet = false;
-    foreach(auto pair, items){
+    foreach (auto pair, items) {
         int minutes = pair.second;
         bool isMatch = *interval == minutes;
         bool isCustom = (minutes == -1 && isSet == false);
-        if(isMatch){
+        if (isMatch) {
             isSet = true;
         }
 
         auto text = pair.first;
-        if(isCustom){
+        if (isCustom) {
             text = QString(customFormat).arg(*interval);
         }
 
@@ -6365,33 +6813,44 @@ void MainWindow::buildRepeatMenu(QMenu *menu, QPushButton * button, bool isLowIn
         action->setChecked(isMatch || isCustom);
         group->addAction(action);
 
-        connect(action, &QAction::toggled, this, [this, action, customFormat, minutes, interval, button](bool checked){
-            int min = minutes;
+        connect(action,
+                &QAction::toggled,
+                this,
+                [this, action, customFormat, minutes, interval, button](bool checked) {
+                    int min = minutes;
 
-            if(checked){
+                    if (checked) {
 
-                if(minutes == -1){
-                    bool ok = false;
-                    min = QInputDialog::getInt(this, "Repeat every N minutes", "Minutes", 0, 1, 1440, 1, &ok);
-                    if(!ok){
-                        return;
+                        if (minutes == -1) {
+                            bool ok = false;
+                            min = QInputDialog::getInt(this,
+                                                       "Repeat every N minutes",
+                                                       "Minutes",
+                                                       0,
+                                                       1,
+                                                       1440,
+                                                       1,
+                                                       &ok);
+                            if (!ok) {
+                                return;
+                            }
+                            action->setText(QString(customFormat).arg(*interval));
+                        }
+
+                        *interval = min;
+
+                        if (min > 0) {
+                            // force a re-toggle
+                            button->setChecked(false);
+                        }
+                        button->setChecked(min > 0);
                     }
-                    action->setText(QString(customFormat).arg(*interval));
-                }
-
-                *interval = min;
-
-                if(min > 0){
-                    // force a re-toggle
-                    button->setChecked(false);
-                }
-                button->setChecked(min > 0);
-            }
-        });
+                });
     }
 }
 
-void MainWindow::sendHB(){
+void MainWindow::sendHB()
+{
 
     QString mycall = m_config.my_callsign();
     QString mygrid = m_config.my_grid().left(4);
@@ -6402,9 +6861,9 @@ void MainWindow::sendHB(){
 #if JS8_CUSTOMIZE_HB
     auto hb = m_config.hb_message();
 #else
-    auto hb = QString{};
+    auto hb = QString {};
 #endif
-    if(hb.isEmpty()){
+    if (hb.isEmpty()) {
         parts.append("HEARTBEAT");
         parts.append(mygrid);
     } else {
@@ -6415,10 +6874,9 @@ void MainWindow::sendHB(){
 
     auto f = findFreeFreqOffset(500, 1000, 50);
 
-    if(freq() <= 1000){
+    if (freq() <= 1000) {
         f = freq();
-    }
-    else if(m_config.heartbeat_anywhere()){
+    } else if (m_config.heartbeat_anywhere()) {
         f = -1;
     }
 
@@ -6426,39 +6884,43 @@ void MainWindow::sendHB(){
     processTxQueue();
 }
 
-void MainWindow::sendHeartbeatAck(QString to, int snr, QString extra){
+void MainWindow::sendHeartbeatAck(QString to, int snr, QString extra)
+{
 #if JS8_HB_ACK_SNR_CONFIGURABLE
     auto message = m_config.heartbeat_ack_snr() ?
         QString("%1 SNR %2 %3").arg(to).arg(Varicode::formatSNR(snr)).arg(extra).trimmed() :
         QString("%1 ACK %2").arg(to).arg(extra).trimmed();
 #else
-    auto message = QString("%1 HEARTBEAT SNR %2 %3").arg(to).arg(Varicode::formatSNR(snr)).arg(extra).trimmed();
+    auto message = QString("%1 HEARTBEAT SNR %2 %3")
+                       .arg(to)
+                       .arg(Varicode::formatSNR(snr))
+                       .arg(extra)
+                       .trimmed();
 #endif
 
     auto f = m_config.heartbeat_anywhere() ? -1 : findFreeFreqOffset(500, 1000, 50);
 
-    if(m_config.autoreply_confirmation()){
-        confirmThenEnqueueMessage(90, PriorityLow + 1, message, f, [this](){
-            processTxQueue();
-        });
+    if (m_config.autoreply_confirmation()) {
+        confirmThenEnqueueMessage(90, PriorityLow + 1, message, f, [this]() { processTxQueue(); });
     } else {
         enqueueMessage(PriorityLow + 1, message, f, nullptr);
         processTxQueue();
     }
 }
 
-void MainWindow::on_hbMacroButton_toggled(bool checked){
+void MainWindow::on_hbMacroButton_toggled(bool checked)
+{
     qCDebug(mainwindow_js8) << "on_hbMacroButton_toggled(" << checked << ")";
-    if(checked){
+    if (checked) {
         // only clear callsign if we do not allow hbs while in qso
-        if(m_config.heartbeat_qso_pause()){
+        if (m_config.heartbeat_qso_pause()) {
             clearCallsignSelected();
         }
 
-        if(m_hbInterval){
-            if (! m_hb_loop->isActive()) {
+        if (m_hbInterval) {
+            if (!m_hb_loop->isActive()) {
                 qCDebug(mainwindow_js8) << "Starting HB loop from on_hbMacroButton_toggled()";
-                m_hb_loop->onTxLoopPeriodChangeStart(m_hbInterval* (qint64)60000);
+                m_hb_loop->onTxLoopPeriodChangeStart(m_hbInterval * (qint64)60000);
             }
         } else {
             qCDebug(mainwindow_js8) << "Sending single HB from on_hbMacroButton_toggled()";
@@ -6470,7 +6932,7 @@ void MainWindow::on_hbMacroButton_toggled(bool checked){
             ui->hbMacroButton->setChecked(false);
         }
     } else {
-        if(m_hb_loop->isActive() && m_hbButtonIsLongterm) {
+        if (m_hb_loop->isActive() && m_hbButtonIsLongterm) {
             qCDebug(mainwindow_js8) << "Stopping HB loop from on_hbMacroButton_toggled()";
             m_hb_loop->onLoopCancel();
         }
@@ -6479,22 +6941,24 @@ void MainWindow::on_hbMacroButton_toggled(bool checked){
     updateHBButtonDisplay();
 }
 
-void MainWindow::on_hbMacroButton_clicked() {
+void MainWindow::on_hbMacroButton_clicked()
+{
 }
 
-void MainWindow::sendCQ(bool repeat){
+void MainWindow::sendCQ(bool repeat)
+{
 
-    if(!repeat && m_cq_loop->isActive()) {
+    if (!repeat && m_cq_loop->isActive()) {
         qCDebug(mainwindow_js8) << "Cancel CQ loop on single-shot CQ";
         m_cq_loop->onLoopCancel();
     }
-    if(!repeat && m_hb_loop->isActive()) {
+    if (!repeat && m_hb_loop->isActive()) {
         qCDebug(mainwindow_js8) << "Cancel HB loop on single-shot CQ";
         m_hb_loop->onLoopCancel();
     }
 
     QString message = m_config.cq_message();
-    if(message.isEmpty()){
+    if (message.isEmpty()) {
         QString mygrid = m_config.my_grid().left(4);
         message = QString("CQ CQ CQ %1").arg(mygrid).trimmed();
     }
@@ -6503,15 +6967,17 @@ void MainWindow::sendCQ(bool repeat){
 
     addMessageText(replaceMacros(message, buildMacroValues(), true));
 
-    if(repeat || m_config.transmit_directed()) toggleTx(true);
+    if (repeat || m_config.transmit_directed())
+        toggleTx(true);
 }
 
-void MainWindow::on_cqMacroButton_toggled(bool checked){
+void MainWindow::on_cqMacroButton_toggled(bool checked)
+{
     qCDebug(mainwindow_js8) << "on_cqMacroButton_toggled(" << checked << ")";
-    if(checked){
+    if (checked) {
         clearCallsignSelected();
 
-        if(m_cqInterval){
+        if (m_cqInterval) {
             qCDebug(mainwindow_js8) << "Starting CQ loop from on_cqMacroButton_toggled()";
             m_cq_loop->onTxLoopPeriodChangeStart(m_cqInterval * (qint64)60000);
         } else {
@@ -6523,7 +6989,7 @@ void MainWindow::on_cqMacroButton_toggled(bool checked){
             ui->cqMacroButton->setChecked(false);
         }
     } else {
-        if(m_cq_loop->isActive() && m_cqButtonIsLongterm) {
+        if (m_cq_loop->isActive() && m_cqButtonIsLongterm) {
             qCDebug(mainwindow_js8) << "Stopping CQ loop from on_cqMacroButton_toggled()";
             m_cq_loop->onLoopCancel();
         }
@@ -6532,12 +6998,14 @@ void MainWindow::on_cqMacroButton_toggled(bool checked){
     updateCQButtonDisplay();
 }
 
-void MainWindow::on_cqMacroButton_clicked(){
+void MainWindow::on_cqMacroButton_clicked()
+{
 }
 
-void MainWindow::on_replyMacroButton_clicked(){
+void MainWindow::on_replyMacroButton_clicked()
+{
     QString call = callsignSelected();
-    if(call.isEmpty()){
+    if (call.isEmpty()) {
         return;
     }
 
@@ -6545,18 +7013,20 @@ void MainWindow::on_replyMacroButton_clicked(){
     message = replaceMacros(message, buildMacroValues(), true);
     addMessageText(QString("%1 %2").arg(call).arg(message));
 
-    if(m_config.transmit_directed()) toggleTx(true);
+    if (m_config.transmit_directed())
+        toggleTx(true);
 }
 
-void MainWindow::on_snrMacroButton_clicked(){
+void MainWindow::on_snrMacroButton_clicked()
+{
     QString call = callsignSelected();
-    if(call.isEmpty()){
+    if (call.isEmpty()) {
         return;
     }
 
     auto now = DriftingDateTime::currentDateTimeUtc();
     int callsignAging = m_config.callsign_aging();
-    if(!m_callActivity.contains(call)){
+    if (!m_callActivity.contains(call)) {
         return;
     }
 
@@ -6569,155 +7039,160 @@ void MainWindow::on_snrMacroButton_clicked(){
 
     addMessageText(QString("%1 SNR %2").arg(call).arg(snr));
 
-    if(m_config.transmit_directed()) toggleTx(true);
+    if (m_config.transmit_directed())
+        toggleTx(true);
 }
 
-void MainWindow::on_infoMacroButton_clicked(){
+void MainWindow::on_infoMacroButton_clicked()
+{
     QString info = m_config.my_info();
-    if(info.isEmpty()){
+    if (info.isEmpty()) {
         return;
     }
 
     addMessageText(QString("INFO %1").arg(replaceMacros(info, buildMacroValues(), true)));
 
-    if(m_config.transmit_directed()) toggleTx(true);
+    if (m_config.transmit_directed())
+        toggleTx(true);
 }
 
-void MainWindow::on_statusMacroButton_clicked(){
+void MainWindow::on_statusMacroButton_clicked()
+{
     QString status = m_config.my_status();
-    if(status.isEmpty()){
+    if (status.isEmpty()) {
         return;
     }
 
     addMessageText(QString("STATUS %1").arg(replaceMacros(status, buildMacroValues(), true)));
 
-    if(m_config.transmit_directed()) toggleTx(true);
+    if (m_config.transmit_directed())
+        toggleTx(true);
 }
 
-void MainWindow::setShowColumn(QString tableKey, QString columnKey, bool value){
+void MainWindow::setShowColumn(QString tableKey, QString columnKey, bool value)
+{
     m_showColumnsCache[tableKey + columnKey] = QVariant(value);
     displayBandActivity();
     displayCallActivity();
 }
 
-bool MainWindow::showColumn(QString tableKey, QString columnKey, bool default_){
+bool MainWindow::showColumn(QString tableKey, QString columnKey, bool default_)
+{
     return m_showColumnsCache.value(tableKey + columnKey, QVariant(default_)).toBool();
 }
 
-QString MainWindow::columnLabel(QString defaultLabel){
-	bool minimalLabels = showColumn("all", "minimal_labels", false);
+QString MainWindow::columnLabel(QString defaultLabel)
+{
+    bool minimalLabels = showColumn("all", "minimal_labels", false);
 
-	// If we are not rendering minimal labels, return the default
-	if(!minimalLabels)
-	{
-		return defaultLabel;
-	}
+    // If we are not rendering minimal labels, return the default
+    if (!minimalLabels) {
+        return defaultLabel;
+    }
 
-	// If there is an entry, send it, if not, return default
-	return m_columnLabelMap.value(defaultLabel, defaultLabel);
+    // If there is an entry, send it, if not, return default
+    return m_columnLabelMap.value(defaultLabel, defaultLabel);
 }
 
-void MainWindow::buildShowColumnsMenu(QMenu *menu, QString tableKey){
+void MainWindow::buildShowColumnsMenu(QMenu* menu, QString tableKey)
+{
     QList<QPair<QString, QString>> columnKeys = {
-        {"Frequency Offset", "offset"},
-        {"Last heard timestamp", "timestamp"},
-        {"SNR", "snr"},
-        {"Time Delta", "tdrift"},
-        {"Mode Speed", "submode"},
+        { "Frequency Offset",     "offset"    },
+        { "Last heard timestamp", "timestamp" },
+        { "SNR",                  "snr"       },
+        { "Time Delta",           "tdrift"    },
+        { "Mode Speed",           "submode"   },
     };
 
     QMap<QString, bool> defaultOverride = {
-        {"submode", false},
-        {"tdrift", false},
-        {"grid", false},
-        {"distance", false},
-        {"azimuth", false},
-        {"minimal_labels", false}
+        { "submode",        false },
+        { "tdrift",         false },
+        { "grid",           false },
+        { "distance",       false },
+        { "azimuth",        false },
+        { "minimal_labels", false }
     };
 
-    if(tableKey == "call"){
-        columnKeys.prepend({"Callsign", "callsign"});
+    if (tableKey == "call") {
+        columnKeys.prepend({ "Callsign", "callsign" });
         columnKeys.append({
-          {"Grid Locator", "grid"},
-          {"Distance", "distance"},
-          {"Azimuth", "azimuth"},
-          {"Worked Before", "log"},
-          {"Logged Name", "logName"},
-          {"Logged Comment", "logComment"},
+            { "Grid Locator",   "grid"       },
+            { "Distance",       "distance"   },
+            { "Azimuth",        "azimuth"    },
+            { "Worked Before",  "log"        },
+            { "Logged Name",    "logName"    },
+            { "Logged Comment", "logComment" },
         });
     }
 
-	columnKeys.prepend({"Minimal Column Labels", "minimal_labels"});
-    columnKeys.prepend({"Show Column Labels", "labels"});
+    columnKeys.prepend({ "Minimal Column Labels", "minimal_labels" });
+    columnKeys.prepend({ "Show Column Labels", "labels" });
 
     int columnIndex = 0;
-	QString origTableKey = tableKey;
-    foreach(auto p, columnKeys){
+    QString origTableKey = tableKey;
+    foreach (auto p, columnKeys) {
         auto columnLabel = p.first;
         auto columnKey = p.second;
 
         auto a = menu->addAction(columnLabel);
         a->setCheckable(true);
 
-		// Add separator after second item
-		// If this is the second item, it is the minimal labels item, so set the table key to all
-		if(++columnIndex == 2){
-			tableKey = "all";
-			menu->addSeparator();
-		}
+        // Add separator after second item
+        // If this is the second item, it is the minimal labels item, so set the table key to all
+        if (++columnIndex == 2) {
+            tableKey = "all";
+            menu->addSeparator();
+        }
 
         bool showByDefault = true;
-        if(defaultOverride.contains(columnKey)){
+        if (defaultOverride.contains(columnKey)) {
             showByDefault = defaultOverride[columnKey];
         }
         a->setChecked(showColumn(tableKey, columnKey, showByDefault));
 
-        connect(a, &QAction::triggered, this, [this, a, tableKey, columnKey](){
+        connect(a, &QAction::triggered, this, [this, a, tableKey, columnKey]() {
             setShowColumn(tableKey, columnKey, a->isChecked());
         });
 
-		// If we have switched to a custom table key in this iteration, reset to the original key
-		if(tableKey != origTableKey)
-		{
-			tableKey = origTableKey;
-		}
+        // If we have switched to a custom table key in this iteration, reset to the original key
+        if (tableKey != origTableKey) {
+            tableKey = origTableKey;
+        }
     }
 }
 
-void MainWindow::setSortBy(QString key, QString value){
+void MainWindow::setSortBy(QString key, QString value)
+{
     m_sortCache[key] = QVariant(value);
     displayBandActivity();
     displayCallActivity();
 }
 
-QString
-MainWindow::getSortBy(QString const & key,
-                      QString const & defaultValue) const
+QString MainWindow::getSortBy(QString const& key, QString const& defaultValue) const
 {
-  return m_sortCache.value(key, QVariant(defaultValue)).toString();
+    return m_sortCache.value(key, QVariant(defaultValue)).toString();
 }
 
-MainWindow::SortByReverse
-MainWindow::getSortByReverse(QString const & key,
-                             QString const & defaultValue) const
+MainWindow::SortByReverse MainWindow::getSortByReverse(QString const& key,
+                                                       QString const& defaultValue) const
 {
-  auto const sortBy  = getSortBy(key, defaultValue);
-  auto const reverse = sortBy.startsWith("-");
+    auto const sortBy = getSortBy(key, defaultValue);
+    auto const reverse = sortBy.startsWith("-");
 
-  return
-  {
-    reverse ? sortBy.sliced(1) : sortBy,
-    reverse
-  };
+    return { reverse ? sortBy.sliced(1) : sortBy, reverse };
 }
 
-void MainWindow::buildSortByMenu(QMenu * menu, QString key, QString defaultValue, QList<QPair<QString, QString>> values){
+void MainWindow::buildSortByMenu(QMenu* menu,
+                                 QString key,
+                                 QString defaultValue,
+                                 QList<QPair<QString, QString>> values)
+{
     auto currentSortBy = getSortBy(key, defaultValue);
 
-    QActionGroup * g = new QActionGroup(menu);
+    QActionGroup* g = new QActionGroup(menu);
     g->setExclusive(true);
 
-    foreach(auto p, values){
+    foreach (auto p, values) {
         auto k = p.first;
         auto v = p.second;
         auto a = menu->addAction(k);
@@ -6725,44 +7200,53 @@ void MainWindow::buildSortByMenu(QMenu * menu, QString key, QString defaultValue
         a->setChecked(v == currentSortBy);
         a->setActionGroup(g);
 
-        connect(a, &QAction::triggered, this, [this, a, key, v](){
-            if(a->isChecked()){
+        connect(a, &QAction::triggered, this, [this, a, key, v]() {
+            if (a->isChecked()) {
                 setSortBy(key, v);
             }
         });
     }
 }
 
-void MainWindow::buildBandActivitySortByMenu(QMenu * menu){
-    buildSortByMenu(menu, "bandActivity", "offset", {
-        {"Frequency offset", "offset"},
-        {"Last heard timestamp (oldest first)", "timestamp"},
-        {"Last heard timestamp (recent first)", "-timestamp"},
-        {"SNR (weakest first)", "snr"},
-        {"SNR (strongest first)", "-snr"},
-        {"Mode Speed (slowest first)", "submode"},
-        {"Mode Speed (fastest first)", "-submode"}
+void MainWindow::buildBandActivitySortByMenu(QMenu* menu)
+{
+    buildSortByMenu(menu,
+                    "bandActivity",
+                    "offset",
+                    {
+                        { "Frequency offset",                    "offset"     },
+                        { "Last heard timestamp (oldest first)", "timestamp"  },
+                        { "Last heard timestamp (recent first)", "-timestamp" },
+                        { "SNR (weakest first)",                 "snr"        },
+                        { "SNR (strongest first)",               "-snr"       },
+                        { "Mode Speed (slowest first)",          "submode"    },
+                        { "Mode Speed (fastest first)",          "-submode"   }
     });
 }
 
-void MainWindow::buildCallActivitySortByMenu(QMenu * menu){
-    buildSortByMenu(menu, "callActivity", "callsign", {
-        {"Callsign", "callsign"},
-        {"Callsigns Replied (recent first)", "ackTimestamp"},
-        {"Frequency offset", "offset"},
-        {"Distance (closest first)", "distance"},
-        {"Distance (farthest first)", "-distance"},
-        {"Azimuth", "azimuth"},
-        {"Last heard timestamp (oldest first)", "timestamp"},
-        {"Last heard timestamp (recent first)", "-timestamp"},
-        {"SNR (weakest first)", "snr"},
-        {"SNR (strongest first)", "-snr"},
-        {"Mode Speed (slowest first)", "submode"},
-        {"Mode Speed (fastest first)", "-submode"}
+void MainWindow::buildCallActivitySortByMenu(QMenu* menu)
+{
+    buildSortByMenu(menu,
+                    "callActivity",
+                    "callsign",
+                    {
+                        { "Callsign",                            "callsign"     },
+                        { "Callsigns Replied (recent first)",    "ackTimestamp" },
+                        { "Frequency offset",                    "offset"       },
+                        { "Distance (closest first)",            "distance"     },
+                        { "Distance (farthest first)",           "-distance"    },
+                        { "Azimuth",                             "azimuth"      },
+                        { "Last heard timestamp (oldest first)", "timestamp"    },
+                        { "Last heard timestamp (recent first)", "-timestamp"   },
+                        { "SNR (weakest first)",                 "snr"          },
+                        { "SNR (strongest first)",               "-snr"         },
+                        { "Mode Speed (slowest first)",          "submode"      },
+                        { "Mode Speed (fastest first)",          "-submode"     }
     });
 }
 
-void MainWindow::buildQueryMenu(QMenu * menu, QString call){
+void MainWindow::buildQueryMenu(QMenu* menu, QString call)
+{
     bool isAllCall = isAllCallIncluded(call);
 
     // for now, we're going to omit displaying the call...delete this if we want the other functionality
@@ -6774,10 +7258,9 @@ void MainWindow::buildQueryMenu(QMenu * menu, QString call){
     bool emptyGrid = m_config.my_grid().isEmpty();
 
     auto callAction = menu->addAction(QString("Send a directed message to selected callsign"));
-    connect(callAction, &QAction::triggered, this, [this](){
-
+    connect(callAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
@@ -6786,10 +7269,11 @@ void MainWindow::buildQueryMenu(QMenu * menu, QString call){
 
     menu->addSeparator();
 
-    auto sendReplyAction = menu->addAction(QString("%1 Reply - Send reply message to selected callsign").arg(call).trimmed());
-    connect(sendReplyAction, &QAction::triggered, this, [this](){
+    auto sendReplyAction = menu->addAction(
+        QString("%1 Reply - Send reply message to selected callsign").arg(call).trimmed());
+    connect(sendReplyAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
@@ -6798,124 +7282,139 @@ void MainWindow::buildQueryMenu(QMenu * menu, QString call){
         addMessageText(QString("%1 %2").arg(selectedCall).arg(message), true);
     });
 
-    auto sendSNRAction = menu->addAction(QString("%1 SNR - Send a signal report to the selected callsign").arg(call).trimmed());
+    auto sendSNRAction = menu->addAction(
+        QString("%1 SNR - Send a signal report to the selected callsign").arg(call).trimmed());
     sendSNRAction->setEnabled(m_callActivity.contains(callsignSelected()));
-    connect(sendSNRAction, &QAction::triggered, this, [this](){
-
+    connect(sendSNRAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
-        if(!m_callActivity.contains(selectedCall)){
+        if (!m_callActivity.contains(selectedCall)) {
             return;
         }
 
         auto d = m_callActivity[selectedCall];
-        addMessageText(QString("%1 SNR %2").arg(selectedCall).arg(Varicode::formatSNR(d.snr)), true);
+        addMessageText(QString("%1 SNR %2").arg(selectedCall).arg(Varicode::formatSNR(d.snr)),
+                       true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto infoAction = menu->addAction(QString("%1 INFO - Send my station information").arg(call).trimmed());
+    auto infoAction
+        = menu->addAction(QString("%1 INFO - Send my station information").arg(call).trimmed());
     infoAction->setDisabled(emptyInfo);
-    connect(infoAction, &QAction::triggered, this, [this](){
-
+    connect(infoAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 INFO %2").arg(selectedCall).arg(m_config.my_info()), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
 
-    auto gridAction = menu->addAction(QString("%1 GRID %2 - Send my current station Maidenhead grid locator").arg(call).arg(grid).trimmed());
+    auto gridAction
+        = menu->addAction(QString("%1 GRID %2 - Send my current station Maidenhead grid locator")
+                              .arg(call)
+                              .arg(grid)
+                              .trimmed());
     gridAction->setDisabled(emptyGrid);
-    connect(gridAction, &QAction::triggered, this, [this](){
-
+    connect(gridAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 GRID %2").arg(selectedCall).arg(m_config.my_grid()), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
     menu->addSeparator();
 
-    auto snrQueryAction = menu->addAction(QString("%1 SNR? - What is my signal report?").arg(call).trimmed());
+    auto snrQueryAction
+        = menu->addAction(QString("%1 SNR? - What is my signal report?").arg(call).trimmed());
     snrQueryAction->setDisabled(isAllCall);
-    connect(snrQueryAction, &QAction::triggered, this, [this](){
-
+    connect(snrQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 SNR?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto infoQueryAction = menu->addAction(QString("%1 INFO? - What is your station information?").arg(call).trimmed());
+    auto infoQueryAction = menu->addAction(
+        QString("%1 INFO? - What is your station information?").arg(call).trimmed());
     infoQueryAction->setDisabled(isAllCall);
-    connect(infoQueryAction, &QAction::triggered, this, [this](){
-
+    connect(infoQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 INFO?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto gridQueryAction = menu->addAction(QString("%1 GRID? - What is your current grid locator?").arg(call).trimmed());
+    auto gridQueryAction = menu->addAction(
+        QString("%1 GRID? - What is your current grid locator?").arg(call).trimmed());
     gridQueryAction->setDisabled(isAllCall);
-    connect(gridQueryAction, &QAction::triggered, this, [this](){
-
+    connect(gridQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 GRID?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto stationIdleQueryAction = menu->addAction(QString("%1 STATUS? - What is your station status message?").arg(call).trimmed());
+    auto stationIdleQueryAction = menu->addAction(
+        QString("%1 STATUS? - What is your station status message?").arg(call).trimmed());
     stationIdleQueryAction->setDisabled(isAllCall);
-    connect(stationIdleQueryAction, &QAction::triggered, this, [this](){
-
+    connect(stationIdleQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 STATUS?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto heardQueryAction = menu->addAction(QString("%1 HEARING? - What are the stations are you hearing? (Top 4 ranked by most recently heard)").arg(call).trimmed());
+    auto heardQueryAction
+        = menu->addAction(QString("%1 HEARING? - What are the stations are you hearing? (Top 4 "
+                                  "ranked by most recently heard)")
+                              .arg(call)
+                              .trimmed());
     heardQueryAction->setDisabled(isAllCall);
-    connect(heardQueryAction, &QAction::triggered, this, [this](){
-
+    connect(heardQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 HEARING?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
 #if 0
@@ -6932,69 +7431,76 @@ void MainWindow::buildQueryMenu(QMenu * menu, QString call){
     });
 #endif
 
-    auto alertAction = menu->addAction(QString("%1>[MESSAGE] - Please relay this message to its destination").arg(call).trimmed());
+    auto alertAction = menu->addAction(
+        QString("%1>[MESSAGE] - Please relay this message to its destination").arg(call).trimmed());
     alertAction->setDisabled(isAllCall);
-    connect(alertAction, &QAction::triggered, this, [this](){
-
+    connect(alertAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1>[MESSAGE]").arg(selectedCall), true, true);
     });
 
-    auto msgAction = menu->addAction(QString("%1 MSG [MESSAGE] - Please store this message in your inbox").arg(call).trimmed());
+    auto msgAction = menu->addAction(
+        QString("%1 MSG [MESSAGE] - Please store this message in your inbox").arg(call).trimmed());
     msgAction->setDisabled(isAllCall);
-    connect(msgAction, &QAction::triggered, this, [this](){
-
+    connect(msgAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 MSG [MESSAGE]").arg(selectedCall), true, true);
     });
 
-    auto msgToAction = menu->addAction(QString("%1 MSG TO:[CALLSIGN] [MESSAGE] - Please store this message at your station for later retreival by [CALLSIGN]").arg(call).trimmed());
+    auto msgToAction
+        = menu->addAction(QString("%1 MSG TO:[CALLSIGN] [MESSAGE] - Please store this message at "
+                                  "your station for later retreival by [CALLSIGN]")
+                              .arg(call)
+                              .trimmed());
     msgToAction->setDisabled(isAllCall);
-    connect(msgToAction, &QAction::triggered, this, [this](){
-
+    connect(msgToAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 MSG TO:[CALLSIGN] [MESSAGE]").arg(selectedCall), true, true);
     });
 
-    auto qsoQueryAction = menu->addAction(QString("%1 QUERY CALL [CALLSIGN]? - Please acknowledge you can communicate directly with [CALLSIGN]").arg(call).trimmed());
-    connect(qsoQueryAction, &QAction::triggered, this, [this](){
-
+    auto qsoQueryAction = menu->addAction(QString("%1 QUERY CALL [CALLSIGN]? - Please acknowledge "
+                                                  "you can communicate directly with [CALLSIGN]")
+                                              .arg(call)
+                                              .trimmed());
+    connect(qsoQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 QUERY CALL [CALLSIGN]?").arg(selectedCall), true, true);
     });
 
-    auto qsoQueryMsgsAction = menu->addAction(QString("%1 QUERY MSGS - Do you have any messages for me?").arg(call).trimmed());
-    connect(qsoQueryMsgsAction, &QAction::triggered, this, [this](){
-
+    auto qsoQueryMsgsAction = menu->addAction(
+        QString("%1 QUERY MSGS - Do you have any messages for me?").arg(call).trimmed());
+    connect(qsoQueryMsgsAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 QUERY MSGS").arg(selectedCall), true, true);
     });
 
-    auto qsoQueryMsgAction = menu->addAction(QString("%1 QUERY MSG [ID] - Please deliver the complete message identified by ID").arg(call).trimmed());
-    connect(qsoQueryMsgAction, &QAction::triggered, this, [this](){
-
+    auto qsoQueryMsgAction = menu->addAction(
+        QString("%1 QUERY MSG [ID] - Please deliver the complete message identified by ID")
+            .arg(call)
+            .trimmed());
+    connect(qsoQueryMsgAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
@@ -7003,155 +7509,164 @@ void MainWindow::buildQueryMenu(QMenu * menu, QString call){
 
     menu->addSeparator();
 
-    auto agnAction = menu->addAction(QString("%1 AGN? - Please repeat your last transmission").arg(call).trimmed());
-    connect(agnAction, &QAction::triggered, this, [this](){
-
+    auto agnAction = menu->addAction(
+        QString("%1 AGN? - Please repeat your last transmission").arg(call).trimmed());
+    connect(agnAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 AGN?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto qslQueryAction = menu->addAction(QString("%1 QSL? - Did you receive my last transmission?").arg(call).trimmed());
-    connect(qslQueryAction, &QAction::triggered, this, [this](){
-
+    auto qslQueryAction = menu->addAction(
+        QString("%1 QSL? - Did you receive my last transmission?").arg(call).trimmed());
+    connect(qslQueryAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 QSL?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto qslAction = menu->addAction(QString("%1 QSL - I confirm I received your last transmission").arg(call).trimmed());
-    connect(qslAction, &QAction::triggered, this, [this](){
-
+    auto qslAction = menu->addAction(
+        QString("%1 QSL - I confirm I received your last transmission").arg(call).trimmed());
+    connect(qslAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 QSL").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto yesAction = menu->addAction(QString("%1 YES - I confirm your last inquiry").arg(call).trimmed());
-    connect(yesAction, &QAction::triggered, this, [this](){
-
+    auto yesAction
+        = menu->addAction(QString("%1 YES - I confirm your last inquiry").arg(call).trimmed());
+    connect(yesAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 YES").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto noAction = menu->addAction(QString("%1 NO - I do not confirm your last inquiry").arg(call).trimmed());
-    connect(noAction, &QAction::triggered, this, [this](){
-
+    auto noAction = menu->addAction(
+        QString("%1 NO - I do not confirm your last inquiry").arg(call).trimmed());
+    connect(noAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 NO").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
     auto hwAction = menu->addAction(QString("%1 HW CPY? - How do you copy?").arg(call).trimmed());
-    connect(hwAction, &QAction::triggered, this, [this](){
-
+    connect(hwAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 HW CPY?").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto rrAction = menu->addAction(QString("%1 RR - Roger. Received. I copy.").arg(call).trimmed());
-    connect(rrAction, &QAction::triggered, this, [this](){
-
+    auto rrAction
+        = menu->addAction(QString("%1 RR - Roger. Received. I copy.").arg(call).trimmed());
+    connect(rrAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 RR").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
     auto fbAction = menu->addAction(QString("%1 FB - Fine Business").arg(call).trimmed());
-    connect(fbAction, &QAction::triggered, this, [this](){
-
+    connect(fbAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 FB").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
-    auto sevenThreeAction = menu->addAction(QString("%1 73 - I send my best regards").arg(call).trimmed());
-    connect(sevenThreeAction, &QAction::triggered, this, [this](){
-
+    auto sevenThreeAction
+        = menu->addAction(QString("%1 73 - I send my best regards").arg(call).trimmed());
+    connect(sevenThreeAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 73").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
     auto skAction = menu->addAction(QString("%1 SK - End of contact").arg(call).trimmed());
-    connect(skAction, &QAction::triggered, this, [this](){
-
+    connect(skAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 SK").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 
 
-    auto ditDitAction = menu->addAction(QString("%1 DIT DIT - End of contact / Two bits").arg(call).trimmed());
-    connect(ditDitAction, &QAction::triggered, this, [this](){
-
+    auto ditDitAction
+        = menu->addAction(QString("%1 DIT DIT - End of contact / Two bits").arg(call).trimmed());
+    connect(ditDitAction, &QAction::triggered, this, [this]() {
         QString selectedCall = callsignSelected();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         addMessageText(QString("%1 DIT DIT").arg(selectedCall), true);
 
-        if(m_config.transmit_directed()) toggleTx(true);
+        if (m_config.transmit_directed())
+            toggleTx(true);
     });
 }
 
-void MainWindow::buildRelayMenu(QMenu *menu){
+void MainWindow::buildRelayMenu(QMenu* menu)
+{
     auto now = DriftingDateTime::currentDateTimeUtc();
     int callsignAging = m_config.callsign_aging();
-    foreach(auto cd, m_callActivity.values()){
+    foreach (auto cd, m_callActivity.values()) {
         if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
             continue;
         }
@@ -7160,30 +7675,32 @@ void MainWindow::buildRelayMenu(QMenu *menu){
     }
 }
 
-QAction* MainWindow::buildRelayAction(QString call){
-    QAction *a = new QAction(call, nullptr);
-    connect(a, &QAction::triggered, this, [this, call](){
+QAction* MainWindow::buildRelayAction(QString call)
+{
+    QAction* a = new QAction(call, nullptr);
+    connect(a, &QAction::triggered, this, [this, call]() {
         prependMessageText(QString("%1>").arg(call));
     });
     return a;
 }
 
-void MainWindow::buildEditMenu(QMenu *menu, QTextEdit *edit){
+void MainWindow::buildEditMenu(QMenu* menu, QTextEdit* edit)
+{
     bool hasSelection = !edit->textCursor().selectedText().isEmpty();
 
     auto cut = menu->addAction("Cu&t");
     cut->setEnabled(hasSelection && !edit->isReadOnly());
-    connect(edit, &QTextEdit::copyAvailable, this, [edit, cut](bool copyAvailable){
+    connect(edit, &QTextEdit::copyAvailable, this, [edit, cut](bool copyAvailable) {
         cut->setEnabled(copyAvailable && !edit->isReadOnly());
     });
-    connect(cut, &QAction::triggered, this, [edit](){
+    connect(cut, &QAction::triggered, this, [edit]() {
         edit->copy();
         edit->textCursor().removeSelectedText();
     });
 
     auto copy = menu->addAction("&Copy");
     copy->setEnabled(hasSelection);
-    connect(edit, &QTextEdit::copyAvailable, this, [copy](bool copyAvailable){
+    connect(edit, &QTextEdit::copyAvailable, this, [copy](bool copyAvailable) {
         copy->setEnabled(copyAvailable);
     });
     connect(copy, &QAction::triggered, edit, &QTextEdit::copy);
@@ -7193,42 +7710,43 @@ void MainWindow::buildEditMenu(QMenu *menu, QTextEdit *edit){
     connect(paste, &QAction::triggered, edit, &QTextEdit::paste);
 }
 
-QMap<QString, QString> MainWindow::buildMacroValues(){
-    auto lastActive = DriftingDateTime::currentDateTimeUtc().addSecs(-m_idleMinutes*60);
+QMap<QString, QString> MainWindow::buildMacroValues()
+{
+    auto lastActive = DriftingDateTime::currentDateTimeUtc().addSecs(-m_idleMinutes * 60);
     QString myIdle = since(lastActive).toUpper().replace("NOW", "0M");
     QString myVersion = version().replace("-devel", "").replace("-rc", "");
 
     QMap<QString, QString> values = {
-        {"<MYCALL>", m_config.my_callsign()},
-        {"<MYGRID4>", m_config.my_grid().left(4)},
-        {"<MYGRID12>", m_config.my_grid().left(12)},
-        {"<MYINFO>", m_config.my_info()},
-        {"<MYHB>", m_config.hb_message()},
-        {"<MYCQ>", m_config.cq_message()},
-        {"<MYREPLY>", m_config.reply_message()},
-        {"<MYSTATUS>", m_config.my_status()},
+        { "<MYCALL>",    m_config.my_callsign()      },
+        { "<MYGRID4>",   m_config.my_grid().left(4)  },
+        { "<MYGRID12>",  m_config.my_grid().left(12) },
+        { "<MYINFO>",    m_config.my_info()          },
+        { "<MYHB>",      m_config.hb_message()       },
+        { "<MYCQ>",      m_config.cq_message()       },
+        { "<MYREPLY>",   m_config.reply_message()    },
+        { "<MYSTATUS>",  m_config.my_status()        },
 
-        {"<MYVERSION>", myVersion},
-        {"<MYIDLE>", myIdle},
+        { "<MYVERSION>", myVersion                   },
+        { "<MYIDLE>",    myIdle                      },
     };
 
     auto selectedCall = callsignSelected();
-    if(m_callActivity.contains(selectedCall)){
+    if (m_callActivity.contains(selectedCall)) {
         auto cd = m_callActivity[selectedCall];
 
         values["<CALL>"] = selectedCall;
-        values["<TDELTA>"] = QString("%1 ms").arg((int)(1000*cd.tdrift));
+        values["<TDELTA>"] = QString("%1 ms").arg((int)(1000 * cd.tdrift));
 
-        if(cd.snr > -31){
+        if (cd.snr > -31) {
             values["<SNR>"] = Varicode::formatSNR(cd.snr);
         }
     }
 
     // these macros can have recursive macros
-    values["<MYINFO>"]   = replaceMacros(values["<MYINFO>"], values, false);
-    values["<MYSTATUS>"]   = replaceMacros(values["<MYSTATUS>"], values, false);
-    values["<MYCQ>"]    = replaceMacros(values["<MYCQ>"], values, false);
-    values["<MYHB>"]    = replaceMacros(values["<MYHB>"], values, false);
+    values["<MYINFO>"] = replaceMacros(values["<MYINFO>"], values, false);
+    values["<MYSTATUS>"] = replaceMacros(values["<MYSTATUS>"], values, false);
+    values["<MYCQ>"] = replaceMacros(values["<MYCQ>"], values, false);
+    values["<MYHB>"] = replaceMacros(values["<MYHB>"], values, false);
     values["<MYREPLY>"] = replaceMacros(values["<MYREPLY>"], values, false);
 
     return values;
@@ -7236,49 +7754,48 @@ QMap<QString, QString> MainWindow::buildMacroValues(){
 
 void MainWindow::buildColumnLabelMap()
 {
-	// This is the map of full-length strings to shortened versions
-	// Add new minimal labels here as needed
-	m_columnLabelMap = {
-		{"Callsigns", "Call"},
-		{"Callsigns (%1)", "Call(%1)"},
-		{"Offset", "Off"},
-		{"SNR", "SN"},
-		{"Time Delta", "TD"},
-		{"Speed", "Sp"},
-		{"Distance", "Dist"},
-		{"Azimuth", "Az"},
-		{"%1 ms", "%1"},
-		{"%1 dB", "%1"},
-		{"%1 Hz", "%1"}
-	};
+    // This is the map of full-length strings to shortened versions
+    // Add new minimal labels here as needed
+    m_columnLabelMap = {
+        { "Callsigns",      "Call"     },
+        { "Callsigns (%1)", "Call(%1)" },
+        { "Offset",         "Off"      },
+        { "SNR",            "SN"       },
+        { "Time Delta",     "TD"       },
+        { "Speed",          "Sp"       },
+        { "Distance",       "Dist"     },
+        { "Azimuth",        "Az"       },
+        { "%1 ms",          "%1"       },
+        { "%1 dB",          "%1"       },
+        { "%1 Hz",          "%1"       }
+    };
 
-	// Populate original header maps
-	int cols = ui->tableWidgetRXAll->columnCount();
-	for (int c = 0; c < cols; ++c)
-	{
-		QString label = ui->tableWidgetRXAll->horizontalHeaderItem(c)->text();
+    // Populate original header maps
+    int cols = ui->tableWidgetRXAll->columnCount();
+    for (int c = 0; c < cols; ++c) {
+        QString label = ui->tableWidgetRXAll->horizontalHeaderItem(c)->text();
 
-		m_origRxHeaderLabelMap[c] = label;
-	}
+        m_origRxHeaderLabelMap[c] = label;
+    }
 
-	cols = ui->tableWidgetCalls->columnCount();
-	for (int c = 0; c < cols; ++c)
-	{
-		QString label = ui->tableWidgetCalls->horizontalHeaderItem(c)->text();
+    cols = ui->tableWidgetCalls->columnCount();
+    for (int c = 0; c < cols; ++c) {
+        QString label = ui->tableWidgetCalls->horizontalHeaderItem(c)->text();
 
-		m_origCallActivityHeaderLabelMap[c] = label;
-	}
+        m_origCallActivityHeaderLabelMap[c] = label;
+    }
 }
 
-void MainWindow::buildSuggestionsMenu(QMenu *menu, QTextEdit *edit, const QPoint &point){
-    if(!m_config.spellcheck()){
+void MainWindow::buildSuggestionsMenu(QMenu* menu, QTextEdit* edit, const QPoint& point)
+{
+    if (!m_config.spellcheck()) {
         return;
     }
 
     bool found = false;
 
     auto c = edit->cursorForPosition(point);
-    if(c.charFormat().underlineStyle() != QTextCharFormat::WaveUnderline){
+    if (c.charFormat().underlineStyle() != QTextCharFormat::WaveUnderline) {
         return;
     }
 
@@ -7286,23 +7803,23 @@ void MainWindow::buildSuggestionsMenu(QMenu *menu, QTextEdit *edit, const QPoint
     c.movePosition(QTextCursor::EndOfWord, QTextCursor::KeepAnchor);
 
     auto word = c.selectedText().toUpper().trimmed();
-    if(word.isEmpty()){
+    if (word.isEmpty()) {
         return;
     }
 
     QStringList suggestions = JSCChecker::suggestions(word, 5, &found);
-    if(suggestions.isEmpty() && !found){
+    if (suggestions.isEmpty() && !found) {
         return;
     }
 
-    if(suggestions.isEmpty()){
+    if (suggestions.isEmpty()) {
         auto a = menu->addAction("No Suggestions");
         a->setDisabled(true);
     } else {
-        foreach(auto suggestion, suggestions){
+        foreach (auto suggestion, suggestions) {
             auto a = menu->addAction(suggestion);
 
-            connect(a, &QAction::triggered, this, [edit, point, suggestion](){
+            connect(a, &QAction::triggered, this, [edit, point, suggestion]() {
                 auto c = edit->cursorForPosition(point);
                 c.select(QTextCursor::WordUnderCursor);
                 c.insertText(suggestion);
@@ -7313,16 +7830,18 @@ void MainWindow::buildSuggestionsMenu(QMenu *menu, QTextEdit *edit, const QPoint
     menu->addSeparator();
 }
 
-void MainWindow::buildSavedMessagesMenu(QMenu *menu){
+void MainWindow::buildSavedMessagesMenu(QMenu* menu)
+{
     auto values = buildMacroValues();
 
-    foreach(QString macro, m_config.macros()->stringList()){
-        QAction *action = menu->addAction(replaceMacros(macro, values, false));
-        connect(action, &QAction::triggered, this, [this, macro](){
+    foreach (QString macro, m_config.macros()->stringList()) {
+        QAction* action = menu->addAction(replaceMacros(macro, values, false));
+        connect(action, &QAction::triggered, this, [this, macro]() {
             auto values = buildMacroValues();
             addMessageText(replaceMacros(macro, values, true));
 
-            if(m_config.transmit_directed()) toggleTx(true);
+            if (m_config.transmit_directed())
+                toggleTx(true);
         });
     }
 
@@ -7330,26 +7849,25 @@ void MainWindow::buildSavedMessagesMenu(QMenu *menu){
 
     auto editAction = new QAction(QString("&Edit Saved Messages"), menu);
     menu->addAction(editAction);
-    connect(editAction, &QAction::triggered, this, [this](){
-        openSettings(5);
-    });
+    connect(editAction, &QAction::triggered, this, [this]() { openSettings(5); });
 
     auto saveAction = new QAction(QString("&Save Current Message"), menu);
     saveAction->setDisabled(ui->extFreeTextMsgEdit->toPlainText().isEmpty());
     menu->addAction(saveAction);
-    connect(saveAction, &QAction::triggered, this, [this](){
+    connect(saveAction, &QAction::triggered, this, [this]() {
         auto macros = m_config.macros();
-        if(macros->insertRow(macros->rowCount())){
-            auto index = macros->index(macros->rowCount()-1);
+        if (macros->insertRow(macros->rowCount())) {
+            auto index = macros->index(macros->rowCount() - 1);
             macros->setData(index, ui->extFreeTextMsgEdit->toPlainText());
             writeSettings();
         }
     });
 }
 
-void MainWindow::on_queryButton_pressed(){
-    QMenu *menu = ui->queryButton->menu();
-    if(!menu){
+void MainWindow::on_queryButton_pressed()
+{
+    QMenu* menu = ui->queryButton->menu();
+    if (!menu) {
         menu = new QMenu(ui->queryButton);
     }
     menu->clear();
@@ -7360,9 +7878,10 @@ void MainWindow::on_queryButton_pressed(){
     ui->queryButton->showMenu();
 }
 
-void MainWindow::on_macrosMacroButton_pressed(){
-    QMenu *menu = ui->macrosMacroButton->menu();
-    if(!menu){
+void MainWindow::on_macrosMacroButton_pressed()
+{
+    QMenu* menu = ui->macrosMacroButton->menu();
+    if (!menu) {
         menu = new QMenu(ui->macrosMacroButton);
     }
     menu->clear();
@@ -7373,11 +7892,13 @@ void MainWindow::on_macrosMacroButton_pressed(){
     ui->macrosMacroButton->showMenu();
 }
 
-void MainWindow::on_deselectButton_pressed(){
+void MainWindow::on_deselectButton_pressed()
+{
     clearCallsignSelected();
 }
 
-void MainWindow::on_tableWidgetRXAll_cellClicked(int /*row*/, int /*col*/){
+void MainWindow::on_tableWidgetRXAll_cellClicked(int /*row*/, int /*col*/)
+{
     ui->tableWidgetCalls->selectionModel()->select(
         ui->tableWidgetCalls->selectionModel()->selection(),
         QItemSelectionModel::Deselect);
@@ -7385,7 +7906,8 @@ void MainWindow::on_tableWidgetRXAll_cellClicked(int /*row*/, int /*col*/){
     displayCallActivity();
 }
 
-void MainWindow::on_tableWidgetRXAll_cellDoubleClicked(int row, int col){
+void MainWindow::on_tableWidgetRXAll_cellDoubleClicked(int row, int col)
+{
     on_tableWidgetRXAll_cellClicked(row, col);
 
     // TODO: jsherer - could also parse the messages for the last callsign?
@@ -7403,27 +7925,29 @@ void MainWindow::on_tableWidgetRXAll_cellDoubleClicked(int row, int col){
     QDateTime firstActivity = now;
     QString activityText;
     bool isLast = false;
-    foreach(auto d, m_bandActivity[offset]){
-        if(activityAging && d.utcTimestamp.secsTo(now)/60 >= activityAging){
+    foreach (auto d, m_bandActivity[offset]) {
+        if (activityAging && d.utcTimestamp.secsTo(now) / 60 >= activityAging) {
             continue;
         }
-        if(activityText.isEmpty()){
+        if (activityText.isEmpty()) {
             firstActivity = d.utcTimestamp;
         }
         activityText.append(d.text);
 
         isLast = (d.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast;
-        if(isLast){
-            activityText = QString("%1 %2 ").arg(Varicode::rstrip(activityText)).arg(m_config.eot());
+        if (isLast) {
+            activityText
+                = QString("%1 %2 ").arg(Varicode::rstrip(activityText)).arg(m_config.eot());
         }
     }
-    if(!activityText.isEmpty()){
+    if (!activityText.isEmpty()) {
         displayTextForFreq(activityText, offset, firstActivity, false, true, isLast);
     }
 }
 
-QString MainWindow::generateCallDetail(QString selectedCall){
-    if(selectedCall.isEmpty()){
+QString MainWindow::generateCallDetail(QString selectedCall)
+{
+    if (selectedCall.isEmpty()) {
         return "";
     }
 
@@ -7432,14 +7956,19 @@ QString MainWindow::generateCallDetail(QString selectedCall){
     QString heardby = m_heardGraphIncoming.value(selectedCall).values().join(", ");
     QStringList detail = {
         QString("<h1>%1</h1>").arg(selectedCall.toHtmlEscaped()),
-        hearing.isEmpty() ? "" : QString("<p><strong>HEARING</strong>: %1</p>").arg(hearing.toHtmlEscaped()),
-        heardby.isEmpty() ? "" : QString("<p><strong>HEARD BY</strong>: %1</p>").arg(heardby.toHtmlEscaped()),
+        hearing.isEmpty() ?
+            "" :
+            QString("<p><strong>HEARING</strong>: %1</p>").arg(hearing.toHtmlEscaped()),
+        heardby.isEmpty() ?
+            "" :
+            QString("<p><strong>HEARD BY</strong>: %1</p>").arg(heardby.toHtmlEscaped()),
     };
 
     return detail.join("\n");
 }
 
-void MainWindow::on_tableWidgetCalls_cellClicked(int /*row*/, int /*col*/){
+void MainWindow::on_tableWidgetCalls_cellClicked(int /*row*/, int /*col*/)
+{
     ui->tableWidgetRXAll->selectionModel()->select(
         ui->tableWidgetRXAll->selectionModel()->selection(),
         QItemSelectionModel::Deselect);
@@ -7447,14 +7976,15 @@ void MainWindow::on_tableWidgetCalls_cellClicked(int /*row*/, int /*col*/){
     displayBandActivity();
 }
 
-void MainWindow::on_tableWidgetCalls_cellDoubleClicked(int row, int col){
+void MainWindow::on_tableWidgetCalls_cellDoubleClicked(int row, int col)
+{
     on_tableWidgetCalls_cellClicked(row, col);
 
     auto call = callsignSelected();
     addMessageText(call);
 
 #if SHOW_MESSAGE_HISTORY_ON_DOUBLECLICK
-    if(m_rxInboxCountCache.value(call, 0) > 0){
+    if (m_rxInboxCountCache.value(call, 0) > 0) {
 
         // TODO:
         // CommandDetail d = m_rxCallsignInboxCountCache[call].first();
@@ -7463,9 +7993,9 @@ void MainWindow::on_tableWidgetCalls_cellDoubleClicked(int row, int col){
         // processAlertReplyForCommand(d, d.relayPath, d.cmd);
 
         Inbox i(inboxPath());
-        if(i.open()){
+        if (i.open()) {
             QList<Message> msgs;
-            foreach(auto pair, i.values("UNREAD", "$.params.FROM", call, 0, 1000)){
+            foreach (auto pair, i.values("UNREAD", "$.params.FROM", call, 0, 1000)) {
                 msgs.append(pair.second);
             }
 
@@ -7489,7 +8019,8 @@ void MainWindow::on_tableWidgetCalls_cellDoubleClicked(int row, int col){
             d.tdrift = params.value("TDRIFT").toFloat();
             d.text = params.value("TEXT").toString();
             d.to = params.value("TO").toString();
-            d.utcTimestamp = QDateTime::fromString(params.value("UTC").toString(), "yyyy-MM-dd hh:mm:ss");
+            d.utcTimestamp
+                = QDateTime::fromString(params.value("UTC").toString(), "yyyy-MM-dd hh:mm:ss");
             d.utcTimestamp.setUtcOffset(0);
 
             msg.setType("READ");
@@ -7506,63 +8037,67 @@ void MainWindow::on_tableWidgetCalls_cellDoubleClicked(int row, int col){
 #endif
 }
 
-void MainWindow::on_tuneButton_clicked (bool checked)
+void MainWindow::on_tuneButton_clicked(bool checked)
 {
-  static bool lastChecked = false;
-  if (lastChecked == checked) return;
-  lastChecked = checked;
-  if (checked && m_tune==false) { // we're starting tuning so remember Tx and change pwr to Tune value
-    if (m_config.pwrBandTuneMemory ()) {
-      m_pwrBandTxMemory[m_lastBand] = ui->outAttenuation->value(); // remember our Tx pwr
-      m_PwrBandSetOK = false;
-      if (m_pwrBandTuneMemory.contains(m_lastBand)) {
-        ui->outAttenuation->setValue(m_pwrBandTuneMemory[m_lastBand].toInt()); // set to Tune pwr
-      }
-      m_PwrBandSetOK = true;
+    static bool lastChecked = false;
+    if (lastChecked == checked)
+        return;
+    lastChecked = checked;
+    if (checked
+        && m_tune == false) { // we're starting tuning so remember Tx and change pwr to Tune value
+        if (m_config.pwrBandTuneMemory()) {
+            m_pwrBandTxMemory[m_lastBand] = ui->outAttenuation->value(); // remember our Tx pwr
+            m_PwrBandSetOK = false;
+            if (m_pwrBandTuneMemory.contains(m_lastBand)) {
+                ui->outAttenuation->setValue(
+                    m_pwrBandTuneMemory[m_lastBand].toInt()); // set to Tune pwr
+            }
+            m_PwrBandSetOK = true;
+        }
     }
-  }
-  if (m_tune) {
-    tuneButtonTimer.start(250);
-  } else {
-    itone[0]=0;
-    on_monitorButton_clicked (true);
-    m_tune=true;
-  }
-  Q_EMIT tune (checked);
+    if (m_tune) {
+        tuneButtonTimer.start(250);
+    } else {
+        itone[0] = 0;
+        on_monitorButton_clicked(true);
+        m_tune = true;
+    }
+    Q_EMIT tune(checked);
 }
 
-void MainWindow::end_tuning ()
+void MainWindow::end_tuning()
 {
-  tuneATU_Timer.stop ();        // stop tune watchdog when stopping Tune manually
-  on_stopTxButton_clicked ();
-  // we're turning off so remember our Tune pwr setting and reset to Tx pwr
-  if (m_config.pwrBandTuneMemory() || m_config.pwrBandTxMemory()) {
-    m_pwrBandTuneMemory[m_lastBand] = ui->outAttenuation->value(); // remember our Tune pwr
-    m_PwrBandSetOK = false;
-    ui->outAttenuation->setValue(m_pwrBandTxMemory[m_lastBand].toInt()); // set to Tx pwr
-    m_PwrBandSetOK = true;
-  }
+    tuneATU_Timer.stop(); // stop tune watchdog when stopping Tune manually
+    on_stopTxButton_clicked();
+    // we're turning off so remember our Tune pwr setting and reset to Tx pwr
+    if (m_config.pwrBandTuneMemory() || m_config.pwrBandTxMemory()) {
+        m_pwrBandTuneMemory[m_lastBand] = ui->outAttenuation->value(); // remember our Tune pwr
+        m_PwrBandSetOK = false;
+        ui->outAttenuation->setValue(m_pwrBandTxMemory[m_lastBand].toInt()); // set to Tx pwr
+        m_PwrBandSetOK = true;
+    }
 }
 
-void MainWindow::stop_tuning ()
+void MainWindow::stop_tuning()
 {
-  tuneATU_Timer.stop ();        // stop tune watchdog when stopping Tune manually
-  on_tuneButton_clicked(false);
-  ui->tuneButton->setChecked (false);
-  m_isTimeToSend=false;
-  m_tune=false;
+    tuneATU_Timer.stop(); // stop tune watchdog when stopping Tune manually
+    on_tuneButton_clicked(false);
+    ui->tuneButton->setChecked(false);
+    m_isTimeToSend = false;
+    m_tune = false;
 }
 
 void MainWindow::stopTuneATU()
 {
-  on_tuneButton_clicked(false);
-  m_isTimeToSend=false;
+    on_tuneButton_clicked(false);
+    m_isTimeToSend = false;
 }
 
-void MainWindow::resetPushButtonToggleText(QPushButton *btn){
+void MainWindow::resetPushButtonToggleText(QPushButton* btn)
+{
     bool checked = btn->isChecked();
     auto style = btn->styleSheet();
-    if(checked){
+    if (checked) {
         style = style.replace("font-weight:normal;", "font-weight:bold;");
     } else {
         style = style.replace("font-weight:bold;", "font-weight:normal;");
@@ -7572,7 +8107,7 @@ void MainWindow::resetPushButtonToggleText(QPushButton *btn){
 #if PUSH_BUTTON_CHECKMARK
     auto on = "✓ ";
     auto text = btn->text();
-    if(checked){
+    if (checked) {
         btn->setText(on + text.replace(on, ""));
     } else {
         btn->setText(text.replace(on, ""));
@@ -7582,12 +8117,12 @@ void MainWindow::resetPushButtonToggleText(QPushButton *btn){
 #if PUSH_BUTTON_MIN_WIDTH
     int width = 0;
     QList<QPushButton*> btns;
-    foreach(auto child, ui->buttonGrid->children()){
-        if(!child->isWidgetType()){
+    foreach (auto child, ui->buttonGrid->children()) {
+        if (!child->isWidgetType()) {
             continue;
         }
 
-        if(!child->objectName().contains("Button")){
+        if (!child->objectName().contains("Button")) {
             continue;
         }
 
@@ -7596,107 +8131,108 @@ void MainWindow::resetPushButtonToggleText(QPushButton *btn){
         btns.append(b);
     }
 
-    foreach(auto child, btns){
+    foreach (auto child, btns) {
         child->setMinimumWidth(width);
     }
 #endif
 }
 
-void MainWindow::on_stopTxButton_clicked()                    //Stop Tx
+void MainWindow::on_stopTxButton_clicked() //Stop Tx
 {
-  if (m_tune) stop_tuning ();
-  if (m_auto and !m_tuneup) auto_tx_mode (false);
-  m_btxok=false;
+    if (m_tune)
+        stop_tuning();
+    if (m_auto and !m_tuneup)
+        auto_tx_mode(false);
+    m_btxok = false;
 
-  resetMessage();
+    resetMessage();
 
-  if(m_stopTxButtonIsLongterm) {
-    m_hb_loop->onLoopCancel();
-    m_cq_loop->onLoopCancel();
-  }
+    if (m_stopTxButtonIsLongterm) {
+        m_hb_loop->onLoopCancel();
+        m_cq_loop->onLoopCancel();
+    }
 }
 
-void MainWindow::rigOpen ()
+void MainWindow::rigOpen()
 {
-  update_dynamic_property (ui->readFreq, "state", "warning");
-  ui->readFreq->setText ("CAT");
-  ui->readFreq->setEnabled (true);
-  m_config.transceiver_online ();
-  Q_EMIT m_config.sync_transceiver (true, true);
+    update_dynamic_property(ui->readFreq, "state", "warning");
+    ui->readFreq->setText("CAT");
+    ui->readFreq->setEnabled(true);
+    m_config.transceiver_online();
+    Q_EMIT m_config.sync_transceiver(true, true);
 }
 
 void MainWindow::on_readFreq_clicked()
 {
-  if (m_transmitting) return;
+    if (m_transmitting)
+        return;
 
-  if (m_config.transceiver_online ())
-    {
-      Q_EMIT m_config.sync_transceiver (true, true);
+    if (m_config.transceiver_online()) {
+        Q_EMIT m_config.sync_transceiver(true, true);
     }
 }
 
 void MainWindow::setXIT(int n)
 {
-  if (m_transmitting && !m_config.tx_qsy_allowed ()) return;
+    if (m_transmitting && !m_config.tx_qsy_allowed())
+        return;
 
-  m_XIT = m_config.split_mode() ? (n / 500) * 500 - 1500 : 0;
+    m_XIT = m_config.split_mode() ? (n / 500) * 500 - 1500 : 0;
 
-  if ((m_monitoring || m_transmitting)
-      && m_config.is_transceiver_online()
-      && m_config.split_mode())
-    {
-      // All conditions are met, reset the transceiver Tx dial
-      // frequency
-      m_freqTxNominal = m_freqNominal + m_XIT;
-      Q_EMIT m_config.transceiver_tx_frequency(m_freqTxNominal);
+    if ((m_monitoring || m_transmitting) && m_config.is_transceiver_online()
+        && m_config.split_mode()) {
+        // All conditions are met, reset the transceiver Tx dial
+        // frequency
+        m_freqTxNominal = m_freqNominal + m_XIT;
+        Q_EMIT m_config.transceiver_tx_frequency(m_freqTxNominal);
     }
 
-  //Now set the audio Tx freq
-  Q_EMIT transmitFrequency(freq() - m_XIT);
+    //Now set the audio Tx freq
+    Q_EMIT transmitFrequency(freq() - m_XIT);
 }
 
-void
-MainWindow::qsy(int const hzDelta)
+void MainWindow::qsy(int const hzDelta)
 {
-  setRig(m_freqNominal + hzDelta);
-  setFreqOffsetForRestore(m_wideGraph->centerFreq(), false);
+    setRig(m_freqNominal + hzDelta);
+    setFreqOffsetForRestore(m_wideGraph->centerFreq(), false);
 
-  // Adjust band activity frequencies.
+    // Adjust band activity frequencies.
 
-  BandActivity bandActivity;
+    BandActivity bandActivity;
 
-  for (auto [key, value] : m_bandActivity.asKeyValueRange())
-  {
-    if (value.isEmpty()) continue;
+    for (auto [key, value] : m_bandActivity.asKeyValueRange()) {
+        if (value.isEmpty())
+            continue;
 
-    auto const newKey = key - hzDelta;
+        auto const newKey = key - hzDelta;
 
-    bandActivity[newKey] = value;
-    bandActivity[newKey].last().offset -= hzDelta;
-  }
+        bandActivity[newKey] = value;
+        bandActivity[newKey].last().offset -= hzDelta;
+    }
 
-  m_bandActivity.swap(bandActivity);
+    m_bandActivity.swap(bandActivity);
 
-  // Adjust call activity frequencies.
+    // Adjust call activity frequencies.
 
-  for (auto [key, value] : m_callActivity.asKeyValueRange())
-  {
-    value.offset -= hzDelta;
-  }
+    for (auto [key, value] : m_callActivity.asKeyValueRange()) {
+        value.offset -= hzDelta;
+    }
 
-  displayActivity(true);
+    displayActivity(true);
 }
 
-void MainWindow::onDriftChanged(qint64 /*new_drift_ms*/){
+void MainWindow::onDriftChanged(qint64 /*new_drift_ms*/)
+{
     // here we reset the buffer position without clearing the buffer
     // this makes the detected emit the correct k when drifting time
     qCDebug(mainwindow_js8) << "Processing drift change.";
     m_detector->resetBufferPosition();
 }
 
-void MainWindow::setFreqOffsetForRestore(int freq, bool shouldRestore){
+void MainWindow::setFreqOffsetForRestore(int freq, bool shouldRestore)
+{
     changeFreq(freq);
-    if(shouldRestore){
+    if (shouldRestore) {
         m_shouldRestoreFreq = true;
     } else {
         m_previousFreq = 0;
@@ -7704,8 +8240,9 @@ void MainWindow::setFreqOffsetForRestore(int freq, bool shouldRestore){
     }
 }
 
-bool MainWindow::tryRestoreFreqOffset(){
-    if(!m_shouldRestoreFreq || m_previousFreq == 0){
+bool MainWindow::tryRestoreFreqOffset()
+{
+    if (!m_shouldRestoreFreq || m_previousFreq == 0) {
         return false;
     }
 
@@ -7713,206 +8250,192 @@ bool MainWindow::tryRestoreFreqOffset(){
     return true;
 }
 
-void
-MainWindow::changeFreq(int const newFreq)
+void MainWindow::changeFreq(int const newFreq)
 {
-  // Don't allow QSY if we've already queued a transmission,
-  // unless we have that functionality enabled.
+    // Don't allow QSY if we've already queued a transmission,
+    // unless we have that functionality enabled.
 
-  if (isMessageQueuedForTransmit() && !m_config.tx_qsy_allowed()) return;
+    if (isMessageQueuedForTransmit() && !m_config.tx_qsy_allowed())
+        return;
 
-  // TODO: jsherer - here's where we'd set minimum frequency again (later?)
+    // TODO: jsherer - here's where we'd set minimum frequency again (later?)
 
-  m_previousFreq = freq();
-  setFreq(std::max(0, newFreq));
+    m_previousFreq = freq();
+    setFreq(std::max(0, newFreq));
 
-  displayDialFrequency();
+    displayDialFrequency();
 }
 
-void MainWindow::handle_transceiver_update (Transceiver::TransceiverState const& new_rig_state)
+void MainWindow::handle_transceiver_update(Transceiver::TransceiverState const& new_rig_state)
 {
-  qCDebug (mainwindow_js8) << "MainWindow::handle_transceiver_update:" << new_rig_state;
-  Transceiver::TransceiverState old_state {m_rigState};
+    qCDebug(mainwindow_js8) << "MainWindow::handle_transceiver_update:" << new_rig_state;
+    Transceiver::TransceiverState old_state { m_rigState };
 
-  // GM8JCF: in stopTx2 we maintain PTT if there are still untransmitted JS8 frames and we are holding the PTT
-  // KN4CRD: if we're not holding the PTT we need to check to ensure it's safe to transmit
-  if (m_config.hold_ptt() || (new_rig_state.ptt () && !m_rigState.ptt())) // safe to start audio (caveat - DX Lab Suite Commander)
-  {
-      if (m_generateAudioWhenPttConfirmedByTX && m_iptt) // waiting to Tx and still needed
-      {
-          // The Modulator nicely emits silence during txDelay, so let us just tigger it.
-          transmit();
-      }
-      m_generateAudioWhenPttConfirmedByTX = false;
-  }
-  m_rigState = new_rig_state;
-
-  auto old_freqNominal = m_freqNominal;
-  if (!old_freqNominal)
+    // GM8JCF: in stopTx2 we maintain PTT if there are still untransmitted JS8 frames and we are holding the PTT
+    // KN4CRD: if we're not holding the PTT we need to check to ensure it's safe to transmit
+    if (m_config.hold_ptt()
+        || (new_rig_state.ptt()
+            && !m_rigState.ptt())) // safe to start audio (caveat - DX Lab Suite Commander)
     {
-      // always take initial rig frequency to avoid start up problems
-      // with bogus Tx frequencies
-      m_freqNominal = new_rig_state.frequency ();
-    }
-
-  if (old_state.online () == false && new_rig_state.online () == true)
-    {
-      // initializing
-      on_monitorButton_clicked (!m_config.monitor_off_at_startup ());
-      on_monitorTxButton_toggled (!m_config.transmit_off_at_startup ());
-    }
-
-  if (new_rig_state.frequency () != old_state.frequency () || new_rig_state.split () != m_splitMode)
-    {
-      m_splitMode = new_rig_state.split ();
-      if (!new_rig_state.ptt ())
+        if (m_generateAudioWhenPttConfirmedByTX && m_iptt) // waiting to Tx and still needed
         {
-          m_freqNominal = new_rig_state.frequency ();
-          if (old_freqNominal != m_freqNominal)
-            {
-              m_freqTxNominal = m_freqNominal;
-            }
-
-          if (m_monitoring)
-            {
-              m_lastMonitoredFrequency = m_freqNominal;
-            }
-          if (m_lastDialFreq != m_freqNominal) {
-
-            m_lastDialFreq = m_freqNominal;
-            m_secBandChanged=DriftingDateTime::currentMSecsSinceEpoch()/1000;
-
-            if(m_freqNominal != m_bandHoppedFreq){
-                m_bandHopped = false;
-            }
-
-            if(new_rig_state.frequency () < 30000000u) {
-                write_frequency_entry("ALL.TXT");
-            }
-
-            if (m_config.spot_to_reporting_networks ()) {
-              spotSetLocal();
-              pskSetLocal();
-              aprsSetLocal();
-            }
-            statusChanged();
-            m_wideGraph->setDialFreq(m_freqNominal / 1.e6f);
-          }
-      } else {
-        m_freqTxNominal = new_rig_state.split () ? new_rig_state.tx_frequency () : new_rig_state.frequency ();
-      }
-  }
-
-  // ensure frequency display is correct
-  // setRig();
-  updateCurrentBand();
-  displayDialFrequency ();
-  update_dynamic_property (ui->readFreq, "state", "ok");
-  ui->readFreq->setEnabled (false);
-  ui->readFreq->setText (new_rig_state.split () ? "CAT/S" : "CAT");
-}
-
-void MainWindow::handle_transceiver_failure (QString const& reason)
-{
-  update_dynamic_property (ui->readFreq, "state", "error");
-  ui->readFreq->setEnabled (true);
-  on_stopTxButton_clicked ();
-  rigFailure (reason);
-}
-
-void MainWindow::rigFailure (QString const& reason)
-{
-  if (m_first_error)
-    {
-      // one automatic retry
-      QTimer::singleShot (0, this, &MainWindow::rigOpen);
-      m_first_error = false;
-    }
-  else
-    {
-      m_rigErrorMessageBox.setDetailedText (reason);
-
-      // don't call slot functions directly to avoid recursion
-      m_rigErrorMessageBox.exec ();
-      auto const clicked_button = m_rigErrorMessageBox.clickedButton ();
-      if (clicked_button == m_configurations_button)
-        {
-          ui->menuConfig->exec (QCursor::pos ());
+            // The Modulator nicely emits silence during txDelay, so let us just tigger it.
+            transmit();
         }
-      else
-        {
-          switch (m_rigErrorMessageBox.standardButton (clicked_button))
-            {
+        m_generateAudioWhenPttConfirmedByTX = false;
+    }
+    m_rigState = new_rig_state;
+
+    auto old_freqNominal = m_freqNominal;
+    if (!old_freqNominal) {
+        // always take initial rig frequency to avoid start up problems
+        // with bogus Tx frequencies
+        m_freqNominal = new_rig_state.frequency();
+    }
+
+    if (old_state.online() == false && new_rig_state.online() == true) {
+        // initializing
+        on_monitorButton_clicked(!m_config.monitor_off_at_startup());
+        on_monitorTxButton_toggled(!m_config.transmit_off_at_startup());
+    }
+
+    if (new_rig_state.frequency() != old_state.frequency()
+        || new_rig_state.split() != m_splitMode) {
+        m_splitMode = new_rig_state.split();
+        if (!new_rig_state.ptt()) {
+            m_freqNominal = new_rig_state.frequency();
+            if (old_freqNominal != m_freqNominal) {
+                m_freqTxNominal = m_freqNominal;
+            }
+
+            if (m_monitoring) {
+                m_lastMonitoredFrequency = m_freqNominal;
+            }
+            if (m_lastDialFreq != m_freqNominal) {
+
+                m_lastDialFreq = m_freqNominal;
+                m_secBandChanged = DriftingDateTime::currentMSecsSinceEpoch() / 1000;
+
+                if (m_freqNominal != m_bandHoppedFreq) {
+                    m_bandHopped = false;
+                }
+
+                if (new_rig_state.frequency() < 30'000'000u) {
+                    write_frequency_entry("ALL.TXT");
+                }
+
+                if (m_config.spot_to_reporting_networks()) {
+                    spotSetLocal();
+                    pskSetLocal();
+                    aprsSetLocal();
+                }
+                statusChanged();
+                m_wideGraph->setDialFreq(m_freqNominal / 1.e6f);
+            }
+        } else {
+            m_freqTxNominal
+                = new_rig_state.split() ? new_rig_state.tx_frequency() : new_rig_state.frequency();
+        }
+    }
+
+    // ensure frequency display is correct
+    // setRig();
+    updateCurrentBand();
+    displayDialFrequency();
+    update_dynamic_property(ui->readFreq, "state", "ok");
+    ui->readFreq->setEnabled(false);
+    ui->readFreq->setText(new_rig_state.split() ? "CAT/S" : "CAT");
+}
+
+void MainWindow::handle_transceiver_failure(QString const& reason)
+{
+    update_dynamic_property(ui->readFreq, "state", "error");
+    ui->readFreq->setEnabled(true);
+    on_stopTxButton_clicked();
+    rigFailure(reason);
+}
+
+void MainWindow::rigFailure(QString const& reason)
+{
+    if (m_first_error) {
+        // one automatic retry
+        QTimer::singleShot(0, this, &MainWindow::rigOpen);
+        m_first_error = false;
+    } else {
+        m_rigErrorMessageBox.setDetailedText(reason);
+
+        // don't call slot functions directly to avoid recursion
+        m_rigErrorMessageBox.exec();
+        auto const clicked_button = m_rigErrorMessageBox.clickedButton();
+        if (clicked_button == m_configurations_button) {
+            ui->menuConfig->exec(QCursor::pos());
+        } else {
+            switch (m_rigErrorMessageBox.standardButton(clicked_button)) {
             case MessageBox::Ok:
-              m_config.select_tab (1);
-              QTimer::singleShot (0, this, &MainWindow::on_actionSettings_triggered);
-              break;
+                m_config.select_tab(1);
+                QTimer::singleShot(0, this, &MainWindow::on_actionSettings_triggered);
+                break;
 
-            case MessageBox::Retry:
-              QTimer::singleShot (0, this, &MainWindow::rigOpen);
-              break;
+            case MessageBox::Retry: QTimer::singleShot(0, this, &MainWindow::rigOpen); break;
 
-            case MessageBox::Cancel:
-              QTimer::singleShot (0, this, &MainWindow::close);
-              break;
+            case MessageBox::Cancel: QTimer::singleShot(0, this, &MainWindow::close); break;
 
-            default: break;     // squashing compile warnings
+            default: break; // squashing compile warnings
             }
         }
-      m_first_error = true;     // reset
+        m_first_error = true; // reset
     }
 }
 
-void
-MainWindow::on_outAttenuation_valueChanged(int const a)
+void MainWindow::on_outAttenuation_valueChanged(int const a)
 {
-  if (m_PwrBandSetOK)
-  {
-    if (!m_tune && m_config.pwrBandTxMemory())   m_pwrBandTxMemory[m_lastBand]   = a; // remember our Tx pwr
-    if ( m_tune && m_config.pwrBandTuneMemory()) m_pwrBandTuneMemory[m_lastBand] = a; // remember our Tune pwr
-  }
+    if (m_PwrBandSetOK) {
+        if (!m_tune && m_config.pwrBandTxMemory())
+            m_pwrBandTxMemory[m_lastBand] = a; // remember our Tx pwr
+        if (m_tune && m_config.pwrBandTuneMemory())
+            m_pwrBandTuneMemory[m_lastBand] = a; // remember our Tune pwr
+    }
 
-  // Slider interpreted as dB / 100.
+    // Slider interpreted as dB / 100.
 
-  Q_EMIT outAttenuationChanged (a / 10.0);
+    Q_EMIT outAttenuationChanged(a / 10.0);
 }
 
-void
-MainWindow::spotSetLocal()
+void MainWindow::spotSetLocal()
 {
-  Q_EMIT spotClientSetLocalStation (m_config.my_callsign(),
-                                    m_config.my_grid(),
-                                    replaceMacros(m_config.my_info(), buildMacroValues(), true));
-}
-
-void
-MainWindow::pskSetLocal()
-{
-  Q_EMIT pskReporterSetLocalStation (m_config.my_callsign(),
+    Q_EMIT spotClientSetLocalStation(m_config.my_callsign(),
                                      m_config.my_grid(),
                                      replaceMacros(m_config.my_info(), buildMacroValues(), true));
 }
 
-void
-MainWindow::aprsSetLocal()
+void MainWindow::pskSetLocal()
 {
-  Q_EMIT aprsClientSetLocalStation ("APJ8CL", QString::number(APRSISClient::hashCallsign("APJ8CL")));
+    Q_EMIT pskReporterSetLocalStation(m_config.my_callsign(),
+                                      m_config.my_grid(),
+                                      replaceMacros(m_config.my_info(), buildMacroValues(), true));
 }
 
-void MainWindow::transmitDisplay (bool transmitting)
+void MainWindow::aprsSetLocal()
 {
-  if (transmitting == m_transmitting) {
-    if (transmitting) {
-      ui->signal_meter_widget->setValue(0,0);
-      if (m_monitoring) monitor (false);
-      m_btxok=true;
+    Q_EMIT aprsClientSetLocalStation("APJ8CL",
+                                     QString::number(APRSISClient::hashCallsign("APJ8CL")));
+}
+
+void MainWindow::transmitDisplay(bool transmitting)
+{
+    if (transmitting == m_transmitting) {
+        if (transmitting) {
+            ui->signal_meter_widget->setValue(0, 0);
+            if (m_monitoring)
+                monitor(false);
+            m_btxok = true;
+        }
     }
-  }
 
-  updateTxButtonDisplay();
+    updateTxButtonDisplay();
 }
 
-void MainWindow::postDecode (bool is_new, QString const&)
+void MainWindow::postDecode(bool is_new, QString const&)
 {
 #if 0
   auto const& decode = message.trimmed ();
@@ -7930,57 +8453,56 @@ void MainWindow::postDecode (bool is_new, QString const&)
   }
 #endif
 
-  if(is_new){
-      m_rxDirty = true;
-  }
+    if (is_new) {
+        m_rxDirty = true;
+    }
 }
 
-void
-MainWindow::tryNotify(QString const & key)
+void MainWindow::tryNotify(QString const& key)
 {
-  if (auto const path = m_config.notification_path(key);
-                !path.isEmpty())
-  {
-    emit playNotification(path);
-  }
+    if (auto const path = m_config.notification_path(key); !path.isEmpty()) {
+        emit playNotification(path);
+    }
 }
 
-void MainWindow::displayTransmit(){
+void MainWindow::displayTransmit()
+{
     // Transmit Activity
-    update_dynamic_property (ui->startTxButton, "transmitting", m_transmitting);
-    update_dynamic_property (ui->monitorTxButton, "transmitting", m_transmitting);
+    update_dynamic_property(ui->startTxButton, "transmitting", m_transmitting);
+    update_dynamic_property(ui->monitorTxButton, "transmitting", m_transmitting);
 }
 
-bool MainWindow::presentlyWantHBReplies() {
-    return
-        ui->actionModeAutoreply->isChecked() &&
-            ui->actionHeartbeatAcknowledgements->isChecked() &&
-            // The folloing line is disputed, as it disallows replies to HBs
-            // if there is any (unrelated) activity on the band:
-            m_messageBuffer.isEmpty() &&
-            (!m_config.heartbeat_qso_pause() || m_prevSelectedCallsign.isEmpty());
+bool MainWindow::presentlyWantHBReplies()
+{
+    return ui->actionModeAutoreply->isChecked() && ui->actionHeartbeatAcknowledgements->isChecked()
+        &&
+        // The folloing line is disputed, as it disallows replies to HBs
+        // if there is any (unrelated) activity on the band:
+        m_messageBuffer.isEmpty()
+        && (!m_config.heartbeat_qso_pause() || m_prevSelectedCallsign.isEmpty());
 }
 
-void MainWindow::updateModeButtonText(){
+void MainWindow::updateModeButtonText()
+{
     auto multi = ui->actionModeMultiDecoder->isChecked();
     auto autoreply = ui->actionModeAutoreply->isChecked();
     auto heartbeat = ui->actionModeJS8HB->isEnabled() && ui->actionModeJS8HB->isChecked();
 
     auto modeText = JS8::Submode::name(m_nSubMode);
-    if(multi){
+    if (multi) {
         modeText += QString("+MULTI");
     }
 
-    if(autoreply){
-        if(m_config.autoreply_confirmation()){
+    if (autoreply) {
+        if (m_config.autoreply_confirmation()) {
             modeText += QString("+AUTO+CONF");
         } else {
             modeText += QString("+AUTO");
         }
     }
 
-    if(heartbeat){
-        if(presentlyWantHBReplies()){
+    if (heartbeat) {
+        if (presentlyWantHBReplies()) {
             modeText += QString("+HB+ACK");
         } else {
             modeText += QString("+HB");
@@ -7990,7 +8512,8 @@ void MainWindow::updateModeButtonText(){
     ui->modeButton->setText(modeText);
 }
 
-void MainWindow::updateButtonDisplay(){
+void MainWindow::updateButtonDisplay()
+{
     bool isTransmitting = isMessageQueuedForTransmit();
 
     auto selectedCallsign = callsignSelected(true);
@@ -8016,13 +8539,15 @@ void MainWindow::updateButtonDisplay(){
     ui->macrosMacroButton->setDisabled(isTransmitting);
     ui->queryButton->setDisabled(isTransmitting || emptyCallsign);
     ui->deselectButton->setDisabled(isTransmitting || emptyCallsign);
-    ui->queryButton->setText(emptyCallsign ? "Directed" : QString("Directed to %1").arg(selectedCallsign));
+    ui->queryButton->setText(emptyCallsign ? "Directed" :
+                                             QString("Directed to %1").arg(selectedCallsign));
 
     // update mode button text
     updateModeButtonText();
 }
 
-void MainWindow::updateHBButtonDisplay() {
+void MainWindow::updateHBButtonDisplay()
+{
     if (m_hb_loop->isActive()) {
         QDateTime now = DriftingDateTime::currentDateTimeUtc();
         QDateTime nextHeartbeat = m_hb_loop->nextActivity();
@@ -8030,14 +8555,14 @@ void MainWindow::updateHBButtonDisplay() {
 
         QString hbBase = presentlyWantHBReplies() ? "HB + ACK" : "HB";
 
-        if(secs > 0) {
+        if (secs > 0) {
             ui->hbMacroButton->setText(QString("%1 (%2)").arg(hbBase).arg(secs));
         } else {
             // Dead code?
             ui->hbMacroButton->setText(QString("%1 (now)").arg(hbBase));
         }
     } else {
-        if(presentlyWantHBReplies()) {
+        if (presentlyWantHBReplies()) {
             ui->hbMacroButton->setText("HB + ACK");
         } else {
             ui->hbMacroButton->setText("HB");
@@ -8045,7 +8570,8 @@ void MainWindow::updateHBButtonDisplay() {
     }
 }
 
-void MainWindow::updateCQButtonDisplay() {
+void MainWindow::updateCQButtonDisplay()
+{
     if (m_cq_loop->isActive()) {
         QDateTime now = DriftingDateTime::currentDateTimeUtc();
         QDateTime nextCQ = m_cq_loop->nextActivity();
@@ -8053,7 +8579,7 @@ void MainWindow::updateCQButtonDisplay() {
         // qCDebug(mainwindow_js8)
         //         << "updateCQButtonDisplay, signal due at" << nextCQ
         //         << "so" << secs << "s to go";
-        if(secs > 0) {
+        if (secs > 0) {
             ui->cqMacroButton->setText(QString("CQ (%1)").arg(secs));
         } else {
             // Dead code?
@@ -8065,17 +8591,17 @@ void MainWindow::updateCQButtonDisplay() {
     }
 }
 
-
-void MainWindow::updateTextDisplay(){
+void MainWindow::updateTextDisplay()
+{
     bool canTransmit = ensureCanTransmit();
     bool isTransmitting = isMessageQueuedForTransmit();
     bool emptyText = ui->extFreeTextMsgEdit->toPlainText().isEmpty();
 
     ui->startTxButton->setDisabled(!canTransmit || isTransmitting || emptyText);
 
-    if(m_txTextDirty){
+    if (m_txTextDirty) {
         // debounce frame and word count
-        if(m_txTextDirtyDebounce.isActive()){
+        if (m_txTextDirtyDebounce.isActive()) {
             m_txTextDirtyDebounce.stop();
         }
         m_txTextDirtyDebounce.setSingleShot(true);
@@ -8091,7 +8617,8 @@ void MainWindow::updateTextDisplay(){
 #define USE_SYNC_FRAME_COUNT 0
 #endif
 
-void MainWindow::refreshTextDisplay(){
+void MainWindow::refreshTextDisplay()
+{
     qCDebug(mainwindow_js8) << "refreshing text display...";
     auto text = ui->extFreeTextMsgEdit->toPlainText();
 
@@ -8100,9 +8627,10 @@ void MainWindow::refreshTextDisplay(){
 
     QStringList textList;
     qCDebug(mainwindow_js8) << "frames:";
-    foreach(auto frame, frames){
+    foreach (auto frame, frames) {
         auto dt = DecodedText(frame.first, frame.second);
-        qCDebug(mainwindow_js8) << "->" << frame << dt.message() << Varicode::frameTypeString(dt.frameType());
+        qCDebug(mainwindow_js8) << "->" << frame << dt.message()
+                                << Varicode::frameTypeString(dt.frameType());
         textList.append(dt.message());
     }
 
@@ -8129,47 +8657,49 @@ void MainWindow::refreshTextDisplay(){
     bool forceIdentify = !m_config.avoid_forced_identify();
     bool forceData = false;
 
-    BuildMessageFramesThread *t = new BuildMessageFramesThread(
-        mycall,
-        mygrid,
-        selectedCall,
-        text,
-        forceIdentify,
-        forceData,
-        m_nSubMode
-    );
+    BuildMessageFramesThread* t = new BuildMessageFramesThread(mycall,
+                                                               mygrid,
+                                                               selectedCall,
+                                                               text,
+                                                               forceIdentify,
+                                                               forceData,
+                                                               m_nSubMode);
 
     connect(t, &BuildMessageFramesThread::finished, t, &QObject::deleteLater);
-    connect(t, &BuildMessageFramesThread::resultReady, this, [this, text](QString transmitText, int frames){
-        // ugh...i hate these globals
-        m_txTextDirtyLastSelectedCall = callsignSelected(true);
-        m_txTextDirtyLastText         = text;
-        m_txFrameCountEstimate        = frames;
-        m_txTextDirty                 = false;
+    connect(t,
+            &BuildMessageFramesThread::resultReady,
+            this,
+            [this, text](QString transmitText, int frames) {
+                // ugh...i hate these globals
+                m_txTextDirtyLastSelectedCall = callsignSelected(true);
+                m_txTextDirtyLastText = text;
+                m_txFrameCountEstimate = frames;
+                m_txTextDirty = false;
 
-        updateTextWordCheckerDisplay();
-        updateTextStatsDisplay(transmitText, m_txFrameCountEstimate);
-        updateTxButtonDisplay();
-
-    });
+                updateTextWordCheckerDisplay();
+                updateTextStatsDisplay(transmitText, m_txFrameCountEstimate);
+                updateTxButtonDisplay();
+            });
     t->start();
 #endif
 }
 
-void MainWindow::updateTextWordCheckerDisplay(){
-    if(!m_config.spellcheck()){
+void MainWindow::updateTextWordCheckerDisplay()
+{
+    if (!m_config.spellcheck()) {
         return;
     }
 
     JSCChecker::checkRange(ui->extFreeTextMsgEdit, 0, -1);
 }
 
-void MainWindow::updateTextStatsDisplay(QString text, int count){
-    const double fpm = 60.0/m_TRperiod;
-    if(count > 0){
+void MainWindow::updateTextStatsDisplay(QString text, int count)
+{
+    const double fpm = 60.0 / m_TRperiod;
+    if (count > 0) {
         auto words = text.split(" ", Qt::SkipEmptyParts).length();
-        auto wpm = QString::number(words/(count/fpm), 'f', 1);
-        auto cpm = QString::number(text.length()/(count/fpm), 'f', 1);
+        auto wpm = QString::number(words / (count / fpm), 'f', 1);
+        auto cpm = QString::number(text.length() / (count / fpm), 'f', 1);
         wpm_label.setText(QString("%1wpm / %2cpm").arg(wpm).arg(cpm));
         wpm_label.setVisible(true);
     } else {
@@ -8178,75 +8708,71 @@ void MainWindow::updateTextStatsDisplay(QString text, int count){
     }
 }
 
-void MainWindow::updateTxButtonDisplay(){
+void MainWindow::updateTxButtonDisplay()
+{
     // can we transmit at all?
     bool canTransmit = ensureCanTransmit();
 
     // if we're tuning or have a message queued
-    if(m_tune || isMessageQueuedForTransmit()){
+    if (m_tune || isMessageQueuedForTransmit()) {
         int count = m_txFrameCount;
-        int left  = m_txFrameQueue.count();
-        int sent  = count - left;
+        int left = m_txFrameQueue.count();
+        int sent = count - left;
         QString buttonText;
-        if(m_tune){
+        if (m_tune) {
             buttonText = State::Tuning.toString();
-        } else if(m_transmitting){
+        } else if (m_transmitting) {
             buttonText = State::timed(State::Sending,
-                                     ((left + 1) * m_TRperiod) - ((m_sec0 + 1) % m_TRperiod));
+                                      ((left + 1) * m_TRperiod) - ((m_sec0 + 1) % m_TRperiod));
         } else {
-            buttonText = State::timed(State::Ready,
-                                      sent == 1
-                                      ?  ((left + 1) * m_TRperiod)
-                                      : (((left + 2) * m_TRperiod) - ((m_sec0 + 1) % m_TRperiod)));
+            buttonText = State::timed(
+                State::Ready,
+                sent == 1 ? ((left + 1) * m_TRperiod) :
+                            (((left + 2) * m_TRperiod) - ((m_sec0 + 1) % m_TRperiod)));
         }
         ui->startTxButton->setText(buttonText);
         ui->startTxButton->setEnabled(false);
         ui->startTxButton->setFlat(true);
     } else {
-        QString const buttonText = m_txFrameCountEstimate > 0
-                                 ? State::timed(State::Send,
-                                                m_txFrameCountEstimate * m_TRperiod)
-                                 : State::Send.toString();
+        QString const buttonText = m_txFrameCountEstimate > 0 ?
+            State::timed(State::Send, m_txFrameCountEstimate * m_TRperiod) :
+            State::Send.toString();
         ui->startTxButton->setText(buttonText);
         ui->startTxButton->setEnabled(canTransmit && m_txFrameCountEstimate > 0);
         ui->startTxButton->setFlat(false);
     }
 }
 
-QString MainWindow::callsignSelected(bool){
-    if(!ui->tableWidgetCalls->selectedItems().isEmpty()){
+QString MainWindow::callsignSelected(bool)
+{
+    if (!ui->tableWidgetCalls->selectedItems().isEmpty()) {
         auto selectedCalls = ui->tableWidgetCalls->selectedItems();
-        if(!selectedCalls.isEmpty()){
+        if (!selectedCalls.isEmpty()) {
             auto call = selectedCalls.first()->data(Qt::UserRole).toString();
-            if(!call.isEmpty()){
+            if (!call.isEmpty()) {
                 return call;
             }
         }
     }
 
-    if(!ui->tableWidgetRXAll->selectedItems().isEmpty()){
+    if (!ui->tableWidgetRXAll->selectedItems().isEmpty()) {
         int selectedOffset = -1;
         auto selectedItems = ui->tableWidgetRXAll->selectedItems();
         selectedOffset = selectedItems.first()->data(Qt::UserRole).toInt();
 
         int threshold = 0;
         auto activity = m_bandActivity.value(selectedOffset);
-        if(!activity.isEmpty()){
+        if (!activity.isEmpty()) {
             threshold = JS8::Submode::rxThreshold(activity.last().submode);
         }
 
         auto keys = m_callActivity.keys();
 
-        std::stable_sort(keys.begin(),
-                         keys.end(),
-                         [this](QString const & lhs,
-                                QString const & rhs)
-        {
-          auto const lhsTS = m_callActivity[lhs].utcTimestamp;
-          auto const rhsTS = m_callActivity[rhs].utcTimestamp;
+        std::stable_sort(keys.begin(), keys.end(), [this](QString const& lhs, QString const& rhs) {
+            auto const lhsTS = m_callActivity[lhs].utcTimestamp;
+            auto const rhsTS = m_callActivity[rhs].utcTimestamp;
 
-          return lhsTS == rhsTS ? lhs   < rhs
-                                : rhsTS < lhsTS;
+            return lhsTS == rhsTS ? lhs < rhs : rhsTS < lhsTS;
         });
 
         // Return the first callsign at a frequency within the
@@ -8255,22 +8781,20 @@ QString MainWindow::callsignSelected(bool){
         auto const offsetLo = selectedOffset - threshold;
         auto const offsetHi = selectedOffset + threshold;
 
-        for (auto const & key : keys)
-        {
-          if (auto const & d = m_callActivity[key];
-                   offsetLo <= d.offset &&
-                   d.offset <= offsetHi)
-          {
-            return d.call;
-          }
+        for (auto const& key : keys) {
+            if (auto const& d = m_callActivity[key]; offsetLo <= d.offset && d.offset <= offsetHi) {
+                return d.call;
+            }
         }
     }
 
 #if ALLOW_USE_INPUT_TEXT_CALLSIGN
-    if(useInputText){
-        auto text = ui->extFreeTextMsgEdit->toPlainText().left(11); // Maximum callsign is 6 + / + 4 = 11 characters
+    if (useInputText) {
+        auto text = ui->extFreeTextMsgEdit->toPlainText().left(
+            11); // Maximum callsign is 6 + / + 4 = 11 characters
         auto calls = Varicode::parseCallsigns(text);
-        if(!calls.isEmpty() && text.startsWith(calls.first()) && calls.first() != m_config.my_callsign()){
+        if (!calls.isEmpty() && text.startsWith(calls.first())
+            && calls.first() != m_config.my_callsign()) {
             return calls.first();
         }
     }
@@ -8279,36 +8803,39 @@ QString MainWindow::callsignSelected(bool){
     return QString();
 }
 
-void MainWindow::callsignSelectedChanged(QString /*old*/, QString selectedCall){
+void MainWindow::callsignSelectedChanged(QString /*old*/, QString selectedCall)
+{
     auto placeholderText = QString("Type your outgoing messages here.").toUpper();
-    if(selectedCall.isEmpty()){
+    if (selectedCall.isEmpty()) {
         // try to restore hb
-        if(m_hbPaused) {
+        if (m_hbPaused) {
             ui->hbMacroButton->setChecked(true);
             m_hbPaused = false;
         }
     } else {
-        placeholderText = QString("Type your outgoing directed message to %1 here.").arg(selectedCall).toUpper();
+        placeholderText = QString("Type your outgoing directed message to %1 here.")
+                              .arg(selectedCall)
+                              .toUpper();
 
         // when we select a callsign, use it as the qso start time
-        if(!m_callSelectedTime.contains(selectedCall)){
+        if (!m_callSelectedTime.contains(selectedCall)) {
             m_callSelectedTime[selectedCall] = DriftingDateTime::currentDateTimeUtc();
         }
 
-        if(m_config.heartbeat_qso_pause()){
+        if (m_config.heartbeat_qso_pause()) {
             // TODO: jsherer - HB issue
             // don't hb if we select a callsign... (but we should keep track so if we deselect, we restore our hb)
-            if(ui->hbMacroButton->isChecked()){
-                qCDebug(mainwindow_js8)
-                        << "Unchecking hbMacroButton after selection" << selectedCall
-                        << "but planning to resurrect later";
+            if (ui->hbMacroButton->isChecked()) {
+                qCDebug(mainwindow_js8) << "Unchecking hbMacroButton after selection"
+                                        << selectedCall << "but planning to resurrect later";
                 ui->hbMacroButton->setChecked(false);
                 m_hbPaused = true;
             }
 
             // don't cq if we select a callsign... (and it will not be restored otherwise)
-            if(ui->cqMacroButton->isChecked()){
-                qCDebug(mainwindow_js8) << "Unchecking cqMacroButton after selection" << selectedCall;
+            if (ui->cqMacroButton->isChecked()) {
+                qCDebug(mainwindow_js8)
+                    << "Unchecking cqMacroButton after selection" << selectedCall;
                 ui->cqMacroButton->setChecked(false);
             }
         }
@@ -8318,7 +8845,8 @@ void MainWindow::callsignSelectedChanged(QString /*old*/, QString selectedCall){
 #if SHOW_CALL_DETAIL_BROWSER
     auto html = generateCallDetail(selectedCall);
     ui->callDetailTextBrowser->setHtml(html);
-    ui->callDetailTextBrowser->setVisible(!selectedCall.isEmpty() && (!hearing.isEmpty() || !heardby.isEmpty()));
+    ui->callDetailTextBrowser->setVisible(!selectedCall.isEmpty()
+                                          && (!hearing.isEmpty() || !heardby.isEmpty()));
 #endif
 
     m_prevSelectedCallsign = selectedCall;
@@ -8329,7 +8857,8 @@ void MainWindow::callsignSelectedChanged(QString /*old*/, QString selectedCall){
     statusChanged();
 }
 
-void MainWindow::clearCallsignSelected(){
+void MainWindow::clearCallsignSelected()
+{
     // remove the date cache
     m_callSelectedTime.remove(m_prevSelectedCallsign);
 
@@ -8338,54 +8867,65 @@ void MainWindow::clearCallsignSelected(){
     ui->tableWidgetRXAll->clearSelection();
 }
 
-bool MainWindow::isRecentOffset(int submode, int offset){
-    if(abs(offset - freq()) <= JS8::Submode::rxThreshold(submode)){
+bool MainWindow::isRecentOffset(int submode, int offset)
+{
+    if (abs(offset - freq()) <= JS8::Submode::rxThreshold(submode)) {
         return true;
     }
-    return (
-        m_rxRecentCache.contains(offset/10*10) &&
-        m_rxRecentCache[offset/10*10]->secsTo(DriftingDateTime::currentDateTimeUtc()) < 120
-    );
+    return (m_rxRecentCache.contains(offset / 10 * 10)
+            && m_rxRecentCache[offset / 10 * 10]->secsTo(DriftingDateTime::currentDateTimeUtc())
+                < 120);
 }
 
-void MainWindow::markOffsetRecent(int offset){
-    m_rxRecentCache.insert(offset/10*10, new QDateTime(DriftingDateTime::currentDateTimeUtc()), 10);
-    m_rxRecentCache.insert(offset/10*10+10, new QDateTime(DriftingDateTime::currentDateTimeUtc()), 10);
+void MainWindow::markOffsetRecent(int offset)
+{
+    m_rxRecentCache.insert(offset / 10 * 10,
+                           new QDateTime(DriftingDateTime::currentDateTimeUtc()),
+                           10);
+    m_rxRecentCache.insert(offset / 10 * 10 + 10,
+                           new QDateTime(DriftingDateTime::currentDateTimeUtc()),
+                           10);
 }
 
-bool MainWindow::isDirectedOffset(int offset, bool *pIsAllCall){
-    bool isDirected = (
-        m_rxDirectedCache.contains(offset/10*10) &&
-        m_rxDirectedCache[offset/10*10]->date.secsTo(DriftingDateTime::currentDateTimeUtc()) < 120
-    );
+bool MainWindow::isDirectedOffset(int offset, bool* pIsAllCall)
+{
+    bool isDirected = (m_rxDirectedCache.contains(offset / 10 * 10)
+                       && m_rxDirectedCache[offset / 10 * 10]->date.secsTo(
+                              DriftingDateTime::currentDateTimeUtc())
+                           < 120);
 
     if (isDirected && pIsAllCall) {
-        *pIsAllCall = m_rxDirectedCache[offset/10*10]->isAllcall;
+        *pIsAllCall = m_rxDirectedCache[offset / 10 * 10]->isAllcall;
     }
 
     return isDirected;
 }
 
-void MainWindow::markOffsetDirected(int offset, bool isAllCall){
-    CachedDirectedType *d1 = new CachedDirectedType{ isAllCall, DriftingDateTime::currentDateTimeUtc() };
-    CachedDirectedType *d2 = new CachedDirectedType{ isAllCall, DriftingDateTime::currentDateTimeUtc() };
-    m_rxDirectedCache.insert(offset/10*10,    d1, 10);
-    m_rxDirectedCache.insert(offset/10*10+10, d2, 10);
+void MainWindow::markOffsetDirected(int offset, bool isAllCall)
+{
+    CachedDirectedType* d1
+        = new CachedDirectedType { isAllCall, DriftingDateTime::currentDateTimeUtc() };
+    CachedDirectedType* d2
+        = new CachedDirectedType { isAllCall, DriftingDateTime::currentDateTimeUtc() };
+    m_rxDirectedCache.insert(offset / 10 * 10, d1, 10);
+    m_rxDirectedCache.insert(offset / 10 * 10 + 10, d2, 10);
 }
 
-void MainWindow::clearOffsetDirected(int offset){
-    m_rxDirectedCache.remove(offset/10*10);
-    m_rxDirectedCache.remove(offset/10*10+10);
+void MainWindow::clearOffsetDirected(int offset)
+{
+    m_rxDirectedCache.remove(offset / 10 * 10);
+    m_rxDirectedCache.remove(offset / 10 * 10 + 10);
 }
 
-bool MainWindow::isMyCallIncluded(const QString &text){
+bool MainWindow::isMyCallIncluded(const QString& text)
+{
     QString myCall = Radio::base_callsign(m_config.my_callsign());
 
-    if(myCall.isEmpty()){
+    if (myCall.isEmpty()) {
         return false;
     }
 
-    if(!text.contains(myCall)){
+    if (!text.contains(myCall)) {
         return false;
     }
 
@@ -8393,15 +8933,18 @@ bool MainWindow::isMyCallIncluded(const QString &text){
     return calls.contains(myCall) || calls.contains(m_config.my_callsign());
 }
 
-bool MainWindow::isAllCallIncluded(const QString &text){
+bool MainWindow::isAllCallIncluded(const QString& text)
+{
     return text.contains("@ALLCALL") || text.contains("@HB");
 }
 
-bool MainWindow::isGroupCallIncluded(const QString &text){
+bool MainWindow::isGroupCallIncluded(const QString& text)
+{
     return m_config.my_groups().contains(text);
 }
 
-void MainWindow::processActivity(bool force) {
+void MainWindow::processActivity(bool force)
+{
     if (!m_rxDirty && !force) {
         return;
     }
@@ -8427,53 +8970,57 @@ void MainWindow::processActivity(bool force) {
     m_rxDirty = false;
 }
 
-void MainWindow::resetTimeDeltaAverage(){
+void MainWindow::resetTimeDeltaAverage()
+{
     m_driftMsMMA = 0;
     m_driftMsMMA_N = 0;
 }
 
-void MainWindow::setDrift(int n) {
+void MainWindow::setDrift(int n)
+{
     DriftingDateTime::setDrift(n);
 }
 
-void
-MainWindow::processIdleActivity()
+void MainWindow::processIdleActivity()
 {
-  auto const now = DriftingDateTime::currentDateTimeUtc();
+    auto const now = DriftingDateTime::currentDateTimeUtc();
 
-  // if we detect an idle offset, insert an ellipsis into the activity queue and band activity
+    // if we detect an idle offset, insert an ellipsis into the activity queue and band activity
 
-  for (auto [offset, activity] : m_bandActivity.asKeyValueRange())
-  {
-    if (activity.isEmpty()) continue;
+    for (auto [offset, activity] : m_bandActivity.asKeyValueRange()) {
+        if (activity.isEmpty())
+            continue;
 
-    auto const last = activity.last();
+        auto const last = activity.last();
 
-    if ((last.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast)               continue;
-    if ( last.text == m_config.mfi())                                               continue;
-    if ( last.utcTimestamp.secsTo(now) < JS8::Submode::period(last.submode) * 1.50) continue;
+        if ((last.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast)
+            continue;
+        if (last.text == m_config.mfi())
+            continue;
+        if (last.utcTimestamp.secsTo(now) < JS8::Submode::period(last.submode) * 1.50)
+            continue;
 
-    ActivityDetail d = {};
-    d.text         = m_config.mfi();
-    d.utcTimestamp = last.utcTimestamp;
-    d.snr          = last.snr;
-    d.tdrift       = last.tdrift;
-    d.dial         = last.dial;
-    d.offset       = last.offset;
-    d.submode      = last.submode;
+        ActivityDetail d = {};
+        d.text = m_config.mfi();
+        d.utcTimestamp = last.utcTimestamp;
+        d.snr = last.snr;
+        d.tdrift = last.tdrift;
+        d.dial = last.dial;
+        d.offset = last.offset;
+        d.submode = last.submode;
 
-    if (hasExistingMessageBuffer(d.submode, offset, false, nullptr))
-    {
-      m_messageBuffer[offset].msgs.append(d);
+        if (hasExistingMessageBuffer(d.submode, offset, false, nullptr)) {
+            m_messageBuffer[offset].msgs.append(d);
+        }
+
+        m_rxActivityQueue.append(d);
+        activity.append(d);
     }
-
-    m_rxActivityQueue.append(d);
-    activity.append(d);
-  }
 }
 
-void MainWindow::processRxActivity() {
-    if(m_rxActivityQueue.isEmpty()){
+void MainWindow::processRxActivity()
+{
+    if (m_rxActivityQueue.isEmpty()) {
         return;
     }
 
@@ -8484,16 +9031,18 @@ void MainWindow::processRxActivity() {
     while (!m_rxActivityQueue.isEmpty()) {
         ActivityDetail d = m_rxActivityQueue.dequeue();
 
-        if(canSendNetworkMessage()){
-            sendNetworkMessage("RX.ACTIVITY", d.text, {
-                {"_ID", QVariant(-1)},
-                {"FREQ", QVariant(d.dial + d.offset)},
-                {"DIAL", QVariant(d.dial)},
-                {"OFFSET", QVariant(d.offset)},
-                {"SNR", QVariant(d.snr)},
-                {"SPEED", QVariant(d.submode)},
-                {"TDRIFT", QVariant(d.tdrift)},
-                {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}
+        if (canSendNetworkMessage()) {
+            sendNetworkMessage("RX.ACTIVITY",
+                               d.text,
+                               {
+                                   { "_ID",    QVariant(-1)                                 },
+                                   { "FREQ",   QVariant(d.dial + d.offset)                  },
+                                   { "DIAL",   QVariant(d.dial)                             },
+                                   { "OFFSET", QVariant(d.offset)                           },
+                                   { "SNR",    QVariant(d.snr)                              },
+                                   { "SPEED",  QVariant(d.submode)                          },
+                                   { "TDRIFT", QVariant(d.tdrift)                           },
+                                   { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
             });
         }
 
@@ -8502,16 +9051,14 @@ void MainWindow::processRxActivity() {
         bool shouldDisplay = abs(d.offset - freqOffset) <= JS8::Submode::rxThreshold(d.submode);
 
         int prevOffset = d.offset;
-        if(hasExistingMessageBuffer(d.submode, d.offset, false, &prevOffset) && (
-                (m_messageBuffer[prevOffset].cmd.to == m_config.my_callsign()) ||
+        if (hasExistingMessageBuffer(d.submode, d.offset, false, &prevOffset)
+            && ((m_messageBuffer[prevOffset].cmd.to == m_config.my_callsign()) ||
                 // (isAllCallIncluded(m_messageBuffer[prevOffset].cmd.to))     || // uncomment this if we want to incrementally print allcalls
-                (isGroupCallIncluded(m_messageBuffer[prevOffset].cmd.to))
-            )
-        ){
+                (isGroupCallIncluded(m_messageBuffer[prevOffset].cmd.to)))) {
             d.isBuffered = true;
             shouldDisplay = true;
 
-            if(!m_messageBuffer[prevOffset].compound.isEmpty()){
+            if (!m_messageBuffer[prevOffset].compound.isEmpty()) {
                 //qCDebug(mainwindow_js8) << "should display compound too because at this point it hasn't been displayed" << m_messageBuffer[prevOffset].compound.last().call;
 
                 auto lastCompound = m_messageBuffer[prevOffset].compound.last();
@@ -8521,26 +9068,29 @@ void MainWindow::processRxActivity() {
                 d.utcTimestamp = qMin(d.utcTimestamp, lastCompound.utcTimestamp);
             }
 
-        } else if(hasClosedExistingMessageBuffer(d.offset)){
+        } else if (hasClosedExistingMessageBuffer(d.offset)) {
             // incremental typeahead should just be displayed...
             // TODO: should the buffer be reopened?
             shouldDisplay = true;
 
-        } else if(d.isDirected && d.text.contains("<....>")){
+        } else if (d.isDirected && d.text.contains("<....>")) {
             // if this is a _partial_ directed message, skip until the complete call comes through.
             continue;
 
-        } else if(d.isDirected && (d.text.contains(": HB ") || d.text.contains(": @ALLCALL HB"))){ // TODO: HEARTBEAT
+        } else if (d.isDirected
+                   && (d.text.contains(": HB ")
+                       || d.text.contains(": @ALLCALL HB"))) { // TODO: HEARTBEAT
             // if this is a heartbeat, process elsewhere...
             continue;
         }
 
         // if this is the first data frame of a standard message, parse the first word callsigns and spot them :)
-        if((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst && !d.isDirected && !d.isCompound){
+        if ((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst && !d.isDirected
+            && !d.isCompound) {
             auto calls = Varicode::parseCallsigns(d.text);
-            if(!calls.isEmpty()){
+            if (!calls.isEmpty()) {
                 auto theirCall = calls.first();
-                if(d.text.startsWith(theirCall) && d.text.mid(theirCall.length(), 1) == ":"){
+                if (d.text.startsWith(theirCall) && d.text.mid(theirCall.length(), 1) == ":") {
                     CallDetail cd = {};
                     cd.call = theirCall;
                     cd.dial = d.dial;
@@ -8561,7 +9111,7 @@ void MainWindow::processRxActivity() {
         // 1) this is a directed message header "to" us and should be buffered...
         // 2) or, this is a buffered message frame for a buffer with us as the recipient.
 
-        if(!shouldDisplay){
+        if (!shouldDisplay) {
             continue;
         }
 
@@ -8582,11 +9132,11 @@ void MainWindow::processRxActivity() {
             m_cq_loop->onLoopCancel();
         }
 
-        if(isLast){
+        if (isLast) {
             clearOffsetDirected(d.offset);
         }
 
-        if(isLast && !d.isBuffered){
+        if (isLast && !d.isBuffered) {
             // buffered commands need the rxFrameBlockNumbers cache so it can fixup its display
             // all other "last" data frames can clear the rxFrameBlockNumbers cache so the next message will be on a new line.
             m_rxFrameBlockNumbers.remove(d.offset);
@@ -8624,15 +9174,16 @@ void MainWindow::processRxActivity() {
 #endif
 }
 
-void MainWindow::processCompoundActivity() {
-    if(m_messageBuffer.isEmpty()){
+void MainWindow::processCompoundActivity()
+{
+    if (m_messageBuffer.isEmpty()) {
         return;
     }
 
     // group compound callsign and directed commands together.
-    foreach(auto freq, m_messageBuffer.keys()) {
+    foreach (auto freq, m_messageBuffer.keys()) {
 
-        auto & buffer = m_messageBuffer[freq];
+        auto& buffer = m_messageBuffer[freq];
 
         qCDebug(mainwindow_js8) << "-> grouping buffer for freq" << freq;
 
@@ -8643,25 +9194,25 @@ void MainWindow::processCompoundActivity() {
 
         // if we don't have an initialized command, skip...
         int bits = buffer.cmd.bits;
-        bool validBits = (
-            bits == Varicode::JS8Call                                         ||
-            ((bits & Varicode::JS8CallFirst)    == Varicode::JS8CallFirst)    ||
-            ((bits & Varicode::JS8CallLast)     == Varicode::JS8CallLast)     ||
-            ((bits & Varicode::JS8CallData)     == Varicode::JS8CallData)
-        );
+        bool validBits = (bits == Varicode::JS8Call
+                          || ((bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst)
+                          || ((bits & Varicode::JS8CallLast) == Varicode::JS8CallLast)
+                          || ((bits & Varicode::JS8CallData) == Varicode::JS8CallData));
         if (!validBits) {
             qCDebug(mainwindow_js8) << "-> buffer.cmd bits is invalid...skip";
             continue;
         }
 
         // if we need two compound calls, but less than two have arrived...skip
-        if (buffer.cmd.from == "<....>" && buffer.cmd.to == "<....>" && buffer.compound.length() < 2) {
+        if (buffer.cmd.from == "<....>" && buffer.cmd.to == "<....>"
+            && buffer.compound.length() < 2) {
             qCDebug(mainwindow_js8) << "-> buffer needs two compound, but has less...skip";
             continue;
         }
 
         // if we need one compound call, but non have arrived...skip
-        if ((buffer.cmd.from == "<....>" || buffer.cmd.to == "<....>") && buffer.compound.length() < 1) {
+        if ((buffer.cmd.from == "<....>" || buffer.cmd.to == "<....>")
+            && buffer.compound.length() < 1) {
             qCDebug(mainwindow_js8) << "-> buffer needs one compound, but has less...skip";
             continue;
         }
@@ -8698,15 +9249,16 @@ void MainWindow::processCompoundActivity() {
         // this will allow us to delete the activity lines
         // when the compound buffered command comes in.
         auto dt = buffer.cmd.utcTimestamp;
-        foreach(auto c, buffer.compound){
+        foreach (auto c, buffer.compound) {
             dt = qMin(dt, c.utcTimestamp);
         }
-        foreach(auto m, buffer.msgs){
+        foreach (auto m, buffer.msgs) {
             dt = qMin(dt, m.utcTimestamp);
         }
         buffer.cmd.utcTimestamp = dt;
 
-        qCDebug(mainwindow_js8) << "buffered compound command ready" << buffer.cmd.from << buffer.cmd.to << buffer.cmd.cmd;
+        qCDebug(mainwindow_js8) << "buffered compound command ready" << buffer.cmd.from
+                                << buffer.cmd.to << buffer.cmd.cmd;
 
         m_rxCommandQueue.append(buffer.cmd);
         m_messageBuffer.remove(freq);
@@ -8716,35 +9268,34 @@ void MainWindow::processCompoundActivity() {
     }
 }
 
-void
-MainWindow::processBufferedActivity()
+void MainWindow::processBufferedActivity()
 {
-    if (m_messageBuffer.isEmpty()) return;
+    if (m_messageBuffer.isEmpty())
+        return;
 
-    foreach(auto freq, m_messageBuffer.keys())
-    {
+    foreach (auto freq, m_messageBuffer.keys()) {
         auto buffer = m_messageBuffer[freq];
 
         // check to make sure we empty old buffers by getting the latest timestamp
         // and checking to see if it's older than one minute.
         auto dt = DriftingDateTime::currentDateTimeUtc().addDays(-1);
-        if(buffer.cmd.utcTimestamp.isValid()){
+        if (buffer.cmd.utcTimestamp.isValid()) {
             dt = qMax(dt, buffer.cmd.utcTimestamp);
         }
-        if(!buffer.compound.isEmpty()){
+        if (!buffer.compound.isEmpty()) {
             dt = qMax(dt, buffer.compound.last().utcTimestamp);
         }
-        if(!buffer.msgs.isEmpty()){
+        if (!buffer.msgs.isEmpty()) {
             dt = qMax(dt, buffer.msgs.last().utcTimestamp);
         }
 
         // if the buffer has messages older than 1 minute, and we still haven't closed it, let's mark it as the last frame
-        if(dt.secsTo(DriftingDateTime::currentDateTimeUtc()) > 60 && !buffer.msgs.isEmpty()){
+        if (dt.secsTo(DriftingDateTime::currentDateTimeUtc()) > 60 && !buffer.msgs.isEmpty()) {
             buffer.msgs.last().bits |= Varicode::JS8CallLast;
         }
 
         // but, if the buffer is older than 1.5 minutes, and we still haven't closed it, just remove it and skip
-        if(dt.secsTo(DriftingDateTime::currentDateTimeUtc()) > 90){
+        if (dt.secsTo(DriftingDateTime::currentDateTimeUtc()) > 90) {
             m_messageBuffer.remove(freq);
             continue;
         }
@@ -8760,7 +9311,7 @@ MainWindow::processBufferedActivity()
         }
 
         QString message;
-        foreach(auto part, buffer.msgs) {
+        foreach (auto part, buffer.msgs) {
             message.append(part.text);
         }
         message = Varicode::rstrip(message);
@@ -8769,15 +9320,15 @@ MainWindow::processBufferedActivity()
 
         bool valid = false;
 
-        if(Varicode::isCommandBuffered(buffer.cmd.cmd)){
+        if (Varicode::isCommandBuffered(buffer.cmd.cmd)) {
             int checksumSize = Varicode::isCommandChecksumed(buffer.cmd.cmd);
 
-            if(checksumSize == 32) {
+            if (checksumSize == 32) {
                 message = Varicode::lstrip(message);
                 checksum = message.right(6);
                 message = message.left(message.length() - 7);
                 valid = Varicode::checksum32Valid(checksum, message);
-            } else if(checksumSize == 16) {
+            } else if (checksumSize == 16) {
                 message = Varicode::lstrip(message);
                 checksum = message.right(3);
                 message = message.left(message.length() - 4);
@@ -8807,7 +9358,8 @@ MainWindow::processBufferedActivity()
     }
 }
 
-void MainWindow::processCommandActivity() {
+void MainWindow::processCommandActivity()
+{
 #if 0
     if (!m_txFrameQueue.isEmpty()) {
         return;
@@ -8833,7 +9385,8 @@ void MainWindow::processCommandActivity() {
         bool isAllCall = isAllCallIncluded(d.to);
         bool isGroupCall = isGroupCallIncluded(d.to);
 
-        qCDebug(mainwindow_js8) << "try processing command" << d.from << d.to << d.cmd << d.dial << d.offset << d.grid << d.extra << isAllCall << isGroupCall;
+        qCDebug(mainwindow_js8) << "try processing command" << d.from << d.to << d.cmd << d.dial
+                                << d.offset << d.grid << d.extra << isAllCall << isGroupCall;
 
         // if we need a compound callsign but never got one...skip
         if (d.from == "<....>" || d.to == "<....>") {
@@ -8846,7 +9399,8 @@ void MainWindow::processCommandActivity() {
         }
 
         // is this to me?
-        bool toMe = d.to == m_config.my_callsign().trimmed() || d.to == Radio::base_callsign(m_config.my_callsign()).trimmed();
+        bool toMe = d.to == m_config.my_callsign().trimmed()
+            || d.to == Radio::base_callsign(m_config.my_callsign()).trimmed();
 
         // log call activity...
         CallDetail cd = {};
@@ -8856,32 +9410,32 @@ void MainWindow::processCommandActivity() {
         cd.dial = d.dial;
         cd.offset = d.offset;
         cd.bits = d.bits;
-        cd.ackTimestamp = d.text.contains(": ACK") || toMe ? d.utcTimestamp : QDateTime{};
+        cd.ackTimestamp = d.text.contains(": ACK") || toMe ? d.utcTimestamp : QDateTime {};
         cd.utcTimestamp = d.utcTimestamp;
         cd.tdrift = d.tdrift;
         cd.submode = d.submode;
         logCallActivity(cd, true);
         logHeardGraph(d.from, d.to);
 
-		// Placeholder for callbacks to be passed to confirmThenEnqueueMessage and enqueueMessage
-		Callback callback = nullptr;
+        // Placeholder for callbacks to be passed to confirmThenEnqueueMessage and enqueueMessage
+        Callback callback = nullptr;
 
         // PROCESS BUFFERED HEARING FOR EVERYONE
-        if (d.cmd == " HEARING"){
+        if (d.cmd == " HEARING") {
             // 1. parse callsigns
             // 2. log it to the heard graph
             auto calls = Varicode::parseCallsigns(d.text);
-            foreach(auto call, calls){
+            foreach (auto call, calls) {
                 logHeardGraph(d.from, call);
             }
         }
 
         // PROCESS BUFFERED GRID FOR EVERYONE
-        if(d.cmd == " GRID"){
+        if (d.cmd == " GRID") {
             // 1. parse grids
             // 2. log it to our call activity
             auto grids = Varicode::parseGrids(d.text);
-            foreach(auto grid, grids){
+            foreach (auto grid, grids) {
                 CallDetail cd = {};
                 cd.bits = d.bits;
                 cd.call = d.from;
@@ -8894,7 +9448,7 @@ void MainWindow::processCommandActivity() {
                 cd.submode = d.submode;
 
                 // PROCESS GRID SPOTS TO APRSIS FOR EVERYONE
-                if(d.to == "@APRSIS"){
+                if (d.to == "@APRSIS") {
                     spotAprsGrid(cd.dial, cd.offset, cd.snr, cd.call, cd.grid);
                 }
 
@@ -8903,25 +9457,23 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS @JS8NET, @APRSIS, AND OTHER GROUP SPOTS FOR EVERYONE
-        if (d.to.startsWith("@")){
+        if (d.to.startsWith("@")) {
             spotCmd(d);
         }
 
         // PROCESS @APRSIS CMD SPOTS FOR EVERYONE
-        if (d.to == "@APRSIS"){
+        if (d.to == "@APRSIS") {
             spotAprsCmd(d);
         }
 
         // PREPARE CMD TEXT STRING
-        QStringList textList = {
-            QString("%1: %2%3").arg(d.from).arg(d.to).arg(d.cmd)
-        };
+        QStringList textList = { QString("%1: %2%3").arg(d.from).arg(d.to).arg(d.cmd) };
 
-        if(!d.extra.isEmpty()){
+        if (!d.extra.isEmpty()) {
             textList.append(d.extra);
         }
 
-        if(!d.text.isEmpty()){
+        if (!d.text.isEmpty()) {
             textList.append(d.text);
         }
 
@@ -8936,28 +9488,31 @@ void MainWindow::processCommandActivity() {
         writeMsgTxt(text, d.snr);
 
         // write all directed messages to api
-        if(canSendNetworkMessage()){
-            sendNetworkMessage("RX.DIRECTED", text, {
-                {"_ID", QVariant(-1)},
-                {"FROM", QVariant(d.from)},
-                {"TO", QVariant(d.to)},
-                {"CMD", QVariant(d.cmd)},
-                {"GRID", QVariant(d.grid)},
-                {"EXTRA", QVariant(d.extra)},
-                {"TEXT", QVariant(text)},
-                {"FREQ", QVariant(d.dial+d.offset)},
-                {"DIAL", QVariant(d.dial)},
-                {"OFFSET", QVariant(d.offset)},
-                {"SNR", QVariant(d.snr)},
-                {"SPEED", QVariant(d.submode)},
-                {"TDRIFT", QVariant(d.tdrift)},
-                {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}
+        if (canSendNetworkMessage()) {
+            sendNetworkMessage("RX.DIRECTED",
+                               text,
+                               {
+                                   { "_ID",    QVariant(-1)                                 },
+                                   { "FROM",   QVariant(d.from)                             },
+                                   { "TO",     QVariant(d.to)                               },
+                                   { "CMD",    QVariant(d.cmd)                              },
+                                   { "GRID",   QVariant(d.grid)                             },
+                                   { "EXTRA",  QVariant(d.extra)                            },
+                                   { "TEXT",   QVariant(text)                               },
+                                   { "FREQ",   QVariant(d.dial + d.offset)                  },
+                                   { "DIAL",   QVariant(d.dial)                             },
+                                   { "OFFSET", QVariant(d.offset)                           },
+                                   { "SNR",    QVariant(d.snr)                              },
+                                   { "SPEED",  QVariant(d.submode)                          },
+                                   { "TDRIFT", QVariant(d.tdrift)                           },
+                                   { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
             });
         }
 
         // we're only responding to allcalls if we are participating in the allcall group
         // but, don't avoid for heartbeats...those are technically allcalls but are processed differently
-        if(isAllCall && m_config.avoid_allcall() && d.cmd != " CQ" && d.cmd != " HB" && d.cmd != " HEARTBEAT"){
+        if (isAllCall && m_config.avoid_allcall() && d.cmd != " CQ" && d.cmd != " HB"
+            && d.cmd != " HEARTBEAT") {
             continue;
         }
 
@@ -8980,25 +9535,30 @@ void MainWindow::processCommandActivity() {
         bool shouldDisplay = true;
 
         // don't display ping allcalls
-        if(isAllCall && (d.cmd != " " || ad.text.contains("@HB HEARTBEAT"))){
+        if (isAllCall && (d.cmd != " " || ad.text.contains("@HB HEARTBEAT"))) {
             shouldDisplay = false;
         }
 
-        if(shouldDisplay){
+        if (shouldDisplay) {
             auto c = ui->textEditRX->textCursor();
             c.movePosition(QTextCursor::End);
             ui->textEditRX->setTextCursor(c);
 
             // ACKs and SNRs are the most likely source of items to be overwritten (multiple responses at once)...
             // so don't overwrite those (i.e., print each on a new line)
-            bool shouldOverwrite = (!d.cmd.contains(" ACK") && !d.cmd.contains(" SNR")); /* && isRecentOffset(d.freq);*/
+            bool shouldOverwrite = (!d.cmd.contains(" ACK")
+                                    && !d.cmd.contains(" SNR")); /* && isRecentOffset(d.freq);*/
 
-            if(shouldOverwrite && ui->textEditRX->find(d.utcTimestamp.time().toString(), QTextDocument::FindBackward)){
+            if (shouldOverwrite
+                && ui->textEditRX->find(d.utcTimestamp.time().toString(),
+                                        QTextDocument::FindBackward)) {
                 // ... maybe we could delete the last line that had this message on this frequency...
                 c = ui->textEditRX->textCursor();
                 c.movePosition(QTextCursor::StartOfBlock);
                 c.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-                qCDebug(mainwindow_js8) << "should display directed message, erasing last rx activity line..." << c.selectedText().toUpper();
+                qCDebug(mainwindow_js8)
+                    << "should display directed message, erasing last rx activity line..."
+                    << c.selectedText().toUpper();
                 c.removeSelectedText();
                 c.deletePreviousChar();
                 c.deletePreviousChar();
@@ -9033,11 +9593,12 @@ void MainWindow::processCommandActivity() {
             }
             */
 
-            if(!isAllCall) {
+            if (!isAllCall) {
                 // If we've received a message to be displayed,
                 // we should no longer call CQ
-                if(m_cq_loop->isActive()) {
-                    qCDebug(mainwindow_js8) << "Canceling CQ loop to prioritize incoming messages, case II";
+                if (m_cq_loop->isActive()) {
+                    qCDebug(mainwindow_js8)
+                        << "Canceling CQ loop to prioritize incoming messages, case II";
                     m_cq_loop->onLoopCancel();
                 }
 
@@ -9049,33 +9610,37 @@ void MainWindow::processCommandActivity() {
         // we're only responding to callsigns in our whitelist if we have one defined...
         // make sure the whitelist is empty (no restrictions) or the from callsign or its base callsign is on it
         auto whitelist = m_config.auto_whitelist();
-        if(!whitelist.isEmpty() && !(whitelist.contains(d.from) || whitelist.contains(Radio::base_callsign(d.from)))){
+        if (!whitelist.isEmpty()
+            && !(whitelist.contains(d.from) || whitelist.contains(Radio::base_callsign(d.from)))) {
             qCDebug(mainwindow_js8) << "skipping command for whitelist" << d.from;
             continue;
         }
 
         // we'll never reply to a blacklisted callsign or base callsign
         auto blacklist = m_config.auto_blacklist();
-        if(!blacklist.isEmpty() && (blacklist.contains(d.from) || blacklist.contains(Radio::base_callsign(d.from)))){
+        if (!blacklist.isEmpty()
+            && (blacklist.contains(d.from) || blacklist.contains(Radio::base_callsign(d.from)))) {
             qCDebug(mainwindow_js8) << "skipping command for blacklist" << d.from;
             continue;
         }
 
         // if this is an allcall, check to make sure we haven't replied to their allcall recently (in the past ten minutes)
         // that way we never get spammed by allcalls at too high of a frequency
-        if (isAllCall && m_txAllcallCommandCache.contains(d.from) && m_txAllcallCommandCache[d.from]->secsTo(now) / 60 < 15) {
+        if (isAllCall && m_txAllcallCommandCache.contains(d.from)
+            && m_txAllcallCommandCache[d.from]->secsTo(now) / 60 < 15) {
             qCDebug(mainwindow_js8) << "skipping command for allcall timeout" << d.from;
             continue;
         }
 
         // don't actually process any automatic message replies while in idle
-        if(m_tx_watchdog){
+        if (m_tx_watchdog) {
             qCDebug(mainwindow_js8) << "skipping command for idle timeout" << d.from;
             continue;
         }
 
         // HACK: if this is an autoreply cmd and relay path is populated and cmd is not MSG or MSG TO:, then swap out the relay path
-        if(Varicode::isCommandAutoreply(d.cmd) && !d.relayPath.isEmpty() && !d.cmd.startsWith(" MSG") && !d.cmd.startsWith(" QUERY")){
+        if (Varicode::isCommandAutoreply(d.cmd) && !d.relayPath.isEmpty()
+            && !d.cmd.startsWith(" MSG") && !d.cmd.startsWith(" QUERY")) {
             d.from = d.relayPath;
         }
 
@@ -9091,29 +9656,33 @@ void MainWindow::processCommandActivity() {
         }
 
         // QUERIED INFO
-         // Only reply to a INFO request if there is no incoming MSG's and is not directed to AllCall
+        // Only reply to a INFO request if there is no incoming MSG's and is not directed to AllCall
         else if (d.cmd == " INFO?" && !isAllCall && m_messageBuffer.isEmpty()) {
             QString info = m_config.my_info();
             if (info.isEmpty()) {
                 continue;
             }
 
-            reply = QString("%1 INFO %2").arg(d.from).arg(replaceMacros(info, buildMacroValues(), true));
+            reply = QString("%1 INFO %2")
+                        .arg(d.from)
+                        .arg(replaceMacros(info, buildMacroValues(), true));
         }
 
         // QUERIED ACTIVE
-         // Only reply to a STATUS request if there is no incoming MSG's and is not directed to AllCall
+        // Only reply to a STATUS request if there is no incoming MSG's and is not directed to AllCall
         else if (d.cmd == " STATUS?" && !isAllCall && m_messageBuffer.isEmpty()) {
             QString status = m_config.my_status();
             if (status.isEmpty()) {
                 continue;
             }
 
-            reply = QString("%1 STATUS %2").arg(d.from).arg(replaceMacros(status, buildMacroValues(), true));
+            reply = QString("%1 STATUS %2")
+                        .arg(d.from)
+                        .arg(replaceMacros(status, buildMacroValues(), true));
         }
 
         // QUERIED GRID
-         // Only reply to a GRID request if there is no incoming MSG's and is not directed to AllCall
+        // Only reply to a GRID request if there is no incoming MSG's and is not directed to AllCall
         else if (d.cmd == " GRID?" && !isAllCall && m_messageBuffer.isEmpty()) {
             QString grid = m_config.my_grid();
             if (grid.isEmpty()) {
@@ -9124,39 +9693,36 @@ void MainWindow::processCommandActivity() {
         }
 
         // QUERIED STATIONS HEARD
-         // Only reply to a HEARING request if there is no incoming MSG's and is not directed to AllCall
-        else if (d.cmd == " HEARING?" && !isAllCall && m_messageBuffer.isEmpty())
-        {
+        // Only reply to a HEARING request if there is no incoming MSG's and is not directed to AllCall
+        else if (d.cmd == " HEARING?" && !isAllCall && m_messageBuffer.isEmpty()) {
             auto calls = m_callActivity.keys();
 
             std::stable_sort(calls.begin(),
                              calls.end(),
-                             [this](QString const & lhs,
-                                    QString const & rhs)
-            {
-              return m_callActivity[rhs].utcTimestamp <
-                     m_callActivity[lhs].utcTimestamp;
-            });
+                             [this](QString const& lhs, QString const& rhs) {
+                                 return m_callActivity[rhs].utcTimestamp
+                                     < m_callActivity[lhs].utcTimestamp;
+                             });
 
-            auto const  callsignAging = m_config.callsign_aging();
-            auto const  maxStations   = 4;
-            auto        i             = 0;
+            auto const callsignAging = m_config.callsign_aging();
+            auto const maxStations = 4;
+            auto i = 0;
             QStringList lines;
 
-            for (auto const & call : calls)
-            {
-              if (i    >= maxStations) break;
-              if (call == d.from)      continue;
+            for (auto const& call : calls) {
+                if (i >= maxStations)
+                    break;
+                if (call == d.from)
+                    continue;
 
-              auto const & cd = m_callActivity[call];
+                auto const& cd = m_callActivity[call];
 
-              if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging)
-              {
-                continue;
-              }
+                if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+                    continue;
+                }
 
-              lines.append(cd.call);
-              i++;
+                lines.append(cd.call);
+                i++;
             }
 
             lines.prepend(QString("%1 HEARING").arg(d.from));
@@ -9170,27 +9736,31 @@ void MainWindow::processCommandActivity() {
             // 2. if so, forward
             // 3. otherwise, display alert & reply dialog
 
-            QString callToPattern = {R"(^(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?(?<type>[> ]))\b)"};
+            QString callToPattern = {
+                R"(^(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?(?<type>[> ]))\b)"
+            };
             QRegularExpression re(callToPattern);
             auto text = d.text;
             auto match = re.match(text);
 
             // if the text starts with a callsign, and relay is not disabled, and this is not a group callsign, then relay.
-            if(match.hasMatch() && !isGroupCall){
+            if (match.hasMatch() && !isGroupCall) {
                 // replace freetext with relayed free text
-                if(match.captured("type") != ">"){
-                    text = text.replace(match.capturedStart("type"), match.capturedLength("type"), ">");
+                if (match.captured("type") != ">") {
+                    text = text.replace(match.capturedStart("type"),
+                                        match.capturedLength("type"),
+                                        ">");
                 }
                 reply = QString("%1 *DE* %2").arg(text).arg(d.from);
 
-            // otherwise, as long as we're not an ACK...alert the user and either send an ACK or Message
-            } else if(!d.text.startsWith("ACK")) {
+                // otherwise, as long as we're not an ACK...alert the user and either send an ACK or Message
+            } else if (!d.text.startsWith("ACK")) {
 
                 // parse out the callsign path
                 auto calls = parseRelayPathCallsigns(d.from, d.text);
 
                 // put these third party calls in the heard list
-                foreach(auto call, calls){
+                foreach (auto call, calls) {
                     CallDetail cd = {};
                     cd.call = call;
                     cd.snr = -64;
@@ -9209,49 +9779,49 @@ void MainWindow::processCommandActivity() {
 
                 // check to see if the relay text contains a command that should be replied to instead of an ack.
                 QStringList relayedCmds = d.text.split(" ");
-                if(!relayedCmds.isEmpty()){
+                if (!relayedCmds.isEmpty()) {
                     auto first = relayedCmds.first();
 
                     auto valid = Varicode::isCommandAllowed(first);
-                    if(!valid){
+                    if (!valid) {
                         first = " " + first;
                         valid = Varicode::isCommandAllowed(first);
-                        if(valid){
+                        if (valid) {
                             relayedCmds.removeFirst();
                         }
                     }
 
                     // HACK: "MSG TO:" should be supported but contains a space :(
-                    if(!relayedCmds.isEmpty()){
-                        if(first == " MSG"){
+                    if (!relayedCmds.isEmpty()) {
+                        if (first == " MSG") {
                             auto second = relayedCmds.first();
-                            if(second == "TO:"){
+                            if (second == "TO:") {
                                 first = " MSG TO:";
                                 relayedCmds.removeFirst();
-                            } else if(second.startsWith("TO:")){
+                            } else if (second.startsWith("TO:")) {
                                 first = " MSG TO:";
                                 relayedCmds.replace(0, second.mid(3));
                             }
-                        } else if (first == " QUERY"){
+                        } else if (first == " QUERY") {
                             auto second = relayedCmds.first();
-                            if(second == "MSGS" || second == "MSGS?"){
+                            if (second == "MSGS" || second == "MSGS?") {
                                 first = " QUERY MSGS";
                                 relayedCmds.removeFirst();
-                            }
-                            else if(second == "CALL"){
+                            } else if (second == "CALL") {
                                 first = " QUERY CALL";
                                 relayedCmds.removeFirst();
                             }
                         }
                     }
 
-                    if(Varicode::isCommandAllowed(first) && Varicode::isCommandAutoreply(first)){
+                    if (Varicode::isCommandAllowed(first) && Varicode::isCommandAutoreply(first)) {
                         CommandDetail rd = {};
                         rd.bits = d.bits;
                         rd.cmd = first;
                         rd.dial = d.dial;
                         rd.offset = d.offset;
-                        rd.from = d.from; // note, MSG and QUERY commands are not set with from as the relay path.
+                        rd.from
+                            = d.from; // note, MSG and QUERY commands are not set with from as the relay path.
                         rd.relayPath = d.relayPath;
                         rd.text = relayedCmds.join(" "); //d.text;
                         rd.to = d.to;
@@ -9270,11 +9840,11 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS MESSAGE STORAGE
-        else if (d.cmd == " MSG TO:" && !isAllCall && !m_config.relay_off()){
+        else if (d.cmd == " MSG TO:" && !isAllCall && !m_config.relay_off()) {
 
             // store message
             QStringList segs = d.text.split(" ");
-            if(segs.isEmpty()){
+            if (segs.isEmpty()) {
                 continue;
             }
 
@@ -9317,21 +9887,24 @@ void MainWindow::processCommandActivity() {
 
         // PROCESS ACTIVE HEARTBEAT
         // if we have hb mode enabled and auto reply enabled <del>and auto ack enabled and no callsign is selected</del> update: if we're in HB mode, doesn't matter if a callsign is selected.
-        else if ((d.cmd == " HB" || d.cmd == " HEARTBEAT") && canCurrentModeSendHeartbeat() && ui->actionModeJS8HB->isChecked() && ui->actionModeAutoreply->isChecked() && ui->actionHeartbeatAcknowledgements->isChecked()){
+        else if ((d.cmd == " HB" || d.cmd == " HEARTBEAT") && canCurrentModeSendHeartbeat()
+                 && ui->actionModeJS8HB->isChecked() && ui->actionModeAutoreply->isChecked()
+                 && ui->actionHeartbeatAcknowledgements->isChecked()) {
             // do not process HB activity if buffer is not empty, this prevents broken incoming MSG's
-            if (!m_messageBuffer.isEmpty()){
+            if (!m_messageBuffer.isEmpty()) {
                 qCDebug(mainwindow_js8) << "hb paused for messageBuffer";
                 continue;
             }
 
             // check to make sure we aren't pausing HB transmissions (ACKs) while a callsign is selected
-            if(m_config.heartbeat_qso_pause() && !selectedCallsign.isEmpty()){
+            if (m_config.heartbeat_qso_pause() && !selectedCallsign.isEmpty()) {
                 qCDebug(mainwindow_js8) << "hb paused during qso";
                 continue;
             }
 
             // check to make sure this callsign isn't blacklisted
-            if(m_config.hb_blacklist().contains(d.from) || m_config.hb_blacklist().contains(Radio::base_callsign(d.from))){
+            if (m_config.hb_blacklist().contains(d.from)
+                || m_config.hb_blacklist().contains(Radio::base_callsign(d.from))) {
                 qCDebug(mainwindow_js8) << "hb blacklist blocking" << d.from;
                 continue;
             }
@@ -9339,24 +9912,23 @@ void MainWindow::processCommandActivity() {
             // check to see if we have a message for a station who is heartbeating
             QString extra;
             auto mid = getNextMessageIdForCallsign(d.from);
-            if(mid != -1){
+            if (mid != -1) {
                 extra = QString("MSG ID %1").arg(mid);
             }
 
-			// group messaging - if isGroupCall, check to see if there's a message id for the group and return it if there's not an individual message
-			// TODO: include group name in response to differentiate from direct messages?
-			else if(isGroupCall)
-			{
-				mid = getNextGroupMessageIdForCallsign(d.to, d.from);
-				if(mid != -1){
-					extra = QString("MSG ID %1").arg(mid);
-				}
-			}
+            // group messaging - if isGroupCall, check to see if there's a message id for the group and return it if there's not an individual message
+            // TODO: include group name in response to differentiate from direct messages?
+            else if (isGroupCall) {
+                mid = getNextGroupMessageIdForCallsign(d.to, d.from);
+                if (mid != -1) {
+                    extra = QString("MSG ID %1").arg(mid);
+                }
+            }
 
             // TODO: require confirmation?
             sendHeartbeatAck(d.from, d.snr, extra);
 
-            if(isAllCall){
+            if (isAllCall) {
                 // since all pings are technically @ALLCALL, let's bump the allcall cache here...
                 m_txAllcallCommandCache.insert(d.from, new QDateTime(now), 5);
             }
@@ -9365,19 +9937,19 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS HEARTBEAT SNR
-        else if (d.cmd == " HEARTBEAT SNR"){
+        else if (d.cmd == " HEARTBEAT SNR") {
             qCDebug(mainwindow_js8) << "skipping incoming hb snr" << d.text;
             continue;
         }
 
         // PROCESS CQ
-        else if (d.cmd == " CQ"){
+        else if (d.cmd == " CQ") {
             qCDebug(mainwindow_js8) << "skipping incoming cq" << d.text;
             continue;
         }
 
         // PROCESS MSG
-        else if (d.cmd == " MSG" && !isAllCall){
+        else if (d.cmd == " MSG" && !isAllCall) {
 
             auto text = d.text;
 
@@ -9399,21 +9971,24 @@ void MainWindow::processCommandActivity() {
 
 #define SHOW_ALERT_FOR_MSG 1
 #if SHOW_ALERT_FOR_MSG
-            SelfDestructMessageBox * m = new SelfDestructMessageBox(300,
-              "New Message Received",
-              QString("A new message was received at %1 UTC from %2").arg(d.utcTimestamp.time().toString()).arg(d.from),
-              QMessageBox::Information,
-              QMessageBox::Ok,
-              QMessageBox::Ok,
-              false,
-              this);
+            SelfDestructMessageBox* m
+                = new SelfDestructMessageBox(300,
+                                             "New Message Received",
+                                             QString("A new message was received at %1 UTC from %2")
+                                                 .arg(d.utcTimestamp.time().toString())
+                                                 .arg(d.from),
+                                             QMessageBox::Information,
+                                             QMessageBox::Ok,
+                                             QMessageBox::Ok,
+                                             false,
+                                             this);
 
             m->show();
 #endif
         }
 
         // PROCESS ACKS
-        else if (d.cmd == " ACK" && !isAllCall){
+        else if (d.cmd == " ACK" && !isAllCall) {
             qCDebug(mainwindow_js8) << "skipping incoming ack" << d.text;
 
             // notification for ack
@@ -9424,7 +9999,7 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS BUFFERED CMD
-        else if (d.cmd == " CMD" && !isAllCall){
+        else if (d.cmd == " CMD" && !isAllCall) {
             qCDebug(mainwindow_js8) << "skipping incoming command" << d.text;
 
             // make sure this is explicit
@@ -9432,39 +10007,40 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS BUFFERED QUERY
-        else if (d.cmd == " QUERY" && !isAllCall){
-            auto who = d.from; // keep in mind, this is the sender, not the original requestor if relayed
+        else if (d.cmd == " QUERY" && !isAllCall) {
+            auto who
+                = d.from; // keep in mind, this is the sender, not the original requestor if relayed
             auto replyPath = d.from;
 
-            if(d.relayPath.contains(">")){
+            if (d.relayPath.contains(">")) {
                 auto path = d.relayPath.split(">");
                 who = path.last();
                 replyPath = d.relayPath;
             }
 
             QStringList segs = d.text.split(" ");
-            if(segs.isEmpty()){
+            if (segs.isEmpty()) {
                 continue;
             }
 
             auto cmd = segs.first();
             segs.removeFirst();
 
-            if(cmd == "MSG" && !segs.isEmpty()){
+            if (cmd == "MSG" && !segs.isEmpty()) {
                 auto inbox = Inbox(inboxPath());
-                if(!inbox.open()){
+                if (!inbox.open()) {
                     continue;
                 }
 
                 bool ok = false;
                 int mid = QString(segs.first()).toInt(&ok);
-                if(!ok){
+                if (!ok) {
                     continue;
                 }
 
                 auto msg = inbox.value(mid);
                 auto params = msg.params();
-                if(params.isEmpty()){
+                if (params.isEmpty()) {
                     continue;
                 }
 
@@ -9472,68 +10048,61 @@ void MainWindow::processCommandActivity() {
 
                 auto to = params.value("TO").toString().trimmed();
 
-				// group messaging - allow any message to a @GROUP to be retrieved by anybody
-				bool isGroupMsg = to.startsWith("@");
+                // group messaging - allow any message to a @GROUP to be retrieved by anybody
+                bool isGroupMsg = to.startsWith("@");
 
-                if(!isGroupMsg && to != who && to != Radio::base_callsign(who)){
+                if (!isGroupMsg && to != who && to != Radio::base_callsign(who)) {
                     continue;
                 }
 
                 auto text = params.value("TEXT").toString().trimmed();
-                if(text.isEmpty()){
+                if (text.isEmpty()) {
                     continue;
                 }
 
-				/*
+                /*
 				 * mark as delivered (so subsequent HBs and QUERY MSGS don't receive this message)
 				 *
 				 * Do this in callbacks so that messages are only marked read after any potential confirmations
 				 * have been made by the user, and the message has been processed in the transaction queue.
 				 */
-				if(!isGroupMsg)
-				{
-					callback = [this, mid, msg] (){
-						this->markMsgDelivered(mid, msg);
-					};
-				}
-				else
-				{
-					callback = [this, mid, who](){
-						this->markGroupMsgDeliveredForCallsign(mid, who);
-					};
-				}
+                if (!isGroupMsg) {
+                    callback = [this, mid, msg]() { this->markMsgDelivered(mid, msg); };
+                } else {
+                    callback
+                        = [this, mid, who]() { this->markGroupMsgDeliveredForCallsign(mid, who); };
+                }
 
-				auto lookaheadMid = getLookaheadMessageIdForCallsign(who, mid);
-				if(lookaheadMid == -1 && isGroupMsg){
-					lookaheadMid = getLookaheadGroupMessageIdForCallsign(d.to, who, mid);
-				}
+                auto lookaheadMid = getLookaheadMessageIdForCallsign(who, mid);
+                if (lookaheadMid == -1 && isGroupMsg) {
+                    lookaheadMid = getLookaheadGroupMessageIdForCallsign(d.to, who, mid);
+                }
 
                 // and reply
-				if(lookaheadMid != -1)
-				{
-					reply = QString("%1 MSG %2 FROM %3 NEXT MSG ID %4");
-					reply = reply.arg(replyPath);
-					reply = reply.arg(text);
-					reply = reply.arg(from);
-					reply = reply.arg(lookaheadMid);
-				}
-				else
-				{
-					reply = QString("%1 MSG %2 FROM %3");
-					reply = reply.arg(replyPath);
-					reply = reply.arg(text);
-					reply = reply.arg(from);
-				}
+                if (lookaheadMid != -1) {
+                    reply = QString("%1 MSG %2 FROM %3 NEXT MSG ID %4");
+                    reply = reply.arg(replyPath);
+                    reply = reply.arg(text);
+                    reply = reply.arg(from);
+                    reply = reply.arg(lookaheadMid);
+                } else {
+                    reply = QString("%1 MSG %2 FROM %3");
+                    reply = reply.arg(replyPath);
+                    reply = reply.arg(text);
+                    reply = reply.arg(from);
+                }
             }
         }
 
         // PROCESS BUFFERED QUERY MSGS
         // Do not process this request if there is incoming MSG as it breaks the incoming
-        else if (d.cmd == " QUERY MSGS" && ui->actionModeAutoreply->isChecked() && m_messageBuffer.isEmpty()){
-            auto who = d.from; // keep in mind, this is the sender, not the original requestor if relayed
+        else if (d.cmd == " QUERY MSGS" && ui->actionModeAutoreply->isChecked()
+                 && m_messageBuffer.isEmpty()) {
+            auto who
+                = d.from; // keep in mind, this is the sender, not the original requestor if relayed
             auto replyPath = d.from;
 
-            if(d.relayPath.contains(">")){
+            if (d.relayPath.contains(">")) {
                 auto path = d.relayPath.split(">");
                 who = path.last();
                 replyPath = d.relayPath;
@@ -9542,67 +10111,70 @@ void MainWindow::processCommandActivity() {
             // if this is an allcall or a directed call, check to see if we have a stored message for user.
             // we reply yes if the user would be able to retreive a stored message
             auto mid = getNextMessageIdForCallsign(who);
-            if(mid != -1){
+            if (mid != -1) {
                 reply = QString("%1 YES MSG ID %2").arg(replyPath).arg(mid);
             }
 
             // Group messaging - if isGroupCall, check to see if there's a message id for the group and return it if there's not an individual message
-			// TODO: include group name in response to differentiate from direct messages?
-			else if(isGroupCall)
-			{
-				mid = getNextGroupMessageIdForCallsign(d.to, d.from);
-				if(mid != -1){
-					reply = QString("%1 YES MSG ID %2").arg(replyPath).arg(mid);
-				}
-			}
+            // TODO: include group name in response to differentiate from direct messages?
+            else if (isGroupCall) {
+                mid = getNextGroupMessageIdForCallsign(d.to, d.from);
+                if (mid != -1) {
+                    reply = QString("%1 YES MSG ID %2").arg(replyPath).arg(mid);
+                }
+            }
 
             // if this is not an allcall and we have no messages, reply no.
-            if(!isAllCall && reply.isEmpty()){
+            if (!isAllCall && reply.isEmpty()) {
                 reply = QString("%1 NO").arg(replyPath);
             }
         }
 
         // PROCESS BUFFERED QUERY CALL
         // Do not process this request if there is incoming MSG as it breaks the incoming
-        else if (d.cmd == " QUERY CALL" && ui->actionModeAutoreply->isChecked() && m_messageBuffer.isEmpty()){
+        else if (d.cmd == " QUERY CALL" && ui->actionModeAutoreply->isChecked()
+                 && m_messageBuffer.isEmpty()) {
             auto replyPath = d.from;
-            if(d.relayPath.contains(">")){
+            if (d.relayPath.contains(">")) {
                 replyPath = d.relayPath;
             }
 
             auto who = d.text;
-            if(who.isEmpty()){
+            if (who.isEmpty()) {
                 continue;
             }
 
             auto callsigns = Varicode::parseCallsigns(who);
-            if(callsigns.isEmpty()){
+            if (callsigns.isEmpty()) {
                 continue;
             }
 
             QStringList replies;
             int callsignAging = m_config.callsign_aging();
             auto baseCall = callsigns.first();
-            foreach(auto cd, m_callActivity.values()){
+            foreach (auto cd, m_callActivity.values()) {
                 if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                     continue;
                 }
 
-                if(baseCall == cd.call || baseCall == Radio::base_callsign(cd.call)){
-                    auto r = QString("%1 (%2)").arg(Varicode::formatSNR(cd.snr)).arg(since(cd.utcTimestamp)).trimmed();
+                if (baseCall == cd.call || baseCall == Radio::base_callsign(cd.call)) {
+                    auto r = QString("%1 (%2)")
+                                 .arg(Varicode::formatSNR(cd.snr))
+                                 .arg(since(cd.utcTimestamp))
+                                 .trimmed();
                     replies.append(r);
                     break;
                 }
             }
 
-            if(!replies.isEmpty()){
+            if (!replies.isEmpty()) {
                 replies.prepend(QString("%1 YES").arg(replyPath));
             }
 
             reply = replies.join(" ");
 
-            if(!reply.isEmpty()){
-                if(isAllCall){
+            if (!reply.isEmpty()) {
+                if (isAllCall) {
                     m_txAllcallCommandCache.insert(d.from, new QDateTime(now), 25);
                 }
             }
@@ -9626,7 +10198,7 @@ void MainWindow::processCommandActivity() {
         }
 
         // do not queue @ALLCALL replies if auto-reply is not checked
-        if(!ui->actionModeAutoreply->isChecked() && isAllCall){
+        if (!ui->actionModeAutoreply->isChecked() && isAllCall) {
             continue;
         }
 
@@ -9639,19 +10211,20 @@ void MainWindow::processCommandActivity() {
 #endif
 
         // do not queue for reply if there's text in the window
-        if(!ui->extFreeTextMsgEdit->toPlainText().isEmpty()){
+        if (!ui->extFreeTextMsgEdit->toPlainText().isEmpty()) {
             continue;
         }
 
         // do not queue for reply if there's a buffer open to us
         int bufferOffset = 0;
-        if(hasExistingMessageBufferToMe(&bufferOffset)){
-            qCDebug(mainwindow_js8) << "skipping reply due to open buffer" << bufferOffset << m_messageBuffer.count();
+        if (hasExistingMessageBufferToMe(&bufferOffset)) {
+            qCDebug(mainwindow_js8)
+                << "skipping reply due to open buffer" << bufferOffset << m_messageBuffer.count();
             continue;
         }
 
         // add @ALLCALLs to the @ALLCALL cache
-        if(isAllCall){
+        if (isAllCall) {
             m_txAllcallCommandCache.insert(d.from, new QDateTime(now), 25);
         }
 
@@ -9659,7 +10232,7 @@ void MainWindow::processCommandActivity() {
         // unless, this is an allcall, to which we should be responding on a clear frequency offset
         // we always want to make sure that the directed cache has been updated at this point so we have the
         // most information available to make a frequency selection.
-        if(m_config.autoreply_confirmation()){
+        if (m_config.autoreply_confirmation()) {
             confirmThenEnqueueMessage(90, priority, reply, freq, callback);
         } else {
             enqueueMessage(priority, reply, freq, callback);
@@ -9667,66 +10240,69 @@ void MainWindow::processCommandActivity() {
     }
 }
 
-QString MainWindow::inboxPath(){
+QString MainWindow::inboxPath()
+{
     return QDir::toNativeSeparators(m_config.writeable_data_dir().absoluteFilePath("inbox.db3"));
 }
 
-void MainWindow::refreshInboxCounts(){
+void MainWindow::refreshInboxCounts()
+{
     auto inbox = Inbox(inboxPath());
-    if(inbox.open()){
+    if (inbox.open()) {
         // reset inbox counts
         m_rxInboxCountCache.clear();
 
         // compute new counts from db
         auto v = inbox.values("UNREAD", "$", "%", 0, 10000);
-        foreach(auto pair, v){
+        foreach (auto pair, v) {
             auto params = pair.second.params();
             auto to = params.value("TO").toString();
-            if(to.isEmpty() || (to != m_config.my_callsign() && to != Radio::base_callsign(m_config.my_callsign()))){
+            if (to.isEmpty()
+                || (to != m_config.my_callsign()
+                    && to != Radio::base_callsign(m_config.my_callsign()))) {
                 continue;
             }
             auto from = params.value("FROM").toString();
-            if(from.isEmpty()){
+            if (from.isEmpty()) {
                 continue;
             }
 
             m_rxInboxCountCache[from] = m_rxInboxCountCache.value(from, 0) + 1;
 
-            if (!m_callActivity.contains(from))
-            {
-                auto const utc     = params.value("UTC").toString();
-                auto const snr     = params.value("SNR").toInt();
-                auto const dial    = params.value("DIAL").toInt();
-                auto const offset  = params.value("OFFSET").toInt();
-                auto const tdrift  = params.value("TDRIFT").toInt();
+            if (!m_callActivity.contains(from)) {
+                auto const utc = params.value("UTC").toString();
+                auto const snr = params.value("SNR").toInt();
+                auto const dial = params.value("DIAL").toInt();
+                auto const offset = params.value("OFFSET").toInt();
+                auto const tdrift = params.value("TDRIFT").toInt();
                 auto const submode = params.value("SUBMODE").toInt();
 
                 CallDetail cd;
-                cd.call         = from;
-                cd.snr          = snr;
-                cd.dial         = dial;
-                cd.offset       = offset;
-                cd.tdrift       = tdrift;
+                cd.call = from;
+                cd.snr = snr;
+                cd.dial = dial;
+                cd.offset = offset;
+                cd.tdrift = tdrift;
                 cd.utcTimestamp = QDateTime::fromString(utc, "yyyy-MM-dd hh:mm:ss");
                 cd.utcTimestamp.setTimeZone(QTimeZone::utc());
                 cd.ackTimestamp = cd.utcTimestamp;
-                cd.submode      = submode;
+                cd.submode = submode;
                 logCallActivity(cd, false);
             }
         }
 
-		// Now handle group message counts
-		QMap<QString, int> groupMessageCounts = inbox.getGroupMessageCounts();
-		foreach(auto key , groupMessageCounts.keys())
-		{
-			m_rxInboxCountCache[key] = groupMessageCounts[key];
-		}
+        // Now handle group message counts
+        QMap<QString, int> groupMessageCounts = inbox.getGroupMessageCounts();
+        foreach (auto key, groupMessageCounts.keys()) {
+            m_rxInboxCountCache[key] = groupMessageCounts[key];
+        }
     }
 }
 
-bool MainWindow::hasMessageHistory(QString call){
+bool MainWindow::hasMessageHistory(QString call)
+{
     auto inbox = Inbox(inboxPath());
-    if(!inbox.open()){
+    if (!inbox.open()) {
         return false;
     }
 
@@ -9736,7 +10312,8 @@ bool MainWindow::hasMessageHistory(QString call){
     return (store + unread + read) > 0;
 }
 
-int MainWindow::addCommandToMyInbox(CommandDetail d){
+int MainWindow::addCommandToMyInbox(CommandDetail d)
+{
     // local cache for inbox count
     m_rxInboxCountCache[d.from] = m_rxInboxCountCache.value(d.from, 0) + 1;
 
@@ -9744,36 +10321,37 @@ int MainWindow::addCommandToMyInbox(CommandDetail d){
     return addCommandToStorage("UNREAD", d);
 }
 
-int MainWindow::addCommandToStorage(QString type, CommandDetail d){
+int MainWindow::addCommandToStorage(QString type, CommandDetail d)
+{
     // inbox:
     auto inbox = Inbox(inboxPath());
-    if(!inbox.open()){
+    if (!inbox.open()) {
         return -1;
     }
 
     QVariantMap v = {
-        {"UTC", QVariant(d.utcTimestamp.toString("yyyy-MM-dd hh:mm:ss"))},
-        {"TO", QVariant(d.to)},
-        {"FROM", QVariant(d.from)},
-        {"PATH", QVariant(d.relayPath)},
-        {"TDRIFT", QVariant(d.tdrift)},
-        {"FREQ", QVariant(d.dial+d.offset)},
-        {"DIAL", QVariant(d.dial)},
-        {"OFFSET", QVariant(d.offset)},
-        {"CMD", QVariant(d.cmd)},
-        {"SNR", QVariant(d.snr)},
-        {"SUBMODE", QVariant(d.submode)},
+        { "UTC",     QVariant(d.utcTimestamp.toString("yyyy-MM-dd hh:mm:ss")) },
+        { "TO",      QVariant(d.to)                                           },
+        { "FROM",    QVariant(d.from)                                         },
+        { "PATH",    QVariant(d.relayPath)                                    },
+        { "TDRIFT",  QVariant(d.tdrift)                                       },
+        { "FREQ",    QVariant(d.dial + d.offset)                              },
+        { "DIAL",    QVariant(d.dial)                                         },
+        { "OFFSET",  QVariant(d.offset)                                       },
+        { "CMD",     QVariant(d.cmd)                                          },
+        { "SNR",     QVariant(d.snr)                                          },
+        { "SUBMODE", QVariant(d.submode)                                      },
     };
 
-    if(!d.grid.isEmpty()){
+    if (!d.grid.isEmpty()) {
         v["GRID"] = QVariant(d.grid);
     }
 
-    if(!d.extra.isEmpty()){
+    if (!d.extra.isEmpty()) {
         v["EXTRA"] = QVariant(d.extra);
     }
 
-    if(!d.text.isEmpty()){
+    if (!d.text.isEmpty()) {
         v["TEXT"] = QVariant(d.text);
     }
 
@@ -9782,26 +10360,27 @@ int MainWindow::addCommandToStorage(QString type, CommandDetail d){
     return inbox.append(m);
 }
 
-int MainWindow::getNextMessageIdForCallsign(QString callsign){
+int MainWindow::getNextMessageIdForCallsign(QString callsign)
+{
     auto inbox = Inbox(inboxPath());
-    if(!inbox.open()){
+    if (!inbox.open()) {
         return -1;
     }
 
     auto v1 = inbox.values("STORE", "$.params.TO", callsign, 0, 10);
-    foreach(auto pair, v1){
+    foreach (auto pair, v1) {
         auto params = pair.second.params();
         auto text = params.value("TEXT").toString().trimmed();
-        if(!text.isEmpty()){
+        if (!text.isEmpty()) {
             return pair.first;
         }
     }
 
     auto v2 = inbox.values("STORE", "$.params.TO", Radio::base_callsign(callsign), 0, 10);
-    foreach(auto pair, v2){
+    foreach (auto pair, v2) {
         auto params = pair.second.params();
         auto text = params.value("TEXT").toString().trimmed();
-        if(!text.isEmpty()){
+        if (!text.isEmpty()) {
             return pair.first;
         }
     }
@@ -9809,91 +10388,93 @@ int MainWindow::getNextMessageIdForCallsign(QString callsign){
     return -1;
 }
 
-int MainWindow::getLookaheadMessageIdForCallsign(QString callsign, int msgId){
-	auto inbox = Inbox(inboxPath());
-	if(!inbox.open()){
-		return -1;
-	}
+int MainWindow::getLookaheadMessageIdForCallsign(QString callsign, int msgId)
+{
+    auto inbox = Inbox(inboxPath());
+    if (!inbox.open()) {
+        return -1;
+    }
 
-	int mid = inbox.getLookaheadMessageIdForCallsign(callsign, msgId);
+    int mid = inbox.getLookaheadMessageIdForCallsign(callsign, msgId);
 
-	if(mid == -1)
-	{
-		mid = inbox.getLookaheadMessageIdForCallsign(Radio::base_callsign(callsign), msgId);
-	}
+    if (mid == -1) {
+        mid = inbox.getLookaheadMessageIdForCallsign(Radio::base_callsign(callsign), msgId);
+    }
 
-	if(mid != -1)
-	{
-		return mid;
-	}
+    if (mid != -1) {
+        return mid;
+    }
 
-	return -1;
+    return -1;
 }
 
 // Facade for Inbox::getNextGroupMessageIdForCallsign
 int MainWindow::getNextGroupMessageIdForCallsign(QString group_name, QString callsign)
 {
-	Inbox inbox(inboxPath());
-	if(!inbox.open())
-	{
-		return -1;
-	}
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return -1;
+    }
 
-	return inbox.getNextGroupMessageIdForCallsign(group_name, callsign);
+    return inbox.getNextGroupMessageIdForCallsign(group_name, callsign);
 }
 
 // Facade for Inbox::getLookaheadGroupMessageIdForCallsign
-int MainWindow::getLookaheadGroupMessageIdForCallsign(QString group_name, QString callsign, int afterMsgId)
+int MainWindow::getLookaheadGroupMessageIdForCallsign(QString group_name,
+                                                      QString callsign,
+                                                      int afterMsgId)
 {
-	Inbox inbox(inboxPath());
-	if(!inbox.open())
-	{
-		return -1;
-	}
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return -1;
+    }
 
-	int mid = inbox.getLookaheadGroupMessageIdForCallsign(group_name, callsign, afterMsgId);
+    int mid = inbox.getLookaheadGroupMessageIdForCallsign(group_name, callsign, afterMsgId);
 
-	if(mid == -1)
-	{
-		mid = inbox.getLookaheadGroupMessageIdForCallsign(group_name, Radio::base_callsign(callsign), afterMsgId);
-	}
+    if (mid == -1) {
+        mid = inbox.getLookaheadGroupMessageIdForCallsign(group_name,
+                                                          Radio::base_callsign(callsign),
+                                                          afterMsgId);
+    }
 
-	if(mid != -1)
-	{
-		return mid;
-	}
+    if (mid != -1) {
+        return mid;
+    }
 
-	return -1;
+    return -1;
 }
 
 // Facade for Inbox::markGroupMsgDeliveredForCallsign
 bool MainWindow::markGroupMsgDeliveredForCallsign(int msgId, QString callsign)
 {
-	Inbox inbox(inboxPath());
-	if(!inbox.open()){
-		return false;
-	}
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return false;
+    }
 
-	return inbox.markGroupMsgDeliveredForCallsign(msgId, callsign);
+    return inbox.markGroupMsgDeliveredForCallsign(msgId, callsign);
 }
 
 bool MainWindow::markMsgDelivered(int mid, Message msg)
 {
-	Inbox inbox(inboxPath());
-	if(!inbox.open()){
-		return false;
-	}
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return false;
+    }
 
-	msg.setType("DELIVERED");
-	return inbox.set(mid, msg);
+    msg.setType("DELIVERED");
+    return inbox.set(mid, msg);
 }
 
-QStringList MainWindow::parseRelayPathCallsigns(QString from, QString text){
+QStringList MainWindow::parseRelayPathCallsigns(QString from, QString text)
+{
     QStringList calls;
-    QString callDePattern = {R"(\s([*]DE[*]|VIA)\s(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?)\b)"};
+    QString callDePattern = {
+        R"(\s([*]DE[*]|VIA)\s(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?)\b)"
+    };
     QRegularExpression re(callDePattern);
     auto iter = re.globalMatch(text);
-    while(iter.hasNext()){
+    while (iter.hasNext()) {
         auto match = iter.next();
         calls.prepend(match.captured("callsign"));
     }
@@ -9901,13 +10482,14 @@ QStringList MainWindow::parseRelayPathCallsigns(QString from, QString text){
     return calls;
 }
 
-void MainWindow::processSpots() {
-    if(!m_config.spot_to_reporting_networks()){
+void MainWindow::processSpots()
+{
+    if (!m_config.spot_to_reporting_networks()) {
         m_rxCallQueue.clear();
         return;
     }
 
-    if(m_rxCallQueue.isEmpty()){
+    if (m_rxCallQueue.isEmpty()) {
         return;
     }
 
@@ -9918,43 +10500,48 @@ void MainWindow::processSpots() {
         return;
     }
 
-    while(!m_rxCallQueue.isEmpty()){
+    while (!m_rxCallQueue.isEmpty()) {
         CallDetail d = m_rxCallQueue.dequeue();
-        if(d.call.isEmpty()){
+        if (d.call.isEmpty()) {
             continue;
         }
 
-        if(m_config.spot_blacklist().contains(d.call) || m_config.spot_blacklist().contains(Radio::base_callsign(d.call))){
+        if (m_config.spot_blacklist().contains(d.call)
+            || m_config.spot_blacklist().contains(Radio::base_callsign(d.call))) {
             continue;
         }
 
-        qCDebug(mainwindow_js8) << "spotting call to reporting networks" << d.call << d.snr << d.dial << d.offset;
+        qCDebug(mainwindow_js8) << "spotting call to reporting networks" << d.call << d.snr
+                                << d.dial << d.offset;
 
         spotReport(d.submode, d.dial, d.offset, d.snr, d.call, d.grid);
         pskLogReport("JS8", d.dial, d.offset, d.snr, d.call, d.grid, d.utcTimestamp);
 
-        if(canSendNetworkMessage()){
-            sendNetworkMessage("RX.SPOT", "", {
-                {"_ID", QVariant(-1)},
-                {"FREQ", QVariant(d.dial+d.offset)},
-                {"DIAL", QVariant(d.dial)},
-                {"OFFSET", QVariant(d.offset)},
-                {"CALL", QVariant(d.call)},
-                {"SNR", QVariant(d.snr)},
-                {"GRID", QVariant(d.grid)},
+        if (canSendNetworkMessage()) {
+            sendNetworkMessage("RX.SPOT",
+                               "",
+                               {
+                                   { "_ID",    QVariant(-1)                },
+                                   { "FREQ",   QVariant(d.dial + d.offset) },
+                                   { "DIAL",   QVariant(d.dial)            },
+                                   { "OFFSET", QVariant(d.offset)          },
+                                   { "CALL",   QVariant(d.call)            },
+                                   { "SNR",    QVariant(d.snr)             },
+                                   { "GRID",   QVariant(d.grid)            },
             });
         }
     }
 }
 
-void MainWindow::processTxQueue(){
+void MainWindow::processTxQueue()
+{
 #if IDLE_BLOCKS_TX
-    if(m_tx_watchdog){
+    if (m_tx_watchdog) {
         return;
     }
 #endif
 
-    if(m_txMessageQueue.isEmpty()){
+    if (m_txMessageQueue.isEmpty()) {
         return;
     }
 
@@ -9963,27 +10550,28 @@ void MainWindow::processTxQueue(){
 
     // decide if it's ok to transmit...
     int f = head.offset;
-    if(f == -1){
+    if (f == -1) {
         f = freq();
     }
 
     // we need a valid frequency...
-    if(f <= 0){
+    if (f <= 0) {
         return;
     }
 
     // tx frame queue needs to be empty...
-    if(!m_txFrameQueue.isEmpty()){
+    if (!m_txFrameQueue.isEmpty()) {
         return;
     }
 
     // our message box needs to be empty...
-    if(!ui->extFreeTextMsgEdit->toPlainText().isEmpty()){
+    if (!ui->extFreeTextMsgEdit->toPlainText().isEmpty()) {
         return;
     }
 
     // and if we are a low priority message, we need to have not transmitted in the past 30 seconds...
-    if(head.priority <= PriorityLow && m_lastTxStartTime.secsTo(DriftingDateTime::currentDateTimeUtc()) <= 30){
+    if (head.priority <= PriorityLow
+        && m_lastTxStartTime.secsTo(DriftingDateTime::currentDateTimeUtc()) <= 30) {
         return;
     }
 
@@ -9994,12 +10582,9 @@ void MainWindow::processTxQueue(){
     addMessageText(message.message, true);
 
     // check to see if this is a high priority message, or if we have autoreply enabled, or if this is a ping and the ping button is enabled
-    if(message.priority >= PriorityHigh          ||
-       message.message.contains(" HEARTBEAT ")   ||
-       message.message.contains(" HB ")          ||
-       message.message.contains(" ACK ")         ||
-       ui->actionModeAutoreply->isChecked()
-    ){
+    if (message.priority >= PriorityHigh || message.message.contains(" HEARTBEAT ")
+        || message.message.contains(" HB ") || message.message.contains(" ACK ")
+        || ui->actionModeAutoreply->isChecked()) {
         // then try to set the frequency...
         setFreqOffsetForRestore(f, true);
 
@@ -10007,12 +10592,13 @@ void MainWindow::processTxQueue(){
         toggleTx(true);
     }
 
-    if(message.callback){
+    if (message.callback) {
         message.callback();
     }
 }
 
-void MainWindow::displayActivity(bool force) {
+void MainWindow::displayActivity(bool force)
+{
     if (!m_rxDisplayDirty && !force) {
         return;
     }
@@ -10027,15 +10613,16 @@ void MainWindow::displayActivity(bool force) {
 }
 
 // updateBandActivity
-void MainWindow::displayBandActivity() {
+void MainWindow::displayBandActivity()
+{
     auto now = DriftingDateTime::currentDateTimeUtc();
 
-	// Reset the header label text to accommodate minimal label setting
-	int cols = ui->tableWidgetRXAll->columnCount();
-	for (int c = 0; c < cols; ++c)
-	{
-		ui->tableWidgetRXAll->horizontalHeaderItem(c)->setText(columnLabel(m_origRxHeaderLabelMap[c]));
-	}
+    // Reset the header label text to accommodate minimal label setting
+    int cols = ui->tableWidgetRXAll->columnCount();
+    for (int c = 0; c < cols; ++c) {
+        ui->tableWidgetRXAll->horizontalHeaderItem(c)->setText(
+            columnLabel(m_origRxHeaderLabelMap[c]));
+    }
 
     ui->tableWidgetRXAll->setFont(m_config.table_font());
 
@@ -10056,41 +10643,32 @@ void MainWindow::displayBandActivity() {
 
         // Sort!
         auto const sort = getSortByReverse("bandActivity", "offset");
-        auto       keys = m_bandActivity.keys();
+        auto keys = m_bandActivity.keys();
 
         // Base comparison, called by the detail comparisons. We may not need
         // to proceed to the detail comparison at all here, if at least one of
         // the lists is empty. If both are non-empty, delegate to the detail
         // comparison, providing it with the last list elements.
 
-        auto const compare = [this](int const lhsKey,
-                                    int const rhsKey,
-                                    auto   && detail)
-        {
-          auto const & lhs = m_bandActivity[lhsKey];
-          auto const & rhs = m_bandActivity[rhsKey];
+        auto const compare = [this](int const lhsKey, int const rhsKey, auto&& detail) {
+            auto const& lhs = m_bandActivity[lhsKey];
+            auto const& rhs = m_bandActivity[rhsKey];
 
-          if (lhs.isEmpty()) return false;
-          if (rhs.isEmpty()) return true;
+            if (lhs.isEmpty())
+                return false;
+            if (rhs.isEmpty())
+                return true;
 
-          return detail(lhs.last(),
-                        rhs.last());
+            return detail(lhs.last(), rhs.last());
         };
 
         // Time stamp comparison, easy stuff, just a total ordering on the
         // UTC time stamp field.
 
-        auto const compareTimestamp = [compare](int const lhsKey,
-                                                int const rhsKey)
-        {
-          return compare(lhsKey,
-                         rhsKey,
-                         [](auto && lhs,
-                            auto && rhs)
-          {
-            return lhs.utcTimestamp <
-                   rhs.utcTimestamp;
-          });
+        auto const compareTimestamp = [compare](int const lhsKey, int const rhsKey) {
+            return compare(lhsKey, rhsKey, [](auto&& lhs, auto&& rhs) {
+                return lhs.utcTimestamp < rhs.utcTimestamp;
+            });
         };
 
         // SNR comparison;  we always want insane SNR values to be at the end
@@ -10100,47 +10678,38 @@ void MainWindow::displayBandActivity() {
         // standard case. Reverse takes care of itself; we just need to sort
         // out standard.
 
-        auto const compareSNR = [compare,
-                                 reverse = sort.reverse](int const lhsKey,
-                                                         int const rhsKey)
-        {
-          return compare(lhsKey,
-                         rhsKey,
-                         [reverse](auto && lhs,
-                                   auto && rhs)
-          {
-            auto lhsSNR = lhs.snr;
-            auto rhsSNR = rhs.snr;
+        auto const compareSNR
+            = [compare, reverse = sort.reverse](int const lhsKey, int const rhsKey) {
+                  return compare(lhsKey, rhsKey, [reverse](auto&& lhs, auto&& rhs) {
+                      auto lhsSNR = lhs.snr;
+                      auto rhsSNR = rhs.snr;
 
-            if (!reverse)
-            {
-              if (lhsSNR < -60 || lhsSNR > 60) lhsSNR = -lhsSNR;
-              if (rhsSNR < -60 || rhsSNR > 60) rhsSNR = -rhsSNR;
-            }
+                      if (!reverse) {
+                          if (lhsSNR < -60 || lhsSNR > 60)
+                              lhsSNR = -lhsSNR;
+                          if (rhsSNR < -60 || rhsSNR > 60)
+                              rhsSNR = -rhsSNR;
+                      }
 
-            return lhsSNR < rhsSNR;
-          });
-        };
+                      return lhsSNR < rhsSNR;
+                  });
+              };
 
         // Submode comparison; slow mode isn't at the start of the enumeration;
         // it's in the middle of it. All the other modes are in the expected order.
 
-        auto const compareSubmode = [compare](int const lhsKey,
-                                              int const rhsKey)
-        {
-          return compare(lhsKey,
-                         rhsKey,
-                         [](auto && lhs,
-                            auto && rhs)
-          {
-            auto lhsSubmode = lhs.submode;
-            auto rhsSubmode = rhs.submode;
+        auto const compareSubmode = [compare](int const lhsKey, int const rhsKey) {
+            return compare(lhsKey, rhsKey, [](auto&& lhs, auto&& rhs) {
+                auto lhsSubmode = lhs.submode;
+                auto rhsSubmode = rhs.submode;
 
-            if (lhsSubmode == Varicode::JS8CallSlow) lhsSubmode = -lhsSubmode;
-            if (rhsSubmode == Varicode::JS8CallSlow) rhsSubmode = -rhsSubmode;
+                if (lhsSubmode == Varicode::JS8CallSlow)
+                    lhsSubmode = -lhsSubmode;
+                if (rhsSubmode == Varicode::JS8CallSlow)
+                    rhsSubmode = -rhsSubmode;
 
-            return lhsSubmode < rhsSubmode;
-          });
+                return lhsSubmode < rhsSubmode;
+            });
         };
 
         // Always perform an initial sort by offset.
@@ -10150,20 +10719,24 @@ void MainWindow::displayBandActivity() {
         // If something other than offset was requested as the sort by, perform an
         // additional stable sort by the field requested.
 
-        if      (sort.by == "timestamp") std::stable_sort(keys.begin(), keys.end(), compareTimestamp);
-        else if (sort.by == "snr")       std::stable_sort(keys.begin(), keys.end(), compareSNR);
-        else if (sort.by == "submode")   std::stable_sort(keys.begin(), keys.end(), compareSubmode);
+        if (sort.by == "timestamp")
+            std::stable_sort(keys.begin(), keys.end(), compareTimestamp);
+        else if (sort.by == "snr")
+            std::stable_sort(keys.begin(), keys.end(), compareSNR);
+        else if (sort.by == "submode")
+            std::stable_sort(keys.begin(), keys.end(), compareSubmode);
 
         // The sort comparators leave things in forward order. If a reverse sort
         // was requested, reverse the keys.
 
-        if (sort.reverse) std::reverse(keys.begin(), keys.end());
+        if (sort.reverse)
+            std::reverse(keys.begin(), keys.end());
 
         // Build the table
-        foreach(int offset, keys) {
+        foreach (int offset, keys) {
             bool isOffsetSelected = (offset == selectedOffset);
 
-            QList < ActivityDetail > items = m_bandActivity[offset];
+            QList<ActivityDetail> items = m_bandActivity[offset];
             if (items.length() > 0) {
                 QDateTime timestamp;
                 QStringList text;
@@ -10176,33 +10749,33 @@ void MainWindow::displayBandActivity() {
 
                 // hide items that shouldn't appear
 
-                for(int i = 0; i < items.length(); i++){
+                for (int i = 0; i < items.length(); i++) {
                     auto item = items[i];
 
                     bool shouldDisplay = true;
 
                     // hide aged items
-                    if (!isOffsetSelected && activityAging && item.utcTimestamp.secsTo(now) / 60 >= activityAging) {
+                    if (!isOffsetSelected && activityAging
+                        && item.utcTimestamp.secsTo(now) / 60 >= activityAging) {
                         shouldDisplay = false;
                     }
 
                     // hide heartbeat items
-                    if (!ui->actionShow_Band_Heartbeats_and_ACKs->isChecked()){
+                    if (!ui->actionShow_Band_Heartbeats_and_ACKs->isChecked()) {
                         // hide heartbeats and acks if we have heartbeating hidden
-                        if(item.text.contains(" @HB ") || item.text.contains(" HEARTBEAT ")){
+                        if (item.text.contains(" @HB ") || item.text.contains(" HEARTBEAT ")) {
                             shouldDisplay = false;
 
                             // hide the previous item if this it shouldn't be displayed either...
-                            if(i > 0 && items[i-1].shouldDisplay && items[i-1].text.endsWith(": ")){
-                                items[i-1].shouldDisplay = false;
+                            if (i > 0 && items[i - 1].shouldDisplay
+                                && items[i - 1].text.endsWith(": ")) {
+                                items[i - 1].shouldDisplay = false;
                             }
                         }
 
                         // if our previous item should not be displayed (or this is the first frame) and we have a MSG ID, then don't display it either.
-                        if(
-                           (i == 0 || (i > 0 && !items[i-1].shouldDisplay)) &&
-                           (item.text.contains(" MSG ID "))
-                        ){
+                        if ((i == 0 || (i > 0 && !items[i - 1].shouldDisplay))
+                            && (item.text.contains(" MSG ID "))) {
                             shouldDisplay = false;
                         }
                     }
@@ -10217,8 +10790,8 @@ void MainWindow::displayBandActivity() {
                 }
 
                 // show the items that should appear
-                foreach(ActivityDetail item, items) {
-                    if(!item.shouldDisplay){
+                foreach (ActivityDetail item, items) {
+                    if (!item.shouldDisplay) {
                         continue;
                     }
 
@@ -10228,7 +10801,9 @@ void MainWindow::displayBandActivity() {
 
                     if ((item.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast) {
                         // append the eot character to the text
-                        item.text = QString("%1 %2 ").arg(Varicode::rstrip(item.text)).arg(m_config.eot());
+                        item.text = QString("%1 %2 ")
+                                        .arg(Varicode::rstrip(item.text))
+                                        .arg(m_config.eot());
                     }
                     text.append(item.text);
                     snr = item.snr;
@@ -10258,11 +10833,13 @@ void MainWindow::displayBandActivity() {
                 ui->tableWidgetRXAll->setItem(row, col++, ageItem);
 
                 auto snrText = Varicode::formatSNR(snr);
-                auto snrItem = new QTableWidgetItem(snrText.isEmpty() ? "" : QString(columnLabel("%1 dB")).arg(snrText));
+                auto snrItem = new QTableWidgetItem(
+                    snrText.isEmpty() ? "" : QString(columnLabel("%1 dB")).arg(snrText));
                 snrItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetRXAll->setItem(row, col++, snrItem);
 
-                auto tdriftItem = new QTableWidgetItem(QString(columnLabel("%1 ms")).arg((int)(1000*tdrift)));
+                auto tdriftItem
+                    = new QTableWidgetItem(QString(columnLabel("%1 ms")).arg((int)(1000 * tdrift)));
                 tdriftItem->setData(Qt::UserRole, QVariant(tdrift));
                 tdriftItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetRXAll->setItem(row, col++, tdriftItem);
@@ -10294,41 +10871,44 @@ void MainWindow::displayBandActivity() {
                 ui->tableWidgetRXAll->setItem(row, col++, textItem);
 
                 if (isOffsetSelected) {
-                    for(int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++){
+                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                         ui->tableWidgetRXAll->item(row, i)->setSelected(true);
                     }
                 }
 
                 bool isDirectedAllCall = false;
-                if(
-                    (isDirectedOffset(offset, &isDirectedAllCall) && !isDirectedAllCall) || isMyCallIncluded(text.last())
-                ){
-                    for(int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++){
-                        ui->tableWidgetRXAll->item(row, i)->setBackground(QBrush(m_config.color_MyCall()));
+                if ((isDirectedOffset(offset, &isDirectedAllCall) && !isDirectedAllCall)
+                    || isMyCallIncluded(text.last())) {
+                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
+                        ui->tableWidgetRXAll->item(row, i)->setBackground(
+                            QBrush(m_config.color_MyCall()));
                     }
                 }
 
-                if(!text.isEmpty()){
-                    auto const    list = joined.split(QRegularExpression("[:> ]"), Qt::SkipEmptyParts);
+                if (!text.isEmpty()) {
+                    auto const list = joined.split(QRegularExpression("[:> ]"), Qt::SkipEmptyParts);
                     QSet<QString> words(list.begin(), list.end());
 
-                    if(words.contains("CQ")){
-                        for(int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++){
-                            ui->tableWidgetRXAll->item(row, i)->setBackground(QBrush(m_config.color_CQ()));
+                    if (words.contains("CQ")) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
+                            ui->tableWidgetRXAll->item(row, i)->setBackground(
+                                QBrush(m_config.color_CQ()));
                         }
                     }
 
                     auto matchingSecondaryWords = m_config.secondary_highlight_words() & words;
-                    if (!matchingSecondaryWords.isEmpty()){
-                        for(int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++){
-                            ui->tableWidgetRXAll->item(row, i)->setBackground(QBrush(m_config.color_secondary_highlight()));
+                    if (!matchingSecondaryWords.isEmpty()) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
+                            ui->tableWidgetRXAll->item(row, i)->setBackground(
+                                QBrush(m_config.color_secondary_highlight()));
                         }
                     }
 
                     auto matchingPrimaryWords = m_config.primary_highlight_words() & words;
-                    if (!matchingPrimaryWords.isEmpty()){
-                        for(int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++){
-                            ui->tableWidgetRXAll->item(row, i)->setBackground(QBrush(m_config.color_primary_highlight()));
+                    if (!matchingPrimaryWords.isEmpty()) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
+                            ui->tableWidgetRXAll->item(row, i)->setBackground(
+                                QBrush(m_config.color_primary_highlight()));
                         }
                     }
                 }
@@ -10336,7 +10916,8 @@ void MainWindow::displayBandActivity() {
         }
 
         // Set table color
-        auto style = QString("QTableWidget { background:%1; selection-background-color:%2; alternate-background-color:%1; color:%3; } "
+        auto style = QString("QTableWidget { background:%1; selection-background-color:%2; "
+                             "alternate-background-color:%1; color:%3; } "
                              "QTableWidget::item:selected { background-color: %2; color: %3; }");
         style = style.arg(m_config.color_table_background().name());
         style = style.arg(m_config.color_table_highlight().name());
@@ -10348,14 +10929,16 @@ void MainWindow::displayBandActivity() {
 
         p.setColor(QPalette::Highlight, m_config.color_table_highlight());
         p.setColor(QPalette::HighlightedText, m_config.color_table_foreground());
-        p.setColor(QPalette::Inactive, QPalette::Highlight, p.color(QPalette::Active, QPalette::Highlight));
+        p.setColor(QPalette::Inactive,
+                   QPalette::Highlight,
+                   p.color(QPalette::Active, QPalette::Highlight));
         ui->tableWidgetRXAll->setPalette(p);
 
         // Set item fonts
-        for(int row = 0; row < ui->tableWidgetRXAll->rowCount(); row++){
-            for(int col = 0; col < ui->tableWidgetRXAll->columnCount(); col++){
+        for (int row = 0; row < ui->tableWidgetRXAll->rowCount(); row++) {
+            for (int col = 0; col < ui->tableWidgetRXAll->columnCount(); col++) {
                 auto item = ui->tableWidgetRXAll->item(row, col);
-                if(item){
+                if (item) {
                     item->setFont(m_config.table_font());
                 }
             }
@@ -10385,15 +10968,16 @@ void MainWindow::displayBandActivity() {
 }
 
 // updateCallActivity
-void MainWindow::displayCallActivity() {
+void MainWindow::displayCallActivity()
+{
     auto now = DriftingDateTime::currentDateTimeUtc();
 
-	// Reset the header label text to accommodate minimal label setting
-	int cols = ui->tableWidgetCalls->columnCount();
-	for (int c = 0; c < cols; ++c)
-	{
-		ui->tableWidgetCalls->horizontalHeaderItem(c)->setText(columnLabel(m_origCallActivityHeaderLabelMap[c]));
-	}
+    // Reset the header label text to accommodate minimal label setting
+    int cols = ui->tableWidgetCalls->columnCount();
+    for (int c = 0; c < cols; ++c) {
+        ui->tableWidgetCalls->horizontalHeaderItem(c)->setText(
+            columnLabel(m_origCallActivityHeaderLabelMap[c]));
+    }
 
     ui->tableWidgetCalls->setFont(m_config.table_font());
 
@@ -10408,109 +10992,104 @@ void MainWindow::displayCallActivity() {
         ui->tableWidgetCalls->setRowCount(0);
         ui->tableWidgetCalls->horizontalHeaderItem(8)->setText(m_config.miles() ? "mi" : "km");
 
-		bool showIconColumn = false;
-        createGroupCallsignTableRows(ui->tableWidgetCalls, selectedCall, showIconColumn); // isAllCallIncluded(selectedCall)); // || isGroupCallIncluded(selectedCall));
+        bool showIconColumn = false;
+        createGroupCallsignTableRows(
+            ui->tableWidgetCalls,
+            selectedCall,
+            showIconColumn); // isAllCallIncluded(selectedCall)); // || isGroupCallIncluded(selectedCall));
 
         // Build the table
 
         auto const sort = getSortByReverse("callActivity", "callsign");
-        auto       keys = m_callActivity.keys();
+        auto keys = m_callActivity.keys();
 
-        auto const compareOffset = [this](QString const & lhsKey,
-                                          QString const & rhsKey)
-        {
-            return m_callActivity[lhsKey].offset <
-                   m_callActivity[rhsKey].offset;
+        auto const compareOffset = [this](QString const& lhsKey, QString const& rhsKey) {
+            return m_callActivity[lhsKey].offset < m_callActivity[rhsKey].offset;
         };
 
-        auto const compareAzimuth = [this,
-                                     reverse = sort.reverse,
-                                     my_grid = m_config.my_grid()](QString const & lhsKey,
-                                                                   QString const & rhsKey)
-        {
-          auto const lhs = Geodesic::vector(my_grid, m_callActivity[lhsKey].grid).azimuth();
-          auto const rhs = Geodesic::vector(my_grid, m_callActivity[rhsKey].grid).azimuth();
+        auto const compareAzimuth
+            = [this, reverse = sort.reverse, my_grid = m_config.my_grid()](QString const& lhsKey,
+                                                                           QString const& rhsKey) {
+                  auto const lhs = Geodesic::vector(my_grid, m_callActivity[lhsKey].grid).azimuth();
+                  auto const rhs = Geodesic::vector(my_grid, m_callActivity[rhsKey].grid).azimuth();
 
-          // We always want invalid azimuths to be at the end of the list,
-          // and the list is going to be reversed if reverse is set, so we
-          // want to set things up so that invalid elements are either all
-          // at the beginning in the case of a reverse, or all at the end
-          // in the standard case.
+                  // We always want invalid azimuths to be at the end of the list,
+                  // and the list is going to be reversed if reverse is set, so we
+                  // want to set things up so that invalid elements are either all
+                  // at the beginning in the case of a reverse, or all at the end
+                  // in the standard case.
 
-          if      (!lhs) return  reverse && rhs;
-          else if (!rhs) return !reverse;
-          else           return lhs < rhs;
+                  if (!lhs)
+                      return reverse && rhs;
+                  else if (!rhs)
+                      return !reverse;
+                  else
+                      return lhs < rhs;
+              };
+
+        auto const compareDistance =
+            [this, reverse = sort.reverse, my_grid = m_config.my_grid()](QString const& lhsKey,
+                                                                         QString const& rhsKey) {
+                auto const lhs = Geodesic::vector(my_grid, m_callActivity[lhsKey].grid).distance();
+                auto const rhs = Geodesic::vector(my_grid, m_callActivity[rhsKey].grid).distance();
+
+                // We always want invalid distances to be at the end of the list,
+                // and the list is going to be reversed if reverse is set, so we
+                // want to set things up so that invalid elements are either all
+                // at the beginning in the case of a reverse, or all at the end
+                // in the standard case.
+
+                if (!lhs)
+                    return reverse && rhs;
+                else if (!rhs)
+                    return !reverse;
+                else
+                    return lhs < rhs;
+            };
+
+        auto const compareTimestamp = [this](QString const& lhsKey, QString const& rhsKey) {
+            return m_callActivity[lhsKey].utcTimestamp < m_callActivity[rhsKey].utcTimestamp;
         };
 
-        auto const compareDistance = [this,
-                                      reverse = sort.reverse,
-                                      my_grid = m_config.my_grid()](QString const & lhsKey,
-                                                                    QString const & rhsKey)
-        {
-          auto const lhs = Geodesic::vector(my_grid, m_callActivity[lhsKey].grid).distance();
-          auto const rhs = Geodesic::vector(my_grid, m_callActivity[rhsKey].grid).distance();
-
-          // We always want invalid distances to be at the end of the list,
-          // and the list is going to be reversed if reverse is set, so we
-          // want to set things up so that invalid elements are either all
-          // at the beginning in the case of a reverse, or all at the end
-          // in the standard case.
-
-          if      (!lhs) return  reverse && rhs;
-          else if (!rhs) return !reverse;
-          else           return lhs < rhs;
+        auto const compareAckTimestamp = [this](QString const& lhsKey, QString const& rhsKey) {
+            return m_callActivity[rhsKey].ackTimestamp < m_callActivity[lhsKey].ackTimestamp;
         };
 
-        auto const compareTimestamp = [this](QString const & lhsKey,
-                                             QString const & rhsKey)
-        {
-          return m_callActivity[lhsKey].utcTimestamp <
-                 m_callActivity[rhsKey].utcTimestamp;
-        };
+        auto const compareSNR
+            = [this, reverse = sort.reverse](QString const& lhsKey, QString const& rhsKey) {
+                  auto lhs = m_callActivity[lhsKey].snr;
+                  auto rhs = m_callActivity[rhsKey].snr;
 
-        auto const compareAckTimestamp = [this](QString const & lhsKey,
-                                                QString const & rhsKey)
-        {
-          return m_callActivity[rhsKey].ackTimestamp <
-                 m_callActivity[lhsKey].ackTimestamp;
-        };
+                  // We always want insane SNR values to be at the end of the list,
+                  // and the list is going to be reversed if reverse is set, so we
+                  // want to set things up so that insane elements are either all
+                  // at the beginning in the case of a reverse, or all at the end
+                  // in the standard case. Reverse takes care of itself; we just
+                  // need to sort out standard.
 
-        auto const compareSNR = [this,
-                                 reverse = sort.reverse](QString const & lhsKey,
-                                                         QString const & rhsKey)
-        {
-          auto lhs = m_callActivity[lhsKey].snr;
-          auto rhs = m_callActivity[rhsKey].snr;
+                  if (!reverse) {
+                      if (lhs < -60 || lhs > 60)
+                          lhs = -lhs;
+                      if (rhs < -60 || rhs > 60)
+                          rhs = -rhs;
+                  }
 
-          // We always want insane SNR values to be at the end of the list,
-          // and the list is going to be reversed if reverse is set, so we
-          // want to set things up so that insane elements are either all
-          // at the beginning in the case of a reverse, or all at the end
-          // in the standard case. Reverse takes care of itself; we just
-          // need to sort out standard.
+                  return lhs < rhs;
+              };
 
-          if (!reverse)
-          {
-            if (lhs < -60 || lhs > 60) lhs = -lhs;
-            if (rhs < -60 || rhs > 60) rhs = -rhs;
-          }
+        auto const compareSubmode = [this](QString const& lhsKey, QString const& rhsKey) {
+            auto lhs = m_callActivity[lhsKey].submode;
+            auto rhs = m_callActivity[rhsKey].submode;
 
-          return lhs < rhs;
-        };
+            // Slow mode isn't at the start of the enumeration; it's in the
+            // middle of it. All the other modes are in the expected order.
 
-        auto const compareSubmode = [this](QString const & lhsKey,
-                                           QString const & rhsKey)
-        {
-          auto lhs = m_callActivity[lhsKey].submode;
-          auto rhs = m_callActivity[rhsKey].submode;
+            if (lhs == Varicode::JS8CallSlow)
+                lhs = -lhs;
+            if (rhs == Varicode::JS8CallSlow)
+                rhs = -rhs;
 
-          // Slow mode isn't at the start of the enumeration; it's in the
-          // middle of it. All the other modes are in the expected order.
-
-          if (lhs == Varicode::JS8CallSlow) lhs = -lhs;
-          if (rhs == Varicode::JS8CallSlow) rhs = -rhs;
-
-          return lhs < rhs;
+            return lhs < rhs;
         };
 
         // Always perform an initial sort by callsign.
@@ -10520,37 +11099,45 @@ void MainWindow::displayCallActivity() {
         // If something other than callsign was requested as the sort by, perform an
         // additional stable sort by the field requested.
 
-        if      (sort.by == "offset")       std::stable_sort(keys.begin(), keys.end(), compareOffset);
-        else if (sort.by == "distance")     std::stable_sort(keys.begin(), keys.end(), compareDistance);
-        else if (sort.by == "azimuth")      std::stable_sort(keys.begin(), keys.end(), compareAzimuth);
-        else if (sort.by == "timestamp")    std::stable_sort(keys.begin(), keys.end(), compareTimestamp);
-        else if (sort.by == "ackTimestamp") std::stable_sort(keys.begin(), keys.end(), compareAckTimestamp);
-        else if (sort.by == "snr")          std::stable_sort(keys.begin(), keys.end(), compareSNR);
-        else if (sort.by == "submode")      std::stable_sort(keys.begin(), keys.end(), compareSubmode);
+        if (sort.by == "offset")
+            std::stable_sort(keys.begin(), keys.end(), compareOffset);
+        else if (sort.by == "distance")
+            std::stable_sort(keys.begin(), keys.end(), compareDistance);
+        else if (sort.by == "azimuth")
+            std::stable_sort(keys.begin(), keys.end(), compareAzimuth);
+        else if (sort.by == "timestamp")
+            std::stable_sort(keys.begin(), keys.end(), compareTimestamp);
+        else if (sort.by == "ackTimestamp")
+            std::stable_sort(keys.begin(), keys.end(), compareAckTimestamp);
+        else if (sort.by == "snr")
+            std::stable_sort(keys.begin(), keys.end(), compareSNR);
+        else if (sort.by == "submode")
+            std::stable_sort(keys.begin(), keys.end(), compareSubmode);
 
         // The sort comparators leave things in forward order. If a reverse sort
         // was requested, reverse the keys.
 
-        if (sort.reverse) std::reverse(keys.begin(), keys.end());
+        if (sort.reverse)
+            std::reverse(keys.begin(), keys.end());
 
         // pin messages to the top
-        std::stable_sort(keys.begin(), keys.end(), [this](QString const & lhsKey,
-                                                          QString const & rhsKey)
-        {
-          auto const lhs = (int)!(m_rxInboxCountCache.value(lhsKey, 0) > 0);
-          auto const rhs = (int)!(m_rxInboxCountCache.value(rhsKey, 0) > 0);
+        std::stable_sort(keys.begin(),
+                         keys.end(),
+                         [this](QString const& lhsKey, QString const& rhsKey) {
+                             auto const lhs = (int)!(m_rxInboxCountCache.value(lhsKey, 0) > 0);
+                             auto const rhs = (int)!(m_rxInboxCountCache.value(rhsKey, 0) > 0);
 
-          return lhs < rhs;
-        });
+                             return lhs < rhs;
+                         });
 
         int callsignAging = m_config.callsign_aging();
-        foreach(QString call, keys) {
-            if(call.trimmed().isEmpty()){
+        foreach (QString call, keys) {
+            if (call.trimmed().isEmpty()) {
                 continue;
             }
 
             CallDetail d = m_callActivity[call];
-            if(d.call.trimmed().isEmpty()){
+            if (d.call.trimmed().isEmpty()) {
                 continue;
             }
 
@@ -10565,7 +11152,8 @@ void MainWindow::displayCallActivity() {
             // display star if they've acked a message from us
             bool hasACK = d.ackTimestamp.isValid();
 
-            if (!isCallSelected && !hasMessage && callsignAging && d.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+            if (!isCallSelected && !hasMessage && callsignAging
+                && d.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                 continue;
             }
 
@@ -10574,23 +11162,28 @@ void MainWindow::displayCallActivity() {
             int col = 0;
 
 #if SHOW_THROUGH_CALLS
-            QString displayCall = d.through.isEmpty() ? d.call : QString("%1>%2").arg(d.through).arg(d.call);
+            QString displayCall
+                = d.through.isEmpty() ? d.call : QString("%1>%2").arg(d.through).arg(d.call);
 #else
             QString displayCall = d.call;
 #endif
             bool hasThrough = !d.through.isEmpty();
 
-            auto iconItem = new QTableWidgetItem(hasMessage ? "\u2691" : hasACK ? "\u2605" : hasCQ ? "\u260E" : hasThrough ? "\u269F" : "");
+            auto iconItem = new QTableWidgetItem(hasMessage     ? "\u2691" :
+                                                     hasACK     ? "\u2605" :
+                                                     hasCQ      ? "\u260E" :
+                                                     hasThrough ? "\u269F" :
+                                                                  "");
             iconItem->setData(Qt::UserRole, QVariant(d.call));
             iconItem->setToolTip(
-                hasMessage ? "Message Available" :
-                hasACK ? QString("Hearing Your Station (%1)").arg(since(d.ackTimestamp)) :
-                hasCQ ? QString("Calling CQ (%1)").arg(since(d.cqTimestamp)) :
-                hasThrough ? QString("Heard Through Relay (%1)").arg(d.through) :
-                "");
+                hasMessage     ? "Message Available" :
+                    hasACK     ? QString("Hearing Your Station (%1)").arg(since(d.ackTimestamp)) :
+                    hasCQ      ? QString("Calling CQ (%1)").arg(since(d.cqTimestamp)) :
+                    hasThrough ? QString("Heard Through Relay (%1)").arg(d.through) :
+                                 "");
             iconItem->setTextAlignment(Qt::AlignCenter);
             ui->tableWidgetCalls->setItem(row, col++, iconItem);
-            if(hasMessage || hasACK || hasCQ || hasThrough){
+            if (hasMessage || hasACK || hasCQ || hasThrough) {
                 showIconColumn = true;
             }
 
@@ -10600,9 +11193,9 @@ void MainWindow::displayCallActivity() {
             ui->tableWidgetCalls->setItem(row, col++, displayItem);
 
 #if ONLY_SHOW_HEARD_CALLSIGNS
-            if(d.utcTimestamp.isValid()){
+            if (d.utcTimestamp.isValid()) {
 #else
-            if(true){
+            if (true) {
 #endif
                 auto ageItem = new QTableWidgetItem(since(d.utcTimestamp));
                 ageItem->setTextAlignment(Qt::AlignCenter);
@@ -10610,7 +11203,8 @@ void MainWindow::displayCallActivity() {
                 ui->tableWidgetCalls->setItem(row, col++, ageItem);
 
                 auto snrText = Varicode::formatSNR(d.snr);
-                auto snrItem = new QTableWidgetItem(snrText.isEmpty() ? "" : QString(columnLabel("%1 dB")).arg(snrText));
+                auto snrItem = new QTableWidgetItem(
+                    snrText.isEmpty() ? "" : QString(columnLabel("%1 dB")).arg(snrText));
                 snrItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetCalls->setItem(row, col++, snrItem);
 
@@ -10619,7 +11213,8 @@ void MainWindow::displayCallActivity() {
                 offsetItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetCalls->setItem(row, col++, offsetItem);
 
-                auto tdriftItem = new QTableWidgetItem(QString(columnLabel("%1 ms")).arg((int)(1000*d.tdrift)));
+                auto tdriftItem = new QTableWidgetItem(
+                    QString(columnLabel("%1 ms")).arg((int)(1000 * d.tdrift)));
                 tdriftItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetCalls->setItem(row, col++, tdriftItem);
 
@@ -10635,19 +11230,21 @@ void MainWindow::displayCallActivity() {
                 ui->tableWidgetCalls->setItem(row, col++, gridItem);
 
                 auto const vector = Geodesic::vector(m_config.my_grid(), d.grid);
-                auto const units  = !showColumn("call", "labels");
+                auto const units = !showColumn("call", "labels");
 
-                auto distanceItem = new QTableWidgetItem(vector.distance().toString(m_config.miles(), units));
+                auto distanceItem
+                    = new QTableWidgetItem(vector.distance().toString(m_config.miles(), units));
                 distanceItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetCalls->setItem(row, col++, distanceItem);
 
                 auto azimuthItem = new QTableWidgetItem(vector.azimuth().toString(units));
-                if (auto const azimuth = vector.azimuth()) azimuthItem->setToolTip(azimuth.compass().toString());
+                if (auto const azimuth = vector.azimuth())
+                    azimuthItem->setToolTip(azimuth.compass().toString());
                 azimuthItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetCalls->setItem(row, col++, azimuthItem);
 
                 QString flag;
-                if(m_logBook.hasWorkedBefore(d.call, "")){
+                if (m_logBook.hasWorkedBefore(d.call, "")) {
                     // unicode checkmark
                     flag = "\u2713";
                 }
@@ -10661,31 +11258,38 @@ void MainWindow::displayCallActivity() {
                 QString logDetailComment;
                 bool gridItemEmpty = gridItem->text().isEmpty();
 
-                if((gridItemEmpty && showColumn("call", "grid")) || showColumn("call", "log") || showColumn("call", "logName") || showColumn("call", "logComment")){
-                    m_logBook.findCallDetails(d.call, logDetailGrid, logDetailDate, logDetailName, logDetailComment);
+                if ((gridItemEmpty && showColumn("call", "grid")) || showColumn("call", "log")
+                    || showColumn("call", "logName") || showColumn("call", "logComment")) {
+                    m_logBook.findCallDetails(d.call,
+                                              logDetailGrid,
+                                              logDetailDate,
+                                              logDetailName,
+                                              logDetailComment);
                 }
 
-                if(gridItemEmpty && !logDetailGrid.isEmpty()){
+                if (gridItemEmpty && !logDetailGrid.isEmpty()) {
                     gridItem->setText(logDetailGrid.trimmed().left(4));
                     gridItem->setToolTip(logDetailGrid.trimmed());
 
                     auto const vector = Geodesic::vector(m_config.my_grid(), d.grid);
-                    auto const units  = !showColumn("call", "labels");
+                    auto const units = !showColumn("call", "labels");
 
                     distanceItem->setText(vector.distance().toString(m_config.miles(), units));
                     azimuthItem->setText(vector.azimuth().toString(units));
-                    if (auto const azimuth = vector.azimuth()) azimuthItem->setToolTip(azimuth.compass().toString());
+                    if (auto const azimuth = vector.azimuth())
+                        azimuthItem->setToolTip(azimuth.compass().toString());
 
                     // update the call activity cache with the loaded grid
-                    if(m_callActivity.contains(d.call)){
+                    if (m_callActivity.contains(d.call)) {
                         m_callActivity[call].grid = logDetailGrid.trimmed();
                     }
                 }
 
-                if(!logDetailDate.isEmpty()){
+                if (!logDetailDate.isEmpty()) {
                     auto lastLogged = QDate::fromString(logDetailDate, "yyyyMMdd");
 
-                    workedBeforeItem->setToolTip(QString("Last Logged: %1").arg(lastLogged.toString()));
+                    workedBeforeItem->setToolTip(
+                        QString("Last Logged: %1").arg(lastLogged.toString()));
                 }
 
                 auto logNameItem = new QTableWidgetItem(logDetailName);
@@ -10707,38 +11311,43 @@ void MainWindow::displayCallActivity() {
                 ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // grid
                 ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // distance
                 ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // azimuth
-                ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // worked before
+                ui->tableWidgetCalls->setItem(row,
+                                              col++,
+                                              new QTableWidgetItem("")); // worked before
                 ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // log name
                 ui->tableWidgetCalls->setItem(row, col++, new QTableWidgetItem("")); // log comment
             }
 
             if (isCallSelected) {
-                for(int i = 0; i < ui->tableWidgetCalls->columnCount(); i++){
+                for (int i = 0; i < ui->tableWidgetCalls->columnCount(); i++) {
                     ui->tableWidgetCalls->item(row, i)->setSelected(true);
                 }
             }
 
-            if(hasCQ){
-                for(int i = 0; i < ui->tableWidgetCalls->columnCount(); i++){
+            if (hasCQ) {
+                for (int i = 0; i < ui->tableWidgetCalls->columnCount(); i++) {
                     ui->tableWidgetCalls->item(row, i)->setBackground(QBrush(m_config.color_CQ()));
                 }
             }
 
-            if (m_config.secondary_highlight_words().contains(call)){
-                for(int i = 0; i < ui->tableWidgetCalls->columnCount(); i++){
-                    ui->tableWidgetCalls->item(row, i)->setBackground(QBrush(m_config.color_secondary_highlight()));
+            if (m_config.secondary_highlight_words().contains(call)) {
+                for (int i = 0; i < ui->tableWidgetCalls->columnCount(); i++) {
+                    ui->tableWidgetCalls->item(row, i)->setBackground(
+                        QBrush(m_config.color_secondary_highlight()));
                 }
             }
 
-            if (m_config.primary_highlight_words().contains(call)){
-                for(int i = 0; i < ui->tableWidgetCalls->columnCount(); i++){
-                    ui->tableWidgetCalls->item(row, i)->setBackground(QBrush(m_config.color_primary_highlight()));
+            if (m_config.primary_highlight_words().contains(call)) {
+                for (int i = 0; i < ui->tableWidgetCalls->columnCount(); i++) {
+                    ui->tableWidgetCalls->item(row, i)->setBackground(
+                        QBrush(m_config.color_primary_highlight()));
                 }
             }
         }
 
         // Set table color
-        auto style = QString("QTableWidget { background:%1; selection-background-color:%2; alternate-background-color:%1; color:%3; } "
+        auto style = QString("QTableWidget { background:%1; selection-background-color:%2; "
+                             "alternate-background-color:%1; color:%3; } "
                              "QTableWidget::item:selected { background-color: %2; color: %3; }");
         style = style.arg(m_config.color_table_background().name());
         style = style.arg(m_config.color_table_highlight().name());
@@ -10749,17 +11358,19 @@ void MainWindow::displayCallActivity() {
         auto p = ui->tableWidgetCalls->palette();
         p.setColor(QPalette::Highlight, m_config.color_table_highlight());
         p.setColor(QPalette::HighlightedText, m_config.color_table_foreground());
-        p.setColor(QPalette::Inactive, QPalette::Highlight, p.color(QPalette::Active, QPalette::Highlight));
+        p.setColor(QPalette::Inactive,
+                   QPalette::Highlight,
+                   p.color(QPalette::Active, QPalette::Highlight));
         ui->tableWidgetCalls->setPalette(p);
 
         // Set item fonts
-        for(int row = 0; row < ui->tableWidgetCalls->rowCount(); row++){
-            auto bold = ui->tableWidgetCalls->item(row,  0)->text() == "\u2691";
-            for(int col = 0; col < ui->tableWidgetCalls->columnCount(); col++){
+        for (int row = 0; row < ui->tableWidgetCalls->rowCount(); row++) {
+            auto bold = ui->tableWidgetCalls->item(row, 0)->text() == "\u2691";
+            for (int col = 0; col < ui->tableWidgetCalls->columnCount(); col++) {
                 auto item = ui->tableWidgetCalls->item(row, col);
-                if(item){
+                if (item) {
                     auto f = m_config.table_font();
-                    if(bold){
+                    if (bold) {
                         f.setBold(true);
                     }
                     item->setFont(f);
@@ -10805,68 +11416,75 @@ void MainWindow::displayCallActivity() {
     ui->tableWidgetCalls->setUpdatesEnabled(true);
 }
 
-void MainWindow::emitPTT(bool on){
+void MainWindow::emitPTT(bool on)
+{
     qCDebug(mainwindow_js8) << "Setting PTT to" << (on ? "on" : "off");
 
     Q_EMIT m_config.transceiver_ptt(on);
 
     // emit to network
-    sendNetworkMessage("RIG.PTT", on ? "on" : "off", {
-        {"_ID", QVariant(-1)},
-        {"PTT", QVariant(on)},
-        {"UTC", QVariant(DriftingDateTime::currentDateTimeUtc().toMSecsSinceEpoch())},
+    sendNetworkMessage(
+        "RIG.PTT",
+        on ? "on" : "off",
+        {
+            { "_ID", QVariant(-1)                                                         },
+            { "PTT", QVariant(on)                                                         },
+            { "UTC", QVariant(DriftingDateTime::currentDateTimeUtc().toMSecsSinceEpoch()) },
     });
 }
 
-void MainWindow::emitTones(){
-    if(!canSendNetworkMessage()){
+void MainWindow::emitTones()
+{
+    if (!canSendNetworkMessage()) {
         return;
     }
 
     // emit tone numbers to network
     QVariantList t;
-    for(int i = 0; i < JS8_NUM_SYMBOLS; i++){
+    for (int i = 0; i < JS8_NUM_SYMBOLS; i++) {
         //qCDebug(mainwindow_js8) << "tone" << i << "=" << itone[i];
         t.append(QVariant((int)itone[i]));
     }
 
-    sendNetworkMessage("TX.FRAME", "", {
-        {"_ID", QVariant(-1)},
-        {"TONES", t}
+    sendNetworkMessage("TX.FRAME",
+                       "",
+                       {
+                           { "_ID",   QVariant(-1) },
+                           { "TONES", t            }
     });
 }
 
-void MainWindow::udpNetworkMessage(Message const &message)
+void MainWindow::udpNetworkMessage(Message const& message)
 {
-    if(!m_config.udpEnabled()){
+    if (!m_config.udpEnabled()) {
         return;
     }
 
-    if(!m_config.accept_udp_requests()){
+    if (!m_config.accept_udp_requests()) {
         return;
     }
 
     networkMessage(message);
 }
 
-void MainWindow::tcpNetworkMessage(Message const &message)
+void MainWindow::tcpNetworkMessage(Message const& message)
 {
-    if(!m_config.tcpEnabled()){
+    if (!m_config.tcpEnabled()) {
         return;
     }
 
-    if(!m_config.accept_tcp_requests()){
+    if (!m_config.accept_tcp_requests()) {
         return;
     }
 
     networkMessage(message);
 }
 
-void MainWindow::networkMessage(Message const &message)
+void MainWindow::networkMessage(Message const& message)
 {
     auto type = message.type();
 
-    if(type == "PING"){
+    if (type == "PING") {
         return;
     }
 
@@ -10886,30 +11504,32 @@ void MainWindow::networkMessage(Message const &message)
 
     // RIG.GET_FREQ - Get the current Frequency
     // RIG.SET_FREQ - Set the current Frequency
-    if(type == "RIG.GET_FREQ"){
-        sendNetworkMessage("RIG.FREQ", "", {
-            {"_ID", id},
-            {"FREQ", QVariant((quint64)dialFrequency() + freq())},
-            {"DIAL", QVariant((quint64)dialFrequency())},
-            {"OFFSET", QVariant((quint64)freq())}
+    if (type == "RIG.GET_FREQ") {
+        sendNetworkMessage("RIG.FREQ",
+                           "",
+                           {
+                               { "_ID",    id                                          },
+                               { "FREQ",   QVariant((quint64)dialFrequency() + freq()) },
+                               { "DIAL",   QVariant((quint64)dialFrequency())          },
+                               { "OFFSET", QVariant((quint64)freq())                   }
         });
         return;
     }
 
-    if(type == "RIG.SET_FREQ"){
+    if (type == "RIG.SET_FREQ") {
         auto params = message.params();
-        if(params.contains("DIAL")){
+        if (params.contains("DIAL")) {
             bool ok = false;
             auto f = params["DIAL"].toInt(&ok);
-            if(ok){
+            if (ok) {
                 setRig(f);
                 displayDialFrequency();
             }
         }
-        if(params.contains("OFFSET")){
+        if (params.contains("OFFSET")) {
             bool ok = false;
             auto f = params["OFFSET"].toInt(&ok);
-            if(ok){
+            if (ok) {
                 setFreqOffsetForRestore(f, false);
             }
         }
@@ -10920,54 +11540,68 @@ void MainWindow::networkMessage(Message const &message)
     // STATION.SET_GRID - Set the current grid locator
     // STATION.GET_INFO - Get the current station qth
     // STATION.SET_INFO - Set the current station qth
-    if(type == "STATION.GET_CALLSIGN"){
-        sendNetworkMessage("STATION.CALLSIGN", m_config.my_callsign(), {
-            {"_ID", id},
+    if (type == "STATION.GET_CALLSIGN") {
+        sendNetworkMessage("STATION.CALLSIGN",
+                           m_config.my_callsign(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.GET_GRID"){
-        sendNetworkMessage("STATION.GRID", m_config.my_grid(), {
-            {"_ID", id},
+    if (type == "STATION.GET_GRID") {
+        sendNetworkMessage("STATION.GRID",
+                           m_config.my_grid(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.SET_GRID"){
+    if (type == "STATION.SET_GRID") {
         m_config.set_dynamic_location(message.value());
-        sendNetworkMessage("STATION.GRID", m_config.my_grid(), {
-            {"_ID", id},
+        sendNetworkMessage("STATION.GRID",
+                           m_config.my_grid(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.GET_INFO"){
-        sendNetworkMessage("STATION.INFO", m_config.my_info(), {
-            {"_ID", id},
+    if (type == "STATION.GET_INFO") {
+        sendNetworkMessage("STATION.INFO",
+                           m_config.my_info(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.SET_INFO"){
+    if (type == "STATION.SET_INFO") {
         m_config.set_dynamic_station_info(message.value());
-        sendNetworkMessage("STATION.INFO", m_config.my_info(), {
-            {"_ID", id},
+        sendNetworkMessage("STATION.INFO",
+                           m_config.my_info(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.GET_STATUS"){
-        sendNetworkMessage("STATION.STATUS", m_config.my_status(), {
-            {"_ID", id},
+    if (type == "STATION.GET_STATUS") {
+        sendNetworkMessage("STATION.STATUS",
+                           m_config.my_status(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "STATION.SET_STATUS"){
+    if (type == "STATION.SET_STATUS") {
         m_config.set_dynamic_station_status(message.value());
-        sendNetworkMessage("STATION.STATUS", m_config.my_status(), {
-            {"_ID", id},
+        sendNetworkMessage("STATION.STATUS",
+                           m_config.my_status(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
@@ -10977,14 +11611,14 @@ void MainWindow::networkMessage(Message const &message)
     // RX.GET_BAND_ACTIVITY
     // RX.GET_TEXT
 
-    if(type == "RX.GET_CALL_ACTIVITY"){
+    if (type == "RX.GET_CALL_ACTIVITY") {
         auto now = DriftingDateTime::currentDateTimeUtc();
         int callsignAging = m_config.callsign_aging();
         QVariantMap calls = {
-            {"_ID", id},
+            { "_ID", id },
         };
 
-        foreach(auto cd, m_callActivity.values()){
+        foreach (auto cd, m_callActivity.values()) {
             if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                 continue;
             }
@@ -10999,30 +11633,32 @@ void MainWindow::networkMessage(Message const &message)
         return;
     }
 
-    if(type == "RX.GET_CALL_SELECTED"){
-        sendNetworkMessage("RX.CALL_SELECTED", callsignSelected(), {
-            {"_ID", id},
+    if (type == "RX.GET_CALL_SELECTED") {
+        sendNetworkMessage("RX.CALL_SELECTED",
+                           callsignSelected(),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "RX.GET_BAND_ACTIVITY"){
+    if (type == "RX.GET_BAND_ACTIVITY") {
         QVariantMap offsets = {
-            {"_ID", id},
+            { "_ID", id },
         };
-        for (auto const [offset, activity] : m_bandActivity.asKeyValueRange())
-        {
-            if (activity.isEmpty()) continue;
+        for (auto const [offset, activity] : m_bandActivity.asKeyValueRange()) {
+            if (activity.isEmpty())
+                continue;
 
             auto const d = activity.last();
 
             offsets[QString("%1").arg(offset)] = QVariant(QVariantMap {
-              { "FREQ",   QVariant(d.dial + d.offset)                  },
-              { "DIAL",   QVariant(d.dial)                             },
-              { "OFFSET", QVariant(d.offset)                           },
-              { "TEXT",   QVariant(d.text)                             },
-              { "SNR",    QVariant(d.snr)                              },
-              { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
+                { "FREQ",   QVariant(d.dial + d.offset)                  },
+                { "DIAL",   QVariant(d.dial)                             },
+                { "OFFSET", QVariant(d.offset)                           },
+                { "TEXT",   QVariant(d.text)                             },
+                { "SNR",    QVariant(d.snr)                              },
+                { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
             });
         }
 
@@ -11030,9 +11666,11 @@ void MainWindow::networkMessage(Message const &message)
         return;
     }
 
-    if(type == "RX.GET_TEXT"){
-        sendNetworkMessage("RX.TEXT", ui->textEditRX->toPlainText().right(1024), {
-            {"_ID", id},
+    if (type == "RX.GET_TEXT") {
+        sendNetworkMessage("RX.TEXT",
+                           ui->textEditRX->toPlainText().right(1024),
+                           {
+                               { "_ID", id },
         });
         return;
     }
@@ -11041,24 +11679,28 @@ void MainWindow::networkMessage(Message const &message)
     // TX.SET_TEXT
     // TX.SEND_MESSAGE
 
-    if(type == "TX.GET_TEXT"){
-        sendNetworkMessage("TX.TEXT", ui->extFreeTextMsgEdit->toPlainText().right(1024), {
-            {"_ID", id},
+    if (type == "TX.GET_TEXT") {
+        sendNetworkMessage("TX.TEXT",
+                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "TX.SET_TEXT"){
+    if (type == "TX.SET_TEXT") {
         addMessageText(message.value(), true);
-        sendNetworkMessage("TX.TEXT", ui->extFreeTextMsgEdit->toPlainText().right(1024), {
-            {"_ID", id},
+        sendNetworkMessage("TX.TEXT",
+                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
+                           {
+                               { "_ID", id },
         });
         return;
     }
 
-    if(type == "TX.SEND_MESSAGE"){
+    if (type == "TX.SEND_MESSAGE") {
         auto text = message.value();
-        if(!text.isEmpty()){
+        if (!text.isEmpty()) {
             enqueueMessage(PriorityNormal, text, -1, nullptr);
             processTxQueue();
             return;
@@ -11067,76 +11709,90 @@ void MainWindow::networkMessage(Message const &message)
 
     // MODE.GET_SPEED
     // MODE.SET_SPEED
-    if(type == "MODE.GET_SPEED"){
-        sendNetworkMessage("MODE.SPEED", "", {
-            {"_ID", id},
-            {"SPEED", m_nSubMode},
+    if (type == "MODE.GET_SPEED") {
+        sendNetworkMessage("MODE.SPEED",
+                           "",
+                           {
+                               { "_ID",   id         },
+                               { "SPEED", m_nSubMode },
         });
         return;
     }
 
-    if(type == "MODE.SET_SPEED"){
-        auto       ok    = false;
+    if (type == "MODE.SET_SPEED") {
+        auto ok = false;
         auto const speed = message.params().value("SPEED", QVariant(m_nSubMode)).toInt(&ok);
         if (ok) {
-            if      (speed == Varicode::JS8CallNormal) ui->actionModeJS8Normal->setChecked(true);
-            else if (speed == Varicode::JS8CallFast)   ui->actionModeJS8Fast->setChecked(true);
-            else if (speed == Varicode::JS8CallTurbo)  ui->actionModeJS8Turbo->setChecked(true);
-            else if (speed == Varicode::JS8CallSlow)   ui->actionModeJS8Slow->setChecked(true);
-            else if (speed == Varicode::JS8CallUltra)  ui->actionModeJS8Ultra->setChecked(true);
+            if (speed == Varicode::JS8CallNormal)
+                ui->actionModeJS8Normal->setChecked(true);
+            else if (speed == Varicode::JS8CallFast)
+                ui->actionModeJS8Fast->setChecked(true);
+            else if (speed == Varicode::JS8CallTurbo)
+                ui->actionModeJS8Turbo->setChecked(true);
+            else if (speed == Varicode::JS8CallSlow)
+                ui->actionModeJS8Slow->setChecked(true);
+            else if (speed == Varicode::JS8CallUltra)
+                ui->actionModeJS8Ultra->setChecked(true);
             setupJS8();
         }
-        sendNetworkMessage("MODE.SPEED", "", {
-            {"_ID", id},
-            {"SPEED", m_nSubMode},
+        sendNetworkMessage("MODE.SPEED",
+                           "",
+                           {
+                               { "_ID",   id         },
+                               { "SPEED", m_nSubMode },
         });
         return;
     }
 
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
-    if(type == "INBOX.GET_MESSAGES"){
+    if (type == "INBOX.GET_MESSAGES") {
         QString selectedCall = message.params().value("CALLSIGN", "").toString();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             selectedCall = "%";
         }
 
         Inbox inbox(inboxPath());
-        if(!inbox.open()){
+        if (!inbox.open()) {
             return;
         }
 
-        QList<QPair<int, Message> > msgs;
+        QList<QPair<int, Message>> msgs;
         msgs.append(inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
         msgs.append(inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
-        foreach(auto pair, inbox.values("UNREAD", "$.params.FROM", selectedCall, 0, 1000)){
+        foreach (auto pair, inbox.values("UNREAD", "$.params.FROM", selectedCall, 0, 1000)) {
             msgs.append(pair);
         }
-        std::stable_sort(msgs.begin(), msgs.end(), [](QPair<int, Message> const &a, QPair<int, Message> const &b){
-            return QVariant::compare(a.second.params().value("UTC"),
-                                     b.second.params().value("UTC")) == QPartialOrdering::Greater;
-        });
+        std::stable_sort(msgs.begin(),
+                         msgs.end(),
+                         [](QPair<int, Message> const& a, QPair<int, Message> const& b) {
+                             return QVariant::compare(a.second.params().value("UTC"),
+                                                      b.second.params().value("UTC"))
+                                 == QPartialOrdering::Greater;
+                         });
 
         QVariantList l;
-        foreach(auto pair, msgs){
+        foreach (auto pair, msgs) {
             l << pair.second.toVariantMap();
         }
 
-        sendNetworkMessage("INBOX.MESSAGES", "", {
-            {"_ID", id},
-            {"MESSAGES", l},
+        sendNetworkMessage("INBOX.MESSAGES",
+                           "",
+                           {
+                               { "_ID",      id },
+                               { "MESSAGES", l  },
         });
         return;
     }
 
-    if(type == "INBOX.STORE_MESSAGE"){
+    if (type == "INBOX.STORE_MESSAGE") {
         QString selectedCall = message.params().value("CALLSIGN", "").toString();
-        if(selectedCall.isEmpty()){
+        if (selectedCall.isEmpty()) {
             return;
         }
 
         QString text = message.params().value("TEXT", "").toString();
-        if(text.isEmpty()){
+        if (text.isEmpty()) {
             return;
         }
 
@@ -11151,16 +11807,18 @@ void MainWindow::networkMessage(Message const &message)
 
         auto mid = addCommandToStorage("STORE", d);
 
-        sendNetworkMessage("INBOX.MESSAGE", "", {
-            {"_ID", id},
-            {"ID", mid},
+        sendNetworkMessage("INBOX.MESSAGE",
+                           "",
+                           {
+                               { "_ID", id  },
+                               { "ID",  mid },
         });
         return;
     }
 
     // WINDOW.RAISE
 
-    if(type == "WINDOW.RAISE"){
+    if (type == "WINDOW.RAISE") {
         setWindowState(Qt::WindowActive);
         activateWindow();
         raise();
@@ -11170,317 +11828,306 @@ void MainWindow::networkMessage(Message const &message)
     qCDebug(mainwindow_js8) << "Unable to process networkMessage:" << type;
 }
 
-bool MainWindow::canSendNetworkMessage(){
+bool MainWindow::canSendNetworkMessage()
+{
     return m_config.udpEnabled() || m_config.tcpEnabled();
 }
 
-void MainWindow::sendNetworkMessage(QString const &type, QString const &message){
-    if(!canSendNetworkMessage()){
+void MainWindow::sendNetworkMessage(QString const& type, QString const& message)
+{
+    if (!canSendNetworkMessage()) {
         return;
     }
 
     auto m = Message(type, message);
 
-    if(m_config.udpEnabled()){
+    if (m_config.udpEnabled()) {
         m_messageClient->send(m);
     }
 
-    if(m_config.tcpEnabled()){
+    if (m_config.tcpEnabled()) {
         m_messageServer->send(m);
     }
 }
 
-void MainWindow::sendNetworkMessage(QString const &type, QString const &message, QVariantMap const &params)
+void MainWindow::sendNetworkMessage(QString const& type,
+                                    QString const& message,
+                                    QVariantMap const& params)
 {
-    if(!canSendNetworkMessage()){
+    if (!canSendNetworkMessage()) {
         return;
     }
 
     auto m = Message(type, message, params);
 
-    if(m_config.udpEnabled()){
+    if (m_config.udpEnabled()) {
         m_messageClient->send(m);
     }
 
-    if(m_config.tcpEnabled()){
+    if (m_config.tcpEnabled()) {
         m_messageServer->send(m);
     }
 }
 
-void
-MainWindow::pskReporterError(QString const & message)
+void MainWindow::pskReporterError(QString const& message)
 {
-  qCDebug(mainwindow_js8) << "PSK Reporter Error:" << message;
+    qCDebug(mainwindow_js8) << "PSK Reporter Error:" << message;
 
-  showStatusMessage (tr ("Spotting to PSK Reporter unavailable"));
+    showStatusMessage(tr("Spotting to PSK Reporter unavailable"));
 }
 
-void MainWindow::setRig (Frequency f)
+void MainWindow::setRig(Frequency f)
 {
-	if (f)
-	{
-		m_freqNominal = f;
-		m_freqTxNominal = m_freqNominal + m_XIT;
-	}
+    if (f) {
+        m_freqNominal = f;
+        m_freqTxNominal = m_freqNominal + m_XIT;
+    }
 
-	if(m_transmitting && !m_config.tx_qsy_allowed ()) return;
+    if (m_transmitting && !m_config.tx_qsy_allowed())
+        return;
 
-	if ((m_monitoring || m_transmitting) && m_config.transceiver_online ())
-	{
-		if (m_config.split_mode ())
-		{
-			Q_EMIT m_config.transceiver_tx_frequency (m_freqTxNominal);
-		}
+    if ((m_monitoring || m_transmitting) && m_config.transceiver_online()) {
+        if (m_config.split_mode()) {
+            Q_EMIT m_config.transceiver_tx_frequency(m_freqTxNominal);
+        }
 
-		Q_EMIT m_config.transceiver_frequency (m_freqNominal);
-	}
+        Q_EMIT m_config.transceiver_frequency(m_freqNominal);
+    }
 }
 
-void MainWindow::statusUpdate ()
+void MainWindow::statusUpdate()
 {
-    if(canSendNetworkMessage()){
-        sendNetworkMessage("STATION.STATUS", "", {
-            {"FREQ", QVariant(dialFrequency() + freq())},
-            {"DIAL", QVariant(dialFrequency())},
-            {"OFFSET", QVariant(freq())},
-            {"SPEED", QVariant(m_nSubMode)},
-            {"SELECTED", QVariant(callsignSelected())},
+    if (canSendNetworkMessage()) {
+        sendNetworkMessage("STATION.STATUS",
+                           "",
+                           {
+                               { "FREQ",     QVariant(dialFrequency() + freq()) },
+                               { "DIAL",     QVariant(dialFrequency())          },
+                               { "OFFSET",   QVariant(freq())                   },
+                               { "SPEED",    QVariant(m_nSubMode)               },
+                               { "SELECTED", QVariant(callsignSelected())       },
         });
     }
 }
 
-void MainWindow::childEvent (QChildEvent * e)
+void MainWindow::childEvent(QChildEvent* e)
 {
-  if (e->child ()->isWidgetType ())
-    {
-      switch (e->type ())
-        {
-        case QEvent::ChildAdded: add_child_to_event_filter (e->child ()); break;
-        case QEvent::ChildRemoved: remove_child_from_event_filter (e->child ()); break;
+    if (e->child()->isWidgetType()) {
+        switch (e->type()) {
+        case QEvent::ChildAdded: add_child_to_event_filter(e->child()); break;
+        case QEvent::ChildRemoved: remove_child_from_event_filter(e->child()); break;
         default: break;
         }
     }
-  QMainWindow::childEvent (e);
+    QMainWindow::childEvent(e);
 }
 
 // add widget and any child widgets to our event filter so that we can
 // take action on key press ad mouse press events anywhere in the main window
-void MainWindow::add_child_to_event_filter (QObject * target)
+void MainWindow::add_child_to_event_filter(QObject* target)
 {
-  if (target && target->isWidgetType ())
-    {
-      target->installEventFilter (this);
+    if (target && target->isWidgetType()) {
+        target->installEventFilter(this);
     }
-  auto const& children = target->children ();
-  for (auto iter = children.begin (); iter != children.end (); ++iter)
-    {
-      add_child_to_event_filter (*iter);
+    auto const& children = target->children();
+    for (auto iter = children.begin(); iter != children.end(); ++iter) {
+        add_child_to_event_filter(*iter);
     }
 }
 
 // recursively remove widget and any child widgets from our event filter
-void MainWindow::remove_child_from_event_filter (QObject * target)
+void MainWindow::remove_child_from_event_filter(QObject* target)
 {
-  auto const& children = target->children ();
-  for (auto iter = children.begin (); iter != children.end (); ++iter)
-    {
-      remove_child_from_event_filter (*iter);
+    auto const& children = target->children();
+    for (auto iter = children.begin(); iter != children.end(); ++iter) {
+        remove_child_from_event_filter(*iter);
     }
-  if (target && target->isWidgetType ())
-    {
-      target->removeEventFilter (this);
+    if (target && target->isWidgetType()) {
+        target->removeEventFilter(this);
     }
 }
 
-void MainWindow::resetIdleTimer(){
-    if(m_idleMinutes){
-      m_idleMinutes = 0;
-      qCDebug(mainwindow_js8) << "idle" << m_idleMinutes << "minutes";
+void MainWindow::resetIdleTimer()
+{
+    if (m_idleMinutes) {
+        m_idleMinutes = 0;
+        qCDebug(mainwindow_js8) << "idle" << m_idleMinutes << "minutes";
     }
 }
 
-void MainWindow::incrementIdleTimer(){
+void MainWindow::incrementIdleTimer()
+{
     m_idleMinutes++;
     qCDebug(mainwindow_js8) << "increment idle to" << m_idleMinutes << "minutes";
 }
 
-void MainWindow::tx_watchdog (bool triggered)
+void MainWindow::tx_watchdog(bool triggered)
 {
-  auto prior = m_tx_watchdog;
-  m_tx_watchdog = triggered;
-  if (triggered)
-    {
-      m_isTimeToSend=false;
-      if (m_tune) stop_tuning ();
-      if (m_auto) auto_tx_mode (false);
-      stopTx();
-      tx_status_label.setStyleSheet ("QLabel{background-color: #000000; color:#ffffff; }");
-      tx_status_label.setText ("Idle timeout");
+    auto prior = m_tx_watchdog;
+    m_tx_watchdog = triggered;
+    if (triggered) {
+        m_isTimeToSend = false;
+        if (m_tune)
+            stop_tuning();
+        if (m_auto)
+            auto_tx_mode(false);
+        stopTx();
+        tx_status_label.setStyleSheet("QLabel{background-color: #000000; color:#ffffff; }");
+        tx_status_label.setText("Idle timeout");
 
-      // if the watchdog is triggered...we're no longer active
-      bool wasAuto = ui->actionModeAutoreply->isChecked();
-      bool wasHB = ui->hbMacroButton->isChecked();
-      bool wasCQ = ui->cqMacroButton->isChecked();
+        // if the watchdog is triggered...we're no longer active
+        bool wasAuto = ui->actionModeAutoreply->isChecked();
+        bool wasHB = ui->hbMacroButton->isChecked();
+        bool wasCQ = ui->cqMacroButton->isChecked();
 
-      // save the button states
-      ui->actionModeAutoreply->setChecked(false);
-      qCDebug(mainwindow_js8) << "Unchecking the hbMacroButton and cqMacroButton from TX watchdog.";
-      ui->hbMacroButton->setChecked(false);
-      ui->cqMacroButton->setChecked(false);
+        // save the button states
+        ui->actionModeAutoreply->setChecked(false);
+        qCDebug(mainwindow_js8)
+            << "Unchecking the hbMacroButton and cqMacroButton from TX watchdog.";
+        ui->hbMacroButton->setChecked(false);
+        ui->cqMacroButton->setChecked(false);
 
-      // clear the tx queues
-      resetMessageTransmitQueue();
+        // clear the tx queues
+        resetMessageTransmitQueue();
 
-      QMessageBox * msgBox = new QMessageBox(this);
-      msgBox->setIcon(QMessageBox::Information);
-      msgBox->setWindowTitle("Idle Timeout");
-      msgBox->setInformativeText(QString("You have been idle for more than %1 minutes.").arg(m_config.watchdog()));
-      msgBox->addButton(QMessageBox::Ok);
+        QMessageBox* msgBox = new QMessageBox(this);
+        msgBox->setIcon(QMessageBox::Information);
+        msgBox->setWindowTitle("Idle Timeout");
+        msgBox->setInformativeText(
+            QString("You have been idle for more than %1 minutes.").arg(m_config.watchdog()));
+        msgBox->addButton(QMessageBox::Ok);
 
-      connect(msgBox, &QMessageBox::finished, this, [this, wasAuto, wasHB, wasCQ](int /*result*/) {
-          // restore the button states
-          ui->actionModeAutoreply->setChecked(wasAuto);
-          ui->hbMacroButton->setChecked(wasHB);
-          ui->cqMacroButton->setChecked(wasCQ);
+        connect(msgBox,
+                &QMessageBox::finished,
+                this,
+                [this, wasAuto, wasHB, wasCQ](int /*result*/) {
+                    // restore the button states
+                    ui->actionModeAutoreply->setChecked(wasAuto);
+                    ui->hbMacroButton->setChecked(wasHB);
+                    ui->cqMacroButton->setChecked(wasCQ);
 
-          this->tx_watchdog(false);
-      });
-      msgBox->setModal(true);
-      msgBox->show();
+                    this->tx_watchdog(false);
+                });
+        msgBox->setModal(true);
+        msgBox->show();
     }
-  if (prior != triggered) statusUpdate ();
+    if (prior != triggered)
+        statusUpdate();
 }
 
-void MainWindow::write_frequency_entry (QString const& file_name){
-  if(!m_config.write_logs()){
-      return;
-  }
-
-  // Write freq changes to ALL.TXT only below 30 MHz.
-  QFile f2 {m_config.writeable_data_dir ().absoluteFilePath (file_name)};
-  if (f2.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
-    QTextStream out(&f2);
-    out << DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss")
-        << "  " << qSetRealNumberPrecision (12) << (m_freqNominal / 1.e6) << " MHz  "
-        << "JS8" << Qt::endl;
-    f2.close();
-  } else {
-    QTimer::singleShot(0, [
-      this,
-      message = tr("Cannot open \"%1\" for append: %2").arg(f2.fileName()).arg(f2.errorString())
-    ]{
-      MessageBox::warning_message(this, tr("Log File Error"), message);
-    });
-  }
-}
-
-void MainWindow::write_transmit_entry (QString const& file_name)
+void MainWindow::write_frequency_entry(QString const& file_name)
 {
-  if(!m_config.write_logs()){
-      return;
-  }
-
-  QFile f {m_config.writeable_data_dir ().absoluteFilePath (file_name)};
-  if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
-    {
-      QTextStream out(&f);
-      auto time = DriftingDateTime::currentDateTimeUtc ();
-      time = time.addSecs (-(time.time ().second () % m_TRperiod));
-      auto dt = DecodedText(m_currentMessage, m_currentMessageBits, m_nSubMode);
-      out << time.toString("yyyy-MM-dd hh:mm:ss")
-          << "  Transmitting " << qSetRealNumberPrecision (12) << (m_freqNominal / 1.e6)
-          << " MHz  " << "JS8"
-          << ":  " << dt.message() << Qt::endl;
-      f.close();
+    if (!m_config.write_logs()) {
+        return;
     }
-  else
-    {
-      QTimer::singleShot(0, [
-        this,
-        message = tr("Cannot open \"%1\" for append: %2").arg(f.fileName()).arg(f.errorString())
-      ] {
-        MessageBox::warning_message(this, tr("Log File Error"), message);
-      });
+
+    // Write freq changes to ALL.TXT only below 30 MHz.
+    QFile f2 { m_config.writeable_data_dir().absoluteFilePath(file_name) };
+    if (f2.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        QTextStream out(&f2);
+        out << DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss") << "  "
+            << qSetRealNumberPrecision(12) << (m_freqNominal / 1.e6) << " MHz  "
+            << "JS8" << Qt::endl;
+        f2.close();
+    } else {
+        QTimer::singleShot(
+            0,
+            [this,
+             message
+             = tr("Cannot open \"%1\" for append: %2").arg(f2.fileName()).arg(f2.errorString())] {
+                MessageBox::warning_message(this, tr("Log File Error"), message);
+            });
     }
 }
 
-
-void
-MainWindow::writeAllTxt(QStringView message)
+void MainWindow::write_transmit_entry(QString const& file_name)
 {
-  if (!m_config.write_logs()) return;
-
-  // Write decoded text to file "ALL.TXT".
-
-  QFile f {m_config.writeable_data_dir().absoluteFilePath("ALL.TXT")};
-
-  if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
-  {
-    QTextStream out(&f);
-
-    if (m_RxLog == 1)
-    {
-      out << DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss")
-          << "  "
-          << qSetRealNumberPrecision(12)
-          << (m_freqNominal / 1.e6)
-          << " MHz  JS8"
-          << Qt::endl;
-
-      m_RxLog = 0;
+    if (!m_config.write_logs()) {
+        return;
     }
 
-    out << message << Qt::endl;
-
-    f.close();
-  }
-  else
-  {
-    MessageBox::warning_message(this,
-                               tr("File Open Error"),
-                               tr("Cannot open \"%1\" for append: %2")
-                               .arg(f.fileName())
-                               .arg(f.errorString()));
-  }
-}
-
-void
-MainWindow::writeMsgTxt(QStringView message,
-                        int         snr)
-{
-  if (!m_config.write_logs()) return;
-
-  // Write decoded text to file "DIRECTED.TXT".
-
-  QFile f {m_config.writeable_data_dir().absoluteFilePath("DIRECTED.TXT")};
-
-  if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
-  {
-      QTextStream out(&f);
-      QString     output = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss")
-                  % "\t" % Radio::frequency_MHz_string(m_freqNominal)
-                  % "\t" % QString::number(freq())
-                  % "\t" % Varicode::formatSNR(snr)
-                  % "\t" % message;
-
-      out << output << Qt::endl;
-
-      f.close();
-    }
-    else
-    {
-      MessageBox::warning_message(this,
-                                  tr("File Open Error"),
-                                  tr("Cannot open \"%1\" for append: %2")
-                                  .arg(f.fileName())
-                                  .arg(f.errorString()));
+    QFile f { m_config.writeable_data_dir().absoluteFilePath(file_name) };
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        QTextStream out(&f);
+        auto time = DriftingDateTime::currentDateTimeUtc();
+        time = time.addSecs(-(time.time().second() % m_TRperiod));
+        auto dt = DecodedText(m_currentMessage, m_currentMessageBits, m_nSubMode);
+        out << time.toString("yyyy-MM-dd hh:mm:ss") << "  Transmitting "
+            << qSetRealNumberPrecision(12) << (m_freqNominal / 1.e6) << " MHz  " << "JS8"
+            << ":  " << dt.message() << Qt::endl;
+        f.close();
+    } else {
+        QTimer::singleShot(
+            0,
+            [this,
+             message
+             = tr("Cannot open \"%1\" for append: %2").arg(f.fileName()).arg(f.errorString())] {
+                MessageBox::warning_message(this, tr("Log File Error"), message);
+            });
     }
 }
 
-QByteArray
-MainWindow::wisdomFileName() const
+void MainWindow::writeAllTxt(QStringView message)
 {
-  return QDir::toNativeSeparators(m_config.writeable_data_dir().absoluteFilePath("js8call_wisdom.dat")).toLocal8Bit();
+    if (!m_config.write_logs())
+        return;
+
+    // Write decoded text to file "ALL.TXT".
+
+    QFile f { m_config.writeable_data_dir().absoluteFilePath("ALL.TXT") };
+
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        QTextStream out(&f);
+
+        if (m_RxLog == 1) {
+            out << DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss") << "  "
+                << qSetRealNumberPrecision(12) << (m_freqNominal / 1.e6) << " MHz  JS8" << Qt::endl;
+
+            m_RxLog = 0;
+        }
+
+        out << message << Qt::endl;
+
+        f.close();
+    } else {
+        MessageBox::warning_message(
+            this,
+            tr("File Open Error"),
+            tr("Cannot open \"%1\" for append: %2").arg(f.fileName()).arg(f.errorString()));
+    }
+}
+
+void MainWindow::writeMsgTxt(QStringView message, int snr)
+{
+    if (!m_config.write_logs())
+        return;
+
+    // Write decoded text to file "DIRECTED.TXT".
+
+    QFile f { m_config.writeable_data_dir().absoluteFilePath("DIRECTED.TXT") };
+
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        QTextStream out(&f);
+        QString output = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd hh:mm:ss")
+            % "\t" % Radio::frequency_MHz_string(m_freqNominal) % "\t" % QString::number(freq())
+            % "\t" % Varicode::formatSNR(snr) % "\t" % message;
+
+        out << output << Qt::endl;
+
+        f.close();
+    } else {
+        MessageBox::warning_message(
+            this,
+            tr("File Open Error"),
+            tr("Cannot open \"%1\" for append: %2").arg(f.fileName()).arg(f.errorString()));
+    }
+}
+
+QByteArray MainWindow::wisdomFileName() const
+{
+    return QDir::toNativeSeparators(
+               m_config.writeable_data_dir().absoluteFilePath("js8call_wisdom.dat"))
+        .toLocal8Bit();
 }
 
 Q_LOGGING_CATEGORY(decoder_js8, "decoder.js8", QtWarningMsg)

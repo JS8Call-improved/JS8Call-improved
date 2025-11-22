@@ -5,6 +5,7 @@
 #include <QHostAddress>
 #include <QObject>
 #include <QString>
+
 #include "Message.hpp"
 #include "Radio.hpp"
 #include "pimpl_h.hpp"
@@ -17,43 +18,39 @@
 //
 // Each outgoing message type is a Qt slot
 //
-class MessageClient
-  : public QObject
+class MessageClient : public QObject
 {
-  Q_OBJECT
+    Q_OBJECT
 
 public:
+    // instantiate and initiate a host lookup on the server;
+    // messages will be queued until a server host lookup is complete
+    MessageClient(QString const& server_name, quint16 server_port, QObject* parent = nullptr);
 
-  // instantiate and initiate a host lookup on the server;
-  // messages will be queued until a server host lookup is complete
-  MessageClient (QString const & server_name,
-                 quint16         server_port,
-                 QObject       * parent = nullptr);
+    // query server details
+    QHostAddress server_host() const;
+    quint16 server_port() const;
 
-  // query server details
-  QHostAddress server_host() const;
-  quint16      server_port() const;
+    // initiate a new server host lookup or is the server name is empty
+    // the sending of messages is disabled
+    Q_SLOT void set_server_name(QString const& server_name = {});
 
-  // initiate a new server host lookup or is the server name is empty
-  // the sending of messages is disabled
-  Q_SLOT void set_server_name (QString const& server_name = {});
+    // change the server port messages are sent to
+    Q_SLOT void set_server_port(quint16 server_port = 0u);
 
-  // change the server port messages are sent to
-  Q_SLOT void set_server_port (quint16 server_port = 0u);
+    // this slot is used to send an arbitrary message
+    Q_SLOT void send(Message const& message);
 
-  // this slot is used to send an arbitrary message
-  Q_SLOT void send (Message const &message);
+    // this signal is emitted when a message is received
+    Q_SIGNAL void message(Message const& message);
 
-  // this signal is emitted when a message is received
-  Q_SIGNAL void message (Message const &message);
-
-  // this signal is emitted when network errors occur or if a host
-  // lookup fails
-  Q_SIGNAL void error (QString const&) const;
+    // this signal is emitted when network errors occur or if a host
+    // lookup fails
+    Q_SIGNAL void error(QString const&) const;
 
 private:
-  class impl;
-  pimpl<impl> m_;
+    class impl;
+    pimpl<impl> m_;
 };
 
 #endif
