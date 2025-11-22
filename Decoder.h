@@ -5,15 +5,15 @@
  * (C) 2019 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
  **/
 
-#include "ProcessThread.h"
-
-#include <QLoggingCategory>
 #include <QByteArray>
+#include <QLoggingCategory>
 #include <QPointer>
 #include <QProcess>
 
+#include "ProcessThread.h"
 
-class Worker : public QObject{
+class Worker : public QObject
+{
     Q_OBJECT
 public:
     ~Worker();
@@ -22,8 +22,9 @@ public slots:
     void quit();
 
     QProcess* process() const { return m_proc.data(); }
+
 private:
-    void setProcess(QProcess *proc, int msecs=1000);
+    void setProcess(QProcess* proc, int msecs = 1000);
 
 signals:
     void ready(QByteArray t);
@@ -34,26 +35,27 @@ private:
     QScopedPointer<QProcess> m_proc;
 };
 
-
-class Decoder: public QObject
+class Decoder : public QObject
 {
     Q_OBJECT
 public:
-    Decoder(QObject *parent=nullptr);
+    Decoder(QObject* parent = nullptr);
     ~Decoder();
 
     void lock();
     void unlock();
 
-    QString program() const {
-        if(!m_worker.isNull() && m_worker->process() != nullptr){
+    QString program() const
+    {
+        if (!m_worker.isNull() && m_worker->process() != nullptr) {
             return m_worker->process()->program();
         }
         return {};
     }
 
-    QStringList arguments() const {
-        if(!m_worker.isNull() && m_worker->process() != nullptr){
+    QStringList arguments() const
+    {
+        if (!m_worker.isNull() && m_worker->process() != nullptr) {
             return m_worker->process()->arguments();
         }
         return {};

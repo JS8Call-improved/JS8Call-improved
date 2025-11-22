@@ -5,37 +5,37 @@
 
 namespace MessageError
 {
-    enum class Code
-    {
-        json_parsing_error = -1001,
-        json_not_an_object = -1002
-    };
+enum class Code
+{
+    json_parsing_error = -1001,
+    json_not_an_object = -1002
+};
 
-    std::error_category const & category() noexcept;
-}
+std::error_category const& category() noexcept;
+} // namespace MessageError
 
 namespace std
 {
-    template<>
-    struct is_error_code_enum<MessageError::Code> : public true_type{};
+template <> struct is_error_code_enum<MessageError::Code> : public true_type
+{
+};
 
-    template<>
-    struct is_error_condition_enum<MessageError::Code> : public true_type{};
-}
+template <> struct is_error_condition_enum<MessageError::Code> : public true_type
+{
+};
+} // namespace std
 
 namespace MessageError
 {
-    inline std::error_code
-    make_error_code(Code const e) noexcept
-    {
-        return {static_cast<int>(e), category()};
-    }
-
-    inline std::error_condition
-    make_error_condition(Code const e) noexcept
-    {
-        return {static_cast<int>(e), category()};
-    }
+inline std::error_code make_error_code(Code const e) noexcept
+{
+    return { static_cast<int>(e), category() };
 }
+
+inline std::error_condition make_error_condition(Code const e) noexcept
+{
+    return { static_cast<int>(e), category() };
+}
+} // namespace MessageError
 
 #endif

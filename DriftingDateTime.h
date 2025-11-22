@@ -4,6 +4,7 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QPointer>
+
 #include "TwoPhaseSignal.h"
 
 /**
@@ -39,9 +40,9 @@
  * If you want to make sure this is not violated,
  * send the new drift value as a signal.
  **/
-class DriftingDateTimeSingleton: public TwoPhaseSignal
+class DriftingDateTimeSingleton : public TwoPhaseSignal
 {
-Q_OBJECT
+    Q_OBJECT
 
 private:
     // As this is a subclass of QObject,
@@ -63,7 +64,7 @@ public:
     /**
      * The first thread that calls this is the thread the singleton lives in.
      */
-    static DriftingDateTimeSingleton & getSingleton();
+    static DriftingDateTimeSingleton& getSingleton();
 
     /**
      * Retrive drift, in milliseconds.
@@ -74,17 +75,20 @@ public:
     qint64 drift() const;
 
     /** Retrieve drifted "now" as UTC. */
-    inline QDateTime currentDateTimeUtc() const {
+    inline QDateTime currentDateTimeUtc() const
+    {
         return QDateTime::currentDateTimeUtc().addMSecs(drift());
     }
 
     /** Retrieve drifted "now" as local time. */
-    inline QDateTime currentDateTimeLocal() const {
+    inline QDateTime currentDateTimeLocal() const
+    {
         return QDateTime::currentDateTime().addMSecs(drift());
     }
 
     /** Retrieve drifted "now" as milliseconds since epoch. */
-    inline qint64 currentMSecsSinceEpoch() const {
+    inline qint64 currentMSecsSinceEpoch() const
+    {
         return QDateTime::currentMSecsSinceEpoch() + drift();
     }
 
@@ -96,9 +100,7 @@ public:
       * the number returned is the number of fully elapsed
       * seconds since the epoch.
       */
-    inline qint64 currentSecsSinceEpoch() const {
-        return currentMSecsSinceEpoch() / 1000;
-    }
+    inline qint64 currentSecsSinceEpoch() const { return currentMSecsSinceEpoch() / 1000; }
 
 public slots:
     /** Set the drift. */
@@ -117,38 +119,43 @@ signals:
     void driftChanged(qint64 new_drift) const;
 };
 
-
 /** This namespace contains some static convenience functions. */
 namespace DriftingDateTime
 {
-    inline qint64 drift() {
-        return DriftingDateTimeSingleton::getSingleton().drift();
-    }
+inline qint64 drift()
+{
+    return DriftingDateTimeSingleton::getSingleton().drift();
+}
 
-    /**
+/**
      * This must only be called from whatever thread caused the first getSingleton
      * to be called.  If unsure, it is preferred to send a signal to
      * object &DriftingDateTimeSingleton::getSingleton(), slot &DriftingDateTimeSingleton::setDrift .
      */
-    inline void setDrift(qint64 ms) {
-        DriftingDateTimeSingleton::getSingleton().setDrift(ms);
-    }
+inline void setDrift(qint64 ms)
+{
+    DriftingDateTimeSingleton::getSingleton().setDrift(ms);
+}
 
-    inline QDateTime currentDateTimeUtc() {
-        return DriftingDateTimeSingleton::getSingleton().currentDateTimeUtc();
-    }
+inline QDateTime currentDateTimeUtc()
+{
+    return DriftingDateTimeSingleton::getSingleton().currentDateTimeUtc();
+}
 
-    inline QDateTime currentDateTimeLocal() {
-        return DriftingDateTimeSingleton::getSingleton().currentDateTimeLocal();
-    }
+inline QDateTime currentDateTimeLocal()
+{
+    return DriftingDateTimeSingleton::getSingleton().currentDateTimeLocal();
+}
 
-    inline qint64 currentMSecsSinceEpoch() {
-        return DriftingDateTimeSingleton::getSingleton().currentMSecsSinceEpoch();
-    }
+inline qint64 currentMSecsSinceEpoch()
+{
+    return DriftingDateTimeSingleton::getSingleton().currentMSecsSinceEpoch();
+}
 
-    inline qint64 currentSecsSinceEpoch() {
-        return DriftingDateTimeSingleton::getSingleton().currentSecsSinceEpoch();
-    }
-};
+inline qint64 currentSecsSinceEpoch()
+{
+    return DriftingDateTimeSingleton::getSingleton().currentSecsSinceEpoch();
+}
+}; // namespace DriftingDateTime
 
 #endif // DRIFTINGDATETIME_H

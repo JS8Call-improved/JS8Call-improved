@@ -1,7 +1,7 @@
 #include "APRSISClient.h"
+
 #include <QLoggingCategory>
 #include <QRandomGenerator>
-
 #include <cmath>
 
 #include "DriftingDateTime.h"
@@ -11,11 +11,8 @@ Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
 const int PACKET_TIMEOUT_SECONDS = 300;
 
-APRSISClient::APRSISClient(QString const host,
-                           quint16 const port,
-                           QObject     * parent)
-  : QTcpSocket{parent},
-    m_timer   {this}
+APRSISClient::APRSISClient(QString const host, quint16 const port, QObject* parent) :
+    QTcpSocket { parent }, m_timer { this }
 {
     setServer(host, port);
 
@@ -23,24 +20,26 @@ APRSISClient::APRSISClient(QString const host,
     m_timer.start(std::chrono::minutes(1));
 }
 
-quint32 APRSISClient::hashCallsign(QString callsign){
+quint32 APRSISClient::hashCallsign(QString callsign)
+{
     // based on: https://github.com/hessu/aprsc/blob/master/src/passcode.c
     QByteArray rootCall = QString(callsign.split("-").first().toUpper()).toLocal8Bit() + '\0';
     quint32 hash = 0x73E2;
 
-    qsizetype       i   = 0;
+    qsizetype i = 0;
     qsizetype const len = rootCall.length();
 
-    while(i+1 < len){
+    while (i + 1 < len) {
         hash ^= rootCall.at(i) << 8;
-        hash ^= rootCall.at(i+1);
+        hash ^= rootCall.at(i + 1);
         i += 2;
     }
 
     return hash & 0x7FFF;
 }
 
-QString APRSISClient::loginFrame(QString callsign){
+QString APRSISClient::loginFrame(QString callsign)
+{
     auto loginFrame = QString("user %1 pass %2 ver %3\n");
     loginFrame = loginFrame.arg(callsign);
     loginFrame = loginFrame.arg(hashCallsign(callsign));
@@ -48,17 +47,14 @@ QString APRSISClient::loginFrame(QString callsign){
     return loginFrame;
 }
 
-QList<QStringList>
-findall(QRegularExpression re,
-        QString            content)
+QList<QStringList> findall(QRegularExpression re, QString content)
 {
-    qsizetype          pos = 0;
+    qsizetype pos = 0;
     QList<QStringList> all;
 
-    while(pos < content.length())
-    {
+    while (pos < content.length()) {
         auto match = re.match(content, pos);
-        if(!match.hasMatch()){
+        if (!match.hasMatch()) {
             break;
         }
 
@@ -69,22 +65,19 @@ findall(QRegularExpression re,
     return all;
 }
 
-
-inline long
-floordiv (long num, long den)
+inline long floordiv(long num, long den)
 {
-  if (0 < (num^den))
-    return num/den;
-  else
-    {
-      ldiv_t res = ldiv(num,den);
-      return (res.rem)? res.quot-1
-                      : res.quot;
+    if (0 < (num ^ den))
+        return num / den;
+    else {
+        ldiv_t res = ldiv(num, den);
+        return (res.rem) ? res.quot - 1 : res.quot;
     }
 }
 
 // convert an arbitrary length grid locator to a high precision lat/lon
-QPair<float, float> APRSISClient::grid2deg(QString locator){
+QPair<float, float> APRSISClient::grid2deg(QString locator)
+{
     QString grid = locator.toUpper();
 
     float lat = -90;
@@ -99,34 +92,34 @@ QPair<float, float> APRSISClient::grid2deg(QString locator){
     int i = 0;
     int tot = 0;
     char A = 'A';
-    foreach(QStringList matched, lats){
+    foreach (QStringList matched, lats) {
         char x = matched.at(1).at(0).toLatin1();
         char y = matched.at(2).at(0).toLatin1();
 
-        valx[i*2] = x-A;
-        valy[i*2] = y-A;
+        valx[i * 2] = x - A;
+        valy[i * 2] = y - A;
 
         i++;
         tot++;
     }
 
     i = 0;
-    foreach(QStringList matched, lons){
+    foreach (QStringList matched, lons) {
         int x = matched.at(1).toInt();
         int y = matched.at(2).toInt();
-        valx[i*2+1]=x;
-        valy[i*2+1]=y;
+        valx[i * 2 + 1] = x;
+        valy[i * 2 + 1] = y;
 
         i++;
         tot++;
     }
 
-    for(int i = 0; i < tot; i++){
+    for (int i = 0; i < tot; i++) {
         int x = valx[i];
         int y = valy[i];
 
         int z = i - 1;
-        float scale = pow(10, floordiv(-(z-1), 2)) * pow(24, floordiv(-z, 2));
+        float scale = pow(10, floordiv(-(z - 1), 2)) * pow(24, floordiv(-z, 2));
 
         lon += scale * x;
         lat += scale * y;
@@ -134,23 +127,24 @@ QPair<float, float> APRSISClient::grid2deg(QString locator){
 
     lon *= 2;
 
-    return {lat, lon};
+    return { lat, lon };
 }
 
 // convert an arbitrary length grid locator to a high precision lat/lon in aprs format
-QPair<QString, QString> APRSISClient::grid2aprs(QString grid){
+QPair<QString, QString> APRSISClient::grid2aprs(QString grid)
+{
     auto geo = APRSISClient::grid2deg(grid);
     auto lat = geo.first;
     auto lon = geo.second;
 
     QString latDir = "N";
-    if(lat < 0){
+    if (lat < 0) {
         lat *= -1;
         latDir = "S";
     }
 
     QString lonDir = "E";
-    if(lon < 0){
+    if (lon < 0) {
         lon *= -1;
         lonDir = "W";
     }
@@ -165,22 +159,22 @@ QPair<QString, QString> APRSISClient::grid2aprs(QString grid){
     iLatSec = round(fLatMin * 60);
     iLonSec = round(fLonMin * 60);
 
-    if(iLatSec == 60){
+    if (iLatSec == 60) {
         iLatMin += 1;
         iLatSec = 0;
     }
 
-    if(iLonSec == 60){
+    if (iLonSec == 60) {
         iLonMin += 1;
         iLonSec = 0;
     }
 
-    if(iLatMin == 60){
+    if (iLatMin == 60) {
         iLat += 1;
         iLatMin = 0;
     }
 
-    if(iLonMin == 60){
+    if (iLonMin == 60) {
         iLon += 1;
         iLonMin = 0;
     }
@@ -188,21 +182,21 @@ QPair<QString, QString> APRSISClient::grid2aprs(QString grid){
     double aprsLat = iLat * 100 + iLatMin + (iLatSec / 60.0);
     double aprsLon = iLon * 100 + iLonMin + (iLonSec / 60.0);
 
-    return {
-        QString("%1%2").arg(aprsLat, 7, 'f', 2, QChar('0')).arg(latDir),
-        QString("%1%2").arg(aprsLon, 8, 'f', 2, QChar('0')).arg(lonDir)
-    };
+    return { QString("%1%2").arg(aprsLat, 7, 'f', 2, QChar('0')).arg(latDir),
+             QString("%1%2").arg(aprsLon, 8, 'f', 2, QChar('0')).arg(lonDir) };
 }
 
-QString APRSISClient::stripSSID(QString call){
+QString APRSISClient::stripSSID(QString call)
+{
     return QString(call.split("-").first().toUpper());
 }
 
-QString APRSISClient::replaceCallsignSuffixWithSSID(QString call, QString base){
-    if(call != base){
+QString APRSISClient::replaceCallsignSuffixWithSSID(QString call, QString base)
+{
+    if (call != base) {
         QRegularExpression re("[/](?<ssid>(\\d+))");
         auto matcher = re.globalMatch(call);
-        if(matcher.hasNext()){
+        if (matcher.hasNext()) {
             auto match = matcher.next();
             auto ssid = match.captured("ssid");
             call = base + "-" + ssid;
@@ -213,8 +207,9 @@ QString APRSISClient::replaceCallsignSuffixWithSSID(QString call, QString base){
     return call;
 }
 
-void APRSISClient::enqueueSpot(QString by_call, QString from_call, QString grid, QString comment){
-    if(!isPasscodeValid()){
+void APRSISClient::enqueueSpot(QString by_call, QString from_call, QString grid, QString comment)
+{
+    if (!isPasscodeValid()) {
         return;
     }
 
@@ -228,8 +223,9 @@ void APRSISClient::enqueueSpot(QString by_call, QString from_call, QString grid,
     enqueueRaw(spotFrame);
 }
 
-void APRSISClient::enqueueThirdParty(QString by_call, QString from_call, QString text){
-    if(!isPasscodeValid()){
+void APRSISClient::enqueueThirdParty(QString by_call, QString from_call, QString text)
+{
+    if (!isPasscodeValid()) {
         return;
     }
 
@@ -241,19 +237,23 @@ void APRSISClient::enqueueThirdParty(QString by_call, QString from_call, QString
     enqueueRaw(frame);
 }
 
-void APRSISClient::enqueueRaw(QString aprsFrame){
+void APRSISClient::enqueueRaw(QString aprsFrame)
+{
     m_frameQueue.enqueue({ aprsFrame, DriftingDateTime::currentDateTimeUtc() });
 }
 
-void APRSISClient::processQueue(bool disconnect){
+void APRSISClient::processQueue(bool disconnect)
+{
     // don't process queue if we haven't set our local callsign
-    if(m_localCall.isEmpty()) return;
+    if (m_localCall.isEmpty())
+        return;
 
     // don't process queue if there's nothing to process
-    if(m_frameQueue.isEmpty()) return;
+    if (m_frameQueue.isEmpty())
+        return;
 
     // don't process queue if there's no host
-    if(m_host.isEmpty() || m_port == 0){
+    if (m_host.isEmpty() || m_port == 0) {
         // no host, so let's clear the queue and exit
         m_frameQueue.clear();
         return;
@@ -264,10 +264,10 @@ void APRSISClient::processQueue(bool disconnect){
     // 3. for each raw frame in queue, send
     // 4. disconnect
 
-    if(state() != QTcpSocket::ConnectedState){
+    if (state() != QTcpSocket::ConnectedState) {
         qCDebug(aprsisclient_js8) << "APRSISClient Connecting:" << m_host << m_port;
         connectToHost(m_host, m_port);
-        if(!waitForConnected(5000)){
+        if (!waitForConnected(5000)) {
             qCDebug(aprsisclient_js8) << "APRSISClient Connection Error:" << errorString();
             return;
         }
@@ -275,61 +275,62 @@ void APRSISClient::processQueue(bool disconnect){
 
     auto re = QRegularExpression("(full|unavailable|busy)");
     auto line = QString(readLine());
-    if(line.toLower().indexOf(re) >= 0){
+    if (line.toLower().indexOf(re) >= 0) {
         qCDebug(aprsisclient_js8) << "APRSISClient Connection Busy:" << line;
         return;
     }
 
-    if(write(loginFrame(m_localCall).toLocal8Bit()) == -1){
+    if (write(loginFrame(m_localCall).toLocal8Bit()) == -1) {
         qCDebug(aprsisclient_js8) << "APRSISClient Write Login Error:" << errorString();
         return;
     }
 
-    if(!waitForReadyRead(5000)){
+    if (!waitForReadyRead(5000)) {
         qCDebug(aprsisclient_js8) << "APRSISClient Login Error: Server Not Responding";
         return;
     }
 
     line = QString(readAll());
-    if(line.toLower().indexOf(re) >= 0){
+    if (line.toLower().indexOf(re) >= 0) {
         qCDebug(aprsisclient_js8) << "APRSISClient Server Busy:" << line;
         return;
     }
 
     QQueue<QPair<QString, QDateTime>> delayed;
 
-    while(!m_frameQueue.isEmpty()){
+    while (!m_frameQueue.isEmpty()) {
         auto pair = m_frameQueue.head();
         auto frame = pair.first;
         auto timestamp = pair.second;
 
         // if the packet is older than the timeout, drop it.
-        if(timestamp.secsTo(DriftingDateTime::currentDateTimeUtc()) > PACKET_TIMEOUT_SECONDS){
+        if (timestamp.secsTo(DriftingDateTime::currentDateTimeUtc()) > PACKET_TIMEOUT_SECONDS) {
             qCDebug(aprsisclient_js8) << "APRSISClient Packet Timeout:" << frame;
             m_frameQueue.dequeue();
             continue;
         }
 
         // random delay 25% of the time for throttling (a skip will add 60 seconds to the processing time)
-        if(m_skipPercent > 0 && QRandomGenerator::global()->generate() % 100 <= (m_skipPercent*100)){
+        if (m_skipPercent > 0
+            && QRandomGenerator::global()->generate() % 100 <= (m_skipPercent * 100)) {
             qCDebug(aprsisclient_js8) << "APRSISClient Throttle: Skipping Frame";
             delayed.enqueue(m_frameQueue.dequeue());
             continue;
         }
 
         QByteArray data = frame.toLocal8Bit();
-        if(write(data) == -1){
+        if (write(data) == -1) {
             qCDebug(aprsisclient_js8) << "APRSISClient Write Error:" << errorString();
             return;
         }
 
         qCDebug(aprsisclient_js8) << "APRSISClient Write:" << data;
-        if(waitForReadyRead(5000)){
+        if (waitForReadyRead(5000)) {
             line = QString(readLine());
 
             qCDebug(aprsisclient_js8) << "APRSISClient Read:" << line;
 
-            if(line.toLower().indexOf(re) >= 0){
+            if (line.toLower().indexOf(re) >= 0) {
                 qCDebug(aprsisclient_js8) << "APRSISClient Cannot Write Error:" << line;
                 return;
             }
@@ -339,11 +340,11 @@ void APRSISClient::processQueue(bool disconnect){
     }
 
     // enqueue the delayed frames for later processing
-    while(!delayed.isEmpty()){
+    while (!delayed.isEmpty()) {
         m_frameQueue.enqueue(delayed.dequeue());
     }
 
-    if(disconnect){
+    if (disconnect) {
         disconnectFromHost();
     }
 }

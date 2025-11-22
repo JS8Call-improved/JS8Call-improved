@@ -6,12 +6,9 @@
 class Sleep : public QThread
 {
 public:
-  static void msleep(int ms) {
-    QThread::msleep(ms);
-  }
-  static int idealThreadCount() {
-    return QThread::idealThreadCount();
-  }
+    static void msleep(int ms) { QThread::msleep(ms); }
+
+    static int idealThreadCount() { return QThread::idealThreadCount(); }
 };
 
 #endif // SLEEP_H

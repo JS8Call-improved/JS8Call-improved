@@ -1,11 +1,11 @@
 #ifndef SELFDESTRUCTMESSAGEBOX_H
 #define SELFDESTRUCTMESSAGEBOX_H
 
-#include <QWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QString>
 #include <QTimer>
+#include <QWidget>
 
 class SelfDestructMessageBox : public QMessageBox
 {
@@ -16,7 +16,8 @@ public:
                            const QString& title,
                            const QString& text,
                            QMessageBox::Icon icon,
-                           QMessageBox::StandardButtons buttons = QMessageBox::Ok | QMessageBox::Cancel,
+                           QMessageBox::StandardButtons buttons
+                           = QMessageBox::Ok | QMessageBox::Cancel,
                            QMessageBox::StandardButton defaultButton = QMessageBox::Ok,
                            bool show_countdown = false,
                            QWidget* parent = nullptr,
@@ -24,9 +25,9 @@ public:
 
     void showEvent(QShowEvent* event) override;
 
-    void setShowCountdown(bool countdown){ m_show_countdown = countdown; }
+    void setShowCountdown(bool countdown) { m_show_countdown = countdown; }
 
-	void stopTimer();
+    void stopTimer();
 
 private slots:
     void tick();

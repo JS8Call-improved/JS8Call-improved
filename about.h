@@ -5,19 +5,19 @@
 #include <QDialog>
 #include <QScopedPointer>
 
-namespace Ui {
-  class CAboutDlg;
+namespace Ui
+{
+class CAboutDlg;
 }
 
-class CAboutDlg
-  : public QDialog
+class CAboutDlg : public QDialog
 {
 public:
-	explicit CAboutDlg(QWidget *parent = nullptr);
-  ~CAboutDlg ();
+    explicit CAboutDlg(QWidget* parent = nullptr);
+    ~CAboutDlg();
 
 private:
-	QScopedPointer<Ui::CAboutDlg> ui;
+    QScopedPointer<Ui::CAboutDlg> ui;
 };
 
 #endif // ABOUTDLG_H
