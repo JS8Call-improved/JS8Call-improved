@@ -175,7 +175,7 @@ qt_add_executable(${TARGET} MACOSX_BUNDLE WIN32 ${ICON_FILE})
 set_target_properties(
   ${TARGET} PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST             "${CMAKE_CURRENT_SOURCE_DIR}/Darwin/Info.plist.in"
-  MACOSX_BUNDLE_INFO_STRING            "${WSJTX_DESCRIPTION_SUMMARY}"
+  MACOSX_BUNDLE_INFO_STRING            "JS8 mode providing weak signal communications for Amateur Radio"
   MACOSX_BUNDLE_ICON_FILE              "${ICON_FILE}"
   MACOSX_BUNDLE_BUNDLE_VERSION         "${wsjtx_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING   "${wsjtx_SHORT_VERSION}"
