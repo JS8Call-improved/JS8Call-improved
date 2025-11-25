@@ -48,59 +48,61 @@
 
 extern struct dec_data
 {
-  std::int16_t d2[JS8_RX_SAMPLE_SIZE]; // sample frame buffer for sample collection
-  struct
-  {
-    int nutc;                   // UTC as integer. See code_time() below for details.
-    int nfqso;                  // User-selected QSO freq (kHz)
-    bool newdat;                // true ==> new data, must do long FFT
-    int nfa;                    // Low decode limit (Hz) (filter min)
-    int nfb;                    // High decode limit (Hz) (filter max)
-    bool syncStats;             // only compute sync candidates
-    int kin;                    // number of frames written to d2
-    int kposA;                  // starting position of decode for submode A
-    int kposB;                  // starting position of decode for submode B
-    int kposC;                  // starting position of decode for submode C
-    int kposE;                  // starting position of decode for submode E
-    int kposI;                  // starting position of decode for submode I
-    int kszA;                   // number of frames for decode for submode A
-    int kszB;                   // number of frames for decode for submode B
-    int kszC;                   // number of frames for decode for submode C
-    int kszE;                   // number of frames for decode for submode E
-    int kszI;                   // number of frames for decode for submode I
-    int nsubmodes;              // which submodes to decode
-  } params;
+    std::int16_t d2[JS8_RX_SAMPLE_SIZE]; // sample frame buffer for sample collection
+
+    struct
+    {
+        int nutc;       // UTC as integer. See code_time() below for details.
+        int nfqso;      // User-selected QSO freq (kHz)
+        bool newdat;    // true ==> new data, must do long FFT
+        int nfa;        // Low decode limit (Hz) (filter min)
+        int nfb;        // High decode limit (Hz) (filter max)
+        bool syncStats; // only compute sync candidates
+        int kin;        // number of frames written to d2
+        int kposA;      // starting position of decode for submode A
+        int kposB;      // starting position of decode for submode B
+        int kposC;      // starting position of decode for submode C
+        int kposE;      // starting position of decode for submode E
+        int kposI;      // starting position of decode for submode I
+        int kszA;       // number of frames for decode for submode A
+        int kszB;       // number of frames for decode for submode B
+        int kszC;       // number of frames for decode for submode C
+        int kszE;       // number of frames for decode for submode E
+        int kszI;       // number of frames for decode for submode I
+        int nsubmodes;  // which submodes to decode
+    } params;
 } dec_data;
 
-extern struct
-specData
+extern struct specData
 {
-  float savg[JS8_NSMAX];
-  float slin[JS8_NSMAX];
-}
-specData;
+    float savg[JS8_NSMAX];
+    float slin[JS8_NSMAX];
+} specData;
 
 extern std::mutex fftw_mutex;
 
 // The way we squeeze a timestamp into an int.
 // See also decode_time() below.
-inline int code_time(int hour, int minute, int second){
-  return hour * 10000 + minute * 100 + second;
+inline int code_time(int hour, int minute, int second)
+{
+    return hour * 10000 + minute * 100 + second;
 }
 
-struct hour_minute_second {
-  int hour;
-  int minute;
-  int second;
+struct hour_minute_second
+{
+    int hour;
+    int minute;
+    int second;
 };
 
 // Undo code_time().
-inline hour_minute_second decode_time(int nutc){
-  struct hour_minute_second result;
-  result.hour = nutc / 10000;
-  result.minute = nutc % 10000 / 100;
-  result.second = nutc % 100;
-  return result;
+inline hour_minute_second decode_time(int nutc)
+{
+    struct hour_minute_second result;
+    result.hour = nutc / 10000;
+    result.minute = nutc % 10000 / 100;
+    result.second = nutc % 100;
+    return result;
 }
 
 #endif // COMMONS_H

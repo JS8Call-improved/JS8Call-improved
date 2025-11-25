@@ -4,7 +4,8 @@
 #include <QDialog>
 #include <QString>
 
-namespace Ui {
+namespace Ui
+{
 class MessageReplyDialog;
 }
 
@@ -15,21 +16,21 @@ class MessageReplyDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit MessageReplyDialog(QWidget *parent = 0);
+    explicit MessageReplyDialog(QWidget* parent = 0);
     ~MessageReplyDialog();
 
     void setLabel(QString);
     void setTextValue(QString);
     QString textValue() const;
 
-    QTextEdit * textEdit();
+    QTextEdit* textEdit();
 
 
 private slots:
     void on_textEdit_textChanged();
 
 private:
-    Ui::MessageReplyDialog *ui;
+    Ui::MessageReplyDialog* ui;
 };
 
 #endif // MESSAGEREPLAYDIALOG_H

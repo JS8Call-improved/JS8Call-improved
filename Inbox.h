@@ -14,7 +14,6 @@
 
 #include "Message.hpp"
 
-
 class Inbox
 {
 public:
@@ -27,7 +26,8 @@ public:
     void close();
     QString error();
     int count(QString type, QString query, QString match);
-    QList<QPair<int, Message>> values(QString type, QString query, QString match, int offset, int limit);
+    QList<QPair<int, Message>>
+        values(QString type, QString query, QString match, int offset, int limit);
     Message value(int key);
     int append(Message value);
     bool set(int key, Message value);
@@ -36,12 +36,14 @@ public:
     // High-Level Interface
     int countUnreadFrom(QString from);
     QPair<int, Message> firstUnreadFrom(QString from);
-	int getLookaheadMessageIdForCallsign(const QString &callsign, int afterMsgId);
+    int getLookaheadMessageIdForCallsign(const QString& callsign, int afterMsgId);
 
-	QMap<QString, int> getGroupMessageCounts();
-	int getNextGroupMessageIdForCallsign(const QString &group_name, const QString &callsign);
-	int getLookaheadGroupMessageIdForCallsign(const QString &group_name, const QString &callsign, int afterMsgId);
-	bool markGroupMsgDeliveredForCallsign(int msgId, QString callsign);
+    QMap<QString, int> getGroupMessageCounts();
+    int getNextGroupMessageIdForCallsign(const QString& group_name, const QString& callsign);
+    int getLookaheadGroupMessageIdForCallsign(const QString& group_name,
+                                              const QString& callsign,
+                                              int afterMsgId);
+    bool markGroupMsgDeliveredForCallsign(int msgId, QString callsign);
 
 signals:
 
@@ -49,7 +51,7 @@ public slots:
 
 private:
     QString path_;
-    sqlite3 * db_;
+    sqlite3* db_;
 };
 
 #endif // INBOX_H

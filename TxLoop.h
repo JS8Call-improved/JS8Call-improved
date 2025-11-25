@@ -15,7 +15,8 @@
  *
  * This class knows no other time than what DriftingDateTime tells it.
  **/
-class TxLoop : public TwoPhaseSignal {
+class TxLoop : public TwoPhaseSignal
+{
     Q_OBJECT
 
 private:
@@ -53,9 +54,7 @@ public:
      *
      * The value this returns is undetermined (arbitrary) when called while isActive() returns false.
      */
-    inline const QDateTime & nextActivity() const {
-        return m_next_activity;
-    }
+    inline const QDateTime& nextActivity() const { return m_next_activity; }
 
     /**
      * Return the present period of the loop, in milliseconds, if isActive() returns true.
@@ -64,9 +63,7 @@ public:
      * this will hand out the previous period used, or,
      * if this loop object has never been active, some reasonable initial value.
      */
-    inline qint64 period_ms() const {
-        return m_loop_period_ms;
-    }
+    inline qint64 period_ms() const { return m_loop_period_ms; }
 
 signals:
     /** Tells whoever wants to know that now is the time to push the PTT for TX delay: */
@@ -83,7 +80,7 @@ signals:
      * In addition, it gets fired when some other incoming onXXX signal caused
      * our next activity to change.
      */
-    void nextActivityChanged(const QDateTime &) const;
+    void nextActivityChanged(const QDateTime&) const;
 
     /** Tells whoever wants to know that we have become inactive. */
     void canceled() const;

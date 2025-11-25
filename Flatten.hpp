@@ -9,28 +9,26 @@
 class Flatten
 {
 public:
+    // Constructor
+    explicit Flatten(bool = false);
 
-  // Constructor
-  explicit Flatten(bool = false);
+    // Destructor
+    ~Flatten();
 
-  // Destructor
-  ~Flatten();
+    // Turn flattening on or off
+    void operator()(bool value);
 
-  // Turn flattening on or off
-  void operator()(bool value);
+    // Process (or not) the supplied spectrum data
+    void operator()(float* data, std::size_t size);
 
-  // Process (or not) the supplied spectrum data
-  void operator()(float     * data,
-                  std::size_t size);
+    // Return active / inactive flattening status
+    explicit operator bool() const noexcept { return !!m_impl; }
 
-  // Return active / inactive flattening status
-  explicit operator bool() const noexcept { return !!m_impl; }
-  bool              live() const noexcept { return !!m_impl; }
+    bool live() const noexcept { return !!m_impl; }
 
 private:
-
-  class           Impl;
-  std::unique_ptr<Impl> m_impl;
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
 };
 
 #endif
