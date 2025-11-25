@@ -11,40 +11,36 @@ class Bands;
 
 class PSKReporter final : public QObject
 {
-  Q_OBJECT
+    Q_OBJECT
 
 public:
+    explicit PSKReporter(Configuration const*, QString const& program_info);
 
-  explicit PSKReporter(Configuration const *,
-                       QString       const & program_info);
+    ~PSKReporter();
 
-  ~PSKReporter();
+    void start();
 
-  void start();
+    void reconnect();
 
-  void reconnect();
+    void setLocalStation(QString const& call, QString const& grid, QString const& antenna);
 
-  void setLocalStation(QString const & call,
-                       QString const & grid,
-                       QString const & antenna);
+    void addRemoteStation(QString const& call,
+                          QString const& grid,
+                          Radio::Frequency freq,
+                          QString const& mode,
+                          int snr,
+                          QDateTime const& utcTimestamp);
 
-  void addRemoteStation(QString const  & call,
-                        QString const  & grid,
-                        Radio::Frequency freq,
-                        QString const  & mode,
-                        int              snr,
-						QDateTime 		const & utcTimestamp);
+    //
+    // Flush any pending spots to PSK Reporter
+    //
+    void sendReport(bool last = false);
 
-  //
-  // Flush any pending spots to PSK Reporter
-  //
-  void sendReport(bool last = false);
-
-  Q_SIGNAL void errorOccurred (QString const& reason);
+    Q_SIGNAL void errorOccurred(QString const& reason);
 
 private:
-  class impl;
-  pimpl<impl> m_;
+    class impl;
+    pimpl<impl> m_;
 };
 
 #endif

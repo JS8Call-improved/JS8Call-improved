@@ -19,12 +19,12 @@
  **/
 #include "ProcessThread.h"
 
-ProcessThread::ProcessThread(QObject *parent):
-    QThread(parent)
+ProcessThread::ProcessThread(QObject* parent) : QThread(parent)
 {
 }
 
-ProcessThread::~ProcessThread(){
+ProcessThread::~ProcessThread()
+{
     setProcess(nullptr);
 }
 
@@ -32,14 +32,16 @@ ProcessThread::~ProcessThread(){
  * @brief ProcessThread::setProcess
  * @param proc - process to move to this thread and take ownership
  */
-void ProcessThread::setProcess(QProcess *proc, int msecs){
-    if(!m_proc.isNull()){
+void ProcessThread::setProcess(QProcess* proc, int msecs)
+{
+    if (!m_proc.isNull()) {
         bool b = m_proc->waitForFinished(msecs);
-        if(!b) m_proc->close();
+        if (!b)
+            m_proc->close();
         m_proc.reset();
     }
 
-    if(proc){
+    if (proc) {
         proc->moveToThread(this);
         m_proc.reset(proc);
     }
