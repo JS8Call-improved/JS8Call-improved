@@ -2,8 +2,8 @@
 #define MULTISETTINGS_HPP__
 
 #include <QObject>
-#include <QVariant>
 #include <QString>
+#include <QVariant>
 
 #include "pimpl_h.hpp"
 
@@ -59,51 +59,50 @@ class QMenu;
 //  }
 //
 
-class MultiSettings
-  : public QObject
+class MultiSettings : public QObject
 {
-  Q_OBJECT
+    Q_OBJECT
 
 public:
-  // config_name will be  selected if it is  an existing configuration
-  // name otherwise  the last used  configuration will be  selected or
-  // the default configuration if none exist
-  explicit MultiSettings (QString const& config_name = QString {});
+    // config_name will be  selected if it is  an existing configuration
+    // name otherwise  the last used  configuration will be  selected or
+    // the default configuration if none exist
+    explicit MultiSettings(QString const& config_name = QString {});
 
-  MultiSettings (MultiSettings const&) = delete;
-  MultiSettings& operator = (MultiSettings const&) = delete;
-  ~MultiSettings ();
+    MultiSettings(MultiSettings const&) = delete;
+    MultiSettings& operator=(MultiSettings const&) = delete;
+    ~MultiSettings();
 
-  // Add multiple configurations navigation and maintenance actions to
-  // a provided  menu. The provided  main window object  instance will
-  // have its close() function called when a "Switch To" configuration
-  // action is triggered.
-  void create_menu_actions (QMainWindow *, QMenu *);
+    // Add multiple configurations navigation and maintenance actions to
+    // a provided  menu. The provided  main window object  instance will
+    // have its close() function called when a "Switch To" configuration
+    // action is triggered.
+    void create_menu_actions(QMainWindow*, QMenu*);
 
-  // switch to this configuration if it exists
-  Q_SLOT void select_configuration (QString const& name);
-  QString configuration_name () const;
+    // switch to this configuration if it exists
+    Q_SLOT void select_configuration(QString const& name);
+    QString configuration_name() const;
 
-  // Access to the QSettings object instance.
-  QSettings * settings ();
+    // Access to the QSettings object instance.
+    QSettings* settings();
 
-  // Access to values in a common section
-  QVariant common_value (QString const& key, QVariant const& default_value = QVariant {}) const;
-  void set_common_value (QString const& key, QVariant const& value);
-  void remove_common_value (QString const& key);
+    // Access to values in a common section
+    QVariant common_value(QString const& key, QVariant const& default_value = QVariant {}) const;
+    void set_common_value(QString const& key, QVariant const& value);
+    void remove_common_value(QString const& key);
 
-  // Call this to  determine if the application is  terminating, if it
-  // returns  false  then  the   application  main  window  should  be
-  // recreated,  shown  and  the application  exec()  function  called
-  // again.
-  bool exit ();
+    // Call this to  determine if the application is  terminating, if it
+    // returns  false  then  the   application  main  window  should  be
+    // recreated,  shown  and  the application  exec()  function  called
+    // again.
+    bool exit();
 
-  // emitted when the name of the current configuration changes
-  Q_SIGNAL void configurationNameChanged (QString name) const;
+    // emitted when the name of the current configuration changes
+    Q_SIGNAL void configurationNameChanged(QString name) const;
 
 private:
-  class impl;
-  pimpl<impl> m_;
+    class impl;
+    pimpl<impl> m_;
 };
 
 #endif

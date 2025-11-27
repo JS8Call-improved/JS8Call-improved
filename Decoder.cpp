@@ -20,36 +20,39 @@
 
 #include "Decoder.h"
 
-#include "commons.h"
-
 #include <QLoggingCategory>
 #include <QTimer>
 
+#include "commons.h"
+
 Q_DECLARE_LOGGING_CATEGORY(decoder_js8)
 
-Do not let youself be confused:
-This source file does not presently take part in the build.
+Do not let youself be confused : This source file does not presently take part in the build.
 
-Decoder::Decoder(QObject *parent):
+                                 Decoder::Decoder(QObject * parent) :
     QObject(parent)
 {
 }
 
-Decoder::~Decoder(){
+Decoder::~Decoder()
+{
 }
 
 //
-void Decoder::lock(){
+void Decoder::lock()
+{
     // NOOP
 }
 
 //
-void Decoder::unlock(){
+void Decoder::unlock()
+{
     // NOOP
 }
 
 //
-Worker* Decoder::createWorker(){
+Worker* Decoder::createWorker()
+{
     auto worker = new Worker();
     worker->moveToThread(&m_thread);
     connect(&m_thread, &QThread::finished, worker, &QObject::deleteLater);
@@ -62,23 +65,27 @@ Worker* Decoder::createWorker(){
 }
 
 //
-void Decoder::start(QThread::Priority priority){
+void Decoder::start(QThread::Priority priority)
+{
     m_thread.start(priority);
 }
 
 //
-void Decoder::quit(){
+void Decoder::quit()
+{
     m_thread.quit();
 }
 
 //
-bool Decoder::wait(){
+bool Decoder::wait()
+{
     return m_thread.wait();
 }
 
 //
-void Decoder::processStart(QString path, QStringList args){
-    if(m_worker.isNull()){
+void Decoder::processStart(QString path, QStringList args)
+{
+    if (m_worker.isNull()) {
         m_worker = createWorker();
     }
 
@@ -86,24 +93,28 @@ void Decoder::processStart(QString path, QStringList args){
 }
 
 //
-void Decoder::processReady(QByteArray t){
+void Decoder::processReady(QByteArray t)
+{
     emit ready(t);
 }
 
 //
-void Decoder::processQuit(){
+void Decoder::processQuit()
+{
     emit quitWorker();
 }
 
 //
-void Decoder::processError(int errorCode, QString errorString){
-                         qCDebug(decoder_js8) << "decoder process error" << errorCode << errorString;
+void Decoder::processError(int errorCode, QString errorString)
+{
+    qCDebug(decoder_js8) << "decoder process error" << errorCode << errorString;
     emit error(errorCode, errorString);
 }
 
 //
-void Decoder::processFinished(int exitCode, int statusCode, QString errorString){
-                         qCDebug(decoder_js8) << "decoder process finished" << exitCode << statusCode << errorString;
+void Decoder::processFinished(int exitCode, int statusCode, QString errorString)
+{
+    qCDebug(decoder_js8) << "decoder process finished" << exitCode << statusCode << errorString;
     emit finished(exitCode, statusCode, errorString);
 }
 
@@ -112,55 +123,59 @@ void Decoder::processFinished(int exitCode, int statusCode, QString errorString)
 ////////////////////////////////////////
 
 //
-Worker::~Worker(){
+Worker::~Worker()
+{
 }
 
 //
-void Worker::setProcess(QProcess *proc, int msecs){
-    if(!m_proc.isNull()){
+void Worker::setProcess(QProcess* proc, int msecs)
+{
+    if (!m_proc.isNull()) {
         bool b = m_proc->waitForFinished(msecs);
-        if(!b) m_proc->close();
+        if (!b)
+            m_proc->close();
         m_proc.reset();
     }
 
-    if(proc){
+    if (proc) {
         m_proc.reset(proc);
     }
 }
 
 //
-void Worker::start(QString path, QStringList args){
-                         qCDebug(decoder_js8) << "decoder process starting...";
+void Worker::start(QString path, QStringList args)
+{
+    qCDebug(decoder_js8) << "decoder process starting...";
 
     auto proc = new QProcess(this);
 
-    connect(proc, &QProcess::readyReadStandardOutput,
-            [this, proc](){
-                while(proc->canReadLine()){
-                    emit ready(proc->readLine());
-                }
+    connect(proc, &QProcess::readyReadStandardOutput, [this, proc]() {
+        while (proc->canReadLine()) {
+            emit ready(proc->readLine());
+        }
+    });
+
+    connect(proc, &QProcess::errorOccurred, [this, proc](QProcess::ProcessError errorCode) {
+        emit error(int(errorCode), proc->errorString());
+    });
+
+    connect(proc,
+            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            [this, proc](int exitCode, QProcess::ExitStatus status) {
+                emit finished(exitCode, int(status), QString { proc->readAllStandardError() });
             });
 
-    connect(proc, &QProcess::errorOccurred,
-            [this, proc] (QProcess::ProcessError errorCode) {
-              emit error(int(errorCode), proc->errorString());
-            });
-
-    connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            [this, proc] (int exitCode, QProcess::ExitStatus status) {
-              emit finished(exitCode, int(status), QString{proc->readAllStandardError()});
-            });
-
-    QProcessEnvironment env {QProcessEnvironment::systemEnvironment ()};
-    env.insert ("OMP_STACKSIZE", "4M");
-    proc->setProcessEnvironment (env);
+    QProcessEnvironment env { QProcessEnvironment::systemEnvironment() };
+    env.insert("OMP_STACKSIZE", "4M");
+    proc->setProcessEnvironment(env);
     proc->start(path, args, QIODevice::ReadWrite | QIODevice::Unbuffered);
 
     setProcess(proc);
 }
 
 //
-void Worker::quit(){
+void Worker::quit()
+{
     setProcess(nullptr);
 }
 

@@ -6,18 +6,13 @@
 class AttenuationSlider final : public QSlider
 {
 public:
-
-  explicit AttenuationSlider(QWidget * parent = nullptr)
-  : QSlider{parent}
-  {}
+    explicit AttenuationSlider(QWidget* parent = nullptr) : QSlider { parent } { }
 
 protected:
-
-  void paintEvent(QPaintEvent *) override;
+    void paintEvent(QPaintEvent*) override;
 
 private:
-
-  int yValue(int) const;
+    int yValue(int) const;
 };
 
 #endif // ATTENUATIONSLIDER_HPP__

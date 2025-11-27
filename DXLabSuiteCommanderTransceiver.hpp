@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include "TransceiverFactory.hpp"
 #include "PollingTransceiver.hpp"
+#include "TransceiverFactory.hpp"
 
 class QTcpSocket;
 class QByteArray;
@@ -18,42 +18,43 @@ class QString;
 // which can  be enabled by wrapping  a HamlibTransceiver instantiated
 // as a "Hamlib Dummy" transceiver in the Transceiver factory method.
 //
-class DXLabSuiteCommanderTransceiver final
-  : public PollingTransceiver
+class DXLabSuiteCommanderTransceiver final : public PollingTransceiver
 {
-  Q_OBJECT;                     // for translation context
+    Q_OBJECT; // for translation context
 
 public:
-  static void register_transceivers (TransceiverFactory::Transceivers *, int id);
+    static void register_transceivers(TransceiverFactory::Transceivers*, int id);
 
-  // takes ownership of wrapped Transceiver
-  explicit DXLabSuiteCommanderTransceiver (std::unique_ptr<TransceiverBase> wrapped,
-                                           QString const& address, bool use_for_ptt,
-                                           int poll_interval, QObject * parent = nullptr);
+    // takes ownership of wrapped Transceiver
+    explicit DXLabSuiteCommanderTransceiver(std::unique_ptr<TransceiverBase> wrapped,
+                                            QString const& address,
+                                            bool use_for_ptt,
+                                            int poll_interval,
+                                            QObject* parent = nullptr);
 
 protected:
-  int do_start () override;
-  void do_stop () override;
-  void do_frequency (Frequency, MODE, bool no_ignore) override;
-  void do_tx_frequency (Frequency, MODE, bool no_ignore) override;
-  void do_mode (MODE) override;
-  void do_ptt (bool on) override;
+    int do_start() override;
+    void do_stop() override;
+    void do_frequency(Frequency, MODE, bool no_ignore) override;
+    void do_tx_frequency(Frequency, MODE, bool no_ignore) override;
+    void do_mode(MODE) override;
+    void do_ptt(bool on) override;
 
-  void poll () override;
+    void poll() override;
 
 private:
-  MODE get_mode (bool no_debug = false);
-  void simple_command (QString const&, bool no_debug = false);
-  QString command_with_reply (QString const&, bool no_debug = false);
-  bool write_to_port (QString const&);
-  QString frequency_to_string (Frequency) const;
-  Frequency string_to_frequency (QString) const;
+    MODE get_mode(bool no_debug = false);
+    void simple_command(QString const&, bool no_debug = false);
+    QString command_with_reply(QString const&, bool no_debug = false);
+    bool write_to_port(QString const&);
+    QString frequency_to_string(Frequency) const;
+    Frequency string_to_frequency(QString) const;
 
-  std::unique_ptr<TransceiverBase> wrapped_; // may be null
-  bool use_for_ptt_;
-  QString server_;
-  QTcpSocket * commander_;
-  QLocale locale_;
+    std::unique_ptr<TransceiverBase> wrapped_; // may be null
+    bool use_for_ptt_;
+    QString server_;
+    QTcpSocket* commander_;
+    QLocale locale_;
 };
 
 #endif

@@ -1,100 +1,81 @@
 #include "IARURegions.hpp"
 
-#include <algorithm>
-
+#include <QMetaType>
+#include <QModelIndex>
 #include <QString>
 #include <QVariant>
-#include <QModelIndex>
-#include <QMetaType>
+#include <algorithm>
 
 #include "moc_IARURegions.cpp"
 
 namespace
 {
-  // human readable strings for each Region enumeration value
-  char const * const region_names[] =
-  {
+// human readable strings for each Region enumeration value
+char const* const region_names[] = {
     "All",
     "Region 1",
     "Region 2",
     "Region 3",
-  };
-  std::size_t constexpr region_names_size = sizeof (region_names) / sizeof (region_names[0]);
+};
+std::size_t constexpr region_names_size = sizeof(region_names) / sizeof(region_names[0]);
+} // namespace
+
+IARURegions::IARURegions(QObject* parent) : QAbstractListModel { parent }
+{
+    static_assert(region_names_size == SENTINAL,
+                  "region_names array must match Region enumeration");
 }
 
-IARURegions::IARURegions (QObject * parent)
-  : QAbstractListModel {parent}
+char const* IARURegions::name(Region r)
 {
-  static_assert (region_names_size == SENTINAL,
-                 "region_names array must match Region enumeration");
+    return region_names[static_cast<int>(r)];
 }
 
-char const * IARURegions::name (Region r)
+auto IARURegions::value(QString const& s) -> Region
 {
-  return region_names[static_cast<int> (r)];
+    auto end = region_names + region_names_size;
+    auto p = std::find_if(region_names, end, [&s](char const* const name) { return name == s; });
+    return p != end ? static_cast<Region>(p - region_names) : ALL;
 }
 
-auto IARURegions::value (QString const& s) -> Region
+QVariant IARURegions::data(QModelIndex const& index, int role) const
 {
-  auto end = region_names + region_names_size;
-  auto p = std::find_if (region_names, end
-                         , [&s] (char const * const name) {
-                           return name == s;
-                         });
-  return p != end ? static_cast<Region> (p - region_names) : ALL;
-}
+    QVariant item;
 
-QVariant IARURegions::data (QModelIndex const& index, int role) const
-{
-  QVariant item;
-
-  if (index.isValid ())
-    {
-      auto const& row = index.row ();
-      switch (role)
-        {
+    if (index.isValid()) {
+        auto const& row = index.row();
+        switch (role) {
         case Qt::ToolTipRole:
-        case Qt::AccessibleDescriptionRole:
-          item = tr ("IARU Region");
-          break;
+        case Qt::AccessibleDescriptionRole: item = tr("IARU Region"); break;
 
-        case Qt::EditRole:
-          item = static_cast<Region> (row);
-          break;
+        case Qt::EditRole: item = static_cast<Region>(row); break;
 
         case Qt::DisplayRole:
-        case Qt::AccessibleTextRole:
-          item = region_names[row];
-          break;
+        case Qt::AccessibleTextRole: item = region_names[row]; break;
 
-        case Qt::TextAlignmentRole:
-          item = Qt::AlignCenter;
-          break;
+        case Qt::TextAlignmentRole: item = Qt::AlignCenter; break;
         }
     }
 
-  return item;
+    return item;
 }
 
-QVariant IARURegions::headerData (int section, Qt::Orientation orientation, int role) const
+QVariant IARURegions::headerData(int section, Qt::Orientation orientation, int role) const
 {
-  QVariant result;
+    QVariant result;
 
-  if (Qt::DisplayRole == role && Qt::Horizontal == orientation)
-    {
-      result = tr ("IARU Region");
-    }
-  else
-    {
-      result = QAbstractListModel::headerData (section, orientation, role);
+    if (Qt::DisplayRole == role && Qt::Horizontal == orientation) {
+        result = tr("IARU Region");
+    } else {
+        result = QAbstractListModel::headerData(section, orientation, role);
     }
 
-  return result;
+    return result;
 }
 
-#if !defined (QT_NO_DEBUG_STREAM)
-ENUM_QDEBUG_OPS_IMPL (IARURegions, Region);
+#if !defined(QT_NO_DEBUG_STREAM)
+ENUM_QDEBUG_OPS_IMPL(IARURegions, Region);
 #endif
 
-ENUM_QDATASTREAM_OPS_IMPL (IARURegions, Region);
-ENUM_CONVERSION_OPS_IMPL (IARURegions, Region);
+ENUM_QDATASTREAM_OPS_IMPL(IARURegions, Region);
+ENUM_CONVERSION_OPS_IMPL(IARURegions, Region);

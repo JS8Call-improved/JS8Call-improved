@@ -51,123 +51,159 @@ template <class T> class QList;
 #include <vector>
 #else
 /* Fallback class used when stl is not available */
-template <class T, typename LessThan = std::less < T > >
-class QPriorityQueuePrivate {
+template <class T, typename LessThan = std::less<T>> class QPriorityQueuePrivate
+{
 public:
-    inline QPriorityQueuePrivate(LessThan l) : lessThan(l), d() {}
-    inline ~QPriorityQueuePrivate() {}
+    inline QPriorityQueuePrivate(LessThan l) : lessThan(l), d() { }
+
+    inline ~QPriorityQueuePrivate() { }
 
     inline void clear() { return d.clear(); }
+
     inline int size() const { return d.size(); }
+
     inline bool empty() const { return d.empty(); }
 
-    inline T &top() { return d.front(); }
+    inline T& top() { return d.front(); }
 
     void pop();
-    void push(const T &value);
+    void push(const T& value);
+
 private:
-    inline int parent(int i) {
-    return (i - 1) / 2;
-    }
-    inline int leftChild(int i) {
-    return 2 * i + 1;
-    }
-    inline int rightChild(int i) {
-    return 2 * i + 2;
-    }
+    inline int parent(int i) { return (i - 1) / 2; }
+
+    inline int leftChild(int i) { return 2 * i + 1; }
+
+    inline int rightChild(int i) { return 2 * i + 2; }
 
     LessThan lessThan;
-    QList < T > d;
+    QList<T> d;
 };
 #endif
 
-template <class T, typename LessThan = std::less < T > >
-class Q_CORE_EXPORT QPriorityQueue
+template <class T, typename LessThan = std::less<T>> class Q_CORE_EXPORT QPriorityQueue
 {
 public:
-    inline QPriorityQueue(LessThan l = std::less < T >())
-      : lessThan(l), d(lessThan) { }
-    inline QPriorityQueue(const QPriorityQueue<T> &q)
-      : lessThan(q.lessThan), d(q.d) { }
+    inline QPriorityQueue(LessThan l = std::less<T>()) : lessThan(l), d(lessThan) { }
+
+    inline QPriorityQueue(const QPriorityQueue<T>& q) : lessThan(q.lessThan), d(q.d) { }
+
     inline ~QPriorityQueue() { }
 
-    QPriorityQueue<T> &operator=(const QPriorityQueue<T> &q) {
-      d = q.d; return *this;
+    QPriorityQueue<T>& operator=(const QPriorityQueue<T>& q)
+    {
+        d = q.d;
+        return *this;
     }
 
     inline int size() const { return d.size(); }
+
     inline bool isEmpty() const { return empty(); }
 
     // like qlist
     void clear();
-    void append(const T &t) { return enqueue(t); }
-    void append(const QList<T> &t);
+
+    void append(const T& t) { return enqueue(t); }
+
+    void append(const QList<T>& t);
+
     T takeFirst() { return dequeue(); }
+
     inline int length() const { return size(); } // Same as count()
+
     inline T& first() { return head(); }
+
     inline const T& first() const { return head(); }
+
     inline void removeFirst() { pop(); }
-    inline bool startsWith(const T &t) const
-    { return !isEmpty() && first() == t; }
+
+    inline bool startsWith(const T& t) const { return !isEmpty() && first() == t; }
 
     // like qqueue
-    inline void enqueue(const T &t) { push(t); }
-    inline T dequeue() { T t = d.top();	d.pop(); return t; }
-    inline T &head() { return const_cast<T&>(top()); }
-    inline const T &head() const { return top(); }
+    inline void enqueue(const T& t) { push(t); }
+
+    inline T dequeue()
+    {
+        T t = d.top();
+        d.pop();
+        return t;
+    }
+
+    inline T& head() { return const_cast<T&>(top()); }
+
+    inline const T& head() const { return top(); }
 
     // stl compatibility
     typedef int size_type;
     typedef T value_type;
 
     inline bool empty() const { return d.empty(); }
-    inline const value_type& top() { Q_ASSERT(!isEmpty()); return d.top(); }
+
+    inline const value_type& top()
+    {
+        Q_ASSERT(!isEmpty());
+        return d.top();
+    }
+
     inline void push(const value_type& x) { return d.push(x); }
-    inline void pop() { Q_ASSERT(!isEmpty()); d.pop(); }
+
+    inline void pop()
+    {
+        Q_ASSERT(!isEmpty());
+        d.pop();
+    }
 
     // comfort
-    inline QPriorityQueue<T> &operator+=(const T &t) {
-      enqueue(t); return *this;
+    inline QPriorityQueue<T>& operator+=(const T& t)
+    {
+        enqueue(t);
+        return *this;
     }
-    inline QPriorityQueue<T> &operator<< (const T &t) {
-      enqueue(t); return *this;
+
+    inline QPriorityQueue<T>& operator<<(const T& t)
+    {
+        enqueue(t);
+        return *this;
     }
-    inline QPriorityQueue<T> &operator>> (T &t) {
-      t = d.top(); d.pop(); return *this;
+
+    inline QPriorityQueue<T>& operator>>(T& t)
+    {
+        t = d.top();
+        d.pop();
+        return *this;
     }
 
 #ifndef QT_NO_STL
-    static inline QPriorityQueue<T>fromStdPriorityQueue(
-        const std::priority_queue<T> &q) {
-      QPriorityQueue<T> tmp; tmp.d = q; return tmp;
+    static inline QPriorityQueue<T> fromStdPriorityQueue(const std::priority_queue<T>& q)
+    {
+        QPriorityQueue<T> tmp;
+        tmp.d = q;
+        return tmp;
     }
-    inline std::priority_queue<T> toStdPriorityQueue() const {
-      return d;
-    }
+
+    inline std::priority_queue<T> toStdPriorityQueue() const { return d; }
 #endif
 
 private:
     LessThan lessThan;
 #ifndef QT_NO_STL
-    std::priority_queue <T, std::vector < T >, LessThan> d;
+    std::priority_queue<T, std::vector<T>, LessThan> d;
 #else
-    QPriorityQueuePrivate <T> d;
+    QPriorityQueuePrivate<T> d;
 #endif
 };
 
 #ifndef QT_NO_STL
 
-template <typename T, typename LessThan>
-Q_INLINE_TEMPLATE void QPriorityQueue<T, LessThan>::clear()
+template <typename T, typename LessThan> Q_INLINE_TEMPLATE void QPriorityQueue<T, LessThan>::clear()
 {
-    d = std::priority_queue <T, std::vector < T >, LessThan>(lessThan);
+    d = std::priority_queue<T, std::vector<T>, LessThan>(lessThan);
     //d = std::priority_queue<T>(lessThan);
 }
 
 #else
 
-template <typename T, typename LessThan>
-Q_INLINE_TEMPLATE void QPriorityQueue<T, LessThan>::clear()
+template <typename T, typename LessThan> Q_INLINE_TEMPLATE void QPriorityQueue<T, LessThan>::clear()
 {
     d.clear();
 }
@@ -175,10 +211,10 @@ Q_INLINE_TEMPLATE void QPriorityQueue<T, LessThan>::clear()
 #endif
 
 template <typename T, typename LessThan>
-Q_OUTOFLINE_TEMPLATE void QPriorityQueue<T, LessThan>::append(const QList<T> &t)
+Q_OUTOFLINE_TEMPLATE void QPriorityQueue<T, LessThan>::append(const QList<T>& t)
 {
-    foreach (T & e, t)
-    push(e);
+    foreach (T& e, t)
+        push(e);
 }
 
 // Re-implement std::priority_queue if STL not available, probably
@@ -194,35 +230,35 @@ template <typename T, typename LessThan>
 Q_OUTOFLINE_TEMPLATE void QPriorityQueuePrivate<T, LessThan>::pop()
 {
     int i = 0;
-    ssize_t size = d.size();;
+    ssize_t size = d.size();
+    ;
 
-    if(!size)
-    return;
-    if(size == 1)
-    return d.clear();
+    if (!size)
+        return;
+    if (size == 1)
+        return d.clear();
 
     d[0] = d.takeLast();
 
-    while(i < size - 1) {
-    int left = leftChild(i);
-    int right = rightChild(i);
-    bool validLeft = left < size;
-    bool validRight = right < size;
+    while (i < size - 1) {
+        int left = leftChild(i);
+        int right = rightChild(i);
+        bool validLeft = left < size;
+        bool validRight = right < size;
 
-    if(validLeft && lessThan(d.at(i), d.at(left)))
-        if(validRight && !lessThan(d.at(right), d.at(left))) {
-        d.swap(i, right);
-        i = right;
-        } else {
-        d.swap(i, left);
-        i = left;
-        }
-    else if(validRight && lessThan(d.at(i), d.at(right))) {
-        d.swap(i, right);
-        i = right;
-    }
-    else
-        break;
+        if (validLeft && lessThan(d.at(i), d.at(left)))
+            if (validRight && !lessThan(d.at(right), d.at(left))) {
+                d.swap(i, right);
+                i = right;
+            } else {
+                d.swap(i, left);
+                i = left;
+            }
+        else if (validRight && lessThan(d.at(i), d.at(right))) {
+            d.swap(i, right);
+            i = right;
+        } else
+            break;
     }
 }
 
@@ -232,13 +268,13 @@ Q_OUTOFLINE_TEMPLATE void QPriorityQueuePrivate<T, LessThan>::pop()
  *  \internal
  */
 template <typename T, typename LessThan>
-Q_OUTOFLINE_TEMPLATE void QPriorityQueuePrivate<T, LessThan>::push(const T &value)
+Q_OUTOFLINE_TEMPLATE void QPriorityQueuePrivate<T, LessThan>::push(const T& value)
 {
     int i = d.size();
     d.append(value);
-    while(i != 0 && !lessThan(d.at(i), d.at(parent(i)))) {
-    d.swap(i, parent(i));
-    i = parent(i);
+    while (i != 0 && !lessThan(d.at(i), d.at(parent(i)))) {
+        d.swap(i, parent(i));
+        i = parent(i);
     }
 }
 #endif

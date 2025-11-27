@@ -3,7 +3,7 @@
 
 class QItemEditorFactory;
 
-QItemEditorFactory * item_editor_factory ();
-void register_types ();
+QItemEditorFactory* item_editor_factory();
+void register_types();
 
 #endif

@@ -1,20 +1,20 @@
 #ifndef APRSISCLIENT_H
 #define APRSISCLIENT_H
 
-#include <QLoggingCategory>
-#include <QtGlobal>
 #include <QDateTime>
-#include <QTcpSocket>
-#include <QQueue>
+#include <QLoggingCategory>
 #include <QPair>
+#include <QQueue>
+#include <QTcpSocket>
 #include <QTimer>
+#include <QtGlobal>
 
 Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
 class APRSISClient : public QTcpSocket
 {
 public:
-    APRSISClient(QString host, quint16 port, QObject *parent = nullptr);
+    APRSISClient(QString host, quint16 port, QObject* parent = nullptr);
 
     static quint32 hashCallsign(QString callsign);
     static QString loginFrame(QString callsign);
@@ -23,19 +23,18 @@ public:
     static QString stripSSID(QString call);
     static QString replaceCallsignSuffixWithSSID(QString call, QString base);
 
-    bool isPasscodeValid(){ return m_localPasscode == QString::number(hashCallsign(m_localCall)); }
+    bool isPasscodeValid() { return m_localPasscode == QString::number(hashCallsign(m_localCall)); }
 
     void enqueueRaw(QString aprsFrame);
-    void processQueue(bool disconnect=true);
+    void processQueue(bool disconnect = true);
 
 public slots:
 
-    void setSkipPercent(float skipPercent){
-        m_skipPercent = skipPercent;
-    }
+    void setSkipPercent(float skipPercent) { m_skipPercent = skipPercent; }
 
-    void setServer(QString host, quint16 port){
-        if(state() == QTcpSocket::ConnectedState){
+    void setServer(QString host, quint16 port)
+    {
+        if (state() == QTcpSocket::ConnectedState) {
             disconnectFromHost();
         }
 
@@ -45,11 +44,10 @@ public slots:
         qCDebug(aprsisclient_js8) << "APRSISClient Server Change:" << m_host << m_port;
     }
 
-    void setPaused(bool paused){
-        m_paused = paused;
-    }
+    void setPaused(bool paused) { m_paused = paused; }
 
-    void setLocalStation(QString mycall, QString passcode){
+    void setLocalStation(QString mycall, QString passcode)
+    {
         m_localCall = mycall;
         m_localPasscode = passcode;
     }
@@ -57,8 +55,10 @@ public slots:
     void enqueueSpot(QString by_call, QString from_call, QString grid, QString comment);
     void enqueueThirdParty(QString by_call, QString from_call, QString text);
 
-    void sendReports(){
-        if(m_paused) return;
+    void sendReports()
+    {
+        if (m_paused)
+            return;
 
         processQueue(true);
     }

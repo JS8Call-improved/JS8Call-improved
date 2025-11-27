@@ -1,11 +1,11 @@
 #ifndef MESSAGESERVER_H
 #define MESSAGESERVER_H
 
+#include <QAbstractSocket>
+#include <QList>
+#include <QScopedPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <QAbstractSocket>
-#include <QScopedPointer>
-#include <QList>
 
 #include "Message.hpp"
 
@@ -15,7 +15,7 @@ class MessageServer : public QTcpServer
 {
     Q_OBJECT
 public:
-    explicit MessageServer(QObject *parent = 0);
+    explicit MessageServer(QObject* parent = 0);
     virtual ~MessageServer();
 
 protected:
@@ -24,18 +24,21 @@ protected:
     void incomingConnection(qintptr handle);
 
 signals:
-    void message(Message const &message);
-    void error (QString const&) const;
+    void message(Message const& message);
+    void error(QString const&) const;
 
 public slots:
-    void setServer(QString host, quint16 port=2442);
+    void setServer(QString host, quint16 port = 2442);
     void setPause(bool paused);
     bool start();
     void stop();
     void setMaxConnections(int n);
-    void setServerHost(const QString &host){ setServer(host, m_port); }
-    void setServerPort(quint16 port){ setServer(m_host, port); }
-    void send(Message const &message);
+
+    void setServerHost(const QString& host) { setServer(host, m_port); }
+
+    void setServerPort(quint16 port) { setServer(m_host, port); }
+
+    void send(Message const& message);
 
 private:
     bool m_paused;
@@ -50,15 +53,16 @@ class Client : public QObject
 {
     Q_OBJECT
 public:
-    explicit Client(MessageServer *server, QObject *parent = 0);
+    explicit Client(MessageServer* server, QObject* parent = 0);
 
     bool isConnected() const { return m_connected; }
+
     void setSocket(qintptr handle);
-    void send(const Message &message);
+    void send(const Message& message);
     void close();
-    bool awaitingResponse(qint64 id){
-        return id <= 0 || m_requests.contains(id);
-    }
+
+    bool awaitingResponse(qint64 id) { return id <= 0 || m_requests.contains(id); }
+
 signals:
 
 public slots:
@@ -68,11 +72,10 @@ public slots:
 
 private:
     QMap<qint64, Message> m_requests;
-    MessageServer * m_server;
-    QTcpSocket * m_socket;
+    MessageServer* m_server;
+    QTcpSocket* m_socket;
     bool m_connected;
 };
-
 
 
 #endif // MESSAGESERVER_H

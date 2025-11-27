@@ -16,19 +16,18 @@
 class Message final
 {
 public:
-
     // Constructors
 
     Message();
-    Message(QString const & type, QString const & value = {});
-    Message(QString const & type, QString const & value, QVariantMap const & params);
+    Message(QString const& type, QString const& value = {});
+    Message(QString const& type, QString const& value, QVariantMap const& params);
 
     // Copying and moving
 
-    Message            (Message const &);
-    Message & operator=(Message const &);
-    Message            (Message       &&) noexcept;
-    Message & operator=(Message       &&) noexcept;
+    Message(Message const&);
+    Message& operator=(Message const&);
+    Message(Message&&) noexcept;
+    Message& operator=(Message&&) noexcept;
 
     // Destructor
 
@@ -36,32 +35,31 @@ public:
 
     // Accessors
 
-    qint64      id()     const;
-    QString     type()   const;
-    QString     value()  const;
+    qint64 id() const;
+    QString type() const;
+    QString value() const;
     QVariantMap params() const;
 
     // Manipulators
 
     qint64 ensureId();
-    void   setType (QString const &);
-    void   setValue(QString const &);
+    void setType(QString const&);
+    void setValue(QString const&);
 
     // Conversions
 
-    QByteArray    toJson()         const;
+    QByteArray toJson() const;
     QJsonDocument toJsonDocument() const;
-    QJsonObject   toJsonObject()   const;
-    QVariantMap   toVariantMap()   const;
+    QJsonObject toJsonObject() const;
+    QVariantMap toVariantMap() const;
 
     // Deserialization
 
-    static Message fromJson(QByteArray    const &);
-    static Message fromJson(QJsonDocument const &);
-    static Message fromJson(QJsonObject   const &);
+    static Message fromJson(QByteArray const&);
+    static Message fromJson(QJsonDocument const&);
+    static Message fromJson(QJsonObject const&);
 
 private:
-
     // Shared data implementation
 
     struct Data;
