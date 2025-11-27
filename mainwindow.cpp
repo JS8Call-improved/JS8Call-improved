@@ -328,8 +328,8 @@ MainWindow::MainWindow(QString  const & program_info,
   m_settings_read {false},
   ui(new Ui::MainWindow),
   m_config {temp_directory, m_settings, this},
-  m_rigErrorMessageBox {MessageBox::Critical, tr ("Rig Control Error")
-      , MessageBox::Cancel | MessageBox::Ok | MessageBox::Retry},
+  m_rigErrorMessageBox {JS8MessageBox::Critical, tr ("Rig Control Error")
+      , JS8MessageBox::Cancel | JS8MessageBox::Ok | JS8MessageBox::Retry},
   m_wideGraph (new WideGraph(m_settings)),
   // no parent so that it has a taskbar icon
   m_logDlg (new LogQSO (program_title (), m_settings, &m_config, nullptr)),
@@ -417,7 +417,7 @@ MainWindow::MainWindow(QString  const & program_info,
 
   // parts of the rig error message box that are fixed
   m_rigErrorMessageBox.setInformativeText (tr ("Do you want to reconfigure the radio interface?"));
-  m_rigErrorMessageBox.setDefaultButton (MessageBox::Ok);
+  m_rigErrorMessageBox.setDefaultButton (JS8MessageBox::Ok);
 
   // start audio thread and hook up slots & signals for shutdown management
   // these objects need to be in the audio thread so that invoking
@@ -1104,7 +1104,7 @@ MainWindow::MainWindow(QString  const & program_info,
           if(Varicode::isCompoundCallsign(callsign)){
               m_config.addGroup(callsign);
           } else {
-              MessageBox::critical_message (this, QString("%1 is not a valid group").arg(callsign));
+              JS8MessageBox::critical_message (this, QString("%1 is not a valid group").arg(callsign));
           }
 
       } else {
@@ -1113,7 +1113,7 @@ MainWindow::MainWindow(QString  const & program_info,
               cd.call = callsign;
               m_callActivity[callsign] = cd;
           } else {
-              MessageBox::critical_message (this, QString("%1 is not a valid callsign or group").arg(callsign));
+              JS8MessageBox::critical_message (this, QString("%1 is not a valid callsign or group").arg(callsign));
           }
       }
 
@@ -2535,12 +2535,12 @@ void MainWindow::dataSink(qint64 frames)
 
 void MainWindow::showSoundInError(const QString& errorMsg)
 {
-  MessageBox::critical_message (this, tr ("Error in Sound Input"), errorMsg);
+  JS8MessageBox::critical_message (this, tr ("Error in Sound Input"), errorMsg);
 }
 
 void MainWindow::showSoundOutError(const QString& errorMsg)
 {
-  MessageBox::critical_message (this, tr ("Error in Sound Output"), errorMsg);
+  JS8MessageBox::critical_message (this, tr ("Error in Sound Output"), errorMsg);
 }
 
 void MainWindow::showStatusMessage(const QString& statusMsg)
@@ -3247,7 +3247,7 @@ void MainWindow::on_actionCopyright_Notice_triggered()
                            "Philip Karn, KA9Q; and other members of the WSJT Development Group.\n\n"
                            "Further, the source code of JS8Call contains material Copyright (C) "
                            "2018-2019 by Jordan Sherer, KN4CRD.\"");
-  MessageBox::warning_message(this, message);
+  JS8MessageBox::warning_message(this, message);
 }
 
 /**
@@ -4581,7 +4581,7 @@ void MainWindow::refuseToSendIn30mWSPRBand() {
                 QTimer::singleShot (
                     0,
                     [this]{
-                        MessageBox::warning_message(
+                        JS8MessageBox::warning_message(
                             this,
                             tr("WSPR Guard Band"),
                             tr("Please choose another Tx frequency."
@@ -5406,13 +5406,13 @@ void MainWindow::resetMessageUI(){
 
 bool MainWindow::ensureCallsignSet(bool alert){
     if(m_config.my_callsign().trimmed().isEmpty()){
-        if(alert) MessageBox::warning_message(this, tr ("Please enter your callsign in the settings."));
+        if(alert) JS8MessageBox::warning_message(this, tr ("Please enter your callsign in the settings."));
         openSettings();
         return false;
     }
 
     if(m_config.my_grid().trimmed().isEmpty()){
-        if(alert) MessageBox::warning_message(this, tr ("Please enter your grid locator in the settings."));
+        if(alert) JS8MessageBox::warning_message(this, tr ("Please enter your grid locator in the settings."));
         openSettings();
         return false;
     }
@@ -5967,7 +5967,7 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
     if (rzult == -1) {
       bool hidden = m_logDlg->isHidden();
       m_logDlg->setHidden(true);
-      MessageBox::warning_message (this, tr ("Error sending log to N1MM"),
+      JS8MessageBox::warning_message (this, tr ("Error sending log to N1MM"),
                                    tr ("Write returned \"%1\"").arg (rzult));
       m_logDlg->setHidden(hidden);
     }
@@ -6039,7 +6039,7 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
       } else {
           bool hidden = m_logDlg->isHidden();
           m_logDlg->setHidden(true);
-          MessageBox::warning_message (this, tr ("Error sending log to N3FJP"),
+          JS8MessageBox::warning_message (this, tr ("Error sending log to N3FJP"),
                                        tr ("Write failed for \"%1:%2\"").arg (host).arg(port));
           m_logDlg->setHidden(hidden);
       }
@@ -6215,9 +6215,9 @@ MainWindow::setFreq(int const n)
 
 void MainWindow::on_actionErase_ALL_TXT_triggered()          //Erase ALL.TXT
 {
-  int ret = MessageBox::query_message (this, tr ("Confirm Erase"),
+  int ret = JS8MessageBox::query_message (this, tr ("Confirm Erase"),
                                          tr ("Are you sure you want to erase file ALL.TXT?"));
-  if(ret==MessageBox::Yes) {
+  if(ret==JS8MessageBox::Yes) {
     QFile f {m_config.writeable_data_dir ().absoluteFilePath ("ALL.TXT")};
     f.remove();
     m_RxLog=1;
@@ -6226,9 +6226,9 @@ void MainWindow::on_actionErase_ALL_TXT_triggered()          //Erase ALL.TXT
 
 void MainWindow::on_actionErase_js8call_log_adi_triggered()
 {
-  int ret = MessageBox::query_message (this, tr ("Confirm Erase"),
+  int ret = JS8MessageBox::query_message (this, tr ("Confirm Erase"),
                                        tr ("Are you sure you want to erase file js8call_log.adi?"));
-  if(ret==MessageBox::Yes) {
+  if(ret==JS8MessageBox::Yes) {
     QFile f {m_config.writeable_data_dir ().absoluteFilePath ("js8call_log.adi")};
     f.remove();
 
@@ -7843,16 +7843,16 @@ void MainWindow::rigFailure (QString const& reason)
         {
           switch (m_rigErrorMessageBox.standardButton (clicked_button))
             {
-            case MessageBox::Ok:
+            case JS8MessageBox::Ok:
               m_config.select_tab (1);
               QTimer::singleShot (0, this, &MainWindow::on_actionSettings_triggered);
               break;
 
-            case MessageBox::Retry:
+            case JS8MessageBox::Retry:
               QTimer::singleShot (0, this, &MainWindow::rigOpen);
               break;
 
-            case MessageBox::Cancel:
+            case JS8MessageBox::Cancel:
               QTimer::singleShot (0, this, &MainWindow::close);
               break;
 
@@ -11369,7 +11369,7 @@ void MainWindow::write_frequency_entry (QString const& file_name){
       this,
       message = tr("Cannot open \"%1\" for append: %2").arg(f2.fileName()).arg(f2.errorString())
     ]{
-      MessageBox::warning_message(this, tr("Log File Error"), message);
+      JS8MessageBox::warning_message(this, tr("Log File Error"), message);
     });
   }
 }
@@ -11399,7 +11399,7 @@ void MainWindow::write_transmit_entry (QString const& file_name)
         this,
         message = tr("Cannot open \"%1\" for append: %2").arg(f.fileName()).arg(f.errorString())
       ] {
-        MessageBox::warning_message(this, tr("Log File Error"), message);
+        JS8MessageBox::warning_message(this, tr("Log File Error"), message);
       });
     }
 }
@@ -11436,7 +11436,7 @@ MainWindow::writeAllTxt(QStringView message)
   }
   else
   {
-    MessageBox::warning_message(this,
+    JS8MessageBox::warning_message(this,
                                tr("File Open Error"),
                                tr("Cannot open \"%1\" for append: %2")
                                .arg(f.fileName())
@@ -11469,7 +11469,7 @@ MainWindow::writeMsgTxt(QStringView message,
     }
     else
     {
-      MessageBox::warning_message(this,
+      JS8MessageBox::warning_message(this,
                                   tr("File Open Error"),
                                   tr("Cannot open \"%1\" for append: %2")
                                   .arg(f.fileName())

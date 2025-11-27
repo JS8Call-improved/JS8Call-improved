@@ -43,7 +43,7 @@
 #include "PSKReporter.hpp"
 #include "logbook/logbook.h"
 #include "commons.h"
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 #include "NetworkAccessManager.hpp"
 #include "qpriorityqueue.h"
 #include "varicode.h"
@@ -435,7 +435,7 @@ private:
 
   // other windows
   Configuration m_config;
-  MessageBox m_rigErrorMessageBox;
+  JS8MessageBox m_rigErrorMessageBox;
 
   QScopedPointer<WideGraph> m_wideGraph;
   QScopedPointer<LogQSO> m_logDlg;

@@ -34,7 +34,7 @@
 #include "commons.h"
 #include "Radio.hpp"
 #include "FrequencyList.hpp"
-#include "MessageBox.hpp"       // last to avoid nasty MS macro definitions
+#include "JS8MessageBox.hpp"       // last to avoid nasty MS macro definitions
 
 #include "DriftingDateTime.h"
 
@@ -178,18 +178,18 @@ int main(int argc, char *argv[])
         {
           if (QLockFile::LockFailedError == instance_lock.error ())
             {
-              switch (MessageBox::query_message (nullptr
+              switch (JS8MessageBox::query_message (nullptr
                                                  , a.translate ("main", "Another instance may be running")
                                                  , a.translate ("main", "try to remove stale lock file?")
                                                  , QString {}
-                                                 , MessageBox::Yes | MessageBox::Retry | MessageBox::No
-                                                 , MessageBox::Yes))
+                                                 , JS8MessageBox::Yes | JS8MessageBox::Retry | JS8MessageBox::No
+                                                 , JS8MessageBox::Yes))
                 {
-                case MessageBox::Yes:
+                case JS8MessageBox::Yes:
                   instance_lock.removeStaleLockFile ();
                   break;
 
-                case MessageBox::Retry:
+                case JS8MessageBox::Retry:
                   break;
 
                 default:
@@ -217,19 +217,19 @@ int main(int argc, char *argv[])
           if (!temp_dir.mkpath (unique_directory)
               || !temp_dir.cd (unique_directory))
             {
-              MessageBox::critical_message (nullptr,
+              JS8MessageBox::critical_message (nullptr,
                                             a.translate ("main", "Failed to create a temporary directory"),
                                             a.translate ("main", "Path: \"%1\"").arg (temp_dir.absolutePath ()));
               throw std::runtime_error {"Failed to create a temporary directory"};
             }
           if (!temp_dir.isReadable () || !(temp_ok = QTemporaryFile {temp_dir.absoluteFilePath ("test")}.open ()))
             {
-              auto button =  MessageBox::critical_message (nullptr,
+              auto button =  JS8MessageBox::critical_message (nullptr,
                                                            a.translate ("main", "Failed to create a usable temporary directory"),
                                                            a.translate ("main", "Another application may be locking the directory"),
                                                            a.translate ("main", "Path: \"%1\"").arg (temp_dir.absolutePath ()),
-                                                           MessageBox::Retry | MessageBox::Cancel);
-              if (MessageBox::Cancel == button)
+                                                           JS8MessageBox::Retry | JS8MessageBox::Cancel);
+              if (JS8MessageBox::Cancel == button)
                 {
                   throw std::runtime_error {"Failed to create a usable temporary directory"};
                 }
@@ -279,12 +279,12 @@ int main(int argc, char *argv[])
     }
   catch (std::exception const& e)
     {
-      MessageBox::critical_message (nullptr, "Fatal error", e.what ());
+      JS8MessageBox::critical_message (nullptr, "Fatal error", e.what ());
       std::cerr << "Error: " << e.what () << '\n';
     }
   catch (...)
     {
-      MessageBox::critical_message (nullptr, "Unexpected fatal error");
+      JS8MessageBox::critical_message (nullptr, "Unexpected fatal error");
       std::cerr << "Unexpected fatal error\n";
       throw;			// hoping the runtime might tell us more about the exception
     }

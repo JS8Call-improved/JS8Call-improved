@@ -10,7 +10,7 @@
 #include <QAbstractItemView>
 
 #include "logbook/adif.h"
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 #include "Configuration.hpp"
 #include "Bands.hpp"
 #include "Maidenhead.hpp"
@@ -270,14 +270,14 @@ void LogQSO::accept()
 
   if (!adifile.addQSOToFile (ADIF))
   {
-    MessageBox::warning_message (this, tr ("Log file error"),
+    JS8MessageBox::warning_message (this, tr ("Log file error"),
                                  tr ("Cannot open \"%1\"").arg (adifilePath));
   }
 
   //Log this QSO to file "js8call.log"
   static QFile f {QDir {QStandardPaths::writableLocation (QStandardPaths::AppLocalDataLocation)}.absoluteFilePath ("js8call.log")};
   if(!f.open(QIODevice::Text | QIODevice::Append)) {
-    MessageBox::warning_message (this, tr ("Log file error"),
+    JS8MessageBox::warning_message (this, tr ("Log file error"),
                                  tr ("Cannot open \"%1\" for append").arg (f.fileName ()),
                                  tr ("Error: %1").arg (f.errorString ()));
   } else {

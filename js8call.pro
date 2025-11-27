@@ -65,7 +65,7 @@ SOURCES += \
   main.cpp decodedtext.cpp messageaveraging.cpp \
   Modes.cpp \
   MessageAggregator.cpp qt_helpers.cpp\
-  MultiSettings.cpp PhaseEqualizationDialog.cpp IARURegions.cpp MessageBox.cpp \
+  MultiSettings.cpp PhaseEqualizationDialog.cpp IARURegions.cpp JS8MessageBox.cpp \
   EqualizationToolsDialog.cpp \
     varicode.cpp \
     NetworkMessage.cpp \
@@ -109,7 +109,7 @@ HEADERS  += qt_helpers.hpp \
   logbook/logbook.h logbook/countrydat.h logbook/countriesworked.h logbook/adif.h \
   messageaveraging.h Modes.hpp \
   MultiSettings.hpp PhaseEqualizationDialog.hpp \
-  IARURegions.hpp MessageBox.hpp EqualizationToolsDialog.hpp \
+  IARURegions.hpp JS8MessageBox.hpp EqualizationToolsDialog.hpp \
     qorderedmap.h \
     varicode.h \
     qpriorityqueue.h \

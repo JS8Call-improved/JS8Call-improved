@@ -251,7 +251,7 @@ target_sources(
   main.cpp
   mainwindow.cpp
   Message.cpp
-  MessageBox.cpp
+  JS8MessageBox.cpp
   MessageClient.cpp
   MessageError.cpp
   messagereplydialog.cpp

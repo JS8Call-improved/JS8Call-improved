@@ -12,7 +12,7 @@
 #include "Configuration.hpp"
 #include "DriftingDateTime.h"
 #include "EventFilter.hpp"
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 #include "SettingsGroup.hpp"
 #include "varicode.h"
 
@@ -790,7 +790,7 @@ WideGraph::readPalette()
   }
   catch (std::exception const & e)
   {
-    MessageBox::warning_message(this, tr("Read Palette"), e.what());
+    JS8MessageBox::warning_message(this, tr("Read Palette"), e.what());
   }
 }
 
@@ -821,7 +821,7 @@ WideGraph::on_adjust_palette_push_button_clicked(bool)
   }
   catch (std::exception const & e)
   {
-    MessageBox::warning_message(this, tr("Read Palette"), e.what());
+    JS8MessageBox::warning_message(this, tr("Read Palette"), e.what());
   }
 }
 
