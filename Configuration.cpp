@@ -182,7 +182,7 @@
 #include "FrequencyList.hpp"
 #include "StationList.hpp"
 #include "NetworkServerLookup.hpp"
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 #include "Maidenhead.hpp"
 #include "CallsignValidator.hpp"
 #include "LazyFillComboBox.hpp"
@@ -988,11 +988,11 @@ QSet<QString> Configuration::my_groups() const {
 
 void Configuration::addGroup(QString const &group){
     if(!Varicode::isGroupAllowed(group)){
-        MessageBox::critical_message (m_->window(), QString("%1 is a group that cannot be joined").arg(group));
+        JS8MessageBox::critical_message (m_->window(), QString("%1 is a group that cannot be joined").arg(group));
         return;
     }
     if(!Varicode::isCompoundCallsign(group)){
-        MessageBox::critical_message (m_->window(), QString("%1 is not a valid group").arg(group));
+        JS8MessageBox::critical_message (m_->window(), QString("%1 is not a valid group").arg(group));
         return;
     }
     QSet<QString> groups = my_groups();
@@ -1153,7 +1153,7 @@ Configuration::impl::impl (Configuration * self, QDir const& temp_directory,
     // Find a suitable data file location
     if (!writeable_data_dir_.mkpath ("."))
       {
-        MessageBox::critical_message (this, tr ("Failed to create data directory"),
+        JS8MessageBox::critical_message (this, tr ("Failed to create data directory"),
                                       tr ("path: \"%1\"").arg (writeable_data_dir_.absolutePath ()));
         throw std::runtime_error {"Failed to create data directory"};
       }
@@ -1163,7 +1163,7 @@ Configuration::impl::impl (Configuration * self, QDir const& temp_directory,
     default_save_directory_ = writeable_data_dir_;
     if (!default_save_directory_.mkpath (save_dir) || !default_save_directory_.cd (save_dir))
       {
-        MessageBox::critical_message (this, tr ("Failed to create save directory"),
+        JS8MessageBox::critical_message (this, tr ("Failed to create save directory"),
                                       tr ("path: \"%1\%")
                                       .arg (default_save_directory_.absoluteFilePath (save_dir)));
         throw std::runtime_error {"Failed to create save directory"};
@@ -1175,7 +1175,7 @@ Configuration::impl::impl (Configuration * self, QDir const& temp_directory,
     QString samples_dir {"samples"};
     if (!default_save_directory_.mkpath (samples_dir))
       {
-        MessageBox::critical_message (this, tr ("Failed to create samples directory"),
+        JS8MessageBox::critical_message (this, tr ("Failed to create samples directory"),
                                       tr ("path: \"%1\"")
                                       .arg (default_save_directory_.absoluteFilePath (samples_dir)));
         throw std::runtime_error {"Failed to create samples directory"};
@@ -1184,7 +1184,7 @@ Configuration::impl::impl (Configuration * self, QDir const& temp_directory,
     QString messages_dir {"messages"};
     if (!default_save_directory_.mkpath (messages_dir))
       {
-        MessageBox::critical_message (this, tr ("Failed to create messages directory"),
+        JS8MessageBox::critical_message (this, tr ("Failed to create messages directory"),
                                       tr ("path: \"%1\"")
                                       .arg (default_save_directory_.absoluteFilePath (messages_dir)));
         throw std::runtime_error {"Failed to create messages directory"};
@@ -2367,83 +2367,83 @@ QStringList splitWords(QString callsString){
 bool Configuration::impl::validate ()
 {
   if(ui_->eot_line_edit->text().trimmed().left(2).isEmpty()){
-      MessageBox::critical_message (this, tr ("Please enter an end of transmission character"));
+      JS8MessageBox::critical_message (this, tr ("Please enter an end of transmission character"));
       return false;
   }
 
   auto callsign = ui_->callsign_line_edit->text().toUpper().trimmed();
   if(!Varicode::isValidCallsign(callsign, nullptr) || callsign.startsWith("@")){
-      MessageBox::critical_message (this, tr ("The callsign format you provided is not supported"));
+      JS8MessageBox::critical_message (this, tr ("The callsign format you provided is not supported"));
       return false;
   }
 
   if (!ui_->grid_line_edit->hasAcceptableInput())
   {
-    MessageBox::critical_message (this, tr ("The grid you provided is not valid"));
+    JS8MessageBox::critical_message (this, tr ("The grid you provided is not valid"));
     return false;
   }
 
   foreach(auto group, splitGroups(ui_->groups_line_edit->text().toUpper().trimmed(), false)){
       if(!Varicode::isGroupAllowed(group)){
-          MessageBox::critical_message (this, QString("%1 is a group that cannot be joined").arg(group));
+          JS8MessageBox::critical_message (this, QString("%1 is a group that cannot be joined").arg(group));
           return false;
       }
       if(!Varicode::isCompoundCallsign(group)){
-          MessageBox::critical_message (this, QString("%1 is not a valid group").arg(group));
+          JS8MessageBox::critical_message (this, QString("%1 is not a valid group").arg(group));
           return false;
       }
   }
 
   foreach(auto call, splitWords(ui_->auto_whitelist_line_edit->text().toUpper().trimmed())){
       if(!Varicode::isValidCallsign(call, nullptr)){
-          MessageBox::critical_message (this, QString("%1 is not a valid callsign to whitelist").arg(call));
+          JS8MessageBox::critical_message (this, QString("%1 is not a valid callsign to whitelist").arg(call));
           return false;
       }
   }
 
   auto hb = ui_->hb_message_line_edit->text().toUpper().trimmed();
   if(!hb.isEmpty() && !(hb.startsWith("HB") || hb.contains(callsign))){
-      MessageBox::critical_message (this, QString("The HB message format is invalid. It must either start with \"HB\" or contain your callsign."));
+      JS8MessageBox::critical_message (this, QString("The HB message format is invalid. It must either start with \"HB\" or contain your callsign."));
       return false;
   }
 
   auto cq = ui_->cq_message_line_edit->text().toUpper().trimmed();
   if(!cq.isEmpty() && !(cq.startsWith("CQ") || cq.contains(callsign))){
-      MessageBox::critical_message (this, QString("The CQ message format is invalid. It must either start with \"CQ\" or contain your callsign."));
+      JS8MessageBox::critical_message (this, QString("The CQ message format is invalid. It must either start with \"CQ\" or contain your callsign."));
       return false;
   }
 
   if ((ui_->sound_input_combo_box->currentIndex() < 0) && next_audio_input_device_.isNull())
   {
     find_tab(ui_->sound_input_combo_box);
-    MessageBox::critical_message (this, tr ("Invalid audio input device"));
+    JS8MessageBox::critical_message (this, tr ("Invalid audio input device"));
     return false;
   }
 
   if ((ui_->sound_input_channel_combo_box->currentIndex () < 0) && next_audio_input_device_.isNull())
   {
     find_tab(ui_->sound_input_combo_box);
-    MessageBox::critical_message (this, tr ("Invalid audio input device"));
+    JS8MessageBox::critical_message (this, tr ("Invalid audio input device"));
     return false;
   }
 
   if ((ui_->sound_output_combo_box->currentIndex () < 0) && next_audio_output_device_.isNull())
   {
     find_tab(ui_->sound_output_combo_box);
-    MessageBox::information_message (this, tr ("Invalid audio output device"));
+    JS8MessageBox::information_message (this, tr ("Invalid audio output device"));
     // don't reject as we can work without an audio output
   }
 
   if ((ui_->notification_sound_output_combo_box->currentIndex () < 0) && next_notification_audio_output_device_.isNull())
   {
     find_tab(ui_->notification_sound_output_combo_box);
-    MessageBox::information_message (this, tr ("Invalid notification audio output device"));
+    JS8MessageBox::information_message (this, tr ("Invalid notification audio output device"));
     // don't reject as we can work without a notification audio output
   }
 
   if (!ui_->PTT_method_button_group->checkedButton ()->isEnabled ())
     {
-      MessageBox::critical_message (this, tr ("Invalid PTT method"));
+      JS8MessageBox::critical_message (this, tr ("Invalid PTT method"));
       return false;
     }
 
@@ -2455,7 +2455,7 @@ bool Configuration::impl::validate ()
                                ->item(ui_->PTT_port_combo_box->findText(ptt_port))
                                ->isEnabled())))
     {
-      MessageBox::critical_message (this, tr ("Invalid PTT port"));
+      JS8MessageBox::critical_message (this, tr ("Invalid PTT port"));
       return false;
     }
 
@@ -3289,7 +3289,7 @@ void Configuration::impl::load_frequencies ()
       auto const list = read_frequencies_file (file_name);
       if (list.size ()
           && (!next_frequencies_.frequency_list ().size ()
-              || MessageBox::Yes == MessageBox::query_message (this
+              || JS8MessageBox::Yes == JS8MessageBox::query_message (this
                                                                , tr ("Replace Working Frequencies")
                                                                , tr ("Are you sure you want to discard your current "
                                                                      "working frequencies and replace them with the "
@@ -3319,7 +3319,7 @@ FrequencyList_v2::FrequencyItems Configuration::impl::read_frequencies_file (QSt
   ids >> magic;
   if (qrg_magic != magic)
     {
-      MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Incorrect file magic"));
+      JS8MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Incorrect file magic"));
       return list;
     }
   quint32 version;
@@ -3328,7 +3328,7 @@ FrequencyList_v2::FrequencyItems Configuration::impl::read_frequencies_file (QSt
   // necessary
   if (version > qrg_version)
     {
-      MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Version is too new"));
+      JS8MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Version is too new"));
       return list;
     }
 
@@ -3338,7 +3338,7 @@ FrequencyList_v2::FrequencyItems Configuration::impl::read_frequencies_file (QSt
 
   if (ids.status () != QDataStream::Ok || !ids.atEnd ())
     {
-      MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Contents corrupt"));
+      JS8MessageBox::warning_message (this, tr ("Not a valid frequencies file"), tr ("Contents corrupt"));
       list.clear ();
       return list;
     }
@@ -3356,7 +3356,7 @@ void Configuration::impl::save_frequencies ()
       QDataStream ods {&frequencies_file};
       auto selection_model = ui_->frequencies_table_view->selectionModel ();
       if (selection_model->hasSelection ()
-          && MessageBox::Yes == MessageBox::query_message (this
+          && JS8MessageBox::Yes == JS8MessageBox::query_message (this
                                                            , tr ("Only Save Selected  Working Frequencies")
                                                            , tr ("Are you sure you want to save only the "
                                                                  "working frequencies that are currently selected? "
@@ -3374,7 +3374,7 @@ void Configuration::impl::save_frequencies ()
 
 void Configuration::impl::reset_frequencies ()
 {
-  if (MessageBox::Yes == MessageBox::query_message (this, tr ("Reset Working Frequencies")
+  if (JS8MessageBox::Yes == JS8MessageBox::query_message (this, tr ("Reset Working Frequencies")
                                                     , tr ("Are you sure you want to discard your current "
                                                           "working frequencies and replace them with default "
                                                           "ones?")))
@@ -3491,7 +3491,7 @@ bool Configuration::impl::have_rig ()
 {
   if (!open_rig ())
     {
-      MessageBox::critical_message (this, tr ("Rig control error")
+      JS8MessageBox::critical_message (this, tr ("Rig control error")
                                     , tr ("Failed to open connection to rig"));
     }
   return rig_active_;
@@ -3699,7 +3699,7 @@ void Configuration::impl::handle_transceiver_failure (QString const& reason)
 
   if (isVisible ())
     {
-      MessageBox::critical_message (this, tr ("Rig failure"), reason);
+      JS8MessageBox::critical_message (this, tr ("Rig failure"), reason);
     }
   else
     {

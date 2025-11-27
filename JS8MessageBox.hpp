@@ -3,21 +3,19 @@
 
 #include <QMessageBox>
 
-// get rid of the nasty MS define
-#ifdef MessageBox
-#undef MessageBox
-#endif
-
-//
-// MessageBox - wrap the Qt QMessageBox class to give a more platform
-// 							neutral and functional interface
-//
-class MessageBox
+/**
+ * JS8MessageBox - wrap the Qt QMessageBox class to give a more platform
+ *							neutral and functional interface.
+ *
+ * Microsoft chose to #define MessageBox.
+ * We dogde the resulting problems by calling our MessageBox JS8MessageBox.
+ */
+class JS8MessageBox
   : public QMessageBox
 {
 public:
-  explicit MessageBox (QWidget * parent = nullptr);
-  explicit MessageBox (Icon, QString const& text, StandardButtons = NoButton
+  explicit JS8MessageBox (QWidget * parent = nullptr);
+  explicit JS8MessageBox (Icon, QString const& text, StandardButtons = NoButton
                        , QWidget * parent = nullptr
                        , Qt::WindowFlags = Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint);
 

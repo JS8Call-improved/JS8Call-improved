@@ -30,7 +30,7 @@
 #include "SettingsGroup.hpp"
 #include "qt_helpers.hpp"
 #include "SettingsGroup.hpp"
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 
 #include "pimpl_impl.hpp"
 
@@ -668,7 +668,7 @@ void MultiSettings::impl::clone_into_configuration (QMenu const * menu)
     {
       QString source_name {1 == sources.size () ? sources.at (0) : dialog.name ()};
       if (main_window_
-          && MessageBox::Yes == MessageBox::query_message (main_window_,
+          && JS8MessageBox::Yes == JS8MessageBox::query_message (main_window_,
                                                         tr ("Clone Into Configuration"),
                                                         tr ("Confirm overwrite of all values for configuration \"%1\" with values from \"%2\"?")
                                                         .arg (unescape_ampersands (target_name))
@@ -714,7 +714,7 @@ void MultiSettings::impl::reset_configuration (QMenu const * menu)
   auto const& target_name = menu->title ();
 
   if (!main_window_
-      || MessageBox::Yes != MessageBox::query_message (main_window_,
+      || JS8MessageBox::Yes != JS8MessageBox::query_message (main_window_,
                                                     tr ("Reset Configuration"),
                                                     tr ("Confirm reset to default values for configuration \"%1\"?")
                                                     .arg (unescape_ampersands (target_name))))
@@ -801,7 +801,7 @@ void MultiSettings::impl::delete_configuration (QMenu * menu)
   else
     {
       if (!main_window_
-          || MessageBox::Yes != MessageBox::query_message (main_window_,
+          || JS8MessageBox::Yes != JS8MessageBox::query_message (main_window_,
                                                         tr ("Delete Configuration"),
                                                         tr ("Confirm deletion of configuration \"%1\"?")
                                                         .arg (unescape_ampersands (target_name))))

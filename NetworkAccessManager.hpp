@@ -7,7 +7,7 @@
 #include <QNetworkReply>
 #include <QString>
 
-#include "MessageBox.hpp"
+#include "JS8MessageBox.hpp"
 
 class QNetworkRequest;
 class QIODevice;
@@ -44,7 +44,7 @@ public:
               {
                 certs += cert.toText () + '\n';
               }
-            if (MessageBox::Ignore == MessageBox::query_message (parent, tr ("Network SSL Errors"), message, certs, MessageBox::Abort | MessageBox::Ignore))
+            if (JS8MessageBox::Ignore == JS8MessageBox::query_message (parent, tr ("Network SSL Errors"), message, certs, JS8MessageBox::Abort | JS8MessageBox::Ignore))
               {
                 // accumulate new SSL error exceptions that have been allowed
                 allowed_ssl_errors_.append (new_errors);
