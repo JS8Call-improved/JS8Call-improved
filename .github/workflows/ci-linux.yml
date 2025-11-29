@@ -3,8 +3,22 @@ permissions:
 
 name: CI Build for Linux Ubuntu
 
-on: [workflow_dispatch, pull_request]
-
+on: 
+  workflow_dispatch: 
+  pull_request:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Build type (Debug/Release)'
+        required: false
+        type: string
+        default: 'Release'
+      release-ver:
+        description: 'Release Version (v2.5.0)'
+        required: false
+        type: string      
+        default: 'v2.5.0'
+        
 # The package arrays below are mainly for building the libs, one could add fedora_build_package to include the
 # packages fedora requires, for instance.
 env:
@@ -12,7 +26,7 @@ env:
   build_package: build-essential git cmake libusb-1.0-0-dev libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev
   opengl_package1: libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev 
   opengl_package2: libxcb-keysyms1-dev libxcb-image0-dev libxcb-icccm4-dev libxcb-render-util0-dev 
-  opengl_package3: libxcb-xfixes0-dev libxcb-sync-dev libxcb-randr0-dev libxrender-dev
+  opengl_package3: libxcb-xfixes0-dev libxcb-sync-dev libxcb-randr0-dev libxrender-dev libxcb*
   ffmpeg_build: libass-dev libfreetype6-dev libgnutls28-dev libmp3lame-dev libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libx264-dev
 
 # If we want to check on other variants of linux, just add it to the maxtix/include section
@@ -40,6 +54,14 @@ jobs:
         echo "thisos=$ImageOS" >> $GITHUB_OUTPUT
       shell: bash
 
+    - name: Set our version tag for AppImage
+      if: ${{ inputs.release-ver }}
+      run: export VERSION=${{ inputs.release-ver }}
+      
+    - name: Set our version tag for AppImage
+      if: ${{ !inputs.release-ver }}
+      run: export VERSION=-devel-
+      
 # Move all of our cache checks here, so we know if we need to free bunches of disk space
     - name: Cache Check libusb 1.0.29
       id: cache-usb
@@ -48,12 +70,12 @@ jobs:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/libusb
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-libusb1029
 
-    - name: Cache Check ffmpeg 7.1.1
+    - name: Cache Check ffmpeg 7.1.3
       id: cache-ffmpeg
       uses: actions/cache/restore@v4
       with:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg711
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg713
 
     - name: Cache Check Hamlib 4.6.4
       id: cache-hamlib
@@ -81,7 +103,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693-wayland
 # End cache checks
 
 # We have to empty the runners to build QT as they are only 50G and upto 78% full
@@ -117,6 +139,20 @@ jobs:
         sudo apt-get install -y ${{ env.ffmpeg_build }} ${{ env.opengl_package2 }} ${{ env.opengl_package3 }}
         sudo apt-get clean
 
+    - name: AppImage tools (x86_64)
+      if: (runner.arch == 'X64')
+      run: |
+        curl --location --output /tmp/linuxdeployqt-continuous-x86_64.AppImage https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
+        chmod a+x /tmp/linuxdeployqt-continuous-x86_64.AppImage
+        sudo apt-get install -y ${{ env.ffmpeg_build }} ${{ env.opengl_package1 }} ${{ env.opengl_package2 }} ${{ env.opengl_package3 }}
+
+    - name: AppImage tools (arm64)
+      if: (runner.arch == 'ARM64')
+      run: |
+        curl --location --output /tmp/linuxdeployqt-continuous-aarch64.AppImage https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-aarch64.AppImage
+        chmod a+x /tmp/linuxdeployqt-continuous-aarch64.AppImage
+        sudo apt-get install -y ${{ env.ffmpeg_build }} ${{ env.opengl_package1 }} ${{ env.opengl_package2 }} ${{ env.opengl_package3 }}
+
 ## libusb
     - name: Install libusb 1.0.29
       if: steps.cache-usb.outputs.cache-hit != 'true'
@@ -139,15 +175,15 @@ jobs:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/libusb
 
 ## ffmpeg
-    - name: Install ffmpeg 7.1.1
+    - name: Install ffmpeg 7.1.3
       if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
       id: install-ffmpeg
       run: |
-        git clone --depth=1 --branch n7.1.1 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg
+        git clone --depth=1 --branch n7.1.3 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg
         mkdir -p /tmp/ffmpeg/build
         cd /tmp/ffmpeg/build
         ../configure --prefix=${GITHUB_WORKSPACE}/local/ffmpeg --disable-shared --enable-static --disable-doc \
-          --enable-network --enable-gpl --enable-nonfree --enable-libass --enable-libfreetype --enable-libmp3lame \
+          --enable-network --enable-gpl --enable-libass --enable-libfreetype --enable-libmp3lame \
           --enable-libvorbis
         make -j install
 
@@ -155,7 +191,7 @@ jobs:
       if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg711
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg713
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
 
 ## hamlib
@@ -229,6 +265,7 @@ jobs:
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-boost188
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/boost
 
+# QT6.9.3
     # Takes about 1 hour if not cached
     - name: Install QT 6.9.3
       if: steps.cache-qt.outputs.cache-hit != 'true'
@@ -237,7 +274,7 @@ jobs:
         git clone --depth=1 --branch=6.9.3 https://github.com/qt/qt5.git /tmp/qt6
         mkdir -p /tmp/qt6/build
         cd /tmp/qt6/build
-        /tmp/qt6/configure -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/local/ffmpeg" --prefix=${GITHUB_WORKSPACE}/local/qt693-install -init-submodules -submodules qtmultimedia,qtserialport -ffmpeg-dir /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
+        /tmp/qt6/configure -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/local/ffmpeg" --prefix=${GITHUB_WORKSPACE}/local/qt693-install -init-submodules -submodules qtmultimedia,qtserialport,qtwayland -ffmpeg-dir /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
         cmake --build . --parallel
         cmake --install .
 
@@ -245,7 +282,7 @@ jobs:
       if: steps.cache-qt.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693-wayland
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install
 
     - name: QT 6.9.3 Summary
@@ -257,3 +294,66 @@ jobs:
         mkdir -p build && cd build
         cmake -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/local/qt693-install;${GITHUB_WORKSPACE}/local/hamlib;${GITHUB_WORKSPACE}/local/fftw;${GITHUB_WORKSPACE}/local/boost;${GITHUB_WORKSPACE}/local/libusb" ..
         make -j 4
+
+# AppImage
+    - name: AppImage Directory Setup and File Copy
+      run: |
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
+        
+        cp build/JS8Call-improved ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
+        cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
+        cp ${GITHUB_WORKSPACE}/local/qt693-install/plugins/platforms/*.so ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
+        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-decoration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
+        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-graphics-integration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
+        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-shell-integration ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
+        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/xcbglintegrations ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
+
+
+    - name: AppImage Copy Files
+      run: |
+        cp js8call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call-improved.desktop
+
+    - name: AppImage deploy (x86_64)
+      if: (runner.arch == 'X64')
+      run: |
+        if [ -z ${{ inputs.release-ver }} ]; then export VERSION=devel else export VERSION=${{ inputs.release-ver }}; fi
+        cd ${GITHUB_WORKSPACE}/AppImage/
+        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
+          -executable=AppDir/usr/bin/JS8Call-improved \
+          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          -appimage -verbose=2 -no-translations
+        chmod a+x *.AppImage
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+    - name: AppImage deploy (arm64)
+      if: (runner.arch == 'ARM64')
+      run: |
+        if [ -z ${{ inputs.release-ver }} ]; then export VERSION=devel else export VERSION=${{ inputs.release-ver }}; fi
+        cd ${GITHUB_WORKSPACE}/AppImage/
+        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
+          -executable=AppDir/usr/bin/JS8Call-improved \
+          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          -appimage -verbose=2 -no-translations
+        chmod a+x *.AppImage
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload Artifact (Release build)
+      if: ${{ inputs.release-ver }}
+      uses: actions/upload-artifact@v5
+      with:
+        name: js8call-improved-${{ matrix.os }}
+        path: ./AppImage/*.AppImage*
+
+    - name: Upload Artifact (CI Build)
+      if: ${{ !inputs.release-ver }}
+      uses: actions/upload-artifact@v5
+      with:
+        name: js8call-improved-${{ matrix.os }}
+        path: ./AppImage/
+        
