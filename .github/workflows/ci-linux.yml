@@ -182,9 +182,7 @@ jobs:
         git clone --depth=1 --branch n7.1.3 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg
         mkdir -p /tmp/ffmpeg/build
         cd /tmp/ffmpeg/build
-        ../configure --prefix=${GITHUB_WORKSPACE}/local/ffmpeg --disable-shared --enable-static --disable-doc \
-          --enable-network --enable-gpl --enable-libass --enable-libfreetype --enable-libmp3lame \
-          --enable-libvorbis
+        ../configure --prefix=${GITHUB_WORKSPACE}/local/ffmpeg --enable-shared --disable-doc --enable-network
         make -j install
 
     - name: Save ffmpeg cache
