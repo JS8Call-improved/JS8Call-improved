@@ -103,7 +103,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693-wayland
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-wayland-qt693
 # End cache checks
 
 # We have to empty the runners to build QT as they are only 50G and upto 78% full
@@ -282,7 +282,7 @@ jobs:
       if: steps.cache-qt.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-qt693-wayland
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-wayland-qt693
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install
 
     - name: QT 6.9.3 Summary
