@@ -314,7 +314,7 @@ jobs:
 
     - name: AppImage Copy Files
       run: |
-        cp js8call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call-improved.desktop
+        cp JS8Call-improved.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call-improved.desktop
 
     - name: AppImage deploy (x86_64)
       if: (runner.arch == 'X64')
