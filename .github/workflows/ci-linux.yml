@@ -27,7 +27,7 @@ env:
   opengl_package1: libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev 
   opengl_package2: libxcb-keysyms1-dev libxcb-image0-dev libxcb-icccm4-dev libxcb-render-util0-dev 
   opengl_package3: libxcb-xfixes0-dev libxcb-sync-dev libxcb-randr0-dev libxrender-dev libxcb*
-  ffmpeg_build: libass-dev libfreetype6-dev libgnutls28-dev libmp3lame-dev libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libx264-dev
+  ffmpeg_build: libgnutls28-dev libsdl2-dev libva-dev
 
 # If we want to check on other variants of linux, just add it to the maxtix/include section
 # with the OS required libs for that platform. Some additional changes (like apt to dnf) will 
