@@ -54,14 +54,6 @@ jobs:
         echo "thisos=$ImageOS" >> $GITHUB_OUTPUT
       shell: bash
 
-    - name: Set our version tag for AppImage
-      if: ${{ inputs.release-ver }}
-      run: export VERSION=${{ inputs.release-ver }}
-      
-    - name: Set our version tag for AppImage
-      if: ${{ !inputs.release-ver }}
-      run: export VERSION=-devel-
-      
 # Move all of our cache checks here, so we know if we need to free bunches of disk space
     - name: Cache Check libusb 1.0.29
       id: cache-usb
@@ -300,6 +292,7 @@ jobs:
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/
         
         cp build/JS8Call-improved ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
@@ -308,16 +301,36 @@ jobs:
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-graphics-integration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-shell-integration ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/xcbglintegrations ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
-
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavcodec.so.61.19.101 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavcodec.so.61
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavdevice.so.61.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavdevice.so.61
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavfilter.so.10.4.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavfilter.so.10
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavformat.so.61.7.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavformat.so.61
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavutil.so.59.39.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavutil.so.59
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libswresample.so.5.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libswresample.so.5
+        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libswscale.so.8.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libswscale.so.8
 
     - name: AppImage Copy Files
       run: |
         cp JS8Call-improved.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call-improved.desktop
 
-    - name: AppImage deploy (x86_64)
-      if: (runner.arch == 'X64')
+    - name: AppImage deploy (x86_64 Release Build)
+      if: (runner.arch == 'X64' && inputs.release-ver)
       run: |
-        if [ -z ${{ inputs.release-ver }} ]; then export VERSION=devel else export VERSION=${{ inputs.release-ver }}; fi
+        export VERSION=${{ inputs.release-ver }}
+        cd ${GITHUB_WORKSPACE}/AppImage/
+        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
+          -executable=AppDir/usr/bin/JS8Call-improved \
+          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          -appimage -verbose=1 -no-translations
+        chmod a+x *.AppImage
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: AppImage deploy (x86_64 CI Build)
+      if: (runner.arch == 'X64' && !inputs.release-ver )
+      run: |
+        export VERSION=devel
         cd ${GITHUB_WORKSPACE}/AppImage/
         /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
           -executable=AppDir/usr/bin/JS8Call-improved \
@@ -327,11 +340,24 @@ jobs:
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-    - name: AppImage deploy (arm64)
-      if: (runner.arch == 'ARM64')
+
+    - name: AppImage deploy (arm64 Release Build)
+      if: (runner.arch == 'ARM64' && inputs.release-ver )
       run: |
-        if [ -z ${{ inputs.release-ver }} ]; then export VERSION=devel else export VERSION=${{ inputs.release-ver }}; fi
+        export VERSION=${{ inputs.release-ver }}
+        cd ${GITHUB_WORKSPACE}/AppImage/
+        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
+          -executable=AppDir/usr/bin/JS8Call-improved \
+          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          -appimage -verbose=1 -no-translations
+        chmod a+x *.AppImage
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: AppImage deploy (arm64 CI Build)
+      if: (runner.arch == 'ARM64' && !inputs.release-ver )
+      run: |
+        export VERSION=devel
         cd ${GITHUB_WORKSPACE}/AppImage/
         /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
           -executable=AppDir/usr/bin/JS8Call-improved \
@@ -340,7 +366,7 @@ jobs:
         chmod a+x *.AppImage
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
       uses: actions/upload-artifact@v5
