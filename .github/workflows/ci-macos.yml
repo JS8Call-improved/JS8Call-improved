@@ -1,6 +1,8 @@
 permissions:
   contents: read
-
+  attestations: write
+  id-token: write
+  
 name: CI Build for MacOS 15 Arm64 (M1 and higher)
 
 on: 
@@ -202,6 +204,11 @@ jobs:
     - name: Create DMG
       run: create-dmg "JS8Call-improved.dmg" "build/JS8Call.app"
       
+    - name: Attestation
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: '${{ github.workspace }}/JS8Call-improved.dmg'
+        
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
       uses: actions/upload-artifact@v5
