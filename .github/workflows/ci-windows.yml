@@ -106,7 +106,7 @@ jobs:
       if: ${{ inputs.release-ver }}
       run: |
         cd ./build/
-        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-improved-installer-${{ inputs.release-ver }}_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
+        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-${{ inputs.release-ver }}_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: INNO Setup (CI build)
       if: ${{ !inputs.release-ver }}
@@ -118,7 +118,7 @@ jobs:
     - name: Attestation
       uses: actions/attest-build-provenance@v3
       with:
-        subject-path: '${{ github.workspace }}/build/Js8Call/*'
+        subject-path: '${{ github.workspace }}/build/JS8Call/*'
         
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
