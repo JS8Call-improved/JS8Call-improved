@@ -64,22 +64,22 @@ jobs:
       uses: robinraju/release-downloader@v1.12
       with:
         repository: 'hamlib/hamlib'
-        fileName: 'hamlib-w64-4.6.4.zip'
-        tag: '4.6.4'
+        fileName: 'hamlib-w64-4.6.5.zip'
+        tag: '4.6.5'
         extract: true
-        out-file-path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464-tmp'
+        out-file-path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib465-tmp'
 
     - name: Move hamlib directory to the right spot
       shell: msys2 {0}
       run: |
-        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464-tmp/hamlib-w64-4.6.4' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464'
-        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/lib/gcc/libhamlib.dll.a' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/lib/libhamlib.dll.a'
+        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib465-tmp/hamlib-w64-4.6.5' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
+        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/gcc/libhamlib.dll.a' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/libhamlib.dll.a'
 
     - name: Configure JS8Call
       shell: msys2 {0}
       run: |
         cd ./build
-        cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
+        cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
 
     - name: Build JS8Call
       shell: msys2 {0}
@@ -98,9 +98,9 @@ jobs:
         cd ./build/
         cp 'D:/a/JS8Call-improved/JS8Call-improved/LICENSE' JS8Call/
         cp /mingw64/bin/libfftw3f-3.dll JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libhamlib-4.dll' JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libusb-1.0.dll' JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libwinpthread-1.dll' JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libhamlib-4.dll' JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libusb-1.0.dll' JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libwinpthread-1.dll' JS8Call/
 
     - name: INNO Setup (Release build)
       if: ${{ inputs.release-ver }}
@@ -120,7 +120,7 @@ jobs:
       with:
         name: "JS8call-improved_${{ inputs.release-ver }}_${{ runner.arch }}_win64"
         path: |
-          ./build/JS8Call/JS8Call-improved-installer*
+          ./build/JS8Call/JS8Call-installer*
 
     - name: Upload Artifact (CI build)
       if: ${{ !inputs.release-ver }}
@@ -128,5 +128,5 @@ jobs:
       with:
         name: "JS8call-improved_devel_${{ runner.arch }}_win64"
         path: |
-          ./build/JS8Call/JS8Call-improved-installer*
+          ./build/JS8Call/JS8Call-installer*
           ./build/JS8Call/
