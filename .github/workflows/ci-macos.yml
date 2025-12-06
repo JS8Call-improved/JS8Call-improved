@@ -62,12 +62,12 @@ jobs:
         path: /Users/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg713
 
-    - name: Cache Check Hamlib 4.6.4
+    - name: Cache Check Hamlib 4.6.5
       id: cache-hamlib
       uses: actions/cache/restore@v4
       with:
         path: /Users/runner/work/JS8Call-improved/JS8Call-improved/local/hamlib
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-hamlib464
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-hamlib465
 
     - name: Cache Check fftw 3.3.10
       id: cache-fftw
@@ -105,11 +105,11 @@ jobs:
         path: /Users/runner/work/JS8Call-improved/JS8Call-improved/local/libusb
 
 ## hamlib
-    - name: Install Hamlib 4.6.4
+    - name: Install Hamlib 4.6.5
       if: steps.cache-hamlib.outputs.cache-hit != 'true'
       id: install-hamlib
       run: |
-        git clone --depth=1 --branch=4.6.4 https://github.com/Hamlib/Hamlib.git /tmp/hamlib
+        git clone --depth=1 --branch=4.6.5 https://github.com/Hamlib/Hamlib.git /tmp/hamlib
         cd /tmp/hamlib
         ./bootstrap
         ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib
@@ -120,7 +120,7 @@ jobs:
       if: steps.cache-hamlib.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-hamlib464
+        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-hamlib465
         path: /Users/runner/work/JS8Call-improved/JS8Call-improved/local/hamlib
 
  ## fftw arm64
