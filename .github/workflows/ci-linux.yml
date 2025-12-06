@@ -1,6 +1,8 @@
 permissions:
   contents: read
-
+  attestations: write
+  id-token: write
+  
 name: CI Build for Linux Ubuntu
 
 on: 
@@ -367,6 +369,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Attestation
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: '${{ github.workspace }}/AppImage/*.AppImage*'
+        
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
       uses: actions/upload-artifact@v5
