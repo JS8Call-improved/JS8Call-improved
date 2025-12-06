@@ -30,7 +30,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
-OutputDir=D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call-improved
+OutputDir=D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call
 ; This can be changed from the ci-windows.yml for release builds
 OutputBaseFilename=JS8Call-installer
 SolidCompression=yes
