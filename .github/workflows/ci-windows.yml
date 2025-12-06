@@ -114,6 +114,12 @@ jobs:
         cd ./build/
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
+
+    - name: Attestation
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: '${{ github.workspace }}/build/Js8Call/*'
+        
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
       uses: actions/upload-artifact@v5
