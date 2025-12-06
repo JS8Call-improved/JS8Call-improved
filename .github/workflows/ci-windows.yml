@@ -90,17 +90,17 @@ jobs:
     - name: Move exe into install directory
       shell: msys2 {0}
       run: |
-        cp ./build/JS8Call-improved.exe ./build/JS8Call-improved/
+        cp ./build/JS8Call.exe ./build/JS8Call/
         
     - name: Move libraries and License to install directory
       shell: msys2 {0}
       run: |
         cd ./build/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/LICENSE' JS8Call-improved/
-        cp /mingw64/bin/libfftw3f-3.dll JS8Call-improved/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libhamlib-4.dll' JS8Call-improved/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libusb-1.0.dll' JS8Call-improved/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libwinpthread-1.dll' JS8Call-improved/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/LICENSE' JS8Call/
+        cp /mingw64/bin/libfftw3f-3.dll JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libhamlib-4.dll' JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libusb-1.0.dll' JS8Call/
+        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib464/bin/libwinpthread-1.dll' JS8Call/
 
     - name: INNO Setup (Release build)
       if: ${{ inputs.release-ver }}
@@ -112,7 +112,7 @@ jobs:
       if: ${{ !inputs.release-ver }}
       run: |
         cd ./build/
-        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-improved-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
+        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
@@ -120,7 +120,7 @@ jobs:
       with:
         name: "JS8call-improved_${{ inputs.release-ver }}_${{ runner.arch }}_win64"
         path: |
-          ./build/JS8Call-improved/JS8Call-improved-installer*
+          ./build/JS8Call/JS8Call-improved-installer*
 
     - name: Upload Artifact (CI build)
       if: ${{ !inputs.release-ver }}
@@ -128,5 +128,5 @@ jobs:
       with:
         name: "JS8call-improved_devel_${{ runner.arch }}_win64"
         path: |
-          ./build/JS8Call-improved/JS8Call-improved-installer*
-          ./build/JS8Call-improved/
+          ./build/JS8Call/JS8Call-improved-installer*
+          ./build/JS8Call/

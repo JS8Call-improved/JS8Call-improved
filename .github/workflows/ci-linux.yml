@@ -294,7 +294,7 @@ jobs:
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/
         
-        cp build/JS8Call-improved ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
+        cp build/JS8Call ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
         cp ${GITHUB_WORKSPACE}/local/qt693-install/plugins/platforms/*.so ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-decoration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
@@ -311,15 +311,15 @@ jobs:
 
     - name: AppImage Copy Files
       run: |
-        cp JS8Call-improved.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call-improved.desktop
+        cp JS8Call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call.desktop
 
     - name: AppImage deploy (x86_64 Release Build)
       if: (runner.arch == 'X64' && inputs.release-ver)
       run: |
         export VERSION=${{ inputs.release-ver }}
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
-          -executable=AppDir/usr/bin/JS8Call-improved \
+        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
+          -executable=AppDir/usr/bin/JS8Call \
           -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
           -appimage -verbose=1 -no-translations
         chmod a+x *.AppImage
@@ -332,8 +332,8 @@ jobs:
       run: |
         export VERSION=devel
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
-          -executable=AppDir/usr/bin/JS8Call-improved \
+        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
+          -executable=AppDir/usr/bin/JS8Call \
           -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
           -appimage -verbose=2 -no-translations
         chmod a+x *.AppImage
@@ -346,8 +346,8 @@ jobs:
       run: |
         export VERSION=${{ inputs.release-ver }}
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
-          -executable=AppDir/usr/bin/JS8Call-improved \
+        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
+          -executable=AppDir/usr/bin/JS8Call \
           -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
           -appimage -verbose=1 -no-translations
         chmod a+x *.AppImage
@@ -359,8 +359,8 @@ jobs:
       run: |
         export VERSION=devel
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call-improved.desktop \
-          -executable=AppDir/usr/bin/JS8Call-improved \
+        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
+          -executable=AppDir/usr/bin/JS8Call \
           -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
           -appimage -verbose=2 -no-translations
         chmod a+x *.AppImage
