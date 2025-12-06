@@ -6,18 +6,19 @@
 CAboutDlg::CAboutDlg(QWidget* parent) : QDialog(parent), ui(new Ui::CAboutDlg)
 {
     ui->setupUi(this);
-    setWindowTitle("About JS8Call-improved");
+    setWindowTitle("About JS8Call");
     ui->labelTxt->setText(QString
         {
         "<h2>%1</h2>"
-        "<h3>What is JS8Call-improved?</h3>"
-        "<p align='left'>JS8Call-improved is from the team that continued development of the original "
-        " js8call in late 2025.<br />This team includes: <br />Chris AC9KH, Allan W6BAZ, "
+        "<h3>About the JS8Call Development Team</h3>"
+        "<p align='left'>JS8Call is now being developed by the team that continued development of the original "
+        "js8call starting in late 2024.<br />This team includes: <br />Chris AC9KH, Allan W6BAZ, "
         "Wyatt KJ4CTD, Joe K0OG, Andreas DJ3EI, Rob K4RWR, Jordan KN4CRD.<br /><br />"
-        "The JS8Call-improved code can be downloaded at "
+        "The JS8Call code can be downloaded at "
         "<a href=\"https://github.com/JS8Call-improved/JS8Call-improved\">https://github.com/"
         "JS8Call-improved/JS8Call-improved</a> .<br /><br />"
-        "This software uses libraries from the FFmpeg project under the LGPLv2.1</p>"
+        "Legal Notice:<br />"
+        "JS8Call 2.4 and later uses libraries from the FFmpeg project under the LGPLv2.1</p>"
         "<h3>What is JS8Call?</h3>"
         "<p align='left'>JS8Call is a derivative of the WSJT-X application, "
         "restructured and redesigned for message passing. <br/>"
