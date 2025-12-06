@@ -14,7 +14,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>About JS8Call-improved</string>
+   <string>About JS8Call</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
