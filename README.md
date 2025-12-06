@@ -1,5 +1,5 @@
 # JS8Call-improved
-JS8Call-improved is continued development of the original JS8Call project. Most of the same developers have worked on both projects. With JS8Call-improved we are able to implement bug fixes and features must faster so development can proceed at a faster pace.
+JS8Call-improved is continued development of the original JS8Call project. Most of the same developers have worked on both projects.
 
 Like JS8Call, JS8Call-improved is licensed under the GPLv3, the Qt libraries used by JS8Call-improved are licensed under the LGPL. See [LICENSE](LICENSE) for the details. All copyrights remain with the original holders. Source code for JS8Call-improved is [here](https://github.com/JS8Call-improved/JS8Call-improved)
 

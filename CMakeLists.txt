@@ -56,8 +56,8 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 12.0)
 #------------------------------------------------------------------------------#
 
 project(
-  JS8Call-improved
-  VERSION   2.4.0
+  JS8Call
+  VERSION   2.5.0
   LANGUAGES C CXX
 )
 
@@ -460,8 +460,8 @@ if (WIN32)
     TARGET ${TARGET}
     POST_BUILD
     COMMAND "${WINDEPLOYQT}" "$<TARGET_FILE_DIR:${TARGET}>"
-    --libdir JS8Call-improved
-    --plugindir JS8Call-improved
+    --libdir JS8Call
+    --plugindir JS8Call
     --no-translations
     COMMENT "Running windeployqt..."
   )

@@ -88,11 +88,11 @@ cmake --build . -- -j 4
 
 The final `-- -j 4` part instructs the build to do up to 4 different things in parallel. This is not essential, but speeds up the build process considerably. You can tune this by changing the 4 to some other number. To stay on the safe side, use a number that is less than the total amount of RAM in GByte of the computer that runs the build, and also less than the number of CPU kernels. Other than slowness, it never hurts to use 1.  Build instability can result if you use too high a number.
 
-This builds `JS8Call-improved` (which takes a while), but does not install it yet.  For quick experiments, you can skip that still-missing installation step and run the `JS8Call-improved` binary that the build has provided in the `build` directory:
+This builds `JS8Call-improved` (which takes a while), but does not install it yet.  For quick experiments, you can skip that still-missing installation step and run the `JS8Call` binary that the build has provided in the `build` directory:
 
 ```bash
 cd $HOME/js8-build/build &&
-./JS8Call-improved
+./JS8Call
 ```
 
 
@@ -109,12 +109,12 @@ cd $HOME/js8-build/build &&
 cpack -G DEB
 ```
 
-This produces a package file of the type `JS8Call-improved_*_*.deb`, which you can install with the following commands:
+This produces a package file of the type `JS8Call_*_*.deb`, which you can install with the following commands:
 
 ```bash
-cp $HOME/js8-build/build/JS8Call-improved_*_*.deb /var/tmp &&
-sudo apt-get install /var/tmp/JS8Call-improved_*_*.deb &&
-rm /var/tmp/JS8Call-improved_*_*.deb
+cp $HOME/js8-build/build/JS8Call_*_*.deb /var/tmp &&
+sudo apt-get install /var/tmp/JS8Call_*_*.deb &&
+rm /var/tmp/JS8Call_*_*.deb
 ```
 
 The copying ensures that the user `apt` can read the `.deb` file, even if `$HOME` isn't world-readable.  While not strictly neccessary, `apt-get` is happier if this is the case.
@@ -128,11 +128,11 @@ cd $HOME/js8-build/build &&
 cpack -G RPM
 ```
 
-This leaves you with a file `JS8Call-improved-*.*.rpm` which you can install via
+This leaves you with a file `JS8Call-*.*.rpm` which you can install via
 
 ```bash
 cd $HOME/js8-build/build &&
-sudo dnf install ./JS8Call-improved-*.*.rpm
+sudo dnf install ./JS8Call-*.*.rpm
 ```
 
 ## Optional: Building Hamlib
@@ -216,10 +216,10 @@ and then start `JS8Call-improved` **in that same terminal**.
 To verify which version of `hamlib` is actually being used, run
 
 ```bash
-ldd JS8Call-improved | grep hamlib
+ldd JS8Call | grep hamlib
 ```
 
-If you compiled and installed `JS8Call-improved` yourself and the terminal's shell doesn't find it (it ought to, though!), you can push its nose at the program by typing the full path `/opt/JS8Call-improved/bin/JS8Call-improved` rather than just `JS8Call-improved`.
+If you compiled and installed `JS8Call-improved` yourself and the terminal's shell doesn't find it (it ought to, though!), you can push its nose at the program by typing the full path `/opt/JS8Call-improved/bin/JS8Call` rather than just `JS8Call`.
 
 
 ## Cross-building

@@ -41,7 +41,7 @@ Windows 10 or 11
 
 * Create a directory called `development` at C:\development
 
-* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/js8lib-2.3) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call-improved
+* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/2.4) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call-improved
 
 * Next we need to get the JS8Call-improved source code with git. This requires use of the Windows Command shell (installing the Windows PowerShell is recommended). Change to the C:\development folder and type `git clone https://github.com/JS8Call-improved/JS8Call-improved.git` This will create a folder called JS8Call-improved which contains the source code.
 
@@ -67,14 +67,14 @@ Windows 10 or 11
 The Initial Configuration is what the raw CMake run generates. The Current Configuration is your custom configs with the prefix for the libraries and final build settings. It is what will be actually built. But we need to add two more steps to the build yet.
 1) Move down to Build Steps and click on Add Build Step -> Custom Process Step. In the Command enter `cmd.exe`  Remove the entry from the Working directory and leave it blank. Then copy and paste this to the Arguments box
 ```
-cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && move JS8Call-improved.exe .\JS8Call-improved
+cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && move JS8Call.exe .\JS8Call
 ```
 2) Add another Build Step and in the Command box enter `cmd.exe` then copy and paste this to the Arguments box
 ```
-cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && copy C:\development\js8lib\dll\*.dll .\JS8Call-improved
+cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && copy C:\development\js8lib\dll\*.dll .\JS8Call
 ```
-You can now click on the hammer in the lower left and the JS8Call-improved project should build. After the build completes you will find a folder inside the build -> (kit name) directory called JS8Call-improved. It will contain all the libraries the program needs to run, along with the JS8Call-improved executable. At this point you can use a Windows Installer package creator like NSIS or Inno Setup to create a Windows installer if you wish. Or if you are building only for your local computer you can move the JS8Call-improved folder to C:\Program Files, create a shortcut to the JS8Call-improved executable, and place the shortcut on your desktop to launch the program.
+You can now click on the hammer in the lower left and the JS8Call-improved project should build. After the build completes you will find a folder inside the build -> (kit name) directory called JS8Call-improved. It will contain all the libraries the program needs to run, along with the JS8Call-improved executable. At this point you can use a Windows Installer package creator like NSIS or Inno Setup to create a Windows installer if you wish. Or if you are building only for your local computer you can move the JS8Call folder to C:\Program Files, create a shortcut to the JS8Call.exe executable, and place the shortcut on your desktop to launch the program.
 
-If you wish to do another build later simply go to Build in the menu and select Clean Build Folder and it will remove all old build artifacts so you can do another build without reconfiguration of Qt Creator. The program will save your build setup as long as you don't delete the folders inside the `build` folder. But during a Clean Build Folder it will not remove the built JS8Call-improved product folder. That must be deleted manually, or moved, before doing another build.
+If you wish to do another build later simply go to Build in the menu and select Clean Build Folder and it will remove all old build artifacts so you can do another build without reconfiguration of Qt Creator. The program will save your build setup as long as you don't delete the folders inside the `build` folder. But during a Clean Build Folder it will not remove the built JS8Call product folder. That must be deleted manually, or moved, before doing another build.
 
 Note that this can not be a complete tutorial on how to use Qt Creator, only a general guide as to what is required to build JS8Call-improved 2.4 or later.

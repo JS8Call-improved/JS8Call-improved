@@ -5,7 +5,7 @@
 # variables
 red="\033[0;31m"
 clear="\033[0m"
-VERSION="release/2.4.0"
+VERSION="master"
 
 # functions
 user_dialog() {
@@ -39,7 +39,7 @@ fi
 clear
 user_dialog
 echo "Checking for existing installation....."
-if [ -e ${HOME}/.local/bin/JS8Call-improved ]; then
+if [ -e ${HOME}/.local/bin/JS8* ]; then
   user_dialog
   echo "We have found an existing JS8Call-improved installation. Do you want
   to uninstall it? If you select No(n) the newest version will be built and
@@ -47,11 +47,11 @@ if [ -e ${HOME}/.local/bin/JS8Call-improved ]; then
   read -p "Uninstall current JS8Call-improved? Yes(y) / No(n):-" UNINSTALL
   if [ ${UNINSTALL} = "y" ]; then
     echo "removing JS8Call-improved binary...."
-    rm ~/.local/bin/JS8Call-improved
+    rm ~/.local/bin/JS8*
     echo "removing Qt 6.9.3....."
     rm -rf ~/.local/lib/Qt
     echo "removing JS8Call-improved.desktop......"
-    rm ~/.local/share/applications/JS8Call-improved.desktop
+    rm ~/.local/share/applications/JS8*.desktop
     echo "removing JS8Call-improved icon......"
     rm ~/.local/share/icons/icon_128.svg
     echo "
@@ -246,15 +246,15 @@ cmake --build .
 if [ ! -d ~/.local/bin ]; then
   mkdir ~/.local/bin
 fi
-cp JS8Call-improved ~/.local/bin
+cp JS8Call ~/.local/bin
 cp ../artwork/icon_128.svg ~/.local/share/icons/
-touch ~/.local/share/applications/JS8Call-improved.desktop
-echo "[Desktop Entry]" >> ~/.local/share/applications/JS8Call-improved.desktop
-echo "Type=Application" >> ~/.local/share/applications/JS8Call-improved.desktop
-echo "Exec=${HOME}/.local/bin/JS8Call-improved" >> ~/.local/share/applications/JS8Call-improved.desktop
-echo "Name=JS8Call-improved" >> ~/.local/share/applications/JS8Call-improved.desktop
-echo "Icon=${HOME}/.local/share/icons/icon_128.svg" >> ~/.local/share/applications/JS8Call-improved.desktop
-echo "Terminal=false" >> ~/.local/share/applications/JS8Call-improved.desktop
+touch ~/.local/share/applications/JS8Call.desktop
+echo "[Desktop Entry]" >> ~/.local/share/applications/JS8Call.desktop
+echo "Type=Application" >> ~/.local/share/applications/JS8Call.desktop
+echo "Exec=${HOME}/.local/bin/JS8Call" >> ~/.local/share/applications/JS8Call.desktop
+echo "Name=JS8Call" >> ~/.local/share/applications/JS8Call.desktop
+echo "Icon=${HOME}/.local/share/icons/icon_128.svg" >> ~/.local/share/applications/JS8Call.desktop
+echo "Terminal=false" >> ~/.local/share/applications/JS8Call.desktop
 
 # ask if we're going to clean up the development directory and remove it
 clear
