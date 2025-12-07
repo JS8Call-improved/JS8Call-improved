@@ -17,7 +17,7 @@ AppUpdatesURL={#MyAppURL}
 LicenseFile=D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\LICENSE
 DefaultDirName={autopf}\{#MyAppName}
 UsePreviousAppDir=no
-UninstallDisplayIcon={app}\{#MyAppExeName}
+; UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
 ; on anything but x64 and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
@@ -34,6 +34,7 @@ OutputDir=D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call
 ; This can be changed from the ci-windows.yml for release builds
 OutputBaseFilename=JS8Call-installer
 SetupIconFile=D:\a\JS8Call-improved\JS8Call-improved\icons\windows-icons\js8call.ico
+UninstallDisplayIcon=D:\a\JS8Call-improved\JS8Call-improved\icons\windows-icons\js8call.ico
 SolidCompression=yes
 ; WizardStyle introduced in 6.6.0, Github has 6.5.4
 ;WizardStyle=modern dynamic
