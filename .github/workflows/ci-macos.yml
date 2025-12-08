@@ -204,7 +204,8 @@ jobs:
     - name: Create DMG
       run: create-dmg "JS8Call-improved.dmg" "build/JS8Call.app"
       
-    - name: Attestation
+    - name: Attestation (Release Only)
+      if: ${{ inputs.release-ver }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: '${{ github.workspace }}/JS8Call-improved.dmg'
