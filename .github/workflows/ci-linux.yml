@@ -369,7 +369,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Attestation
+    - name: Attestation (Release Only)
+      if: ${{ inputs.release-ver }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: '${{ github.workspace }}/AppImage/*.AppImage*'
