@@ -240,6 +240,7 @@ target_sources(
   HRDTransceiver.cpp
   IARURegions.cpp
   Inbox.cpp
+  kalman.cpp
   JS8.cpp
   JS8Submode.cpp
   jsc_checker.cpp
