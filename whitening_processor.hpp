@@ -16,6 +16,13 @@ Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 
 namespace js8
 {
+    /**
+     * @brief Compute per-tone/symbol noise medians and whiten LLRs for a JS8 frame.
+     *
+     * Given symbol magnitudes (sans Costas) and winners, produces normalized LLR0/LLR1,
+     * optionally applying noise-based whitening and erasure. Fully templated on matrix
+     * dimensions, so it stays header-only; used inside the JS8 decoder per candidate.
+     */
     template<int NROWS, int ND, int N>
     class WhiteningProcessor
     {

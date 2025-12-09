@@ -19,9 +19,14 @@ Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 
 namespace js8
 {
-    // Helper for caching and combining repeated LLR frames. Template on
-    // the LLR vector length so the caller can bind it to the decoder's
-    // bit count without duplicating that constant here.
+    /**
+     * @brief Cache and combine repeated LLR frames for the same decode candidate.
+     *
+     * Uses a coarse freq/dt bin and a small LLR signature as the key; repeated
+     * receptions accumulate LLRs to improve decode probability without changing
+     * over-the-air behavior. Templated on the LLR length so the caller binds it
+     * to the decoder's bit count.
+     */
     template <std::size_t N>
     class SoftCombiner
     {

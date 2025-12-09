@@ -15,6 +15,14 @@ Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 
 namespace js8
 {
+    /**
+     * @brief LDPC erasure threshold config and feedback refinement helpers.
+     *
+     * Inline env readers expose thresholds/pass limits; the templated
+     * refineLlrsWithLdpcFeedback shrinks/boosts LLRs using the decoded
+     * codeword to retry LDPC. Used inside the JS8 decode loop between
+     * LDPC passes.
+     */
     constexpr float LLR_ERASURE_THRESHOLD_DEFAULT      = 0.25f;
     constexpr float LLR_FEEDBACK_CONFIDENT_MIN         = 3.0f;
     constexpr float LLR_FEEDBACK_UNCERTAIN_MAX         = 1.0f;

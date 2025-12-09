@@ -5,6 +5,13 @@
 
 namespace js8
 {
+    /**
+     * @brief Lightweight PLL/Kalman-style tracker for residual frequency offset.
+     *
+     * Initialized with coarse estimates and sample rate; apply() rotates samples
+     * by the tracked offset, update() nudges the estimate using pilot residuals.
+     * Used inside the JS8 decode loop per candidate frame.
+     */
     class FrequencyTracker
     {
     public:
@@ -45,6 +52,14 @@ namespace js8
     {
     public:
 
+        /**
+         * @brief Tracks residual timing (sample) offset between the symbol clock and the signal.
+         *
+         * Initialized with bounds and step limits; update() ingests early/late energy
+         * errors from pilots to refine sample alignment. Used per candidate in the
+         * JS8 decode loop alongside FrequencyTracker.
+         */
+
         void reset(double initial_samples,
                    double alpha           = 0.15,
                    double max_step        = 0.35,
@@ -72,4 +87,3 @@ namespace js8
         int    m_updates     = 0;
     };
 } // namespace js8
-
