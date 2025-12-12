@@ -175,6 +175,12 @@ public:
   bool accept_tcp_requests () const;
   bool udpEnabled () const;
   bool tcpEnabled () const;
+  // WSJT-X Protocol settings
+  bool wsjtx_protocol_enabled () const;
+  QString wsjtx_server_name () const;
+  port_type wsjtx_server_port () const;
+  int wsjtx_TTL () const;
+  bool wsjtx_accept_requests () const;
   int tcp_max_connections () const;
   Bands * bands ();
   Bands const * bands () const;
@@ -312,6 +318,11 @@ public:
   Q_SIGNAL void tcp_server_changed (QString const& host);
   Q_SIGNAL void tcp_server_port_changed (port_type port);
   Q_SIGNAL void tcp_max_connections_changed (int n);
+  // WSJT-X Protocol signals
+  Q_SIGNAL void wsjtx_protocol_enabled_changed (bool) const;
+  Q_SIGNAL void wsjtx_server_changed (QString const&) const;
+  Q_SIGNAL void wsjtx_server_port_changed (port_type) const;
+  Q_SIGNAL void wsjtx_TTL_changed (int) const;
 
   // This signal is emitted when the band schedule changes
   Q_SIGNAL void band_schedule_changed (StationList &stations);

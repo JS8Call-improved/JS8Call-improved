@@ -45,6 +45,7 @@
 #include <QByteArrayView>
 #include <QElapsedTimer>
 #include <QStringBuilder>
+#include <QApplication>
 
 #include "revision_utils.hpp"
 #include "qt_helpers.hpp"
@@ -63,6 +64,8 @@
 #include "TransceiverFactory.hpp"
 #include "StationList.hpp"
 #include "MessageClient.hpp"
+#include "WSJTXMessageClient.hpp"
+#include "WSJTXMessageMapper.hpp"
 #include "SignalMeter.hpp"
 #include "HelpTextWindow.hpp"
 #include "MultiSettings.hpp"
@@ -398,6 +401,8 @@ MainWindow::MainWindow(QString  const & program_info,
   m_lastMonitoredFrequency {Default::DIAL_FREQUENCY},
   m_messageClient {new MessageClient {m_config.udp_server_name(), m_config.udp_server_port(), this}},
   m_messageServer {new MessageServer()},
+  m_wsjtxMessageClient {nullptr},
+  m_wsjtxMessageMapper {nullptr},
   m_n3fjpClient {new TCPClient{this}},
   m_pskReporter {new PSKReporter {&m_config, program_info}},     // UR
   m_spotClient {new SpotClient   {"spot.js8call.com", 50000, program_info}},
@@ -522,6 +527,36 @@ MainWindow::MainWindow(QString  const & program_info,
 
   // Network message handling
   connect (m_messageClient, &MessageClient::message, this, &MainWindow::udpNetworkMessage);
+
+  // Initialize WSJT-X protocol if enabled
+  if (m_config.wsjtx_protocol_enabled()) {
+    QString id = QApplication::applicationName();
+    QString version = QApplication::applicationVersion();
+    QString revision = ""; // Get from your version system if available
+    
+    m_wsjtxMessageClient = new WSJTXMessageClient {
+      id, version, revision,
+      m_config.wsjtx_server_name(),
+      m_config.wsjtx_server_port(),
+      QStringList(), // Use all interfaces (empty list)
+      m_config.wsjtx_TTL(),
+      this
+    };
+    
+    m_wsjtxMessageClient->enable(m_config.wsjtx_accept_requests());
+    
+    m_wsjtxMessageMapper = new WSJTXMessageMapper(m_wsjtxMessageClient, this, this);
+    
+    // Connect configuration changes
+    connect(&m_config, &Configuration::wsjtx_server_changed,
+            [this](QString const& server_name) {
+              m_wsjtxMessageClient->set_server(server_name, QStringList()); // Use all interfaces
+            });
+    connect(&m_config, &Configuration::wsjtx_server_port_changed,
+            m_wsjtxMessageClient, &WSJTXMessageClient::set_server_port);
+    connect(&m_config, &Configuration::wsjtx_TTL_changed,
+            m_wsjtxMessageClient, &WSJTXMessageClient::set_TTL);
+  }
 
   // decoder queue handler
   //connect (&m_decodeThread, &QThread::finished, m_notification, &QObject::deleteLater);
@@ -6043,6 +6078,12 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
                                        tr ("Write failed for \"%1:%2\"").arg (host).arg(port));
           m_logDlg->setHidden(hidden);
       }
+  }
+
+  // Log to WSJT-X Protocol
+  if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
+    m_wsjtxMessageMapper->sendQSOLogged (QSO_date_off, call, grid, dial_freq, mode,
+                                         rpt_sent, rpt_received, my_call, my_grid);
   }
 
   // reload the logbook data

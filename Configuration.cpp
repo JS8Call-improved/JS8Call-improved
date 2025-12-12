@@ -668,6 +668,12 @@ private:
   bool udpEnabled_;
   bool tcpEnabled_;
   int tcpMaxConnections_;
+  // WSJT-X Protocol settings
+  bool wsjtx_protocol_enabled_;
+  QString wsjtx_server_name_;
+  port_type wsjtx_server_port_;
+  int wsjtx_TTL_;
+  bool wsjtx_accept_requests_;
   DataMode data_mode_;
   bool pwrBandTxMemory_;
   bool pwrBandTuneMemory_;
@@ -828,6 +834,12 @@ QString Configuration::tcp_server_name () const {return m_->tcp_server_name_;}
 auto Configuration::tcp_server_port () const -> port_type {return m_->tcp_server_port_;}
 bool Configuration::accept_udp_requests () const {return m_->accept_udp_requests_;}
 bool Configuration::accept_tcp_requests () const {return m_->accept_tcp_requests_;}
+// WSJT-X Protocol accessors
+bool Configuration::wsjtx_protocol_enabled () const {return m_->wsjtx_protocol_enabled_;}
+QString Configuration::wsjtx_server_name () const {return m_->wsjtx_server_name_;}
+auto Configuration::wsjtx_server_port () const -> port_type {return m_->wsjtx_server_port_;}
+int Configuration::wsjtx_TTL () const {return m_->wsjtx_TTL_;}
+bool Configuration::wsjtx_accept_requests () const {return m_->wsjtx_accept_requests_;}
 QString Configuration::n3fjp_server_name () const {return m_->n3fjp_server_name_;}
 auto Configuration::n3fjp_server_port () const -> port_type {return m_->n3fjp_server_port_;}
 bool Configuration::broadcast_to_n3fjp () const {return m_->broadcast_to_n3fjp_;}
@@ -1964,6 +1976,12 @@ void Configuration::impl::read_settings ()
   aprs_server_port_ = settings_->value ("aprsServerPort", 14580).toUInt ();
   udp_server_name_ = settings_->value ("UDPServer", "127.0.0.1").toString ();
   udp_server_port_ = settings_->value ("UDPServerPort", 2242).toUInt ();
+  // WSJT-X Protocol settings
+  wsjtx_protocol_enabled_ = settings_->value ("WSJTXProtocolEnabled", false).toBool ();
+  wsjtx_server_name_ = settings_->value ("WSJTXServer", "127.0.0.1").toString ();
+  wsjtx_server_port_ = settings_->value ("WSJTXServerPort", 2237).toUInt ();
+  wsjtx_TTL_ = settings_->value ("WSJTXTTL", 1).toInt ();
+  wsjtx_accept_requests_ = settings_->value ("WSJTXAcceptRequests", false).toBool ();
   tcp_server_name_ = settings_->value ("TCPServer", "127.0.0.1").toString ();
   tcp_server_port_ = settings_->value ("TCPServerPort", 2442).toUInt ();
   n3fjp_server_name_ = settings_->value ("N3FJPServer", "127.0.0.1").toString ();
@@ -2164,6 +2182,12 @@ void Configuration::impl::write_settings ()
   settings_->setValue ("aprsServerPort", aprs_server_port_);
   settings_->setValue ("UDPServer", udp_server_name_);
   settings_->setValue ("UDPServerPort", udp_server_port_);
+  // WSJT-X Protocol settings
+  settings_->setValue ("WSJTXProtocolEnabled", wsjtx_protocol_enabled_);
+  settings_->setValue ("WSJTXServer", wsjtx_server_name_);
+  settings_->setValue ("WSJTXServerPort", wsjtx_server_port_);
+  settings_->setValue ("WSJTXTTL", wsjtx_TTL_);
+  settings_->setValue ("WSJTXAcceptRequests", wsjtx_accept_requests_);
   settings_->setValue ("TCPServer", tcp_server_name_);
   settings_->setValue ("TCPServerPort", tcp_server_port_);
   settings_->setValue ("N3FJPServer", n3fjp_server_name_);

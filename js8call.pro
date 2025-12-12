@@ -70,6 +70,8 @@ SOURCES += \
     varicode.cpp \
     NetworkMessage.cpp \
     MessageClient.cpp \
+    WSJTXMessageClient.cpp \
+    WSJTXMessageMapper.cpp \
     SelfDestructMessageBox.cpp \
     messagereplydialog.cpp \
     keyeater.cpp \
@@ -116,6 +118,8 @@ HEADERS  += qt_helpers.hpp \
     crc.h \
     NetworkMessage.hpp \
     MessageClient.hpp \
+    WSJTXMessageClient.hpp \
+    WSJTXMessageMapper.hpp \
     SelfDestructMessageBox.h \
     messagereplydialog.h \
     keyeater.h \

@@ -2460,6 +2460,113 @@ transmitting periods.</string>
                 </property>
                </widget>
               </item>
+              <item row="9" column="0">
+               <widget class="QLabel" name="wsjtx_server_label">
+                <property name="text">
+                 <string>WSJT-X Server:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+                </property>
+                <property name="buddy">
+                 <cstring>wsjtx_server_line_edit</cstring>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="QLineEdit" name="wsjtx_server_line_edit">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Optional hostname of network service to receive WSJT-X protocol messages.&lt;/p&gt;&lt;p&gt;Formats:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;hostname&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;IPv4 address&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;IPv6 address&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;IPv4 multicast group address&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;IPv6 multicast group address&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Clearing this field will disable the broadcasting of WSJT-X protocol messages.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="inputMethodHints">
+                 <set>Qt::InputMethodHint::ImhDigitsOnly</set>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="2">
+               <widget class="QCheckBox" name="wsjtx_enable_check_box">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable the application to send WSJT-X protocol information to UDP Servers&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>Enable WSJT-X UDP Server API</string>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="0">
+               <widget class="QLabel" name="wsjtx_server_port_label">
+                <property name="text">
+                 <string>WSJT-X Server Port:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+                </property>
+                <property name="buddy">
+                 <cstring>wsjtx_server_port_spin_box</cstring>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="QSpinBox" name="wsjtx_server_port_spin_box">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the service port number of the WSJT-X UDP server that should receive updates. If this is zero no updates will be sent. Default is 2237.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="minimum">
+                 <number>0</number>
+                </property>
+                <property name="maximum">
+                 <number>65534</number>
+                </property>
+                <property name="value">
+                 <number>2237</number>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="0">
+               <widget class="QLabel" name="wsjtx_TTL_label">
+                <property name="text">
+                 <string>Multicast TTL:</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
+                </property>
+                <property name="buddy">
+                 <cstring>wsjtx_TTL_spin_box</cstring>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="1">
+               <widget class="QSpinBox" name="wsjtx_TTL_spin_box">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sets the number of router hops that multicast datagrams are allowed to make. Almost everyone should set this to 1 to keep outgoing multicast traffic within the local subnet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>255</number>
+                </property>
+                <property name="value">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="11" column="2">
+               <widget class="QCheckBox" name="wsjtx_accept_requests_check_box">
+                <property name="toolTip">
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;With this enabled JS8Call will accept certain requests from a UDP client sending WSJT-X protocol messages.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                </property>
+                <property name="text">
+                 <string>Accept UDP Requests</string>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="0" colspan="3">
                <spacer name="verticalSpacer_8">
                 <property name="orientation">
@@ -4027,6 +4134,11 @@ soundcard changes</string>
   <tabstop>enable_n1mm_broadcast_check_box</tabstop>
   <tabstop>n1mm_server_name_line_edit</tabstop>
   <tabstop>n1mm_server_port_spin_box</tabstop>
+  <tabstop>wsjtx_enable_check_box</tabstop>
+  <tabstop>wsjtx_server_line_edit</tabstop>
+  <tabstop>wsjtx_server_port_spin_box</tabstop>
+  <tabstop>wsjtx_TTL_spin_box</tabstop>
+  <tabstop>wsjtx_accept_requests_check_box</tabstop>
   <tabstop>scrollArea_7</tabstop>
   <tabstop>calibration_slope_ppm_spin_box</tabstop>
   <tabstop>calibration_intercept_spin_box</tabstop>

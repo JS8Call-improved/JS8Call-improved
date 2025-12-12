@@ -254,6 +254,9 @@ target_sources(
   JS8MessageBox.cpp
   MessageClient.cpp
   MessageError.cpp
+  NetworkMessage.cpp
+  WSJTXMessageClient.cpp
+  WSJTXMessageMapper.cpp
   messagereplydialog.cpp
   MessageServer.cpp
   messagewindow.cpp

@@ -49,6 +49,8 @@
 #include "varicode.h"
 #include "MessageClient.hpp"
 #include "MessageServer.h"
+#include "WSJTXMessageClient.hpp"
+#include "WSJTXMessageMapper.hpp"
 #include "TCPClient.h"
 #include "TxLoop.h"
 #include "SpotClient.h"
@@ -87,9 +89,12 @@ using namespace std;
 typedef std::function<void()> Callback;
 
 
+class WSJTXMessageMapper;  // Forward declaration
+
 class MainWindow : public QMainWindow
 {
   Q_OBJECT;
+  friend class WSJTXMessageMapper;  // Allow WSJTXMessageMapper to access private members
 
   struct CallDetail;
   struct CommandDetail;
@@ -755,6 +760,8 @@ private:
   Frequency m_lastMonitoredFrequency;
   MessageClient * m_messageClient;
   MessageServer * m_messageServer;
+  WSJTXMessageClient * m_wsjtxMessageClient;
+  WSJTXMessageMapper * m_wsjtxMessageMapper;
   TCPClient * m_n3fjpClient;
   PSKReporter * m_pskReporter;
   SpotClient *m_spotClient;

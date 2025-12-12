@@ -106,4 +106,27 @@ public:
 // Register some useful Qt types with QMetaType
 Q_DECLARE_METATYPE (QHostAddress);
 
+inline
+bool is_broadcast_address (QHostAddress const& host_addr)
+{
+#if QT_VERSION >= QT_VERSION_CHECK (5, 11, 0)
+  return host_addr.isBroadcast ();
+#else
+  bool ok;
+  return host_addr.toIPv4Address (&ok) == 0xffffffffu && ok;
+#endif
+}
+
+inline
+bool is_multicast_address (QHostAddress const& host_addr)
+{
+#if QT_VERSION >= QT_VERSION_CHECK (5, 6, 0)
+  return host_addr.isMulticast ();
+#else
+  bool ok;
+  return (((host_addr.toIPv4Address (&ok) & 0xf0000000u) == 0xe0000000u) && ok)
+    || host_addr.toIPv6Address ()[0] == 0xff;
+#endif
+}
+
 #endif
