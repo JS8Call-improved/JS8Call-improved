@@ -13,6 +13,8 @@
 #include <QByteArray>
 #include <QColor>
 #include <QDebug>
+#include <QLoggingCategory>
+#include <QTextStream>
 
 #include "NetworkMessage.hpp"
 #include "qt_helpers.hpp"
@@ -20,8 +22,47 @@
 
 #include "moc_WSJTXMessageClient.cpp"
 
+Q_LOGGING_CATEGORY(wsjtx_js8, "wsjtx.js8", QtWarningMsg)
+
 // some trace macros
 #define TRACE_UDP(MSG)
+
+// Helper function to dump binary payload in human-readable format
+static QString dump_payload(QByteArray const& message)
+{
+    QString result;
+    QTextStream stream(&result);
+    
+    // Show first 4 bytes as magic number (if present)
+    if (message.size() >= 4) {
+        quint32 magic = 0;
+        // Read magic number in big-endian format
+        magic = (static_cast<quint8>(message[0]) << 24) |
+                (static_cast<quint8>(message[1]) << 16) |
+                (static_cast<quint8>(message[2]) << 8) |
+                static_cast<quint8>(message[3]);
+        stream << QString("Magic: 0x%1 ").arg(magic, 8, 16, QChar('0'));
+    }
+    
+    // Show size and hex dump of first 64 bytes
+    stream << QString("Size: %1 bytes\n").arg(message.size());
+    stream << "Hex dump (first 64 bytes):\n";
+    int dump_size = qMin(64, message.size());
+    for (int i = 0; i < dump_size; i += 16) {
+        stream << QString("%1: ").arg(i, 4, 16, QChar('0'));
+        for (int j = 0; j < 16 && (i + j) < dump_size; ++j) {
+            stream << QString("%1 ").arg(static_cast<quint8>(message[i + j]), 2, 16, QChar('0'));
+        }
+        stream << " | ";
+        for (int j = 0; j < 16 && (i + j) < dump_size; ++j) {
+            char c = message[i + j];
+            stream << (QChar::isPrint(c) ? QChar(c) : QChar('.'));
+        }
+        stream << "\n";
+    }
+    
+    return result;
+}
 
 class WSJTXMessageClient::impl
   : public QUdpSocket
@@ -345,6 +386,11 @@ void WSJTXMessageClient::impl::heartbeat ()
       NetworkMessage::Builder out {&message, NetworkMessage::Heartbeat, id_, schema_};
       out << NetworkMessage::Builder::schema_number // maximum schema number accepted
           << version_.toUtf8 () << revision_.toUtf8 ();
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending Heartbeat message"
+                         << "id:" << id_ << "schema:" << schema_
+                         << "version:" << version_ << "revision:" << revision_
+                         << "to:" << server_.toString() << "port:" << server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       send_message (out, message, false, true);
     }
 }
@@ -355,6 +401,10 @@ void WSJTXMessageClient::impl::closedown ()
     {
       QByteArray message;
       NetworkMessage::Builder out {&message, NetworkMessage::Close, id_, schema_};
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending Close message"
+                         << "id:" << id_ << "schema:" << schema_
+                         << "to:" << server_.toString() << "port:" << server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       send_message (out, message, false);
     }
 }
@@ -494,6 +544,13 @@ void WSJTXMessageClient::status_update (Frequency f, QString const& mode, QStrin
           << de_grid.toUtf8 () << dx_grid.toUtf8 () << watchdog_timeout << sub_mode.toUtf8 ()
           << fast_mode << special_op_mode << frequency_tolerance << tr_period << configuration_name.toUtf8 ()
           << tx_message.toUtf8 ();
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending Status message"
+                         << "freq:" << f << "mode:" << mode << "dx_call:" << dx_call
+                         << "tx_enabled:" << tx_enabled << "transmitting:" << transmitting
+                         << "decoding:" << decoding << "de_call:" << de_call << "de_grid:" << de_grid
+                         << "dx_grid:" << dx_grid << "sub_mode:" << sub_mode
+                         << "to:" << m_->server_.toString() << "port:" << m_->server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       m_->send_message (out, message);
     }
 }
@@ -508,6 +565,14 @@ void WSJTXMessageClient::decode (bool is_new, QTime time, qint32 snr, float delt
       NetworkMessage::Builder out {&message, NetworkMessage::Decode, m_->id_, m_->schema_};
       out << is_new << time << snr << delta_time << delta_frequency << mode.toUtf8 ()
           << message_text.toUtf8 () << low_confidence << off_air;
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending Decode message"
+                         << "is_new:" << is_new << "time:" << time.toString("hh:mm:ss")
+                         << "snr:" << snr << "delta_time:" << delta_time
+                         << "delta_frequency:" << delta_frequency << "mode:" << mode
+                         << "message:" << message_text << "low_confidence:" << low_confidence
+                         << "off_air:" << off_air
+                         << "to:" << m_->server_.toString() << "port:" << m_->server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       m_->send_message (out, message);
     }
 }
@@ -518,6 +583,10 @@ void WSJTXMessageClient::decodes_cleared ()
     {
       QByteArray message;
       NetworkMessage::Builder out {&message, NetworkMessage::Clear, m_->id_, m_->schema_};
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending Clear message"
+                         << "id:" << m_->id_ << "schema:" << m_->schema_
+                         << "to:" << m_->server_.toString() << "port:" << m_->server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       m_->send_message (out, message);
     }
 }
@@ -538,6 +607,14 @@ void WSJTXMessageClient::qso_logged (QDateTime time_off, QString const& dx_call,
           << report_sent.toUtf8 () << report_received.toUtf8 () << tx_power.toUtf8 () << comments.toUtf8 ()
           << name.toUtf8 () << time_on << operator_call.toUtf8 () << my_call.toUtf8 () << my_grid.toUtf8 ()
           << exchange_sent.toUtf8 () << exchange_rcvd.toUtf8 () << propmode.toUtf8 ();
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending QSOLogged message"
+                         << "time_off:" << time_off.toString(Qt::ISODate)
+                         << "dx_call:" << dx_call << "dx_grid:" << dx_grid
+                         << "dial_frequency:" << dial_frequency << "mode:" << mode
+                         << "report_sent:" << report_sent << "report_received:" << report_received
+                         << "my_call:" << my_call << "my_grid:" << my_grid
+                         << "to:" << m_->server_.toString() << "port:" << m_->server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
       m_->send_message (out, message);
     }
 }

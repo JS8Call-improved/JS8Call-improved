@@ -42,6 +42,7 @@
 #include <QScrollBar>
 #include <QVersionNumber>
 #include <QTimeZone>
+#include <QTime>
 #include <QByteArrayView>
 #include <QElapsedTimer>
 #include <QStringBuilder>
@@ -4123,6 +4124,26 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
         auto date = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
         writeAllTxt(date + " " + decodedtext.string() + " " + decodedtext.message());
 
+        // Send decode to WSJT-X protocol
+        if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
+            // Convert decode time from JS8Call format to QTime
+            auto const hms = decode_time(decodedtext.time());
+            QTime decode_time = QTime(hms.hour, hms.minute, hms.second);
+
+            // Send decode message
+            // Use "JS8" as the mode string (WSJT-X expects mode names like "FT8", "FT4", "JT9", etc.)
+            m_wsjtxMessageMapper->sendDecode(
+                true, // is_new - always true for new decodes
+                decode_time,
+                decodedtext.snr(),
+                decodedtext.dt(),
+                static_cast<quint32>(decodedtext.frequencyOffset()),
+                "JS8", // mode string
+                decodedtext.message(),
+                decodedtext.isLowConfidence()
+            );
+        }
+
         ActivityDetail d = {};
         CallDetail cd = {};
         CommandDetail cmd = {};
@@ -6082,8 +6103,8 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
 
   // Log to WSJT-X Protocol
   if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
-    m_wsjtxMessageMapper->sendQSOLogged (QSO_date_off, call, grid, dial_freq, mode,
-                                         rpt_sent, rpt_received, my_call, my_grid);
+      m_wsjtxMessageMapper->sendQSOLogged (QSO_date_off, call, grid, dial_freq, mode,
+                                           rpt_sent, rpt_received, my_call, my_grid);
   }
 
   // reload the logbook data

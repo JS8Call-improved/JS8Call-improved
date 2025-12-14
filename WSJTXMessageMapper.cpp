@@ -1,6 +1,9 @@
 #include "WSJTXMessageMapper.hpp"
 #include "mainwindow.h"
 #include <limits>
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
 
 WSJTXMessageMapper::WSJTXMessageMapper (WSJTXMessageClient * client, MainWindow * main_window, QObject * parent)
   : QObject {parent}
@@ -19,6 +22,12 @@ void WSJTXMessageMapper::sendStatusUpdate (Radio::Frequency dial_freq, Radio::Fr
                                             QString const& dx_grid, bool tx_enabled,
                                             bool transmitting, bool decoding, QString const& tx_message)
 {
+  qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendStatusUpdate called"
+                             << "dial_freq:" << dial_freq << "offset:" << offset
+                             << "mode:" << mode << "dx_call:" << dx_call
+                             << "de_call:" << de_call << "de_grid:" << de_grid
+                             << "dx_grid:" << dx_grid << "tx_enabled:" << tx_enabled
+                             << "transmitting:" << transmitting << "decoding:" << decoding;
   Radio::Frequency freq = dial_freq + offset;
   QString submode = mode; // JS8Call submode
   bool fast_mode = false; // Map from JS8Call speed
@@ -37,6 +46,11 @@ void WSJTXMessageMapper::sendDecode (bool is_new, QTime time, qint32 snr, float 
                                       quint32 delta_frequency, QString const& mode,
                                       QString const& message, bool low_confidence)
 {
+  qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendDecode called"
+                             << "is_new:" << is_new << "time:" << time.toString("hh:mm:ss")
+                             << "snr:" << snr << "delta_time:" << delta_time
+                             << "delta_frequency:" << delta_frequency << "mode:" << mode
+                             << "message:" << message << "low_confidence:" << low_confidence;
   client_->decode (is_new, time, snr, delta_time, delta_frequency, mode, message, low_confidence, false);
 }
 
@@ -45,6 +59,12 @@ void WSJTXMessageMapper::sendQSOLogged (QDateTime time_off, QString const& dx_ca
                                          QString const& report_sent, QString const& report_received,
                                          QString const& my_call, QString const& my_grid)
 {
+  qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendQSOLogged called"
+                             << "time_off:" << time_off.toString(Qt::ISODate)
+                             << "dx_call:" << dx_call << "dx_grid:" << dx_grid
+                             << "dial_frequency:" << dial_frequency << "mode:" << mode
+                             << "report_sent:" << report_sent << "report_received:" << report_received
+                             << "my_call:" << my_call << "my_grid:" << my_grid;
   QDateTime time_on = time_off; // JS8Call doesn't track time_on separately
   QString operator_call = "";
   QString exchange_sent = "";
