@@ -1634,6 +1634,12 @@ void Configuration::impl::initialize_models ()
   ui_->tcpEnable->setChecked(tcpEnabled_);
   ui_->udpEnable->setChecked(udpEnabled_);
   ui_->tcp_max_connections_spin_box->setValue(tcpMaxConnections_);
+  // WSJT-X Protocol settings
+  ui_->wsjtx_enable_check_box->setChecked(wsjtx_protocol_enabled_);
+  ui_->wsjtx_server_line_edit->setText(wsjtx_server_name_);
+  ui_->wsjtx_server_port_spin_box->setValue(wsjtx_server_port_);
+  ui_->wsjtx_TTL_spin_box->setValue(wsjtx_TTL_);
+  ui_->wsjtx_accept_requests_check_box->setChecked(wsjtx_accept_requests_);
   ui_->calibration_intercept_spin_box->setValue (calibration_.intercept);
   ui_->calibration_slope_ppm_spin_box->setValue (calibration_.slope_ppm);
 
@@ -2821,6 +2827,39 @@ void Configuration::impl::accept ()
   auto new_n1mm_port = ui_->n1mm_server_port_spin_box->value ();
   n1mm_server_port_ = new_n1mm_port;
   broadcast_to_n1mm_ = ui_->enable_n1mm_broadcast_check_box->isChecked ();
+
+  // WSJT-X Protocol settings
+  auto new_wsjtx_enabled = ui_->wsjtx_enable_check_box->isChecked();
+  auto new_wsjtx_server = ui_->wsjtx_server_line_edit->text();
+  auto new_wsjtx_port = ui_->wsjtx_server_port_spin_box->value();
+  auto new_wsjtx_ttl = ui_->wsjtx_TTL_spin_box->value();
+  auto new_wsjtx_accept_requests = ui_->wsjtx_accept_requests_check_box->isChecked();
+  
+  if (new_wsjtx_enabled != wsjtx_protocol_enabled_)
+    {
+      wsjtx_protocol_enabled_ = new_wsjtx_enabled;
+      Q_EMIT self_->wsjtx_protocol_enabled_changed (wsjtx_protocol_enabled_);
+    }
+  
+  if (new_wsjtx_server != wsjtx_server_name_ || new_wsjtx_enabled != wsjtx_protocol_enabled_)
+    {
+      wsjtx_server_name_ = new_wsjtx_server;
+      Q_EMIT self_->wsjtx_server_changed (wsjtx_protocol_enabled_ ? new_wsjtx_server : "");
+    }
+  
+  if (new_wsjtx_port != wsjtx_server_port_)
+    {
+      wsjtx_server_port_ = new_wsjtx_port;
+      Q_EMIT self_->wsjtx_server_port_changed (new_wsjtx_port);
+    }
+  
+  if (new_wsjtx_ttl != wsjtx_TTL_)
+    {
+      wsjtx_TTL_ = new_wsjtx_ttl;
+      Q_EMIT self_->wsjtx_TTL_changed (new_wsjtx_ttl);
+    }
+  
+  wsjtx_accept_requests_ = new_wsjtx_accept_requests;
 
   if (macros_.stringList () != next_macros_.stringList ())
     {
