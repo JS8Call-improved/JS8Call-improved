@@ -619,3 +619,21 @@ void WSJTXMessageClient::qso_logged (QDateTime time_off, QString const& dx_call,
     }
 }
 
+void WSJTXMessageClient::logged_ADIF (QByteArray const& ADIF_record)
+{
+   if (m_->server_port_ && !m_->server_.isNull ())
+    {
+      QByteArray message;
+      NetworkMessage::Builder out {&message, NetworkMessage::LoggedADIF, m_->id_, m_->schema_};
+      // Format ADIF with header like WSJT-X does
+      // Use WSJT-X as programid for compatibility with clients expecting WSJT-X format
+      QByteArray ADIF {"\n<adif_ver:5>3.1.0\n<programid:6>WSJT-X\n<EOH>\n" + ADIF_record + " <EOR>"};
+      out << ADIF;
+      qCDebug(wsjtx_js8) << "WSJT-X: Sending LoggedADIF message"
+                         << "ADIF length:" << ADIF.length()
+                         << "to:" << m_->server_.toString() << "port:" << m_->server_port_;
+      qCDebug(wsjtx_js8) << dump_payload(message);
+      m_->send_message (out, message);
+    }
+}
+

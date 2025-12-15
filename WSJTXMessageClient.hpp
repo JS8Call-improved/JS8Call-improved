@@ -68,6 +68,7 @@ public:
                           , QString const& my_call, QString const& my_grid
                           , QString const& exchange_sent, QString const& exchange_rcvd
                           , QString const& propmode);
+  Q_SLOT void logged_ADIF (QByteArray const& ADIF_record);
 
   // signals for incoming messages
   Q_SIGNAL void clear_decodes (quint8 window);

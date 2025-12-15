@@ -6175,6 +6175,10 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
   if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
       m_wsjtxMessageMapper->sendQSOLogged (QSO_date_off, call, grid, dial_freq, mode,
                                            rpt_sent, rpt_received, my_call, my_grid);
+      // Also send ADIF formatted message (this is what clients actually use)
+      if (m_wsjtxMessageClient) {
+          m_wsjtxMessageClient->logged_ADIF(ADIF);
+      }
   }
 
   // reload the logbook data
