@@ -548,13 +548,35 @@ MainWindow::MainWindow(QString  const & program_info,
     
     m_wsjtxMessageMapper = new WSJTXMessageMapper(m_wsjtxMessageClient, this, this);
     
+    // Disable native JSON client if it's using the same port/address as WSJT-X
+    if (m_config.wsjtx_server_port() == m_config.udp_server_port() 
+        && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+      m_messageClient->set_server_port(0); // Disable native JSON client
+    }
+    
     // Connect configuration changes
     connect(&m_config, &Configuration::wsjtx_server_changed,
             [this](QString const& server_name) {
               m_wsjtxMessageClient->set_server(server_name, QStringList()); // Use all interfaces
+              // Check if we need to disable native JSON client
+              if (m_config.wsjtx_protocol_enabled() && m_config.wsjtx_server_port() == m_config.udp_server_port() 
+                  && server_name == m_config.udp_server_name()) {
+                m_messageClient->set_server_port(0);
+              } else if (m_config.wsjtx_protocol_enabled() && m_config.wsjtx_server_port() != m_config.udp_server_port()) {
+                m_messageClient->set_server_port(m_config.udp_server_port());
+              }
             });
     connect(&m_config, &Configuration::wsjtx_server_port_changed,
-            m_wsjtxMessageClient, &WSJTXMessageClient::set_server_port);
+            [this](quint16 port) {
+              m_wsjtxMessageClient->set_server_port(port);
+              // Check if we need to disable native JSON client
+              if (m_config.wsjtx_protocol_enabled() && port == m_config.udp_server_port() 
+                  && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+                m_messageClient->set_server_port(0);
+              } else if (m_config.wsjtx_protocol_enabled() && port != m_config.udp_server_port()) {
+                m_messageClient->set_server_port(m_config.udp_server_port());
+              }
+            });
     connect(&m_config, &Configuration::wsjtx_TTL_changed,
             m_wsjtxMessageClient, &WSJTXMessageClient::set_TTL);
   }
@@ -643,6 +665,19 @@ MainWindow::MainWindow(QString  const & program_info,
   connect (&m_config, &Configuration::transceiver_failure, this, &MainWindow::handle_transceiver_failure);
   connect (&m_config, &Configuration::udp_server_name_changed, m_messageClient, &MessageClient::set_server_name);
   connect (&m_config, &Configuration::udp_server_port_changed, m_messageClient, &MessageClient::set_server_port);
+  
+  // Disable native JSON client if WSJT-X protocol is enabled on the same port/address
+  // This prevents JSON PING messages from interfering with WSJT-X binary protocol
+  connect (&m_config, &Configuration::wsjtx_protocol_enabled_changed, this, [this](bool enabled) {
+    if (enabled && m_config.wsjtx_server_port() == m_config.udp_server_port() 
+        && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+      // Disable native JSON client to avoid conflicts with WSJT-X protocol
+      m_messageClient->set_server_port(0);
+    } else if (!enabled) {
+      // Re-enable native JSON client if WSJT-X is disabled
+      m_messageClient->set_server_port(m_config.udp_server_port());
+    }
+  });
   connect (&m_config, &Configuration::band_schedule_changed, this, [this](){
     this->m_bandHopped = true;
   });
@@ -3126,13 +3161,48 @@ void MainWindow::updateCurrentBand(){
     m_wideGraph->setBand (band_name);
 
     qCDebug(mainwindow_js8) << "setting band" << band_name;
-    sendNetworkMessage("RIG.FREQ", "", {
-        {"_ID", QVariant(-1)},
-        {"BAND", QVariant(band_name)},
-        {"FREQ", QVariant((quint64)dialFrequency() + freq())},
-        {"DIAL", QVariant((quint64)dialFrequency())},
-        {"OFFSET", QVariant((quint64)freq())}
-    });
+    
+    // Send WSJT-X Status message if protocol is enabled (band change triggers status update)
+    if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
+        QString dx_call = callsignSelected();
+        QString dx_grid = "";
+        if (!dx_call.isEmpty() && m_callActivity.contains(dx_call)) {
+            dx_grid = m_callActivity[dx_call].grid;
+        }
+        QString tx_message = m_transmitting ? m_currentMessage : "";
+        
+        m_wsjtxMessageMapper->sendStatusUpdate(
+            dialFrequency(),
+            freq(),
+            "JS8", // mode
+            dx_call,
+            m_config.my_callsign(),
+            m_config.my_grid(),
+            dx_grid,
+            true, // tx_enabled
+            m_transmitting,
+            m_decoderBusy || m_monitoring, // decoding
+            tx_message
+        );
+    }
+    
+    // Send native JSON message only if not conflicting with WSJT-X
+    bool skip_json = false;
+    if (m_config.wsjtx_protocol_enabled() 
+        && m_config.wsjtx_server_port() == m_config.udp_server_port() 
+        && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+        skip_json = true;
+    }
+    
+    if (!skip_json) {
+        sendNetworkMessage("RIG.FREQ", "", {
+            {"_ID", QVariant(-1)},
+            {"BAND", QVariant(band_name)},
+            {"FREQ", QVariant((quint64)dialFrequency() + freq())},
+            {"DIAL", QVariant((quint64)dialFrequency())},
+            {"OFFSET", QVariant((quint64)freq())}
+        });
+    }
     m_lastBand = band_name;
 
     band_changed();
@@ -10949,12 +11019,46 @@ void MainWindow::networkMessage(Message const &message)
     // RIG.GET_FREQ - Get the current Frequency
     // RIG.SET_FREQ - Set the current Frequency
     if(type == "RIG.GET_FREQ"){
-        sendNetworkMessage("RIG.FREQ", "", {
-            {"_ID", id},
-            {"FREQ", QVariant((quint64)dialFrequency() + freq())},
-            {"DIAL", QVariant((quint64)dialFrequency())},
-            {"OFFSET", QVariant((quint64)freq())}
-        });
+        // Send WSJT-X Status message if protocol is enabled
+        if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
+            QString dx_call = callsignSelected();
+            QString dx_grid = "";
+            if (!dx_call.isEmpty() && m_callActivity.contains(dx_call)) {
+                dx_grid = m_callActivity[dx_call].grid;
+            }
+            QString tx_message = m_transmitting ? m_currentMessage : "";
+            
+            m_wsjtxMessageMapper->sendStatusUpdate(
+                dialFrequency(),
+                freq(),
+                "JS8", // mode
+                dx_call,
+                m_config.my_callsign(),
+                m_config.my_grid(),
+                dx_grid,
+                true, // tx_enabled
+                m_transmitting,
+                m_decoderBusy || m_monitoring, // decoding
+                tx_message
+            );
+        }
+        
+        // Send native JSON message only if not conflicting with WSJT-X
+        bool skip_json = false;
+        if (m_config.wsjtx_protocol_enabled() 
+            && m_config.wsjtx_server_port() == m_config.udp_server_port() 
+            && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+            skip_json = true;
+        }
+        
+        if (!skip_json) {
+            sendNetworkMessage("RIG.FREQ", "", {
+                {"_ID", id},
+                {"FREQ", QVariant((quint64)dialFrequency() + freq())},
+                {"DIAL", QVariant((quint64)dialFrequency())},
+                {"OFFSET", QVariant((quint64)freq())}
+            });
+        }
         return;
     }
 
@@ -11300,14 +11404,50 @@ void MainWindow::setRig (Frequency f)
 
 void MainWindow::statusUpdate ()
 {
+    // Send WSJT-X Status message if protocol is enabled
+    if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
+        QString dx_call = callsignSelected();
+        QString dx_grid = "";
+        if (!dx_call.isEmpty() && m_callActivity.contains(dx_call)) {
+            dx_grid = m_callActivity[dx_call].grid;
+        }
+        QString mode = JS8::Submode::name(m_nSubMode);
+        QString tx_message = m_transmitting ? m_currentMessage : "";
+        
+        m_wsjtxMessageMapper->sendStatusUpdate(
+            dialFrequency(),
+            freq(),
+            "JS8", // mode
+            dx_call,
+            m_config.my_callsign(),
+            m_config.my_grid(),
+            dx_grid,
+            true, // tx_enabled - JS8Call always allows TX when not in special modes
+            m_transmitting,
+            m_decoderBusy || m_monitoring, // decoding
+            tx_message
+        );
+    }
+    
+    // Send native JSON message only if not conflicting with WSJT-X
     if(canSendNetworkMessage()){
-        sendNetworkMessage("STATION.STATUS", "", {
-            {"FREQ", QVariant(dialFrequency() + freq())},
-            {"DIAL", QVariant(dialFrequency())},
-            {"OFFSET", QVariant(freq())},
-            {"SPEED", QVariant(m_nSubMode)},
-            {"SELECTED", QVariant(callsignSelected())},
-        });
+        // Don't send JSON if WSJT-X is enabled on the same port/address
+        bool skip_json = false;
+        if (m_config.wsjtx_protocol_enabled() 
+            && m_config.wsjtx_server_port() == m_config.udp_server_port() 
+            && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+            skip_json = true;
+        }
+        
+        if (!skip_json) {
+            sendNetworkMessage("STATION.STATUS", "", {
+                {"FREQ", QVariant(dialFrequency() + freq())},
+                {"DIAL", QVariant(dialFrequency())},
+                {"OFFSET", QVariant(freq())},
+                {"SPEED", QVariant(m_nSubMode)},
+                {"SELECTED", QVariant(callsignSelected())},
+            });
+        }
     }
 }
 

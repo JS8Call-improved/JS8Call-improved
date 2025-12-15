@@ -118,6 +118,12 @@ public:
   void
   send_message(Message const & message)
   {
+    // Skip sending if port is 0 (disabled)
+    if (!port_)
+    {
+      return;
+    }
+    
     if (auto const datagram  = message.toJson();
                    datagram != lastDatagram_)
     {
