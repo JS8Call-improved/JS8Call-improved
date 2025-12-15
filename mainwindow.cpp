@@ -539,7 +539,7 @@ MainWindow::MainWindow(QString  const & program_info,
       id, version, revision,
       m_config.wsjtx_server_name(),
       m_config.wsjtx_server_port(),
-      QStringList(), // Use all interfaces (empty list)
+      m_config.wsjtx_interface_names(), // Use selected interfaces
       m_config.wsjtx_TTL(),
       this
     };
@@ -557,7 +557,7 @@ MainWindow::MainWindow(QString  const & program_info,
     // Connect configuration changes
     connect(&m_config, &Configuration::wsjtx_server_changed,
             [this](QString const& server_name) {
-              m_wsjtxMessageClient->set_server(server_name, QStringList()); // Use all interfaces
+              m_wsjtxMessageClient->set_server(server_name, m_config.wsjtx_interface_names());
               // Check if we need to disable native JSON client
               if (m_config.wsjtx_protocol_enabled() && m_config.wsjtx_server_port() == m_config.udp_server_port() 
                   && server_name == m_config.udp_server_name()) {
@@ -578,7 +578,17 @@ MainWindow::MainWindow(QString  const & program_info,
               }
             });
     connect(&m_config, &Configuration::wsjtx_TTL_changed,
-            m_wsjtxMessageClient, &WSJTXMessageClient::set_TTL);
+            this, [this](int ttl) {
+                if (m_wsjtxMessageClient) {
+                    m_wsjtxMessageClient->set_TTL(ttl);
+                }
+            });
+    connect(&m_config, &Configuration::wsjtx_interfaces_changed,
+            [this](QStringList const& interfaces) {
+              if (m_wsjtxMessageClient) {
+                m_wsjtxMessageClient->set_server(m_config.wsjtx_server_name(), interfaces);
+              }
+            });
   }
 
   // decoder queue handler

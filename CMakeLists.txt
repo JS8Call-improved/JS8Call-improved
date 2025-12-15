@@ -247,6 +247,7 @@ target_sources(
   jsc_map.cpp
   jsc.cpp
   LazyFillComboBox.cpp
+  widgets/CheckableItemComboBox.cpp
   logqso.cpp
   main.cpp
   mainwindow.cpp

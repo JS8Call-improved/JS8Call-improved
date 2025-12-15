@@ -181,6 +181,7 @@ public:
   port_type wsjtx_server_port () const;
   int wsjtx_TTL () const;
   bool wsjtx_accept_requests () const;
+  QStringList wsjtx_interface_names () const;
   int tcp_max_connections () const;
   Bands * bands ();
   Bands const * bands () const;
@@ -323,6 +324,7 @@ public:
   Q_SIGNAL void wsjtx_server_changed (QString const&) const;
   Q_SIGNAL void wsjtx_server_port_changed (port_type) const;
   Q_SIGNAL void wsjtx_TTL_changed (int) const;
+  Q_SIGNAL void wsjtx_interfaces_changed (QStringList const&) const;
 
   // This signal is emitted when the band schedule changes
   Q_SIGNAL void band_schedule_changed (StationList &stations);
