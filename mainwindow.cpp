@@ -529,7 +529,14 @@ MainWindow::MainWindow(QString  const & program_info,
   // Network message handling
   connect (m_messageClient, &MessageClient::message, this, &MainWindow::udpNetworkMessage);
 
-  // Initialize WSJT-X protocol if enabled
+  /**
+   * @brief Initialize WSJT-X protocol if enabled
+   *
+   * Creates and configures the WSJT-X message client and mapper when the
+   * WSJT-X protocol is enabled. Sets up signal connections for configuration
+   * changes and disables the native JSON client if it conflicts with WSJT-X
+   * on the same port/address.
+   */
   if (m_config.wsjtx_protocol_enabled()) {
     QString id = QApplication::applicationName();
     QString version = QApplication::applicationVersion();
@@ -3172,6 +3179,18 @@ void MainWindow::updateCurrentBand(){
 
     qCDebug(mainwindow_js8) << "setting band" << band_name;
     
+    /**
+     * @brief Send WSJT-X Status message on band change
+     *
+     * When the band changes, send a status update to WSJT-X protocol clients
+     * and native JSON API clients (if not conflicting).
+     */
+    /**
+     * @brief Send WSJT-X Status message on band change
+     *
+     * When the band changes, send a status update to WSJT-X protocol clients
+     * and native JSON API clients (if not conflicting).
+     */
     // Send WSJT-X Status message if protocol is enabled (band change triggers status update)
     if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
         QString dx_call = callsignSelected();
@@ -4204,11 +4223,37 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
         auto date = DriftingDateTime::currentDateTimeUtc().toString("yyyy-MM-dd");
         writeAllTxt(date + " " + decodedtext.string() + " " + decodedtext.message());
 
-        // Send decode to WSJT-X protocol
+        /**
+         * @brief Send decode to WSJT-X protocol
+         *
+         * Converts JS8Call decode events to WSJT-X Decode messages and sends them
+         * to WSJT-X protocol clients. For HeartBeat messages, ensures the message
+         * text includes callsign and grid so clients can properly associate them
+         * with grid plots.
+         */
         if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
             // Convert decode time from JS8Call format to QTime
             auto const hms = decode_time(decodedtext.time());
             QTime decode_time = QTime(hms.hour, hms.minute, hms.second);
+
+            // For HeartBeat messages, ensure the message text includes callsign and grid
+            // so clients can properly associate them with grid plots
+            QString message_text = decodedtext.message();
+            if (decodedtext.isHeartbeat() && decodedtext.isCompound()) {
+                // Extract callsign and grid from the HeartBeat message
+                QString callsign = decodedtext.compoundCall();
+                QString dx_callsign = decodedtext.call();
+                QString grid = decodedtext.extra();
+                // convert to wsjtx message format
+                if (!callsign.isEmpty() && !grid.isEmpty()) {
+                    // The message format should be "CALLSIGN DX_CALLSIGN GRID"
+                    // Verify this format is correct for client parsing
+                    if (!message_text.contains(callsign) || !message_text.contains(grid)) {
+                        // Reconstruct if needed to ensure proper format
+                        message_text = QString("%1: HEARTBEAT %2").arg(callsign).arg(grid);
+                    }
+                }
+            }
 
             // Send decode message
             // Use "JS8" as the mode string (WSJT-X expects mode names like "FT8", "FT4", "JT9", etc.)
@@ -4219,7 +4264,7 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
                 decodedtext.dt(),
                 static_cast<quint32>(decodedtext.frequencyOffset()),
                 "JS8", // mode string
-                decodedtext.message(),
+                message_text,
                 decodedtext.isLowConfidence()
             );
         }
@@ -6181,7 +6226,14 @@ void MainWindow::acceptQSO (QDateTime const& QSO_date_off, QString const& call, 
       }
   }
 
-  // Log to WSJT-X Protocol
+  /**
+   * @brief Log QSO to WSJT-X Protocol
+   *
+   * Sends QSO logged information to WSJT-X protocol clients. Sends both
+   * the QSOLogged message and the LoggedADIF message (type 12) which
+   * contains the ADIF formatted record. The ADIF message is what most
+   * WSJT-X clients actually use for logging.
+   */
   if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
       m_wsjtxMessageMapper->sendQSOLogged (QSO_date_off, call, grid, dial_freq, mode,
                                            rpt_sent, rpt_received, my_call, my_grid);
@@ -11416,6 +11468,14 @@ void MainWindow::setRig (Frequency f)
 	}
 }
 
+/**
+ * @brief Update and send station status
+ *
+ * Sends station status updates to both WSJT-X protocol clients (if enabled)
+ * and native JSON API clients (if not conflicting). When WSJT-X protocol
+ * is enabled on the same port/address as the native JSON API, the native
+ * JSON messages are skipped to avoid conflicts.
+ */
 void MainWindow::statusUpdate ()
 {
     // Send WSJT-X Status message if protocol is enabled

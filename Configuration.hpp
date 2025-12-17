@@ -176,11 +176,40 @@ public:
   bool udpEnabled () const;
   bool tcpEnabled () const;
   // WSJT-X Protocol settings
+  /**
+   * @brief Check if WSJT-X protocol is enabled
+   * @return true if WSJT-X protocol is enabled, false otherwise
+   */
   bool wsjtx_protocol_enabled () const;
+  
+  /**
+   * @brief Get WSJT-X server hostname or IP address
+   * @return Server address (supports multicast addresses)
+   */
   QString wsjtx_server_name () const;
+  
+  /**
+   * @brief Get WSJT-X server UDP port
+   * @return UDP port number
+   */
   port_type wsjtx_server_port () const;
+  
+  /**
+   * @brief Get WSJT-X multicast TTL
+   * @return Time-to-live value for multicast packets
+   */
   int wsjtx_TTL () const;
+  
+  /**
+   * @brief Check if WSJT-X accepts incoming requests
+   * @return true if accepting requests, false otherwise
+   */
   bool wsjtx_accept_requests () const;
+  
+  /**
+   * @brief Get selected network interface names for multicast
+   * @return List of network interface names
+   */
   QStringList wsjtx_interface_names () const;
   int tcp_max_connections () const;
   Bands * bands ();
@@ -320,10 +349,34 @@ public:
   Q_SIGNAL void tcp_server_port_changed (port_type port);
   Q_SIGNAL void tcp_max_connections_changed (int n);
   // WSJT-X Protocol signals
+  /**
+   * @brief Emitted when WSJT-X protocol enabled state changes
+   * @param enabled New enabled state
+   */
   Q_SIGNAL void wsjtx_protocol_enabled_changed (bool) const;
+  
+  /**
+   * @brief Emitted when WSJT-X server address changes
+   * @param server_name New server address
+   */
   Q_SIGNAL void wsjtx_server_changed (QString const&) const;
+  
+  /**
+   * @brief Emitted when WSJT-X server port changes
+   * @param port New port number
+   */
   Q_SIGNAL void wsjtx_server_port_changed (port_type) const;
+  
+  /**
+   * @brief Emitted when WSJT-X TTL changes
+   * @param ttl New TTL value
+   */
   Q_SIGNAL void wsjtx_TTL_changed (int) const;
+  
+  /**
+   * @brief Emitted when WSJT-X network interfaces selection changes
+   * @param interfaces New list of selected interface names
+   */
   Q_SIGNAL void wsjtx_interfaces_changed (QStringList const&) const;
 
   // This signal is emitted when the band schedule changes

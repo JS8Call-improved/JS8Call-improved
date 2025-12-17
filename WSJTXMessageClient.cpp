@@ -27,7 +27,15 @@ Q_LOGGING_CATEGORY(wsjtx_js8, "wsjtx.js8", QtWarningMsg)
 // some trace macros
 #define TRACE_UDP(MSG)
 
-// Helper function to dump binary payload in human-readable format
+/**
+ * @brief Helper function to dump binary payload in human-readable format
+ *
+ * Creates a hex dump of the message payload for debugging purposes.
+ * Shows the magic number, message size, and first 64 bytes in hex and ASCII.
+ *
+ * @param message Binary message to dump
+ * @return Formatted string with hex dump
+ */
 static QString dump_payload(QByteArray const& message)
 {
     QString result;
@@ -378,6 +386,12 @@ void WSJTXMessageClient::impl::parse_message (QByteArray const& msg)
     }
 }
 
+/**
+ * @brief Send a Heartbeat message
+ *
+ * Periodically sends Heartbeat messages to announce this application's
+ * presence and capabilities to WSJT-X protocol clients.
+ */
 void WSJTXMessageClient::impl::heartbeat ()
 {
    if (server_port_ && !server_.isNull ())
@@ -395,6 +409,11 @@ void WSJTXMessageClient::impl::heartbeat ()
     }
 }
 
+/**
+ * @brief Send a Close message and clean up
+ *
+ * Sends a Close message to notify clients that this application is shutting down.
+ */
 void WSJTXMessageClient::impl::closedown ()
 {
    if (server_port_ && !server_.isNull ())
@@ -519,11 +538,43 @@ void WSJTXMessageClient::set_TTL (int TTL)
   m_->setSocketOption (QAbstractSocket::MulticastTtlOption, m_->TTL_);
 }
 
+/**
+ * @brief Enable or disable incoming message processing
+ * @param flag true to enable, false to disable
+ */
 void WSJTXMessageClient::enable (bool flag)
 {
   m_->enabled_ = flag;
 }
 
+/**
+ * @brief Send a Status message
+ *
+ * Sends the current station status including frequency, mode, callsigns,
+ * and operational state to WSJT-X protocol clients.
+ *
+ * @param f Operating frequency (Hz)
+ * @param mode Operating mode string
+ * @param dx_call DX station callsign (selected station)
+ * @param report Report string
+ * @param tx_mode TX mode string
+ * @param tx_enabled Whether TX is enabled
+ * @param transmitting Whether currently transmitting
+ * @param decoding Whether currently decoding
+ * @param rx_df Receive frequency offset (Hz)
+ * @param tx_df Transmit frequency offset (Hz)
+ * @param de_call My callsign
+ * @param de_grid My grid square
+ * @param dx_grid DX station grid square
+ * @param watchdog_timeout Whether watchdog has timed out
+ * @param sub_mode Sub-mode string
+ * @param fast_mode Whether fast mode is enabled
+ * @param special_op_mode Special operating mode
+ * @param frequency_tolerance Frequency tolerance (Hz)
+ * @param tr_period Transmit/receive period (seconds)
+ * @param configuration_name Configuration name
+ * @param tx_message Current TX message text
+ */
 void WSJTXMessageClient::status_update (Frequency f, QString const& mode, QString const& dx_call
                                    , QString const& report, QString const& tx_mode
                                    , bool tx_enabled, bool transmitting, bool decoding
@@ -555,6 +606,21 @@ void WSJTXMessageClient::status_update (Frequency f, QString const& mode, QStrin
     }
 }
 
+/**
+ * @brief Send a Decode message
+ *
+ * Sends information about a decoded message to WSJT-X protocol clients.
+ *
+ * @param is_new Whether this is a new decode
+ * @param time Decode time
+ * @param snr Signal-to-noise ratio (dB)
+ * @param delta_time Time offset from expected time (seconds)
+ * @param delta_frequency Frequency offset from nominal (Hz)
+ * @param mode Operating mode string
+ * @param message_text Decoded message text
+ * @param low_confidence Whether decode confidence is low
+ * @param off_air Whether this is an off-air decode
+ */
 void WSJTXMessageClient::decode (bool is_new, QTime time, qint32 snr, float delta_time, quint32 delta_frequency
                             , QString const& mode, QString const& message_text, bool low_confidence
                             , bool off_air)
@@ -577,6 +643,11 @@ void WSJTXMessageClient::decode (bool is_new, QTime time, qint32 snr, float delt
     }
 }
 
+/**
+ * @brief Send a Clear Decodes message
+ *
+ * Notifies WSJT-X protocol clients to clear the decode window.
+ */
 void WSJTXMessageClient::decodes_cleared ()
 {
    if (m_->server_port_ && !m_->server_.isNull ())
@@ -591,6 +662,29 @@ void WSJTXMessageClient::decodes_cleared ()
     }
 }
 
+/**
+ * @brief Send a QSO Logged message
+ *
+ * Sends information about a logged QSO to WSJT-X protocol clients.
+ *
+ * @param time_off QSO end time
+ * @param dx_call DX station callsign
+ * @param dx_grid DX station grid square
+ * @param dial_frequency Dial frequency (Hz)
+ * @param mode Operating mode
+ * @param report_sent Report sent to DX station
+ * @param report_received Report received from DX station
+ * @param tx_power Transmit power
+ * @param comments QSO comments
+ * @param name DX station name
+ * @param time_on QSO start time
+ * @param operator_call Operator callsign
+ * @param my_call My callsign
+ * @param my_grid My grid square
+ * @param exchange_sent Exchange sent
+ * @param exchange_rcvd Exchange received
+ * @param propmode Propagation mode
+ */
 void WSJTXMessageClient::qso_logged (QDateTime time_off, QString const& dx_call, QString const& dx_grid
                                 , Frequency dial_frequency, QString const& mode, QString const& report_sent
                                 , QString const& report_received, QString const& tx_power
@@ -619,6 +713,16 @@ void WSJTXMessageClient::qso_logged (QDateTime time_off, QString const& dx_call,
     }
 }
 
+/**
+ * @brief Send a Logged ADIF message
+ *
+ * Sends the ADIF record for a logged QSO. This is sent in addition to
+ * the QSOLogged message and uses the WSJT-X LoggedADIF message format
+ * (type 12). The ADIF record is formatted with a header that includes
+ * the ADIF version and program ID for compatibility with WSJT-X clients.
+ *
+ * @param ADIF_record ADIF formatted record for the logged QSO (without header)
+ */
 void WSJTXMessageClient::logged_ADIF (QByteArray const& ADIF_record)
 {
    if (m_->server_port_ && !m_->server_.isNull ())

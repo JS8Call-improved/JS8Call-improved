@@ -5,6 +5,16 @@
 
 Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
 
+/**
+ * @brief Construct a WSJT-X message mapper
+ *
+ * Sets up signal connections to handle incoming WSJT-X protocol messages
+ * and map them to JS8Call actions.
+ *
+ * @param client WSJT-X message client to send messages through
+ * @param main_window Main window instance for accessing JS8Call state
+ * @param parent Parent QObject
+ */
 WSJTXMessageMapper::WSJTXMessageMapper (WSJTXMessageClient * client, MainWindow * main_window, QObject * parent)
   : QObject {parent}
   , client_ {client}
@@ -16,6 +26,24 @@ WSJTXMessageMapper::WSJTXMessageMapper (WSJTXMessageClient * client, MainWindow 
   connect (client_, &WSJTXMessageClient::location, this, &WSJTXMessageMapper::handleLocation);
 }
 
+/**
+ * @brief Send a Status update message
+ *
+ * Maps JS8Call's status information to WSJT-X Status message format and
+ * sends it through the WSJT-X message client.
+ *
+ * @param dial_freq Dial frequency (Hz)
+ * @param offset Frequency offset (Hz)
+ * @param mode Operating mode string
+ * @param dx_call DX station callsign (selected station)
+ * @param de_call My callsign
+ * @param de_grid My grid square
+ * @param dx_grid DX station grid square
+ * @param tx_enabled Whether TX is enabled
+ * @param transmitting Whether currently transmitting
+ * @param decoding Whether currently decoding
+ * @param tx_message Current TX message text
+ */
 void WSJTXMessageMapper::sendStatusUpdate (Radio::Frequency dial_freq, Radio::Frequency offset,
                                             QString const& mode, QString const& dx_call,
                                             QString const& de_call, QString const& de_grid,
@@ -42,6 +70,21 @@ void WSJTXMessageMapper::sendStatusUpdate (Radio::Frequency dial_freq, Radio::Fr
                           special_op_mode, frequency_tolerance, tr_period, configuration_name, tx_message);
 }
 
+/**
+ * @brief Send a Decode message
+ *
+ * Maps JS8Call's decode information to WSJT-X Decode message format and
+ * sends it through the WSJT-X message client.
+ *
+ * @param is_new Whether this is a new decode
+ * @param time Decode time
+ * @param snr Signal-to-noise ratio (dB)
+ * @param delta_time Time offset from expected time (seconds)
+ * @param delta_frequency Frequency offset from nominal (Hz)
+ * @param mode Operating mode string
+ * @param message Decoded message text
+ * @param low_confidence Whether decode confidence is low
+ */
 void WSJTXMessageMapper::sendDecode (bool is_new, QTime time, qint32 snr, float delta_time,
                                       quint32 delta_frequency, QString const& mode,
                                       QString const& message, bool low_confidence)
@@ -54,6 +97,22 @@ void WSJTXMessageMapper::sendDecode (bool is_new, QTime time, qint32 snr, float 
   client_->decode (is_new, time, snr, delta_time, delta_frequency, mode, message, low_confidence, false);
 }
 
+/**
+ * @brief Send a QSO Logged message
+ *
+ * Maps JS8Call's QSO log information to WSJT-X QSOLogged message format and
+ * sends it through the WSJT-X message client.
+ *
+ * @param time_off QSO end time
+ * @param dx_call DX station callsign
+ * @param dx_grid DX station grid square
+ * @param dial_frequency Dial frequency (Hz)
+ * @param mode Operating mode
+ * @param report_sent Report sent to DX station
+ * @param report_received Report received from DX station
+ * @param my_call My callsign
+ * @param my_grid My grid square
+ */
 void WSJTXMessageMapper::sendQSOLogged (QDateTime time_off, QString const& dx_call, QString const& dx_grid,
                                          Radio::Frequency dial_frequency, QString const& mode,
                                          QString const& report_sent, QString const& report_received,
@@ -76,6 +135,21 @@ void WSJTXMessageMapper::sendQSOLogged (QDateTime time_off, QString const& dx_ca
                        exchange_sent, exchange_rcvd, propmode);
 }
 
+/**
+ * @brief Handle incoming Reply message from WSJT-X protocol
+ *
+ * Maps WSJT-X Reply message to JS8Call action. This would trigger a reply
+ * in JS8Call similar to double-clicking a decode.
+ *
+ * @param time Reply time (unused)
+ * @param snr Signal-to-noise ratio (unused)
+ * @param delta_time Time offset (unused)
+ * @param delta_frequency Frequency offset (unused)
+ * @param mode Operating mode (unused)
+ * @param message_text Reply message text (unused)
+ * @param low_confidence Whether decode confidence is low (unused)
+ * @param modifiers Message modifiers (unused)
+ */
 void WSJTXMessageMapper::handleReply (QTime /*time*/, qint32 /*snr*/, float /*delta_time*/, quint32 /*delta_frequency*/,
                                        QString const& /*mode*/, QString const& /*message_text*/,
                                        bool /*low_confidence*/, quint8 /*modifiers*/)
@@ -89,6 +163,15 @@ void WSJTXMessageMapper::handleReply (QTime /*time*/, qint32 /*snr*/, float /*de
   }
 }
 
+/**
+ * @brief Handle incoming Free Text message from WSJT-X protocol
+ *
+ * Maps WSJT-X Free Text message to JS8Call TX.SET_TEXT and optionally
+ * TX.SEND_MESSAGE network messages.
+ *
+ * @param text Free text to send
+ * @param send Whether to send immediately
+ */
 void WSJTXMessageMapper::handleFreeText (QString const& text, bool send)
 {
   // Map to JS8Call TX.SET_TEXT message
@@ -100,6 +183,13 @@ void WSJTXMessageMapper::handleFreeText (QString const& text, bool send)
   }
 }
 
+/**
+ * @brief Handle incoming Halt TX message from WSJT-X protocol
+ *
+ * Maps WSJT-X Halt TX message to JS8Call TX halt action.
+ *
+ * @param auto_only If true, only halt auto sequences
+ */
 void WSJTXMessageMapper::handleHaltTx (bool auto_only)
 {
   // Stop transmission
@@ -109,6 +199,13 @@ void WSJTXMessageMapper::handleHaltTx (bool auto_only)
   }
 }
 
+/**
+ * @brief Handle incoming Location message from WSJT-X protocol
+ *
+ * Maps WSJT-X Location message to JS8Call STATION.SET_GRID network message.
+ *
+ * @param location Grid square or location string
+ */
 void WSJTXMessageMapper::handleLocation (QString const& location)
 {
   // Map to JS8Call STATION.SET_GRID
