@@ -4230,25 +4230,6 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
             auto const hms = decode_time(decodedtext.time());
             QTime decode_time = QTime(hms.hour, hms.minute, hms.second);
 
-            // For HeartBeat messages, ensure the message text includes callsign and grid
-            // so clients can properly associate them with grid plots
-            QString message_text = decodedtext.message();
-            if (decodedtext.isHeartbeat() && decodedtext.isCompound()) {
-                // Extract callsign and grid from the HeartBeat message
-                QString callsign = decodedtext.compoundCall();
-                QString dx_callsign = decodedtext.call();
-                QString grid = decodedtext.extra();
-                // convert to wsjtx message format
-                if (!callsign.isEmpty() && !grid.isEmpty()) {
-                    // The message format should be "CALLSIGN DX_CALLSIGN GRID"
-                    // Verify this format is correct for client parsing
-                    if (!message_text.contains(callsign) || !message_text.contains(grid)) {
-                        // Reconstruct if needed to ensure proper format
-                        message_text = QString("%1: HEARTBEAT %2").arg(callsign).arg(grid);
-                    }
-                }
-            }
-
             // Send decode message
             // Use "JS8" as the mode string (WSJT-X expects mode names like "FT8", "FT4", "JT9", etc.)
             m_wsjtxMessageMapper->sendDecode(
@@ -4258,7 +4239,7 @@ MainWindow::processDecodeEvent(JS8::Event::Variant const & event)
                 decodedtext.dt(),
                 static_cast<quint32>(decodedtext.frequencyOffset()),
                 "JS8", // mode string
-                message_text,
+                decodedtext.message(),
                 decodedtext.isLowConfidence()
             );
         }
