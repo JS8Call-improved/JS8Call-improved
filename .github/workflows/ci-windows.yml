@@ -96,7 +96,7 @@ jobs:
       shell: msys2 {0}
       run: |
         cd ./build
-        cmake --build . --config Release
+        cmake --build . --config Debug
 
     - name: Move exe into install directory
       shell: msys2 {0}
