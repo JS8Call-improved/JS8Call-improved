@@ -237,6 +237,7 @@ private slots:
   void on_actionAdd_Log_Entry_triggered();
   void on_actionOpen_log_directory_triggered ();
   void on_actionCopyright_Notice_triggered();
+  void on_actionUser_Guide_triggered();
   bool decode(qint32 k);
   bool isDecodeReady(int submode, qint32 k, qint32 k0, qint32 *pCurrentDecodeStart, qint32 *pNextDecodeStart, qint32 *pStart, qint32 *pSz, qint32 *pCycle);
   bool decodeEnqueueReady(qint32 k, qint32 k0);

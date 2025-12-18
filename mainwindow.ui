@@ -1884,6 +1884,8 @@ background-color: #22ff22;
     <addaction name="separator"/>
     <addaction name="actionCheck_for_Updates"/>
     <addaction name="actionAbout"/>
+    <addaction name="separator"/>
+    <addaction name="actionUser_Guide"/>
    </widget>
    <widget class="QMenu" name="menuConfig">
     <property name="title">
@@ -2033,6 +2035,11 @@ background-color: #22ff22;
   <action name="actionCopyright_Notice">
    <property name="text">
     <string>&amp;Copyright notice</string>
+   </property>
+  </action>
+  <action name="actionUser_Guide">
+   <property name="text">
+    <string>JS8Call User Guide</string>
    </property>
   </action>
   <action name="actionShow_Band_Activity">
