@@ -3185,12 +3185,6 @@ void MainWindow::updateCurrentBand(){
      * When the band changes, send a status update to WSJT-X protocol clients
      * and native JSON API clients (if not conflicting).
      */
-    /**
-     * @brief Send WSJT-X Status message on band change
-     *
-     * When the band changes, send a status update to WSJT-X protocol clients
-     * and native JSON API clients (if not conflicting).
-     */
     // Send WSJT-X Status message if protocol is enabled (band change triggers status update)
     if (m_wsjtxMessageMapper && m_config.wsjtx_protocol_enabled()) {
         QString dx_call = callsignSelected();
