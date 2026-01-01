@@ -27,8 +27,8 @@
 #include <QLoggingCategory>
 #include <QThread>
 
-#include "commons.h"
-#include "JS8.hpp"
+#include "JS8_Include/commons.h"
+#include "JS8_Mode/JS8.h"
 
 // Provide the globals expected by JS8.cpp
 struct dec_data dec_data;
@@ -38,7 +38,7 @@ std::mutex fftw_mutex;
 Q_LOGGING_CATEGORY(decoder_js8, "decoder.js8", QtWarningMsg)
 
 // Include implementation (in the diagnostic binary only).
-#include "JS8.cpp"
+#include "../JS8_Mode/JS8.cpp"
 
 namespace
 {

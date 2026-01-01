@@ -193,7 +193,7 @@ set_target_properties(
 target_compile_definitions(${TARGET} PRIVATE CMAKE_BUILD)
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/wsjtx_config.h.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/JS8_Include/wsjtx_config.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/wsjtx_config.h"
 )
 
@@ -208,92 +208,92 @@ target_precompile_headers(
 
 target_sources(
   ${TARGET} PRIVATE
-  Audio/BWFFile.cpp
-  logbook/adif.cpp
-  logbook/countrydat.cpp
-  logbook/countriesworked.cpp
-  logbook/logbook.cpp
   vendor/sqlite3/sqlite3.c
-  about.cpp
-  APRSISClient.cpp
-  AttenuationSlider.cpp
-  AudioDevice.cpp
-  Bands.cpp
-  CallsignValidator.cpp
-  CandidateKeyFilter.cpp
-  Configuration.cpp
-  decodedtext.cpp
-  Detector.cpp
-  DisplayManual.cpp
-  DriftingDateTime.cpp
-  DXLabSuiteCommanderTransceiver.cpp
-  EmulateSplitTransceiver.cpp
-  fileutils.cpp
-  Flatten.cpp
-  ForeignKeyDelegate.cpp
-  FrequencyLineEdit.cpp
-  FrequencyList.cpp
-  Geodesic.cpp
-  HamlibTransceiver.cpp
-  HelpTextWindow.cpp
-  HRDTransceiver.cpp
-  IARURegions.cpp
-  Inbox.cpp
-  kalman.cpp
-  JS8.cpp
-  JS8Submode.cpp
-  jsc_checker.cpp
-  jsc_list.cpp
-  jsc_map.cpp
-  jsc.cpp
-  LazyFillComboBox.cpp
-  widgets/CheckableItemComboBox.cpp
-  logqso.cpp
-  main.cpp
-  mainwindow.cpp
-  Message.cpp
-  JS8MessageBox.cpp
-  MessageClient.cpp
-  MessageError.cpp
-  NetworkMessage.cpp
-  WSJTXMessageClient.cpp
-  WSJTXMessageMapper.cpp
-  messagereplydialog.cpp
-  MessageServer.cpp
-  messagewindow.cpp
-  MetaDataRegistry.cpp
-  Modes.cpp
-  Modulator.cpp
-  MultiSettings.cpp
-  NetworkServerLookup.cpp
-  NotificationAudio.cpp
-  plotter.cpp
-  PollingTransceiver.cpp
-  ProcessThread.cpp
-  PSKReporter.cpp
-  qDateTimeExperiment.cpp
-  qt_helpers.cpp
-  Radio.cpp
-  RadioMetaType.cpp
-  RDP.cpp
-  revision_utils.cpp
-  SelfDestructMessageBox.cpp
-  SignalMeter.cpp
-  soundin.cpp
-  soundout.cpp
-  SpotClient.cpp
-  StationList.cpp
-  TCPClient.cpp
-  TraceFile.cpp
-  Transceiver.cpp
-  TransceiverBase.cpp
-  TransceiverFactory.cpp
-  TransmitTextEdit.cpp
-  TwoPhaseSignal.cpp
-  TxLoop.cpp
-  varicode.cpp
-  WF.cpp
-  widegraph.cpp
+  JS8_Audio/AudioDevice.cpp
+  JS8_Audio/BWFFile.cpp
+  JS8_Audio/NotificationAudio.cpp
+  JS8_Audio/soundin.cpp
+  JS8_Audio/soundout.cpp
+  JS8_Deprecated/DisplayManual.cpp
+  JS8_jsc/jsc.cpp
+  JS8_jsc/jsc_checker.cpp
+  JS8_jsc/jsc_list.cpp
+  JS8_jsc/jsc_map.cpp
+  JS8_Logbook/adif.cpp
+  JS8_Logbook/countrydat.cpp
+  JS8_Logbook/countriesworked.cpp
+  JS8_Logbook/logbook.cpp
+  JS8_Main/APRSISClient.cpp
+  JS8_Main/AttenuationSlider.cpp
+  JS8_Main/Bands.cpp
+  JS8_Main/CallsignValidator.cpp
+  JS8_Main/CandidateKeyFilter.cpp
+  JS8_Main/DriftingDateTime.cpp
+  JS8_Main/Flatten.cpp
+  JS8_Main/ForeignKeyDelegate.cpp
+  JS8_Main/FrequencyLineEdit.cpp
+  JS8_Main/FrequencyList.cpp
+  JS8_Main/Geodesic.cpp
+  JS8_Main/HelpTextWindow.cpp
+  JS8_Main/IARURegions.cpp
+  JS8_Main/Inbox.cpp
+  JS8_Main/JS8MessageBox.cpp
+  JS8_Main/Message.cpp
+  JS8_Main/MessageClient.cpp
+  JS8_Main/MessageError.cpp
+  JS8_Main/MessageServer.cpp
+  JS8_Main/MetaDataRegistry.cpp
+  JS8_Main/MultiSettings.cpp
+  JS8_Main/RDP.cpp
+  JS8_Main/StationList.cpp
+  JS8_Main/TxLoop.cpp
+  JS8_Main/WF.cpp
+  JS8_Main/fileutils.cpp
+  JS8_Main/main.cpp
+  JS8_Main/Modes.cpp
+  JS8_Main/plotter.cpp
+  JS8_Main/ProcessThread.cpp
+  JS8_Main/qDateTimeExperiment.cpp
+  JS8_Main/qt_helpers.cpp
+  JS8_Main/Radio.cpp
+  JS8_Main/RadioMetaType.cpp
+  JS8_Main/revision_utils.cpp
+  JS8_Main/SelfDestructMessageBox.cpp
+  JS8_Main/SignalMeter.cpp
+  JS8_Main/TraceFile.cpp
+  JS8_Main/TransmitTextEdit.cpp
+  JS8_Main/TwoPhaseSignal.cpp
+  JS8_Main/varicode.cpp
+  JS8_Mode/Detector.cpp
+  JS8_Mode/JS8.cpp
+  JS8_Mode/JS8Submode.cpp
+  JS8_Mode/Modulator.cpp
+  JS8_Mode/decodedtext.cpp
+  JS8_Mode/kalman.cpp
+  JS8_Network/NetworkServerLookup.cpp
+  JS8_Network/PSKReporter.cpp
+  JS8_Network/SpotClient.cpp
+  JS8_Network/TCPClient.cpp
+  JS8_Transceiver/DXLabSuiteCommanderTransceiver.cpp
+  JS8_Transceiver/EmulateSplitTransceiver.cpp
+  JS8_Transceiver/HamlibTransceiver.cpp
+  JS8_Transceiver/HRDTransceiver.cpp
+  JS8_Transceiver/PollingTransceiver.cpp
+  JS8_Transceiver/Transceiver.cpp
+  JS8_Transceiver/TransceiverBase.cpp
+  JS8_Transceiver/TransceiverFactory.cpp
+  JS8_UDP/NetworkMessage.cpp
+  JS8_UDP/WSJTXMessageClient.cpp
+  JS8_UDP/WSJTXMessageMapper.cpp
+  JS8_UI/Configuration.cpp
+  JS8_UI/about.cpp
+  JS8_UI/logqso.cpp
+  JS8_UI/mainwindow.cpp
+  JS8_UI/messagereplydialog.cpp
+  JS8_UI/messagewindow.cpp
+  JS8_UI/widegraph.cpp
+  JS8_Widgets/CheckableItemComboBox.cpp
+  JS8_Widgets/LazyFillComboBox.cpp
 )
 
 #------------------------------------------------------------------------------#
@@ -318,8 +318,8 @@ target_link_libraries(
 qt_add_resources(
   ${TARGET} "data"
   FILES
-  cty.dat
-  eclipse.txt
+  JS8_Include/cty.dat
+  JS8_Include/eclipse.txt
 )
 
 #------------------------------------------------------------------------------#
@@ -439,7 +439,7 @@ if (WIN32)
       )
 
       target_sources(${TARGET} PRIVATE
-        OmniRigTransceiver.cpp
+        JS8_Transceiver/OmniRigTransceiver.cpp
         ${GENAXSRCS}
       )
 
@@ -454,7 +454,7 @@ if (WIN32)
 
   # Windows icons require an RC file.
 
-  target_sources(${TARGET} PRIVATE wsjtx.rc)
+  target_sources(${TARGET} PRIVATE JS8_Include/wsjtx.rc)
 
   # Find the windeployqt command and run it against the generated binary,
   # which should handle all the gnarly bits.

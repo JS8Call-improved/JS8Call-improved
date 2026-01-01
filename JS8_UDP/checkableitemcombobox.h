@@ -1,0 +1,6 @@
+#ifndef CHECKABLEITEMCOMBOBOX_H
+#define CHECKABLEITEMCOMBOBOX_H
+
+#include "JS8_Widgets/CheckableItemComboBox.h"
+
+#endif // CHECKABLEITEMCOMBOBOX_H
