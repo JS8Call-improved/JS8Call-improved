@@ -113,6 +113,26 @@ jobs:
         cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libusb-1.0.dll' JS8Call/
         cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libwinpthread-1.dll' JS8Call/
 
+    - name: Get secrets
+      shell: pwsh
+      env:
+        CODE_SIGNING_PFX_BASE64: ${{ secrets.TEST_CODE_SIGNING_PFX_BASE64 }}
+      run: |
+        echo "${{ secrets.TEST_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
+        certutil -decode 'D:/a/JS8Call-improved/cert.base64' 'D:/a/JS8Call-improved/certificate.pfx'
+      continue-on-error: true
+
+    - name: Sign JS8Call
+      shell: pwsh
+      run: |
+        cd ./build/JS8Call/
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test *.exe
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test libhamlib*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test libusb*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test libwinpthread*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test libfftw3*.dll
+      continue-on-error: true
+
     - name: INNO Setup (Release build)
       if: ${{ inputs.release-ver }}
       run: |
@@ -124,6 +144,12 @@ jobs:
       run: |
         cd ./build/
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
+
+    - name: Installer signtool run
+      run: |
+        cd ./build/JS8Call/
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p test JS8Call-installer-*.exe
+      continue-on-error: true
 
     - name: Attestation (Release Only)
       if: ${{ inputs.release-ver }}
