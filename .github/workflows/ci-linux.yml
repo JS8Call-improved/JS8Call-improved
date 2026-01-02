@@ -290,14 +290,14 @@ jobs:
 # AppImage
     - name: AppImage Directory Setup and File Copy
       run: |
-        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/128x128/apps/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/
         
         cp build/JS8Call ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
-        cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/256x256/apps/
+        cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/128x128/apps/
         cp ${GITHUB_WORKSPACE}/local/qt693-install/plugins/platforms/*.so ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-decoration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
         cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-graphics-integration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
