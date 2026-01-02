@@ -9,3 +9,4 @@ X-MultipleArgs=false
 Type=Application
 Categories=AudioVideo;Audio;HamRadio;
 StartupNotify=true
+StartupWMClass=JS8Call
