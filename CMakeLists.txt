@@ -264,6 +264,17 @@ target_sources(
   JS8_Main/TransmitTextEdit.cpp
   JS8_Main/TwoPhaseSignal.cpp
   JS8_Main/varicode.cpp
+  JS8_Mainwindow/buildQueryMenu.cpp
+  JS8_Mainwindow/checkVersion.cpp
+  JS8_Mainwindow/dataSink.cpp
+  JS8_Mainwindow/displayBandActivity.cpp
+  JS8_Mainwindow/displayCallActivity.cpp
+  JS8_Mainwindow/initializeDummyData.cpp
+  JS8_Mainwindow/initializeGroupMessage.cpp
+  JS8_Mainwindow/networkMessage.cpp
+  JS8_Mainwindow/processCommandActivity.cpp
+  JS8_Mainwindow/processDecodeEvent.cpp
+  JS8_Mainwindow/processRxActivity.cpp
   JS8_Mode/Detector.cpp
   JS8_Mode/JS8.cpp
   JS8_Mode/JS8Submode.cpp

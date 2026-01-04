@@ -1,63 +1,131 @@
 // -*- Mode: C++ -*-
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-#ifdef QT5
-#include <QtWidgets>
-#else
-#include <QtGui>
-#endif
+
 #include <QAbstractSocket>
+#include <QAction>
+#include <QActionGroup>
+#include <QApplication>
 #include <QAudioDevice>
+#include <QByteArrayView>
+#include <QCursor>
 #include <QDateTime>
+#include <QDesktopServices>
 #include <QDir>
+#include <QElapsedTimer>
+#include <QFileDialog>
 #include <QHash>
 #include <QHostAddress>
+#include <QHostInfo>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QList>
+#include <QLoggingCategory>
 #include <QMainWindow>
+#include <QMdiSubWindow>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QPair>
+#include <QPixmap>
 #include <QPointer>
 #include <QProgressBar>
 #include <QProgressDialog>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 #include <QScopedPointer>
+#include <QScrollBar>
 #include <QSet>
+#include <QSoundEffect>
+#include <QStandardPaths>
+#include <QStringBuilder>
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QThread>
+#include <QTime>
+#include <QTimeZone>
 #include <QTimer>
+#include <QToolTip>
+#include <QUdpSocket>
+#include <QUrl>
+#include <QVariant>
 #include <QVector>
-
+#include <QVersionNumber>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QtGui>
+#include <algorithm>
+#include <array>
+#include <boost/crc.hpp>
+#include <cmath>
+#include <complex>
+#include <cstring>
+#include <fftw3.h>
 #include <functional>
-#include <unordered_map>
+#include <iterator>
+#include <mutex>
+#include <stdexcept>
+#include <string_view>
+#include <vector>
 
 #include "JS8_Audio/AudioDevice.h"
 #include "JS8_Audio/NotificationAudio.h"
+#include "JS8_Audio/soundin.h"
+#include "JS8_Audio/soundout.h"
 #include "JS8_Deprecated/DisplayManual.h"
+#include "JS8_Include/EventFilter.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Include/qpriorityqueue.h"
 #include "JS8_Logbook/logbook.h"
 #include "JS8_Main/APRSISClient.h"
+#include "JS8_Main/Bands.h"
+#include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/FrequencyList.h"
+#include "JS8_Main/Geodesic.h"
+#include "JS8_Main/HelpTextWindow.h"
+#include "JS8_Main/Inbox.h"
 #include "JS8_Main/JS8MessageBox.h"
 #include "JS8_Main/MessageClient.h"
 #include "JS8_Main/MessageServer.h"
 #include "JS8_Main/Modes.h"
+#include "JS8_Main/MultiSettings.h"
 #include "JS8_Main/ProcessThread.h"
 #include "JS8_Main/Radio.h"
+#include "JS8_Main/SelfDestructMessageBox.h"
+#include "JS8_Main/SignalMeter.h"
 #include "JS8_Main/StationList.h"
 #include "JS8_Main/TxLoop.h"
+#include "JS8_Main/qt_helpers.h"
+#include "JS8_Main/revision_utils.h"
 #include "JS8_Main/varicode.h"
+#include "JS8_Mode/Decoder.h"
+#include "JS8_Mode/Detector.h"
 #include "JS8_Mode/JS8.h"
+#include "JS8_Mode/JS8Submode.h"
+#include "JS8_Mode/Modulator.h"
+#include "JS8_Mode/decodedtext.h"
 #include "JS8_Network/NetworkAccessManager.h"
 #include "JS8_Network/PSKReporter.h"
 #include "JS8_Network/SpotClient.h"
 #include "JS8_Network/TCPClient.h"
 #include "JS8_Transceiver/Transceiver.h"
+#include "JS8_Transceiver/TransceiverFactory.h"
 #include "JS8_UDP/WSJTXMessageClient.h"
 #include "JS8_UDP/WSJTXMessageMapper.h"
 #include "JS8_UI/Configuration.h"
+#include "JS8_UI/about.h"
+#include "JS8_UI/widegraph.h"
+#include "JS8_jsc/jsc_checker.h"
+#include "logqso.h"
+#include "messagereplydialog.h"
+#include "messagewindow.h"
+#include "ui_mainwindow.h"
+#include <functional>
+#include <unordered_map>
+
+Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 
 extern int volatile itone[JS8_NUM_SYMBOLS]; // Audio tones for all Tx symbols
 
@@ -178,7 +246,7 @@ class MainWindow : public QMainWindow {
     void resetMessageUI();
     void restoreMessage();
     void initializeDummyData();
-    void initializeGroupMessageDummyData();
+    void initializeGroupMessage();
     bool ensureCallsignSet(bool alert = true);
     bool ensureKeyNotStuck(QString const &text);
     bool ensureNotIdle();
@@ -646,10 +714,51 @@ class MainWindow : public QMainWindow {
     QString m_txTextDirtyLastSelectedCall;
     QString m_lastTxMessage;
     QString m_totalTxMessage;
+
+    // moved from mainwindow.cpp, is used in multiple functions
+    QString since(QDateTime const &time) {
+        auto const delta = time.secsTo(DriftingDateTime::currentDateTimeUtc());
+
+        if (delta >= 60 * 60 * 24)
+            return QString("%1d").arg(delta / (60 * 60 * 24));
+        else if (delta >= 60 * 60)
+            return QString("%1h").arg(delta / (60 * 60));
+        else if (delta >= 60)
+            return QString("%1m").arg(delta / (60));
+        else if (delta >= 15)
+            return QString("%1s").arg(delta - (delta % 15));
+        else
+            return QString("now");
+    }
+
     QDateTime m_lastTxStartTime;
     QDateTime m_lastTxStopTime;
     qint32 m_driftMsMMA;
     qint32 m_driftMsMMA_N;
+
+    // moved from mainwindow.cpp, is used in multiple functions
+    auto replaceMacros(QString const &text,
+                       QMap<QString, QString> const &values, bool const prune) {
+        QString output = text;
+
+        for (auto const [key, value] : values.asKeyValueRange()) {
+            output = output.replace(key, value.toUpper());
+        }
+
+        return prune ? output.replace(QRegularExpression("[<](?:[^>]+)[>]"), "")
+                     : output;
+    }
+
+    QList<int> generateOffsets(int minOffset, int maxOffset) {
+        QList<int> offsets;
+
+        // TODO: these offsets aren't ordered correctly...
+
+        for (int i = minOffset; i <= maxOffset; i++) {
+            offsets.append(i);
+        }
+        return offsets;
+    }
 
     enum Priority {
         PriorityLow = 10,
