@@ -1,6 +1,13 @@
 #include "JS8_UI/mainwindow.h"
 
-// Emulation of the Fortran 'flat1' subroutine.
+/** \file
+ * @brief member function of the MainWindow class
+ *  creates the waterfall spectrum
+ */
+
+/**
+ * Emulation of the Fortran 'flat1' subroutine.
+ */
 void flat1(float const *const savg, int const iz, int const nsmo,
            float *const slin) {
     constexpr int x_size = 8192;
@@ -42,10 +49,11 @@ void flat1(float const *const savg, int const iz, int const nsmo,
         slin[i] = savg[i] / (x[i] + x0);
 }
 
-// Emulation of the Fortran 'smo' subroutine. However, doesn't copy the data
-// back from b to a; rather, a is input and, b is output. Since we invariably
-// call this twice, we can just swap the order of the arrays to achieve the
-// same result without the extra two copy operations.
+/** Emulation of the Fortran 'smo' subroutine. However, doesn't copy the data
+ * back from b to a; rather, a is input and, b is output. Since we invariably
+ * call this twice, we can just swap the order of the arrays to achieve the
+ * same result without the extra two copy operations.
+ */
 void smo(float const *const a, float *const b, int const npts, int const nadd) {
     auto const nh = nadd / 2;
 
@@ -130,24 +138,25 @@ void MainWindow::dataSink(qint64 frames) {
         k0 = k;
         ja += jstep;
 
-        // Perform real to complex FFT; note that the Fortran code performed
-        // this operation in the four2a subroutine, which contains a cache
-        // of plans. However, since the FFTW3 library itself caches, this
-        // resulted in double caching, so as an experiment we're allowing
-        // the library to handle caching.
-        //
-        // Note that the FFTW library requires all calls but for the plan
-        // execution, i.e., fftwf_execute(), to be serialized. The library
-        // doesn't require prescriptive serialization, anything will do so
-        // long as the result is one thread at a time.
-        //
-        // Providing room for an extra complex value, i.e., a pair of floats,
-        // real and imaginary parts, allows us to use the same buffer for the
-        // FFT input and output.
-        //
-        // While the memory for the FFT can come from anywhere, if we ask the
-        // library for it, it'll guarantee that it's aligned for use of SIMD
-        // instructions, which will in turn allow it to use them.
+        /** Perform real to complex FFT; note that the Fortran code performed
+         * this operation in the four2a subroutine, which contains a cache
+         * of plans. However, since the FFTW3 library itself caches, this
+         * resulted in double caching, so as an experiment we're allowing
+         * the library to handle caching.
+         *
+         * Note that the FFTW library requires all calls but for the plan
+         * execution, i.e., fftwf_execute(), to be serialized. The library
+         * doesn't require prescriptive serialization, anything will do so
+         * long as the result is one thread at a time.
+         *
+         * Providing room for an extra complex value, i.e., a pair of floats,
+         * real and imaginary parts, allows us to use the same buffer for the
+         * FFT input and output.
+         *
+         * While the memory for the FFT can come from anywhere, if we ask the
+         * library for it, it'll guarantee that it's aligned for use of SIMD
+         * instructions, which will in turn allow it to use them.
+         */
 
         fftwf_complex *fftw_complex;
         float *fftw_real;

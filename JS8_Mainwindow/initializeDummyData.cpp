@@ -1,5 +1,10 @@
 #include "JS8_UI/mainwindow.h"
 
+/** \file
+ * @brief member function of the MainWindow class
+ *  group messaging function
+ */
+
 void MainWindow::initializeDummyData() {
     if (!QApplication::applicationName().contains("dummy")) {
         return;

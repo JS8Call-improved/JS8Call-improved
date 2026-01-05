@@ -1,5 +1,10 @@
 #include "JS8_UI/mainwindow.h"
 
+/** \file
+ * @brief member function of the MainWindow class
+ *  displays the callsign activity in the right pane of the UI
+ */
+
 void MainWindow::displayCallActivity() {
 
     auto now = DriftingDateTime::currentDateTimeUtc();

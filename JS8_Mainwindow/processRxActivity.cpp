@@ -1,5 +1,10 @@
 #include "JS8_UI/mainwindow.h"
 
+/** \file
+ * @brief member function of the MainWindow class
+ *  process Rx queue activity
+ */
+
 void MainWindow::processRxActivity() {
     if (m_rxActivityQueue.isEmpty()) {
         return;
