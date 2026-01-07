@@ -19,7 +19,7 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Get doxygen and graphviz
@@ -28,7 +28,7 @@ jobs:
           sudo apt-get install -y doxygen graphviz
 
       - name: Build docs
-        run: doxygen
+        run: (cat Doxyfile; echo "PROJECT_NUMBER=master";) | doxygen -
 
       - name: Upload static files as artifact
         id: deployment
