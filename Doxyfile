@@ -23,6 +23,8 @@
 # replacement variables:
 # doxygen -x_noenv [configFile]
 
+# For things we have changed, you can search on "js8call"
+
 #---------------------------------------------------------------------------
 # Project related configuration options
 #---------------------------------------------------------------------------
@@ -41,12 +43,13 @@ DOXYFILE_ENCODING      = UTF-8
 # project for which the documentation is generated. This name is used in the
 # title of most generated pages and in a few other places.
 # The default value is: My Project.
-
+# js8call Our change
 PROJECT_NAME           = "JS8Call-Improved"
 
 # The PROJECT_NUMBER tag can be used to enter a project or revision number. This
 # could be handy for archiving the generated documentation or if some version
 # control system is used.
+# js8call We pass this in via the CI build system
 
 PROJECT_NUMBER         = 
 
@@ -60,6 +63,7 @@ PROJECT_BRIEF          =
 # in the documentation. The maximum height of the logo should not exceed 55
 # pixels and the maximum width should not exceed 200 pixels. Doxygen will copy
 # the logo to the output directory.
+# js8call Our change
 
 PROJECT_LOGO           = artwork/icon_128.svg
 
@@ -67,6 +71,7 @@ PROJECT_LOGO           = artwork/icon_128.svg
 # into which the generated documentation will be written. If a relative path is
 # entered, it will be relative to the location where doxygen was started. If
 # left blank the current directory will be used.
+# js8call Don't change this, GitHub-pages will break
 
 OUTPUT_DIRECTORY       = docs
 
@@ -78,8 +83,9 @@ OUTPUT_DIRECTORY       = docs
 # performance problems for the file system. Adapt CREATE_SUBDIRS_LEVEL to
 # control the number of sub-directories.
 # The default value is: NO.
+# js8call After refactoring, this has to be YES
 
-CREATE_SUBDIRS         = NO
+CREATE_SUBDIRS         = YES
 
 # Controls the number of sub-directories that will be created when
 # CREATE_SUBDIRS tag is set to YES. Level 0 represents 16 directories, and every
@@ -482,6 +488,7 @@ TYPEDEF_HIDES_STRUCT   = NO
 # symbols. At the end of a run doxygen will report the cache usage and suggest
 # the optimal cache size from a speed point of view.
 # Minimum value: 0, maximum value: 9, default value: 0.
+# js8call Our change, adjusted per doxygen output
 
 LOOKUP_CACHE_SIZE      = 1
 
@@ -503,6 +510,7 @@ NUM_PROC_THREADS       = 1
 # NO can help when comparing the output of multiple runs.
 # Possible values are: YES, NO, DATETIME and DATE.
 # The default value is: NO.
+# js8call Our change
 
 TIMESTAMP              = DATE
 
@@ -942,6 +950,7 @@ WARN_LOGFILE           =
 # directories like /usr/src/myproject. Separate the files or directories with
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
+# js8call Our change
 
 INPUT = docs/build_for_Linux.md docs/build_for_MacOS.md docs/build_for_Windows.md docs/CONTRIBUTOR_GUIDE.md .
 
@@ -1037,8 +1046,9 @@ FILE_PATTERNS          = *.c \
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
 # The default value is: NO.
+# js8call Our change, needed after the refactor
 
-RECURSIVE              = NO
+RECURSIVE              = YES
 
 # The EXCLUDE tag can be used to specify files and/or directories that should be
 # excluded from the INPUT source files. This way you can easily exclude a
@@ -1157,6 +1167,7 @@ FILTER_SOURCE_PATTERNS =
 # is part of the input, its contents will be placed on the main page
 # (index.html). This can be useful if you have a project on for instance GitHub
 # and want to reuse the introduction page also for the doxygen output.
+# js8call Our change
 
 USE_MDFILE_AS_MAINPAGE = README.md
 
@@ -1967,6 +1978,7 @@ EXTRA_SEARCH_MAPPINGS  =
 
 # If the GENERATE_LATEX tag is set to YES, doxygen will generate LaTeX output.
 # The default value is: YES.
+# js8call Our change, no need to use LaTeX at this point
 
 GENERATE_LATEX         = NO
 
@@ -2681,8 +2693,9 @@ INCLUDED_BY_GRAPH      = YES
 # accomplished by means of the command \hidecallgraph.
 # The default value is: NO.
 # This tag requires that the tag HAVE_DOT is set to YES.
+# js8call Our change
 
-CALL_GRAPH             = NO
+CALL_GRAPH             = YES
 
 # If the CALLER_GRAPH tag is set to YES then doxygen will generate a caller
 # dependency graph for every global function or class method.
@@ -2693,8 +2706,9 @@ CALL_GRAPH             = NO
 # accomplished by means of the command \hidecallergraph.
 # The default value is: NO.
 # This tag requires that the tag HAVE_DOT is set to YES.
+# js8call Our change
 
-CALLER_GRAPH           = NO
+CALLER_GRAPH           = YES
 
 # If the GRAPHICAL_HIERARCHY tag is set to YES then doxygen will graphical
 # hierarchy of all classes instead of a textual one.
@@ -2719,8 +2733,9 @@ DIRECTORY_GRAPH        = YES
 # of child directories generated in directory dependency graphs by dot.
 # Minimum value: 1, maximum value: 25, default value: 1.
 # This tag requires that the tag DIRECTORY_GRAPH is set to YES.
+# js8call Our change
 
-DIR_GRAPH_MAX_DEPTH    = 1
+DIR_GRAPH_MAX_DEPTH    = 2
 
 # The DOT_IMAGE_FORMAT tag can be used to set the image format of the images
 # generated by dot. For an explanation of the image formats see the section
