@@ -1,3 +1,10 @@
+/**
+ * @file adif.cpp
+ * @brief Implementation of the ADIF class for handling ADIF log files.
+ * @version 2.5.0
+ * @author JS8Call Development Team
+ * @date 2026-01-08
+ */
 #include "adif.h"
 
 #include <QFile>
@@ -5,6 +12,7 @@
 #include <QDateTime>
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(adif_js8)
+
 
 const QStringList ADIF_FIELDS = {
     // ADIF 3.1.0 - pulled from http://www.adif.org/310/adx310.xsd on 2019-06-04
@@ -169,13 +177,22 @@ const QStringList ADIF_FIELDS = {
 <CALL:6:S>W4ABC> ...
 */
 
+/**
+ * @brief Initialize the ADIF instance with the specified filename.
+ * @param filename The path to the ADIF log file.
+ */
 void ADIF::init(QString const& filename)
 {
     _filename = filename;
     _data.clear();
 }
 
-
+/**
+ * @brief Extract the value of a specified field from an ADIF record.
+ * @param record The ADIF record as a string.
+ * @param fieldName The name of the field to extract.
+ * @return The extracted field value, or an empty string if not found.
+ */
 QString ADIF::extractField(QString const& record, QString const& fieldName) const
 {
     qsizetype fieldNameIndex = record.indexOf ('<' + fieldName + ':', 0, Qt::CaseInsensitive);
@@ -208,8 +225,9 @@ QString ADIF::extractField(QString const& record, QString const& fieldName) cons
     return "";
 }
 
-
-
+/**
+ * @brief Load ADIF records from the specified file into the internal data structure.
+ */
 void ADIF::load()
 {
     _data.clear();
@@ -269,7 +287,17 @@ void ADIF::load()
     }
 }
 
-
+/**
+ * @brief Add a new QSO to the internal data structure.
+ * @param call The callsign of the contacted station.
+ * @param band The band on which the QSO was made.
+ * @param mode The mode of the QSO.
+ * @param submode The submode of the QSO.
+ * @param grid The grid locator of the contacted station.
+ * @param date The date of the QSO.
+ * @param name The name of the operator.
+ * @param comment Any comments associated with the QSO.
+ */
 void ADIF::add(QString const& call, QString const& band, QString const& mode, QString const& submode, QString const &grid, QString const& date, QString const& name, QString const& comment)
 {
     QSO q;
@@ -289,7 +317,12 @@ void ADIF::add(QString const& call, QString const& band, QString const& mode, QS
       }
 }
 
-// return true if in the log same band
+/**
+ * @brief Check if a callsign and band combination exists in the internal data structure.
+ * @param call The callsign to search for.
+ * @param band The band to search for.
+ * @return True if a matching QSO is found, false otherwise.
+ */
 bool ADIF::match(QString const& call, QString const& band) const
 {
     QList<QSO> qsos = _data.values(call);
@@ -309,11 +342,20 @@ bool ADIF::match(QString const& call, QString const& band) const
     return false;
 }
 
+/**
+ * @brief Find QSOs associated with a given callsign.
+ * @param call The callsign to search for.
+ * @return A list of QSOs associated with the callsign.
+ */
 QList<ADIF::QSO> ADIF::find(QString const& call) const
 {
     return _data.values(call);
 }
 
+/**
+ * @brief Get a list of all callsigns in the internal data structure.
+ * @return A list of callsigns.
+ */
 QList<QString> ADIF::getCallList() const
 {
     QList<QString> p;
@@ -326,11 +368,35 @@ QList<QString> ADIF::getCallList() const
     return p;
 }
 
+/**
+ * @brief Get the count of QSOs in the internal data structure.
+ * @return The number of QSOs.
+ */
 qsizetype ADIF::getCount() const
 {
     return _data.size();
 }
 
+/**
+ * @brief Convert QSO details into an ADIF record format.
+ * @param hisCall The callsign of the contacted station.
+ * @param hisGrid The grid locator of the contacted station.
+ * @param mode The mode of the QSO.
+ * @param submode The submode of the QSO.
+ * @param rptSent The report sent.
+ * @param rptRcvd The report received.
+ * @param dateTimeOn The date and time when the QSO started.
+ * @param dateTimeOff The date and time when the QSO ended.
+ * @param band The band on which the QSO was made.
+ * @param comments Any comments associated with the QSO.
+ * @param name The name of the operator.
+ * @param strDialFreq The dial frequency as a string.
+ * @param m_myCall The station's own callsign.
+ * @param m_myGrid The station's own grid locator.
+ * @param operator_call The operator's callsign.
+ * @param additionalFields A map of additional ADIF fields to include.
+ * @return The ADIF record as a QByteArray.
+ */
 QByteArray ADIF::QSOToADIF(QString const& hisCall, QString const& hisGrid, QString const& mode, QString const& submode
                            , QString const& rptSent, QString const& rptRcvd, QDateTime const& dateTimeOn
                            , QDateTime const& dateTimeOff, QString const& band, QString const& comments
@@ -380,8 +446,11 @@ QByteArray ADIF::QSOToADIF(QString const& hisCall, QString const& hisGrid, QStri
   return t.toLatin1 ();
 }
 
-
-// open ADIF file and append the QSO details. Return true on success
+/**
+ * @brief Open the ADIF file and append the QSO details.
+ * @param ADIF_record The ADIF record to append.
+ * @return True on success, false otherwise.
+ */
 bool ADIF::addQSOToFile(QByteArray const& ADIF_record)
 {
     QFile f2(_filename);
