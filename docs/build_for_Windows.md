@@ -3,7 +3,7 @@
 
 This is a general overview with some slight variations for building Qt6-compliant JS8Call-improved using JTSDK64-Tools (HamlibSDK) - see the detailed instructions for JTSDK64-Tools at Sourceforge:  https://hamlib-sdk.sourceforge.io/
 
-**Prerequisites:**\
+**Prerequisites:**
 Windows 10 or 11
 
 **Set up the JTSDK64-Tools build environment**
