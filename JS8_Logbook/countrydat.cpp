@@ -14,18 +14,34 @@
     #VN9C,VN9Y,VZ9C,VZ9Y,=VK9AA;
 */
 
+/**
+ * @file countrydat.cpp
+ * @brief Implementation of the CountryDat class for handling country data.
+ * @version 2.5.0
+ * @author JS8Call Development Team
+ * @date 2026-01-08
+ */
 #include "countrydat.h"
 #include "JS8_Main/Radio.h"
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
 
+/**
+ * @brief Initialize the CountryDat instance with the specified filename.
+ * @param filename The path to the country data file.
+ */
 void CountryDat::init(const QString filename)
 {
     _filename = filename;
     _data.clear();
 }
 
+/**
+ * @brief Extract the country name from a line in the country data file.
+ * @param line The line from which to extract the country name.
+ * @return The extracted country name.
+ */
 QString CountryDat::_extractName(const QString line) const
 {
     int s1 = line.indexOf(':');
@@ -37,6 +53,12 @@ QString CountryDat::_extractName(const QString line) const
     return "";
 }
 
+/**
+ * @brief Remove substrings enclosed by specified brackets from a line.
+ * @param line The line to process.
+ * @param a The opening bracket.
+ * @param b The closing bracket.
+ */
 void CountryDat::_removeBrackets(QString &line, const QString a, const QString b) const
 {
     int s1 = line.indexOf(a);
@@ -48,6 +70,12 @@ void CountryDat::_removeBrackets(QString &line, const QString a, const QString b
     }
 }
 
+/**
+ * @brief Extract prefixes from a line in the country data file.
+ * @param line The line from which to extract prefixes.
+ * @param more Output parameter indicating if more prefixes are expected.
+ * @return A list of extracted prefixes.
+ */
 QStringList CountryDat::_extractPrefix(QString &line, bool &more) const
 {
     line = line.remove(" \n");
@@ -71,7 +99,9 @@ QStringList CountryDat::_extractPrefix(QString &line, bool &more) const
     return r;
 }
 
-
+/**
+ * @brief Load country data from the specified file.
+ */
 void CountryDat::load()
 {
     _data.clear();
@@ -120,7 +150,11 @@ void CountryDat::load()
     }
 }
 
-// return country name else ""
+/**
+ * @brief Find the country name associated with a given callsign prefix.
+ * @param call The callsign prefix to search for.
+ * @return The corresponding country name, or an empty string if not found.
+ */
 QString CountryDat::find(QString call) const
 {
   call = call.toUpper ();
@@ -144,6 +178,12 @@ QString CountryDat::find(QString call) const
   return QString {};
 }
 
+/**
+ * @brief Apply special rules to fix up country names based on callsigns.
+ * @param country The initial country name.
+ * @param call The callsign to check for special rules.
+ * @return The potentially modified country name.
+ */
 QString CountryDat::fixup (QString country, QString const& call) const
 {
   //
