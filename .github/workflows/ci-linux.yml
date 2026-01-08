@@ -2,11 +2,11 @@ permissions:
   contents: read
   attestations: write
   id-token: write
-  
+
 name: CI Build for Linux Ubuntu
 
-on: 
-  workflow_dispatch: 
+on:
+  workflow_dispatch:
   pull_request:
   workflow_call:
     inputs:
@@ -18,9 +18,9 @@ on:
       release-ver:
         description: 'Release Version (v2.5.0)'
         required: false
-        type: string      
+        type: string
         default: 'v2.5.0'
-        
+
 # The package arrays below are mainly for building the libs, one could add fedora_build_package to include the
 # packages fedora requires, for instance.
 env:
@@ -295,7 +295,7 @@ jobs:
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/
-        
+
         cp build/JS8Call ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
         cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/128x128/apps/
         cp ${GITHUB_WORKSPACE}/local/qt693-install/plugins/platforms/*.so ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
@@ -313,7 +313,7 @@ jobs:
 
     - name: AppImage Copy Files
       run: |
-        cp JS8Call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call.desktop
+        cp .github/workflows/misc/JS8Call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call.desktop
 
     - name: AppImage deploy (x86_64 Release Build)
       if: (runner.arch == 'X64' && inputs.release-ver)
@@ -374,7 +374,7 @@ jobs:
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: '${{ github.workspace }}/AppImage/*.AppImage*'
-        
+
     - name: Upload Artifact (Release build)
       if: ${{ inputs.release-ver }}
       uses: actions/upload-artifact@v5
@@ -388,4 +388,3 @@ jobs:
       with:
         name: js8call-improved-${{ matrix.os }}
         path: ./AppImage/
-        
