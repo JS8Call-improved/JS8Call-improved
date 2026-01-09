@@ -1,9 +1,6 @@
 /**
  * @file countriesworked.cpp
  * @brief Implementation of the CountriesWorked class for tracking worked countries.
- * @version 2.5.0
- * @author JS8Call Development Team
- * @date 2026-01-08
  */
 #include "countriesworked.h"
 

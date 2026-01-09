@@ -1,3 +1,8 @@
+/**
+ * @file countrydat.cpp
+ * @brief Implementation of the CountryDat class for handling country data.
+ */
+
 /*
 #Sov Mil Order of Malta:   15:  28:  EU:   41.90:   -12.43:    -1.0:  1A:
     #1A;
@@ -14,13 +19,6 @@
     #VN9C,VN9Y,VZ9C,VZ9Y,=VK9AA;
 */
 
-/**
- * @file countrydat.cpp
- * @brief Implementation of the CountryDat class for handling country data.
- * @version 2.5.0
- * @author JS8Call Development Team
- * @date 2026-01-08
- */
 #include "countrydat.h"
 #include "JS8_Main/Radio.h"
 #include <QDebug>

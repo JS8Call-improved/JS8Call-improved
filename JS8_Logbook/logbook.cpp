@@ -1,9 +1,6 @@
 /**
  * @file logbook.cpp
- * @brief 
- * @version 2.5.0
- * @author JS8Call Development Team
- * @date 2026-01-08
+ * @brief Implementation of LogBook class
  */
 #include "logbook.h"
 #include <QDebug>

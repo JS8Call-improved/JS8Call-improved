@@ -1,9 +1,6 @@
 /**
  * @file adif.cpp
  * @brief Implementation of the ADIF class for handling ADIF log files.
- * @version 2.5.0
- * @author JS8Call Development Team
- * @date 2026-01-08
  */
 #include "adif.h"
 
