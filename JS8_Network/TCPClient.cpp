@@ -1,3 +1,7 @@
+/**
+ * @file TCPClient.cpp
+ * @brief Implementation of TCPClient class
+ */
 #include "TCPClient.h"
 
 #include <QDebug>
@@ -7,6 +11,11 @@
 
 #include "moc_TCPClient.cpp"
 
+/**
+ * @private
+ * @brief Private implementation of the TCPClient class.
+ * 
+ */
 class TCPClient::impl : public QTcpSocket {
     Q_OBJECT
 
@@ -43,8 +52,21 @@ class TCPClient::impl : public QTcpSocket {
 
 #include "TCPClient.moc"
 
+/**
+ * @brief Construct a new TCPClient::TCPClient object
+ * 
+ * @param parent 
+ */
 TCPClient::TCPClient(QObject *parent) : QObject(parent), m_{this} {}
 
+/**
+ * @brief Ensures that the TCP client is connected to the specified host and port.
+ * 
+ * @param host The hostname or IP address to connect to.
+ * @param port The port number to connect to.
+ * @param msecs The timeout in milliseconds to wait for the connection.
+ * @return true if connected successfully, false otherwise.
+ */
 bool TCPClient::ensureConnected(QString host, port_type port, int msecs) {
     if (!m_->isConnected(host, port)) {
         m_->connectToHostPort(host, port);
@@ -53,6 +75,16 @@ bool TCPClient::ensureConnected(QString host, port_type port, int msecs) {
     return m_->waitForConnected(msecs);
 }
 
+/**
+ * @brief Sends a network message to the specified host and port.
+ * 
+ * @param host The hostname or IP address to send the message to.
+ * @param port The port number to send the message to.
+ * @param message The message data to send.
+ * @param crlf Whether to append CRLF to the message.
+ * @param msecs The timeout in milliseconds to wait for the connection.
+ * @return true if the message was sent successfully, false otherwise.
+ */
 bool TCPClient::sendNetworkMessage(QString host, port_type port,
                                    QByteArray const &message, bool crlf,
                                    int msecs) {

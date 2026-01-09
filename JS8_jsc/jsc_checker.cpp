@@ -1,4 +1,9 @@
 /**
+ * @file jsc_checker.cpp
+ * @brief JSCChecker class implementation
+ * 
+ */
+/**
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -34,11 +39,24 @@ Q_DECLARE_LOGGING_CATEGORY(jsc_checker_js8)
 const int CORRECT = QTextFormat::UserProperty + 10;
 const QString ALPHABET = { "ABCDEFGHIJKLMNOPQRSTUVWXYZ" };
 
+/**
+ * @brief Construct a new JSCChecker::JSCChecker object
+ * 
+ * @param parent 
+ */
 JSCChecker::JSCChecker(QObject *parent) :
     QObject(parent)
 {
 }
 
+/**
+ * @brief Check if the cursor has the specified property
+ * 
+ * @param cursor 
+ * @param property 
+ * @return true 
+ * @return false 
+ */
 bool cursorHasProperty(const QTextCursor &cursor, int property){
     if(property < QTextFormat::UserProperty) {
         return false;
@@ -56,20 +74,47 @@ bool cursorHasProperty(const QTextCursor &cursor, int property){
     return false;
 }
 
+/**
+ * @brief Get the next character from the cursor
+ * 
+ * @param c 
+ * @return QString 
+ */
 QString nextChar(QTextCursor c){
     QTextCursor cur(c);
     cur.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
     return cur.selectedText().toUpper();
 }
 
+/**
+ * @brief Check if the string is numeric
+ * 
+ * @param s 
+ * @return true 
+ * @return false 
+ */
 bool isNumeric(QString s){
     return s.indexOf(QRegularExpression("^\\d+$")) == 0;
 }
 
+/**
+ * @brief Check if the character is a word character
+ * 
+ * @param ch 
+ * @return true 
+ * @return false 
+ */
 bool isWordChar(QString ch){
     return ch.contains(QRegularExpression("^\\w$"));
 }
 
+/**
+ * @brief Check the range of text in the QTextEdit for valid JSC callsigns
+ * 
+ * @param edit 
+ * @param start 
+ * @param end 
+ */
 void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
 {
     if(end == -1){
@@ -148,6 +193,14 @@ void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
     edit->document()->blockSignals(false);
 }
 
+/**
+ * @brief Generate all candidate words that are one edit distance away
+ * 
+ * @param word 
+ * @param includeAdditions 
+ * @param includeDeletions 
+ * @return QSet<QString> 
+ */
 QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions){
     QSet<QString> all;
 
@@ -178,6 +231,13 @@ QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions
     return all;
 }
 
+/**
+ * @brief Generate candidate words that are one or two edit distances away
+ * 
+ * @param word 
+ * @param includeTwoEdits 
+ * @return QMultiMap<quint32, QString> 
+ */
 QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits){
     // one edit
     QSet<QString> one = oneEdit(word, true, true);
@@ -203,6 +263,14 @@ QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits){
     return m;
 }
 
+/**
+ * @brief Generate suggestions for the given word
+ * 
+ * @param word 
+ * @param n 
+ * @param pFound 
+ * @return QStringList 
+ */
 QStringList JSCChecker::suggestions(QString word, int n, bool *pFound){
     QStringList s;
 

@@ -1,4 +1,8 @@
 /**
+ * @file jsc.cpp
+ * @brief Implementation of JSC class for compression and decompression
+ */
+/**
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -28,6 +32,16 @@
 
 QMap<QString, quint32> LOOKUP_CACHE;
 
+/**
+ * @brief Generates a codeword for the given index and parameters.
+ * 
+ * @param index 
+ * @param separate 
+ * @param bytesize 
+ * @param s 
+ * @param c 
+ * @return Codeword 
+ */
 Codeword JSC::codeword(quint32 index, bool separate, quint32 bytesize, quint32 s, quint32 c){
     QList<Codeword> out;
 
@@ -49,6 +63,12 @@ Codeword JSC::codeword(quint32 index, bool separate, quint32 bytesize, quint32 s
     return word;
 }
 
+/**
+ * @brief Compresses the given text into a list of codeword pairs.
+ * 
+ * @param text 
+ * @return QList<CodewordPair> 
+ */
 QList<CodewordPair> JSC::compress(QString text){
     QList<CodewordPair> out;
 
@@ -94,6 +114,12 @@ QList<CodewordPair> JSC::compress(QString text){
     return out;
 }
 
+/**
+ * @brief Decompresses the given bit vector into a string.
+ * 
+ * @param bitvec 
+ * @return QString 
+ */
 QString JSC::decompress(Codeword const& bitvec){
     const quint32 b = 4;
     const quint32 s = 7;
@@ -170,6 +196,14 @@ QString JSC::decompress(Codeword const& bitvec){
     return out.join("");
 }
 
+/**
+ * @brief Checks if the given word exists in the compression map.
+ * 
+ * @param w 
+ * @param pIndex 
+ * @return true 
+ * @return false 
+ */
 bool JSC::exists(QString w, quint32 *pIndex){
     bool found = false;
     quint32 index = lookup(w, &found);
@@ -177,6 +211,13 @@ bool JSC::exists(QString w, quint32 *pIndex){
     return found && JSC::map[index].size == w.length();
 }
 
+/**
+ * @brief Looks up the index of the given word in the compression map.
+ * 
+ * @param w 
+ * @param ok 
+ * @return quint32 
+ */
 quint32 JSC::lookup(QString w, bool * ok){
     if(LOOKUP_CACHE.contains(w)){
         if(ok) *ok = true;
@@ -193,6 +234,13 @@ quint32 JSC::lookup(QString w, bool * ok){
     return result;
 }
 
+/**
+ * @brief Looks up the index of the given C-style string in the compression map.
+ * 
+ * @param b 
+ * @param ok 
+ * @return quint32 
+ */
 quint32 JSC::lookup(char const* b, bool *ok){
     quint32 index = 0;
     quint32 count = 0;

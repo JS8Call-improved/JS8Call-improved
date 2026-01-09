@@ -1,4 +1,8 @@
 /**
+ * @file JS8.cpp
+ * @brief Implementation of JS8 encoding and decoding functions
+ */
+/**
  * (C) 2025 Allan Bazinet <w6baz@arrl.net> - All Rights Reserved
  **/
 

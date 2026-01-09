@@ -1,3 +1,7 @@
+/**
+ * @file SpotClient.cpp
+ * @brief Implementation of SpotClient class
+ */
 #include "SpotClient.h"
 #include "JS8_Include/pimpl_impl.h"
 #include "JS8_Main/Message.h"
@@ -36,6 +40,11 @@ template <typename T> bool changeValue(T &stored, T const &update) {
 // Private Implementation
 /******************************************************************************/
 
+/**
+ * @private
+ * @brief Private implementation of the SpotClient class.
+ * 
+ */
 class SpotClient::impl final : public QUdpSocket {
     Q_OBJECT
 
@@ -133,6 +142,14 @@ class SpotClient::impl final : public QUdpSocket {
 
 // Constructor
 
+/**
+ * @brief Constructs a SpotClient object.
+ * 
+ * @param name The hostname of the spot server.
+ * @param port The port number of the spot server.
+ * @param version The version string of the client.
+ * @param parent The parent QObject.
+ */
 SpotClient::SpotClient(QString const &name, quint16 const port,
                        QString const &version, QObject *parent)
     : QObject{parent}, m_{name, port, version, this} {}
@@ -144,6 +161,13 @@ void SpotClient::start() {
     }
 }
 
+/**
+ * @brief Sets the local station information.
+ * 
+ * @param callsign The callsign of the local station.
+ * @param grid The grid locator of the local station.
+ * @param info Additional info about the local station.
+ */
 void SpotClient::setLocalStation(QString const &callsign, QString const &grid,
                                  QString const &info) {
     qCDebug(spotclient_js8) << "SpotClient Set Local Station:" << callsign
@@ -165,6 +189,21 @@ void SpotClient::setLocalStation(QString const &callsign, QString const &grid,
     }
 }
 
+/**
+ * @brief Enqueues a command to be sent to the spot server.
+ * 
+ * @param cmd The command string.
+ * @param from The sender callsign.
+ * @param to The recipient callsign.
+ * @param relayPath The relay path.
+ * @param text The message text.
+ * @param grid The grid locator.
+ * @param extra Additional information.
+ * @param submode The submode identifier.
+ * @param dial The dial frequency.
+ * @param offset The frequency offset.
+ * @param snr The signal-to-noise ratio.
+ */
 void SpotClient::enqueueCmd(QString const &cmd, QString const &from,
                             QString const &to, QString const &relayPath,
                             QString const &text, QString const &grid,
@@ -189,6 +228,16 @@ void SpotClient::enqueueCmd(QString const &cmd, QString const &from,
     }
 }
 
+/**
+ * @brief Enqueues a spot to be sent to the spot server.
+ * 
+ * @param callsign The callsign of the spotted station.
+ * @param grid The grid locator of the spotted station.
+ * @param submode The submode identifier.
+ * @param dial The dial frequency.
+ * @param offset The frequency offset.
+ * @param snr The signal-to-noise ratio.
+ */
 void SpotClient::enqueueSpot(QString const &callsign, QString const &grid,
                              int const submode, int const dial,
                              int const offset, int const snr) {

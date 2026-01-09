@@ -1,3 +1,9 @@
+/**
+ * @file BWFFile.cpp
+ * @brief Implementation of BWFFile class
+ * 
+ * BWFFile is an enhanced, industry-standard version of a standard WAV file
+ */
 #include "BWFFile.h"
 
 #include <algorithm>
@@ -115,6 +121,7 @@ namespace
     char coding_history_[];
   };
 }
+
 
 class BWFFile::impl final
 {

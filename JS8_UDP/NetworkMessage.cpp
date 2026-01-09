@@ -1,3 +1,7 @@
+/**
+ * @file NetworkMessage.cpp
+ * @brief Implementation of NetworkMessage::Builder and NetworkMessage::Reader classes
+ */
 #include "NetworkMessage.h"
 
 #include <exception>

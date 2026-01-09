@@ -1,3 +1,7 @@
+/**
+ * @file Detector.cpp
+ * @brief Implementation of Detector class
+ */
 #include "Detector.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Main/DriftingDateTime.h"
@@ -47,6 +51,13 @@ constexpr std::array LOWPASS{
 
 Q_DECLARE_LOGGING_CATEGORY(detector_js8)
 
+/**
+ * @brief Construct a new Detector object
+ * 
+ * @param frameRate 
+ * @param periodLengthInSeconds 
+ * @param parent 
+ */
 Detector::Detector(unsigned frameRate, unsigned periodLengthInSeconds,
                    QObject *parent)
     : AudioDevice(parent), m_frameRate(frameRate),
@@ -54,8 +65,19 @@ Detector::Detector(unsigned frameRate, unsigned periodLengthInSeconds,
     clear();
 }
 
+/**
+ * @brief Set the block size for FFT processing
+ * 
+ * @param n 
+ */
 void Detector::setBlockSize(unsigned n) { m_samplesPerFFT = n; }
 
+/**
+ * @brief Reset the detector state
+ * 
+ * @return true 
+ * @return false 
+ */
 bool Detector::reset() {
     clear();
     // don't call base call reset because it calls seek(0) which causes
@@ -63,6 +85,10 @@ bool Detector::reset() {
     return isOpen();
 }
 
+/**
+ * @brief Clear the detector buffer
+ * 
+ */
 void Detector::clear() {
 #if JS8_RING_BUFFER
     resetBufferPosition();
@@ -77,6 +103,10 @@ void Detector::clear() {
     // sizeof (dec_data.d2[0]), 0);
 }
 
+/**
+ * @brief Reset the buffer position based on current time
+ * 
+ */
 void Detector::resetBufferPosition() {
     QMutexLocker mutex(&m_lock);
 
@@ -107,6 +137,10 @@ void Detector::resetBufferPosition() {
     }
 }
 
+/**
+ * @brief Reset the buffer content to zero
+ * 
+ */
 void Detector::resetBufferContent() {
     QMutexLocker mutex(&m_lock);
 
@@ -114,6 +148,13 @@ void Detector::resetBufferContent() {
     qCDebug(detector_js8) << "clearing detector buffer content";
 }
 
+/**
+ * @brief Write data to the detector buffer
+ * 
+ * @param data 
+ * @param maxSize 
+ * @return qint64 
+ */
 qint64 Detector::writeData(char const *const data, qint64 const maxSize) {
     QMutexLocker mutex(&m_lock);
 
@@ -174,6 +215,11 @@ qint64 Detector::writeData(char const *const data, qint64 const maxSize) {
     return maxSize;
 }
 
+/**
+ * @brief Get the current second in the period
+ * 
+ * @return unsigned 
+ */
 unsigned Detector::secondInPeriod() const {
     // we take the time of the data as the following assuming no latency
     // delivering it to us (not true but close enough for us)

@@ -1,3 +1,7 @@
+/**
+ * @file PSKReporter.cpp
+ * @brief Implementation of PSKReporter class
+ */
 #include "PSKReporter.h"
 
 // Interface for posting spots to PSK Reporter web site
@@ -86,6 +90,12 @@ namespace {
 //    SHOULD detect and ignore such values.  See [UTF8-EXPLOIT] for
 //    background on this issue.
 
+/**
+ * @brief Writes a UTF-8 string to the given data stream.
+ * 
+ * @param out 
+ * @param s 
+ */
 void writeUtfString(QDataStream &out, QString const &s) {
     auto utf = s.toUtf8();
 
@@ -131,12 +141,24 @@ void writeUtfString(QDataStream &out, QString const &s) {
 // length, return the number of additional bytes required to make it an
 // even multiple of 4.
 
+/**
+ * @brief Calculates the number of padding bytes needed for 4-byte alignment.
+ * 
+ * @param n 
+ * @return qsizetype 
+ */
 qsizetype num_pad_bytes(qsizetype const n) { return ((n + 3) & ~0x3) - n; }
 
 // If the buffer isn't landing on a 4-byte boundary, pad with nulls.
 // Rewind the data stream to 2 bytes in, punch in the length of the
 // buffer, and reposition to after the buffer, plus any alignment.
 
+/**
+ * @brief Sets the length of the data in the stream, adding padding if necessary.
+ * 
+ * @param out 
+ * @param b 
+ */
 void set_length(QDataStream &out, QByteArray const &b) {
     // Pad out to 4-byte alignment with NUL bytes, if necessary.
 
@@ -160,6 +182,11 @@ void set_length(QDataStream &out, QByteArray const &b) {
 
 // Append a Sender Information Descriptor to the provided message.
 
+/**
+ * @brief Appends a Sender Information Descriptor to the given message.
+ * 
+ * @param message 
+ */
 void appendSIDTo(QDataStream &message) {
     QByteArray buffer;
     QDataStream stream{&buffer, QIODevice::WriteOnly};
@@ -200,6 +227,11 @@ void appendSIDTo(QDataStream &message) {
 
 // Append a Receiver Information Descriptor to the provided message.
 
+/**
+ * @brief Appends a Receiver Information Descriptor to the given message.
+ * 
+ * @param message 
+ */
 void appendRIDTo(QDataStream &message) {
     QByteArray buffer;
     QDataStream stream{&buffer, QIODevice::WriteOnly};
@@ -236,6 +268,11 @@ void appendRIDTo(QDataStream &message) {
 // Private Implementation
 /******************************************************************************/
 
+/**
+ * @private
+ * @brief Private implementation of the PSKReporter class.
+ * 
+ */
 class PSKReporter::impl final : public QObject {
     Q_OBJECT
 
@@ -585,12 +622,22 @@ class PSKReporter::impl final : public QObject {
 
 #include "PSKReporter.moc"
 
+/**
+ * @brief Construct a new PSKReporter::PSKReporter object
+ * 
+ * @param config 
+ * @param program_info 
+ */
 PSKReporter::PSKReporter(Configuration const *config,
                          QString const &program_info)
     : m_{this, config, program_info} {}
 
 PSKReporter::~PSKReporter() = default;
 
+/**
+ * @brief Starts the PSKReporter.
+ * 
+ */
 void PSKReporter::start() {
     if (!m_->once_) {
         m_->once_ = true;
@@ -598,8 +645,19 @@ void PSKReporter::start() {
     }
 }
 
+/**
+ * @brief Reconnects to the PSKReporter server.
+ * 
+ */
 void PSKReporter::reconnect() { m_->reconnect(); }
 
+/**
+ * @brief Sets the local station information.
+ * 
+ * @param call 
+ * @param grid 
+ * @param ant 
+ */
 void PSKReporter::setLocalStation(QString const &call, QString const &grid,
                                   QString const &ant) {
     m_->check_connection();
@@ -611,6 +669,16 @@ void PSKReporter::setLocalStation(QString const &call, QString const &grid,
     }
 }
 
+/**
+ * @brief Adds a remote station spot to be reported.
+ * 
+ * @param call 
+ * @param grid 
+ * @param freq 
+ * @param mode 
+ * @param snr 
+ * @param utcTimestamp 
+ */
 void PSKReporter::addRemoteStation(QString const &call, QString const &grid,
                                    Radio::Frequency const freq,
                                    QString const &mode, int const snr,
@@ -676,6 +744,11 @@ void PSKReporter::addRemoteStation(QString const &call, QString const &grid,
     }
 }
 
+/**
+ * @brief Sends the report to PSK Reporter.
+ * 
+ * @param last 
+ */
 void PSKReporter::sendReport(bool const last) {
     m_->check_connection();
 

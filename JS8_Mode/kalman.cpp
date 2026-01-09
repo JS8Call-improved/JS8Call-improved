@@ -1,9 +1,26 @@
+/**
+ * @file kalman.cpp
+ * @brief Implementation of Kalman filter-based trackers
+ */
 #include "kalman.h"
 
 #include <algorithm>
 #include <cmath>
 
+/**
+ * @brief JS8 namespace for Kalman filter-based trackers
+ * 
+ */
 namespace js8 {
+/**
+ * @brief Reset the FrequencyTracker with initial parameters
+ * 
+ * @param initial_hz Initial frequency estimate in Hz
+ * @param sample_rate_hz Sample rate in Hz
+ * @param alpha Smoothing factor
+ * @param max_step_hz Maximum step size in Hz
+ * @param max_error_hz Maximum allowable error in Hz
+ */
 void FrequencyTracker::reset(double initial_hz, double sample_rate_hz,
                              double alpha, double max_step_hz,
                              double max_error_hz) {
@@ -17,16 +34,42 @@ void FrequencyTracker::reset(double initial_hz, double sample_rate_hz,
     m_updates = 0;
 }
 
+/**
+ * @brief Disable the FrequencyTracker
+ * 
+ */
 void FrequencyTracker::disable() { m_enabled = false; }
 
+/**
+ * @brief Check if the FrequencyTracker is enabled
+ * 
+ * @return true 
+ * @return false 
+ */
 bool FrequencyTracker::enabled() const noexcept { return m_enabled; }
 
+/**
+ * @brief Get the current frequency estimate in Hz
+ * 
+ * @return double 
+ */
 double FrequencyTracker::currentHz() const noexcept { return m_est_hz; }
 
+/**
+ * @brief Get the average step size in Hz
+ * 
+ * @return double 
+ */
 double FrequencyTracker::averageStepHz() const noexcept {
     return m_updates > 0 ? m_sum_abs / static_cast<double>(m_updates) : 0.0;
 }
 
+/**
+ * @brief Apply frequency correction to the provided data
+ * 
+ * @param data Pointer to complex float data
+ * @param count Number of samples
+ */
 void FrequencyTracker::apply(std::complex<float> *data, int count) const {
     if (!m_enabled || !data || count <= 0 || m_fs <= 0.0)
         return;
@@ -41,6 +84,12 @@ void FrequencyTracker::apply(std::complex<float> *data, int count) const {
     }
 }
 
+/**
+ * @brief Update the FrequencyTracker with a new residual frequency measurement
+ * 
+ * @param residual_hz Residual frequency in Hz
+ * @param weight Weighting factor
+ */
 void FrequencyTracker::update(double residual_hz, double weight) {
     if (!m_enabled || m_fs <= 0.0)
         return;
@@ -58,6 +107,14 @@ void FrequencyTracker::update(double residual_hz, double weight) {
     ++m_updates;
 }
 
+/**
+ * @brief Reset the TimingTracker with initial parameters
+ * 
+ * @param initial_samples Initial timing estimate in samples
+ * @param alpha Smoothing factor
+ * @param max_step Maximum step size in samples
+ * @param max_total_error Maximum allowable total error in samples
+ */
 void TimingTracker::reset(double initial_samples, double alpha, double max_step,
                           double max_total_error) {
     m_enabled = true;
@@ -69,16 +126,42 @@ void TimingTracker::reset(double initial_samples, double alpha, double max_step,
     m_updates = 0;
 }
 
+/**
+ * @brief Disable the TimingTracker
+ * 
+ */
 void TimingTracker::disable() { m_enabled = false; }
 
+/**
+ * @brief Check if the TimingTracker is enabled
+ * 
+ * @return true 
+ * @return false 
+ */
 bool TimingTracker::enabled() const noexcept { return m_enabled; }
 
+/**
+ * @brief Get the current timing estimate in samples
+ * 
+ * @return double 
+ */
 double TimingTracker::currentSamples() const noexcept { return m_est_samples; }
 
+/**
+ * @brief Get the average step size in samples
+ * 
+ * @return double 
+ */
 double TimingTracker::averageStepSamples() const noexcept {
     return m_updates > 0 ? m_sum_abs / static_cast<double>(m_updates) : 0.0;
 }
 
+/**
+ * @brief Update the TimingTracker with a new residual timing measurement
+ * 
+ * @param residual_samples Residual timing in samples
+ * @param weight Weighting factor
+ */
 void TimingTracker::update(double residual_samples, double weight) {
     if (!m_enabled)
         return;

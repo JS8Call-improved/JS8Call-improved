@@ -1,3 +1,7 @@
+/**
+ * @file NetworkServerLookup.cpp
+ * @brief Implementation of network server lookup function
+ */
 #include "NetworkServerLookup.h"
 
 #include <stdexcept>
@@ -5,6 +9,15 @@
 #include <QHostInfo>
 #include <QString>
 
+/**
+ * @brief Looks up the network server address and port.
+ * 
+ * @param query 
+ * @param default_service_port 
+ * @param default_host_address 
+ * @param required_protocol 
+ * @return std::tuple<QHostAddress, quint16> 
+ */
 std::tuple<QHostAddress, quint16>
 network_server_lookup(QString query, quint16 default_service_port,
                       QHostAddress default_host_address,

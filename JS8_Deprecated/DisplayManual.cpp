@@ -1,3 +1,8 @@
+/**
+ * @file DisplayManual.cpp
+ * @brief Implementation of DisplayManual class
+ * @deprecated This class is deprecated and may be removed in future releases.
+ */
 #include "DisplayManual.h"
 
 #include <QObject>

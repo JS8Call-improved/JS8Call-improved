@@ -1,3 +1,7 @@
+/**
+ * @file decodedtext.cpp
+ * @brief Implementation of DecodedText class
+ */
 #include "decodedtext.h"
 #include "JS8_Include/commons.h"
 #include <JS8_Main/varicode.h>
@@ -61,6 +65,19 @@ QString buildCompound(QStringList const &parts) {
 // in the order of the unpack strategies array, until one
 // of them works or all of them have failed.
 
+/**
+ * @private
+ * @brief Construct a new Decoded Text:: Decoded Text object (private)
+ * 
+ * @param frame 
+ * @param bits 
+ * @param submode 
+ * @param isLowConfidence 
+ * @param time 
+ * @param frequencyOffset 
+ * @param snr 
+ * @param dt 
+ */
 DecodedText::DecodedText(QString const &frame, int bits, int submode,
                          bool isLowConfidence, int time, int frequencyOffset,
                          float snr, float dt)
@@ -79,6 +96,14 @@ DecodedText::DecodedText(QString const &frame, int bits, int submode,
     }
 }
 
+/**
+ * @private
+ * @brief Try to unpack fast data message (private)
+ * 
+ * @param m 
+ * @return true 
+ * @return false 
+ */
 bool DecodedText::tryUnpackFastData(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) != Varicode::JS8CallData)
         return false;
@@ -93,6 +118,14 @@ bool DecodedText::tryUnpackFastData(QString const &m) {
     }
 }
 
+/**
+ * @private
+ * @brief Try to unpack data message (private)
+ * 
+ * @param m 
+ * @return true 
+ * @return false 
+ */
 bool DecodedText::tryUnpackData(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
@@ -107,6 +140,14 @@ bool DecodedText::tryUnpackData(QString const &m) {
     }
 }
 
+/**
+ * @private
+ * @brief Try to unpack heartbeat message (private)
+ * 
+ * @param m 
+ * @return true 
+ * @return false 
+ */
 bool DecodedText::tryUnpackHeartbeat(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
@@ -144,6 +185,14 @@ bool DecodedText::tryUnpackHeartbeat(QString const &m) {
     return true;
 }
 
+/**
+ * @private
+ * @brief Try to unpack compound message (private)
+ * 
+ * @param m 
+ * @return true 
+ * @return false 
+ */
 bool DecodedText::tryUnpackCompound(QString const &m) {
     quint8 type = Varicode::FrameUnknown;
     quint8 bits3 = 0;
@@ -170,6 +219,14 @@ bool DecodedText::tryUnpackCompound(QString const &m) {
     return true;
 }
 
+/**
+ * @private
+ * @brief Try to unpack directed message (private)
+ * 
+ * @param m 
+ * @return true 
+ * @return false 
+ */
 bool DecodedText::tryUnpackDirected(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
@@ -209,6 +266,11 @@ bool DecodedText::tryUnpackDirected(QString const &m) {
 // but did not seem to be looking in the right place for the annotation that
 // the Fortran decoded emitted.
 
+/**
+ * @brief Construct a new Decoded Text:: Decoded Text object
+ * 
+ * @param decoded 
+ */
 DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
     : DecodedText(QString::fromStdString(decoded.data), decoded.type,
                   decoded.mode, decoded.quality < QUALITY_THRESHOLD,
@@ -218,6 +280,13 @@ DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
 // of this class to unpack, and as such this probably doesn't belong here, but
 // keeping it aligned with the previous code for now.
 
+/**
+ * @brief Construct a new Decoded Text:: Decoded Text object
+ * 
+ * @param frame 
+ * @param bits 
+ * @param submode 
+ */
 DecodedText::DecodedText(QString const &frame, int const bits,
                          int const submode)
     : DecodedText(frame, bits, submode, false, 0, 0, 0.0f, 0.0f) {}
@@ -226,6 +295,11 @@ DecodedText::DecodedText(QString const &frame, int const bits,
 // efficiency; add whole message as item 0 to mimic regular expression
 // capture list.
 
+/**
+ * @brief Get the message words
+ * 
+ * @return QStringList 
+ */
 QStringList DecodedText::messageWords() const {
     QStringList words;
 
@@ -239,6 +313,11 @@ QStringList DecodedText::messageWords() const {
 // Format as a string suitable for appending to ALL.TXT. Original
 // code has no space between time and SNR; matching that here.
 
+/**
+ * @brief Get the string representation suitable for ALL.TXT
+ * 
+ * @return QString 
+ */
 QString DecodedText::string() const {
     struct hour_minute_second hms = decode_time(time_);
 

@@ -1,3 +1,7 @@
+/**
+ * @file Modulator.cpp
+ * @brief Implementation of Modulator class
+ */
 #include "Modulator.h"
 #include "JS8Submode.h"
 #include "JS8_Audio/soundout.h"
@@ -20,6 +24,15 @@ constexpr auto FRAME_RATE = 48000;
 constexpr auto MS_PER_SEC = 1000;
 } // namespace
 
+/**
+ * @brief Start the modulation process
+ * 
+ * @param frequency 
+ * @param submode 
+ * @param txDelay 
+ * @param stream 
+ * @param channel 
+ */
 void Modulator::start(double const frequency, int const submode,
                       double const txDelay, SoundOutput *const stream,
                       Channel const channel) {
@@ -116,17 +129,31 @@ void Modulator::start(double const frequency, int const submode,
     }
 }
 
+/**
+ * @brief Set tuning mode
+ * 
+ * @param tuning 
+ */
 void Modulator::tune(bool const tuning) {
     m_tuning = tuning;
     if (!m_tuning)
         stop(true);
 }
 
+/**
+ * @brief Stop the modulation process
+ * 
+ * @param quickClose 
+ */
 void Modulator::stop(bool const quickClose) {
     m_quickClose = quickClose;
     close();
 }
 
+/**
+ * @brief Close the modulator
+ * 
+ */
 void Modulator::close() {
     if (m_stream) {
         if (m_quickClose)
@@ -139,6 +166,13 @@ void Modulator::close() {
     AudioDevice::close();
 }
 
+/**
+ * @brief Read data from the modulator
+ * 
+ * @param data 
+ * @param maxSize 
+ * @return qint64 
+ */
 qint64 Modulator::readData(char *const data, qint64 const maxSize) {
     if (maxSize == 0)
         return 0;

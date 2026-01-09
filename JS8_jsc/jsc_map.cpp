@@ -1,4 +1,8 @@
 /**
+ * @file jsc_map.cpp
+ * @brief Implementation of JSC character map
+ */
+/**
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify

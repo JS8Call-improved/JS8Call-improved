@@ -1,4 +1,8 @@
 /**
+ * @file jsc_list.cpp
+ * @brief Tuple list for JSC callsigns
+ */
+/**
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify

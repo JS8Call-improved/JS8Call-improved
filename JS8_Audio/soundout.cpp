@@ -1,3 +1,7 @@
+/**
+ * @file soundout.cpp
+ * @brief Implementation of SoundOutput class
+ */
 #include "soundout.h"
 
 #include "moc_soundout.cpp"
@@ -9,6 +13,11 @@
 
 Q_DECLARE_LOGGING_CATEGORY(soundout_js8)
 
+/**
+ * @brief Checks for audio errors and emits appropriate error messages.
+ * 
+ * @return true if no error, false otherwise
+ */
 bool SoundOutput::checkStream() const {
     bool result{false};
 
@@ -43,6 +52,12 @@ bool SoundOutput::checkStream() const {
     return result;
 }
 
+/**
+ * @brief Sets the audio format based on the device and channel count.
+ * @param device The QAudioDevice to use.
+ * @param channels The number of audio channels (1 for mono, 2 for stereo).
+ * @param msBuffered The buffer size in milliseconds.
+ */
 void SoundOutput::setFormat(QAudioDevice const &device, unsigned channels,
                             unsigned msBuffered) {
 
@@ -57,6 +72,12 @@ void SoundOutput::setFormat(QAudioDevice const &device, unsigned channels,
     setDeviceFormat(device, format, msBuffered);
 }
 
+/**
+ * @brief Sets the audio device and format.
+ * @param device The QAudioDevice to use.
+ * @param format The QAudioFormat to set.
+ * @param msBuffered The buffer size in milliseconds.
+ */
 void SoundOutput::setDeviceFormat(QAudioDevice const &device,
                                   QAudioFormat const &format,
                                   unsigned msBuffered) {
@@ -73,6 +94,10 @@ void SoundOutput::setDeviceFormat(QAudioDevice const &device,
     m_msBuffered = msBuffered;
 }
 
+/**
+ * @brief Restarts audio output with the specified source.
+ * @param source The QIODevice to read audio data from.
+ */
 void SoundOutput::restart(QIODevice *source) {
     if (!m_device.isNull()) {
         m_stream.reset(new QAudioSink(m_device, m_format));
@@ -108,6 +133,9 @@ void SoundOutput::restart(QIODevice *source) {
     m_stream->start(source);
 }
 
+/**
+ * @brief Suspends audio output.
+ */
 void SoundOutput::suspend() {
     if (m_stream && QAudio::ActiveState == m_stream->state()) {
         m_stream->suspend();
@@ -115,6 +143,9 @@ void SoundOutput::suspend() {
     }
 }
 
+/**
+ * @brief Resumes audio output.
+ */
 void SoundOutput::resume() {
     if (m_stream && QAudio::SuspendedState == m_stream->state()) {
         m_stream->resume();
@@ -122,6 +153,9 @@ void SoundOutput::resume() {
     }
 }
 
+/**
+ * @brief Resets the audio output.
+ */
 void SoundOutput::reset() {
     if (m_stream) {
         m_stream->reset();
@@ -129,6 +163,9 @@ void SoundOutput::reset() {
     }
 }
 
+/**
+ * @brief Stops audio output.
+ */
 void SoundOutput::stop() {
     if (m_stream) {
         m_stream->reset();
@@ -138,12 +175,24 @@ void SoundOutput::stop() {
     // stop checks
 }
 
+/**
+ * @brief Gets the current attenuation in decibels.
+ * @return The attenuation value.
+ */
 qreal SoundOutput::attenuation() const {
     return -(20. * qLn(m_volume) / qLn(10.));
 }
 
+/**
+ * @brief Gets the current audio format.
+ * @return The QAudioFormat object.
+ */
 QAudioFormat SoundOutput::format() const { return m_format; }
 
+/**
+ * @brief Sets the attenuation in decibels.
+ * @param a The attenuation value.
+ */
 void SoundOutput::setAttenuation(qreal a) {
     Q_ASSERT(0. <= a && a <= 999.);
     m_volume = qPow(10.0, -a / 20.0);
@@ -154,6 +203,9 @@ void SoundOutput::setAttenuation(qreal a) {
     }
 }
 
+/**
+ * @brief Resets the attenuation to zero.
+ */
 void SoundOutput::resetAttenuation() {
     m_volume = 1.;
     if (m_stream) {
@@ -161,6 +213,10 @@ void SoundOutput::resetAttenuation() {
     }
 }
 
+/**
+ * @brief Handles state changes of the audio output.
+ * @param newState The new state of the audio output.
+ */
 void SoundOutput::handleStateChanged(QAudio::State newState) const {
     switch (newState) {
     case QAudio::IdleState:

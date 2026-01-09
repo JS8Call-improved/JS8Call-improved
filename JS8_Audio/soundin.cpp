@@ -1,3 +1,7 @@
+/**
+ * @file soundin.cpp
+ * @brief Implementation of SoundInput class
+ */
 #include "soundin.h"
 
 #include "JS8_Main/DriftingDateTime.h"
@@ -9,6 +13,12 @@
 
 Q_DECLARE_LOGGING_CATEGORY(soundin_js8)
 
+/**
+ * @brief Checks for audio errors and emits appropriate error messages.
+ * 
+ * @return true 
+ * @return false 
+ */
 bool SoundInput::audioError() const {
     bool result(true);
 
@@ -43,6 +53,14 @@ bool SoundInput::audioError() const {
     return result;
 }
 
+/**
+ * @brief Starts audio input from the specified device.
+ * 
+ * @param device The QAudioDevice to use for input.
+ * @param framesPerBuffer The number of frames per buffer.
+ * @param sink The AudioDevice sink to write audio data to.
+ * @param channel The audio channel configuration (Mono or Stereo).
+ */
 void SoundInput::start(QAudioDevice const &device, int framesPerBuffer,
                        AudioDevice *sink, AudioDevice::Channel channel) {
     Q_ASSERT(sink);
@@ -87,6 +105,9 @@ void SoundInput::start(QAudioDevice const &device, int framesPerBuffer,
     }
 }
 
+/**
+ * @brief Suspends audio input.
+ */
 void SoundInput::suspend() {
     if (m_stream) {
         m_stream->suspend();
@@ -94,6 +115,9 @@ void SoundInput::suspend() {
     }
 }
 
+/**
+ * @brief Resumes audio input.
+ */
 void SoundInput::resume() {
     //  qCDebug(soundin_js8) << "Resume" <<
     //  fmod(0.001*DriftingDateTime::currentMSecsSinceEpoch(),6.0);
@@ -107,6 +131,10 @@ void SoundInput::resume() {
     }
 }
 
+/**
+ * @brief Handles state changes of the audio input.
+ * @param newState The new state of the audio input.
+ */
 void SoundInput::handleStateChanged(QAudio::State newState) const {
     // qCDebug (soundin_js8) << "SoundInput::handleStateChanged: newState:" <<
     // newState;
@@ -134,6 +162,9 @@ void SoundInput::handleStateChanged(QAudio::State newState) const {
     }
 }
 
+/**
+ * @brief Stops audio input.
+ */
 void SoundInput::stop() {
     if (m_stream) {
         m_stream->stop();
@@ -145,6 +176,9 @@ void SoundInput::stop() {
     }
 }
 
+/**
+ * @brief Destructs the SoundInput object.
+ */
 SoundInput::~SoundInput() { stop(); }
 
 Q_LOGGING_CATEGORY(soundin_js8, "soundin.js8", QtWarningMsg)
