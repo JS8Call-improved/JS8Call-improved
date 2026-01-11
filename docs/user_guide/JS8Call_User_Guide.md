@@ -17,25 +17,29 @@
  under weak signal conditions and offers real-time keyboard-to-keyboard
  messaging, stored (inbox) messaging, message relay, and automatic
  station announcements. JS8Call is heavily inspired by
- [*WSJT-X*](https://physics.princeton.edu/pulsar/k1jt/wsjtx.html),
- [*Fldigi*](http://www.w1hkj.com/), and
- [*FSQCal*l](http://www.qsl.net/zl1bpu/MFSK/FSQweb.htm) and would not
+ [WSJT-X](https://physics.princeton.edu/pulsar/k1jt/wsjtx.html),
+ [Fldigi](http://www.w1hkj.com/), and
+ [FSQCall](http://www.qsl.net/zl1bpu/MFSK/FSQweb.htm) and would not
  exist without the hard work and dedication of the many developers in
  the amateur radio community.
  
- **JS8Call stands on the shoulders of giants\...the takeoff angle is better up there.**
+<p>
 
- <hr>
-<center> Read more on the original [design inspiration here.](https://github.com/jsherer/ft8call) </center>
+**JS8Call stands on the shoulders of giants...the takeoff angle is better up there.**
+<p>
 
-<center> For release announcements and discussion, join the JS8Call mailing list here: [https://groups.io/g/js8Call](https://groups.io/g/js8call)</center>
+<hr>
+<center>Read more on the original [design inspiration here.](https://github.com/jsherer/ft8call)</center>
+
+<center>For release announcements and discussion, join the JS8Call mailing list here: [https://groups.io/g/js8Call](https://groups.io/g/js8call)
+</center>
 <hr>
 
-<center> <img src="JS8Call_User_Guide_html_4c60ef75.jpg" style="width:4.8772in;height:3.0717in">
+<center><img src="JS8Call_User_Guide_html_4c60ef75.jpg" style="width:5.1866in;height:3.7374in">
 
  © 2020 Jordan Sherer - This work is openly licensed via [*CC BY-SA*](https://creativecommons.org/share-your-work/cclicenses/).
 </center>
- </div>
+</div>
 
  ## History
 
@@ -47,12 +51,12 @@
 - **August 31, 2017** - Jordan, KN4CRD, did a little development and
   modified WSJT-X to support long-form QSOs using the existing FT8
   protocol:
-
   [https://sourceforge.net/p/wsjt/mailman/message/36020051/](https://sourceforge.net/p/wsjt/mailman/message/36020051/)
+
   He sent a video example to the WSJT-X group:
   [https://widefido.wistia.com/medias/7bb1uq62ga](https://widefido.wistia.com/medias/7bb1uq62ga)
 
- - **January 8, 2018** - Jordan, KN4CRD, started working on the design of
+- **January 8, 2018** - Jordan, KN4CRD, started working on the design of
    a long-form QSO application built on top of FT8 with a redesigned
    interface.
 
@@ -85,7 +89,7 @@
 
 - **July 27, 2018** - Version 0.3 released - 150 testers
 
-- **August 12, 2018** - Version 0.4 released - (["leaked" onQRZ](https://forums.qrz.com/index.php?threads/a-new-ft8-with-qso-and-rag-chew-capabilities-called-ft8call.623882/)) - 500 testers
+- **August 12, 2018** - Version 0.4 released - (["leaked" on QRZ](https://forums.qrz.com/index.php?threads/a-new-ft8-with-qso-and-rag-chew-capabilities-called-ft8call.623882/)) - 500 testers
 
 - **September 2, 2018** - Version 0.5 released - 3000 testers
 
@@ -322,9 +326,9 @@ You type into the white box on the bottom to prepare a message for
 transmission.
 
 Normal FT8 character restrictions **do not** apply! The extended
-character set includes all printable uppercase ASCII ``(A-Z 0-9 Space
-./?+-`\~!@#\$%\^&\*()\_=\[\]\\}\|;':",\<\>)`` and Latin 1
-``(¡¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ)``. The message structure is variable
+character set includes all printable uppercase ASCII ```(A-Z 0-9 Space
+./?+-`\~!@#\$%\^&\*()\_=\[\]\\}\|;':",\<\>)``` and Latin 1 
+```(¡¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ)```. The message structure is variable
 encoded, so the most common characters take the least amount of space,
 and special characters take longer to send.
 
@@ -441,58 +445,21 @@ There are a number of built-in group callsigns that can be transmitted
 just as efficiently as standard callsigns. All custom groups will
 require an extra frame during transmission:
 
-- Continental DX Groups
-  - @DX/NA
-  - @DX/SA
-  - @DX/EU
-  - @DX/AS
-  - @DX/AF
-  - @DX/OC
-  - @DX/AN
-- ITU Regions
-  - @REGION/1
-  - @REGION/2
-  - @REGION/3
-- Generic Groups
-  - @GROUP/0
-  - @GROUP/1
-  - @GROUP/2
-  - @GROUP/3
-  - @GROUP/4
-  - @GROUP/5
-  - @GROUP/6
-  - @GROUP/7
-  - @GROUP/8
-  - @GROUP/9
-- Operator Groups
-  - @COMMAND
-  - @CONTROL
-  - @NTS
-  - @NET
-- Special Groups
-  - @JS8NET
-  - @APRSIS
-  - @RAGCHEW
-  - @JS8
-  - @EMCOMM
-  - @ARES
-  - @MARS
-  - @AMRRON
-  - @RACES
-  - @RAYNET
-  - @RADAR
-  - @SKYWARN
-  - @CQ
-  - @HB
-  - @QSO
-  - @QSOPARTY
-  - @CONTEST
-  - @FIELDDAY
-  - @SOTA
-  - @IOTA
-  - @POTA
-  - @QRP
-  - @QRO
+|        |           |          |          |          |         |
+|--------|-----------|----------|----------|----------|---------|
+| **Continental DX** | **ITU Regions** | **Generic Groups** | **Operator Groups** | **Special Groups** | **Additional Groups** |
+| @DX/NA | @REGION/1 | @GROUP/0 | @COMMAND | @JS8NET  | @EMCOMM  |
+| @DX/SA | @REGION/2 | @GROUP/1 | @CONTROL | @APRSIS  | @ARES    |
+| @DX/EU | @REGION/3 | @GROUP/2 | @NTS     | @RAGCHEW | @MARS    |
+| @DX/AS |           | @GROUP/3 | @NET     | @JS8     | @RACES   |
+| @DX/AF |           | @GROUP/4 |          | @AMRRON  | @RADAR   |
+| @DX/OC |           | @GROUP/5 |          | @CQ      | @SKYWARN |
+| @DX/AN |           | @GROUP/6 |          | @HB      | @CONTEST |
+|        |           | @GROUP/7 |          | @QSO     | @FIELDDAY|
+|        |           | @GROUP/8 |          | @QSOPARTY| @SOTA    |
+|        |           | @GROUP/9 |          | @QRP     | @POTA    |
+|        |           |          |          | @QRO     | @IOTA    |
+
 
 #### @JS8NET and @APRSIS
 
@@ -823,7 +790,7 @@ There is an advanced feature for rig control called PTT Command. This
 allows JS8Call to execute an external script for controlling a rig's
 PTT:
 
-<img src="JS8Call_User_Guide_html_cbd95a8f.jpg" style="width:4.7035in;height:3.6327in">
+<img src="JS8Call_User_Guide_html_cbd95a8f.jpg" style="width:5.1866in;height:3.7374in">
 
 What this PTT command does is allow you to execute **any** command
 line script to toggle your Rig's PTT line.
@@ -879,33 +846,10 @@ apply the right input/output levels:
     further down to that sweet spot of 30-60dB as read by the meter in
     the app.
 
-<table>
-<tbody>
-<tr class="odd">
-<td><blockquote>
-<p><img src="JS8Call_User_Guide_html_e75e99fb.png"
-style="width:0.8543in;height:2.5209in" /></p>
-</blockquote></td>
-<td><blockquote>
-<p><img src="JS8Call_User_Guide_html_f876c1c.png"
-style="width:0.8126in;height:2.4791in" /></p>
-</blockquote></td>
-<td><blockquote>
-<p><img src="JS8Call_User_Guide_html_91907e2c.png"
-style="width:0.8437in;height:2.4791in" /></p>
-</blockquote></td>
-</tr>
-<tr class="even">
-<td><strong>Audio input it too low!</strong></td>
-<td><blockquote>
-<p><strong>Audio input is just right!</strong></p>
-</blockquote></td>
-<td><blockquote>
-<p><strong>Audio input is too high!</strong></p>
-</blockquote></td>
-</tr>
-</tbody>
-</table>
+| | | |
+|:-----:|:-----:|:-----:|
+| Audio input is too low! | Audio input is just right! | Audio input is too high! |
+|![Audio input is too low!](JS8Call_User_Guide_html_e75e99fb.png)|![Audio input is just right!](JS8Call_User_Guide_html_f876c1c.png) |![Audio input is too high!](JS8Call_User_Guide_html_91907e2c.png)|
 
 ### Reporting (Spotting and API)
 
@@ -918,153 +862,20 @@ the standard FT8 frequencies. It is essential to avoid the main FT8
 frequencies, as that will cause confusion among WSJT-X operators. Here
 are some suggested frequencies to use:
 
-<table>
-<tbody>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>160m:</p>
-</blockquote></li>
-</ul></td>
-<td>1.842</td>
-<td>MHz</td>
-<td>//</td>
-<td>2kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="odd">
-<td><ul>
-<li><blockquote>
-<p>80m:</p>
-</blockquote></li>
-</ul></td>
-<td>3.578</td>
-<td>MHz</td>
-<td>//</td>
-<td>5kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>40m:</p>
-</blockquote></li>
-</ul></td>
-<td>7.078</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="odd">
-<td><ul>
-<li><blockquote>
-<p>30m:</p>
-</blockquote></li>
-</ul></td>
-<td>10.130</td>
-<td>MHz</td>
-<td>//</td>
-<td>6kHz</td>
-<td>below</td>
-<td>FT8</td>
-</tr>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>20m:</p>
-</blockquote></li>
-</ul></td>
-<td>14.078</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="odd">
-<td><ul>
-<li><blockquote>
-<p>17m:</p>
-</blockquote></li>
-</ul></td>
-<td>18.104</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>15m:</p>
-</blockquote></li>
-</ul></td>
-<td>21.078</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="odd">
-<td><ul>
-<li><blockquote>
-<p>12m:</p>
-</blockquote></li>
-</ul></td>
-<td>24.922</td>
-<td>MHz</td>
-<td>//</td>
-<td>9kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>10m:</p>
-</blockquote></li>
-</ul></td>
-<td>28.078</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="odd">
-<td><ul>
-<li><blockquote>
-<p>6m:</p>
-</blockquote></li>
-</ul></td>
-<td>50.318</td>
-<td>MHz</td>
-<td>//</td>
-<td>5kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-<tr class="even">
-<td><ul>
-<li><blockquote>
-<p>2m:</p>
-</blockquote></li>
-</ul></td>
-<td>144.178</td>
-<td>MHz</td>
-<td>//</td>
-<td>4kHz</td>
-<td>above</td>
-<td>FT8</td>
-</tr>
-</tbody>
-</table>
+|         |           |          |          |          |         |      |
+|--------:|-----------|----------|----------|----------|---------|------|
+| **Band** | **Frequency** | **Hz** | | **Spacing** | **Above/below** | **Mode** |
+| 160M | 1.842  | MHz | // | 2kHZ | above | FT8 |
+|  80M | 3.578  | MHz | // | 5kHz | above | FT8 |
+|  40M | 7.078  | MHz | // | 4kHz | above | FT8 |
+|  30M | 10.130 | MHz | // | 6kHz | below | FT8 |
+|  20M | 14.078 | MHz | // | 4kHz | above | FT8 |
+|  17M | 18.104 | MHz | // | 4kHz | above | FT8 |
+|  15M | 21.078 | MHz | // | 4kHz | above | FT8 |
+|  12M | 24.922 | MHz | // | 9kHz | above | FT8 |
+|  10M | 28.078 | MHz | // | 4kHz | above | FT8 |
+|   6M | 50.318 | MHz | // | 5kHz | above | FT8 |
+|   2M |144.178 | MHz | // | 4kHz | above | FT8 |
 
 You might notice a few of these being close to the JT9 frequencies.
 Don't grab your pitchforks! JS8Call blocks out transmitting within the
@@ -1092,17 +903,17 @@ can either modify the frequencies list in the settings, or you can
 type directly into the band dropdown box in the top left of the
 screen.
 
-<center><img src="JS8Call_User_Guide_html_b85d29c1.gif" style="width:4.5937in;height:3.4402in"></center>
+<center><img src="JS8Call_User_Guide_html_b85d29c1.gif" style="width:5.1866in;height:3.7374in"></center>
 
 If you'd like to add custom frequencies for JS8Call, you can do so in
 the settings:
 
-<center><img src="JS8Call_User_Guide_html_31ca1f8d.jpg" style="width:4.2161in;height:3.4453in"></center>
+<center><img src="JS8Call_User_Guide_html_31ca1f8d.jpg" style="width:5.1866in;height:3.7374in"></center>
 
 If you'd like to reset to the suggested frequencies, right click the
 frequencies box and click Reset.
 
-<center><img src="JS8Call_User_Guide_html_c384a06.jpg" style="width:4.2161in;height:3.4453in"></center>
+<center><img src="JS8Call_User_Guide_html_c384a06.jpg" style="width:5.1866in;height:3.7374in"></center>
 
 ### Saved Messages (Macros)
 
@@ -1488,8 +1299,7 @@ in saved messages which will be replaced when sending the message:
           - Leave a space after .exe then \--rig-name=FT817 (replace
             FT817 with anything that uniquely identifies your rig)
 
-          - Something like: ``"C:\Program Files
-            (x86)\js8call\bin\js8call.exe\ --rig-name=FT817``
+          - Something like: ``C:\Program Files (x86)\js8call\bin\js8call.exe --rig-name=FT817``
 
   - Can I use group callsigns to run a net?
 
@@ -1558,6 +1368,7 @@ in saved messages which will be replaced when sending the message:
         pursuing the JS8Call project back in February 2018:
 
 <center><img src="JS8Call_User_Guide_html_75ee6ce0.jpg" style="width:7.3654in;height:2.9598in"></center>
+
 via [https://sourceforge.net/p/wsjt/mailman/message/36224507/](https://sourceforge.net/p/wsjt/mailman/message/36224507/)
 
 ## Troubleshooting
@@ -1883,184 +1694,28 @@ future with the foundation laid, including:
 
 **Character code weighted by frequency**
 
-<table>
-<tbody>
-<tr class="odd">
-<td><p>" "</p>
-<p>"E"</p></td>
-<td><p>"01"</p>
-<p>"100"</p></td>
-</tr>
-<tr class="even">
-<td>"T"</td>
-<td>"1101"</td>
-</tr>
-<tr class="odd">
-<td>"A"</td>
-<td>"0011"</td>
-</tr>
-<tr class="even">
-<td>"O"</td>
-<td>"11111"</td>
-</tr>
-<tr class="odd">
-<td>"I"</td>
-<td>"11100"</td>
-</tr>
-<tr class="even">
-<td>"N"</td>
-<td>"10111"</td>
-</tr>
-<tr class="odd">
-<td>"S"</td>
-<td>"10100"</td>
-</tr>
-<tr class="even">
-<td>"H"</td>
-<td>"00011"</td>
-</tr>
-<tr class="odd">
-<td>"R"</td>
-<td>"00000"</td>
-</tr>
-<tr class="even">
-<td>"D"</td>
-<td>"111011"</td>
-</tr>
-<tr class="odd">
-<td>"L"</td>
-<td>"110011"</td>
-</tr>
-<tr class="even">
-<td>"C"</td>
-<td>"110001"</td>
-</tr>
-<tr class="odd">
-<td>"U"</td>
-<td>"101101"</td>
-</tr>
-<tr class="even">
-<td>"M"</td>
-<td>"101011"</td>
-</tr>
-<tr class="odd">
-<td>"W"</td>
-<td>"001011"</td>
-</tr>
-<tr class="even">
-<td>"F"</td>
-<td>"001001"</td>
-</tr>
-<tr class="odd">
-<td>"G"</td>
-<td>"000101"</td>
-</tr>
-<tr class="even">
-<td>"Y"</td>
-<td>"000011"</td>
-</tr>
-<tr class="odd">
-<td>"P"</td>
-<td>"1111011"</td>
-</tr>
-<tr class="even">
-<td>"B"</td>
-<td>"1111001"</td>
-</tr>
-<tr class="odd">
-<td>"."</td>
-<td>"1110100"</td>
-</tr>
-<tr class="even">
-<td>"V"</td>
-<td>"1100101"</td>
-</tr>
-<tr class="odd">
-<td>"K"</td>
-<td>"1100100"</td>
-</tr>
-<tr class="even">
-<td>"-"</td>
-<td>"1100001"</td>
-</tr>
-<tr class="odd">
-<td>"+"</td>
-<td>"1100000"</td>
-</tr>
-<tr class="even">
-<td>"?"</td>
-<td>"1011001"</td>
-</tr>
-<tr class="odd">
-<td>"!"</td>
-<td>"1011000"</td>
-</tr>
-<tr class="even">
-<td>"\""</td>
-<td>"1010101"</td>
-</tr>
-<tr class="odd">
-<td>"X"</td>
-<td>"1010100"</td>
-</tr>
-<tr class="even">
-<td>"0"</td>
-<td>"0010101"</td>
-</tr>
-<tr class="odd">
-<td>"J"</td>
-<td>"0010100"</td>
-</tr>
-<tr class="even">
-<td>"1"</td>
-<td>"0010001"</td>
-</tr>
-<tr class="odd">
-<td>"Q"</td>
-<td>"0010000"</td>
-</tr>
-<tr class="even">
-<td>"2"</td>
-<td>"0001001"</td>
-</tr>
-<tr class="odd">
-<td>"Z"</td>
-<td>"0001000"</td>
-</tr>
-<tr class="even">
-<td>"3"</td>
-<td>"0000101"</td>
-</tr>
-<tr class="odd">
-<td>"5"</td>
-<td>"0000100"</td>
-</tr>
-<tr class="even">
-<td>"4"</td>
-<td>"11110101"</td>
-</tr>
-<tr class="odd">
-<td>"9"</td>
-<td>"11110100"</td>
-</tr>
-<tr class="even">
-<td>"8"</td>
-<td>"11110001"</td>
-</tr>
-<tr class="odd">
-<td>"6"</td>
-<td>"11110000"</td>
-</tr>
-<tr class="even">
-<td>"7"</td>
-<td>"11101011"</td>
-</tr>
-<tr class="odd">
-<td>"/"</td>
-<td>"11101010"</td>
-</tr>
-</tbody>
-</table>
+| | | | | | |
+|:--------:|-------:|:--------:|-------:|:--------:|-------:|
+| **Character Code** | **Frequency** | **Character Code** | **Frequency** | **Character Code** | **Frequency** |
+| "\<space\> " | 01   | P | 1111011 | 4 | 11110101 |
+| E | 100    | B | 1111001 | 9 | 11110100 |
+| T | 1101   | . | 1110100 | 8 | 11110001 |
+| A | 0011   | V | 1100101 | 6 | 11110000 |
+| O | 11111  | K | 1100100 | 7 | 11101011 |
+| I | 11100  | - | 1100001 | / | 11101010 |
+| N | 10111  | + | 1100000 |
+| S | 10100  | ? | 1011001 |
+| H | 00011  | ! | 1011000 |
+| R | 00000  | \ | 1010101 |
+| D | 111011 | X | 1010100 |
+| L | 110011 | 0 | 0010101 |
+| C | 110001 | J | 0010100 |
+| U | 101101 | 1 | 0010001 |
+| M | 101011 | Q | 0010000 |
+| W | 001011 | 2 | 0001001 |
+| F | 001001 | Z | 0001000 |
+| G | 000101 | 3 | 0000101 |
+| Y | 000011 | 5 | 0000100 |
 
 ### (s,c)-Dense Code:
 
