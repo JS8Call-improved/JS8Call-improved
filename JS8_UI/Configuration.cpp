@@ -393,6 +393,9 @@ class Configuration::impl final : public QDialog {
     void load_audio_devices(QAudioDevice::Mode, QComboBox *, QAudioDevice *);
     void update_audio_channels(QComboBox const *, QComboBox const *, int, bool);
     void load_network_interfaces(CheckableItemComboBox *, QStringList current);
+
+    static QAction *attachRequiredIndicator(QLineEdit *edit, const QString &toolTip = QStringLiteral("Required"));
+
     QStringList get_selected_network_interfaces(CheckableItemComboBox *);
 
     void find_tab(QWidget *);
@@ -1328,6 +1331,11 @@ Configuration::impl::impl(Configuration *self, QDir const &temp_directory,
     //
     ui_->callsign_line_edit->setValidator(new CallsignValidator{this});
     ui_->grid_line_edit->setValidator(new Maidenhead::ExtendedValidator{this});
+
+    // theme-aware indication for invalid callsign and grid fields
+    attachRequiredIndicator(ui_->callsign_line_edit, "Callsign Required");
+    attachRequiredIndicator(ui_->grid_line_edit, "Grid Required");
+
     ui_->add_macro_line_edit->setValidator(
         new QRegularExpressionValidator{message_alphabet, this});
     ui_->info_message_line_edit->setValidator(
@@ -1637,15 +1645,6 @@ void Configuration::impl::initialize_models() {
         SettingsGroup g{settings_, "Configuration"};
         find_audio_devices();
     }
-    auto pal = ui_->callsign_line_edit->palette();
-    if (my_callsign_.isEmpty()) {
-        pal.setColor(QPalette::Base, "#ffccff");
-    } else {
-        pal.setColor(QPalette::Base, Qt::white);
-    }
-
-    ui_->callsign_line_edit->setPalette(pal);
-    ui_->grid_line_edit->setPalette(pal);
     ui_->auto_switch_bands_check_box->setChecked(auto_switch_bands_);
     ui_->callsign_line_edit->setText(my_callsign_);
     ui_->grid_line_edit->setText(my_grid_.toUpper());
@@ -4358,6 +4357,33 @@ void Configuration::impl::load_network_interfaces(
             item->setToolTip(tip);
         }
     }
+}
+
+// Attaches a trailing warning icon that shows when `isInvalid()` returns true.
+// Returns the QAction* in case you want to tweak tooltip/icon later.
+QAction* Configuration::impl::attachRequiredIndicator(QLineEdit *edit,
+                                                      const QString &toolTip)
+{
+    Q_ASSERT(edit);
+
+    QAction *warn = edit->addAction(
+        edit->style()->standardIcon(QStyle::SP_MessageBoxWarning),
+        QLineEdit::TrailingPosition);
+
+    warn->setToolTip(toolTip);
+    warn->setVisible(false);
+
+    auto update = [edit, warn]() {
+        const bool invalid = edit->text().trimmed().isEmpty();
+        warn->setVisible(invalid);
+    };
+
+    connect(edit, &QLineEdit::textChanged, edit,
+                     [update](const QString&) { update(); });
+    connect(edit, &QLineEdit::editingFinished, edit, update);
+
+    update();
+    return warn;
 }
 
 // get the selected network interfaces from the selection combo box

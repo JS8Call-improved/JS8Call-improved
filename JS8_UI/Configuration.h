@@ -1,7 +1,9 @@
 #ifndef CONFIGURATION_HPP_
 #define CONFIGURATION_HPP_
 
+#include <QAction>
 #include <QFont>
+#include <QLineEdit>
 #include <QObject>
 
 #include "JS8_Audio/AudioDevice.h"
