@@ -29,7 +29,7 @@ void MainWindow::processCommandActivity() {
 
         auto selectedCallsign = callsignSelected();
         bool isAllCall = isAllCallIncluded(d.to);
-        bool isGroupCall = isGroupCallIncluded(d.to);
+        bool isGroupCall = isGroupCallIncluded(d.to) || d.to == "@APRSIS";
 
         qCDebug(mainwindow_js8)
             << "try processing command" << d.from << d.to << d.cmd << d.dial
@@ -98,9 +98,15 @@ void MainWindow::processCommandActivity() {
                 cd.submode = d.submode;
 
                 // PROCESS GRID SPOTS TO APRSIS FOR EVERYONE
-                if (d.to == "@APRSIS") {
+            /**
+             * APRS relay: inbound `MSG TO:` stores for our local station.
+             * Dedupe within 60s using TO + TEXT + DE <SENDER>.
+             */
+            if (d.to == "@APRSIS") {
+
                     spotAprsGrid(cd.dial, cd.offset, cd.snr, cd.call, cd.grid);
                 }
+
 
                 logCallActivity(cd, true);
             }
@@ -522,22 +528,81 @@ void MainWindow::processCommandActivity() {
         }
 
         // PROCESS MESSAGE STORAGE
-        else if (d.cmd == " MSG TO:" && !isAllCall && !m_config.relay_off()) {
-
+        else if (d.cmd == " MSG TO:" && !isAllCall) {
+ 
             // store message
             QStringList segs = d.text.split(" ");
             if (segs.isEmpty()) {
                 continue;
             }
-
+ 
             auto to = segs.first();
             segs.removeFirst();
-
+ 
             auto text = segs.join(" ").trimmed();
+ 
+            /**
+             * APRS relay: inbound `MSG TO:` stores for our local station.
+             * Dedupe within 60s using TO + TEXT + DE <SENDER>.
+             */
+            if (d.to == "@APRSIS") {
+                if (to != m_config.my_callsign().trimmed()) {
+                    continue;
+                }
+ 
+                static QRegularExpression aprsDeRe("\\s+DE\\s+(\\S+)\\s*$");
+                auto aprsSender = QString("APRS");
+                auto deMatch = aprsDeRe.match(text);
+                if (deMatch.hasMatch()) {
+                    aprsSender = deMatch.captured(1);
+                }
+                auto dedupeKey = QString("%1|%2|%3")
+                                     .arg(to, text, aprsSender)
+                                     .toUpper();
+                auto now = DriftingDateTime::currentDateTimeUtc();
+                auto cutoff = now.addSecs(-60);
+                auto it = m_aprsRelayDedupCache.begin();
+                while (it != m_aprsRelayDedupCache.end()) {
+                    if (it.value() < cutoff) {
+                        it = m_aprsRelayDedupCache.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                if (m_aprsRelayDedupCache.contains(dedupeKey)) {
+                    continue;
+                }
+ 
+                CommandDetail cd = {};
+                cd.bits = d.bits;
+                cd.cmd = " MSG ";
+                cd.extra = d.extra;
+                cd.dial = d.dial;
+                cd.offset = d.offset;
+                cd.from = "APRS";
+                cd.relayPath = "APRS";
+                cd.grid = d.grid;
+                cd.snr = d.snr;
+                cd.tdrift = d.tdrift;
+                cd.text = text;
+                cd.to = to;
+                cd.utcTimestamp = d.utcTimestamp;
+                cd.submode = d.submode;
+ 
+                addCommandToMyInbox(cd);
 
+                m_aprsRelayDedupCache.insert(dedupeKey, now);
+                tryNotify("inbox");
+                continue;
+            }
+ 
+            if (m_config.relay_off()) {
+                continue;
+            }
+ 
             auto calls = parseRelayPathCallsigns(d.from, text);
             d.relayPath = calls.join(">");
-
+ 
             CommandDetail cd = {};
             cd.bits = d.bits;
             cd.cmd = d.cmd;
@@ -553,17 +618,18 @@ void MainWindow::processCommandActivity() {
             cd.to = Radio::base_callsign(to);
             cd.utcTimestamp = d.utcTimestamp;
             cd.submode = d.submode;
-
+ 
             qCDebug(mainwindow_js8)
                 << "storing message to" << to << ":" << text;
-
+ 
             addCommandToStorage("STORE", cd);
-
+ 
             // we haven't replaced the from with the relay path, so we have to
             // use it for the ack if there is one
             reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath
                                                              : d.from);
         }
+
 
         // PROCESS AGN
         else if (d.cmd == " AGN?" && !isAllCall && !isGroupCall &&
@@ -648,27 +714,80 @@ void MainWindow::processCommandActivity() {
 
         // PROCESS MSG
         else if (d.cmd == " MSG" && !isAllCall) {
-
+ 
             auto text = d.text;
+ 
+            /**
+             * APRS relay: inbound `MSG` where the payload starts with
+             * `TO:<DEST>` and includes `DE <SENDER>`.
+             * Dedupe within 60s using TO + TEXT + DE <SENDER>.
+             */
+            if (d.to == "@APRSIS") {
+                static QRegularExpression aprsToRe(
+                    "^TO:\\s*(\\S+)\\s+(.*)$");
+                auto match = aprsToRe.match(text);
+                if (match.hasMatch()) {
+                    auto dest = match.captured(1);
+                    auto aprsText = match.captured(2).trimmed();
+                    if (dest == m_config.my_callsign().trimmed()) {
+                        static QRegularExpression aprsDeRe(
+                            "\\s+DE\\s+(\\S+)\\s*$");
+                        auto aprsSender = QString("APRS");
+                        auto deMatch = aprsDeRe.match(aprsText);
+                        if (deMatch.hasMatch()) {
+                            aprsSender = deMatch.captured(1);
+                        }
+                        auto dedupeKey = QString("%1|%2|%3")
+                                             .arg(dest, aprsText, aprsSender)
+                                             .toUpper();
+                        auto now = DriftingDateTime::currentDateTimeUtc();
+                        auto cutoff = now.addSecs(-60);
+                        auto it = m_aprsRelayDedupCache.begin();
+                        while (it != m_aprsRelayDedupCache.end()) {
+                            if (it.value() < cutoff) {
+                                it = m_aprsRelayDedupCache.erase(it);
+                            } else {
+                                ++it;
+                            }
+                        }
+                        if (m_aprsRelayDedupCache.contains(dedupeKey)) {
+                            continue;
+                        }
+ 
+                        CommandDetail cd = d;
+                        cd.cmd = " MSG ";
+                        cd.from = "APRS";
+                        cd.relayPath = "APRS";
+                        cd.to = dest;
+                        cd.text = aprsText;
+ 
+                        addCommandToMyInbox(cd);
 
+                        m_aprsRelayDedupCache.insert(dedupeKey, now);
+                        tryNotify("inbox");
+                    }
+                }
+                continue;
+            }
+ 
             qCDebug(mainwindow_js8) << "adding message to inbox" << text;
-
+ 
             auto calls = parseRelayPathCallsigns(d.from, text);
-
+ 
             d.cmd = " MSG ";
             d.relayPath = calls.join(">");
             d.text = text;
-
+ 
             addCommandToMyInbox(d);
-
+ 
             // notification
             tryNotify("inbox");
-
+ 
             // we haven't replaced the from with the relay path, so we have to
             // use it for the ack if there is one
             reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath
                                                              : d.from);
-
+ 
 #define SHOW_ALERT_FOR_MSG 1
 #if SHOW_ALERT_FOR_MSG
             SelfDestructMessageBox *m = new SelfDestructMessageBox(
@@ -678,11 +797,11 @@ void MainWindow::processCommandActivity() {
                     .arg(d.from),
                 QMessageBox::Information, QMessageBox::Ok, QMessageBox::Ok,
                 false, this);
-
+ 
             m->show();
 #endif
         }
-
+ 
         // PROCESS ACKS
         else if (d.cmd == " ACK" && !isAllCall) {
             qCDebug(mainwindow_js8) << "skipping incoming ack" << d.text;

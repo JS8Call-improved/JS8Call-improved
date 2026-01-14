@@ -422,6 +422,8 @@ class MainWindow : public QMainWindow {
     void on_tuneButton_toggled(bool checked);
     void on_spotButton_toggled(bool checked);
 
+    void onAPRSMessageReceived(QString from, QString to, QString message);
+
     void emitPTT(bool on);
     void emitTones();
     void udpNetworkMessage(Message const &message);
@@ -451,6 +453,7 @@ class MainWindow : public QMainWindow {
     Q_SIGNAL void aprsClientEnqueueThirdParty(QString by_call,
                                               QString from_call, QString text);
     Q_SIGNAL void aprsClientSetSkipPercent(float skipPercent);
+    Q_SIGNAL void aprsClientSetIncomingRelayEnabled(bool enabled);
     Q_SIGNAL void aprsClientSetServer(QString host, quint16 port);
     Q_SIGNAL void aprsClientSetPaused(bool paused);
     Q_SIGNAL void aprsClientSetLocalStation(QString mycall, QString passcode);
@@ -865,6 +868,11 @@ class MainWindow : public QMainWindow {
 
     QMap<QString, QDateTime>
         m_callSelectedTime; // call -> timestamp when callsign was last selected
+    /**
+     * Cache of recently seen APRS relay keys used to suppress duplicates.
+     * Key format: "TO|TEXT|SENDER" (uppercased), value is last seen UTC.
+     */
+    QHash<QString, QDateTime> m_aprsRelayDedupCache;
     QSet<QString> m_callSeenHeartbeat; // call
     int m_previousFreq;
     bool m_shouldRestoreFreq;

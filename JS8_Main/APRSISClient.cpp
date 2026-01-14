@@ -24,11 +24,18 @@ const int PACKET_TIMEOUT_SECONDS = 300;
  */
 APRSISClient::APRSISClient(QString const host, quint16 const port,
                            QObject *parent)
-    : QTcpSocket{parent}, m_timer{this} {
+    : QTcpSocket{parent}, m_timer{this}, m_incomingRelayEnabled{false},
+      m_isLoggedIn{false} {
     setServer(host, port);
 
     connect(&m_timer, &QTimer::timeout, this, &APRSISClient::sendReports);
     m_timer.start(std::chrono::minutes(1));
+
+    connect(this, &QTcpSocket::connected, this, &APRSISClient::onSocketConnected);
+    connect(this, &QTcpSocket::readyRead, this, &APRSISClient::onSocketReadyRead);
+    connect(this, &QTcpSocket::disconnected, this,
+            &APRSISClient::onSocketDisconnected);
+    connect(this, &QTcpSocket::errorOccurred, this, &APRSISClient::onSocketError);
 }
 
 /**
@@ -61,11 +68,16 @@ quint32 APRSISClient::hashCallsign(QString callsign) {
  * @param callsign 
  * @return QString 
  */
-QString APRSISClient::loginFrame(QString callsign) {
-    auto loginFrame = QString("user %1 pass %2 ver %3\n");
+QString APRSISClient::loginFrame(QString callsign, QString filter) {
+    auto loginFrame = QString("user %1 pass %2 ver %3 %4\n");
     loginFrame = loginFrame.arg(callsign);
     loginFrame = loginFrame.arg(hashCallsign(callsign));
     loginFrame = loginFrame.arg("JS8Call");
+    if (!filter.isEmpty()) {
+        loginFrame = loginFrame.arg(filter);
+    } else {
+        loginFrame = loginFrame.arg("");
+    }
     return loginFrame;
 }
 
@@ -265,6 +277,24 @@ QString APRSISClient::replaceCallsignSuffixWithSSID(QString call,
     return call;
 }
 
+void APRSISClient::setIncomingRelayEnabled(bool enabled) {
+    qCDebug(aprsisclient_js8) << "APRSISClient::setIncomingRelayEnabled(" << enabled << ")";
+    if (m_incomingRelayEnabled == enabled)
+        return;
+
+    m_incomingRelayEnabled = enabled;
+
+    if (m_incomingRelayEnabled) {
+        // if enabled, trigger a connection immediately
+        processQueue(false);
+    } else {
+        // if disabled, and queue is empty, disconnect
+        if (state() == QTcpSocket::ConnectedState && m_frameQueue.isEmpty()) {
+            disconnectFromHost();
+        }
+    }
+}
+
 /**
  * @brief Enqueue a spot frame for APRS-IS
  * 
@@ -326,12 +356,10 @@ void APRSISClient::enqueueRaw(QString aprsFrame) {
  */
 void APRSISClient::processQueue(bool disconnect) {
     // don't process queue if we haven't set our local callsign
-    if (m_localCall.isEmpty())
+    if (m_localCall.isEmpty()) {
+        qCDebug(aprsisclient_js8) << "APRSISClient Abort ProcessQueue: No Local Call";
         return;
-
-    // don't process queue if there's nothing to process
-    if (m_frameQueue.isEmpty())
-        return;
+    }
 
     // don't process queue if there's no host
     if (m_host.isEmpty() || m_port == 0) {
@@ -340,47 +368,21 @@ void APRSISClient::processQueue(bool disconnect) {
         return;
     }
 
-    // 1. connect (and read)
-    // 2. login (and read)
-    // 3. for each raw frame in queue, send
-    // 4. disconnect
-
+    // if we're not connected, connect
+    // the queue will be processed in onSocketConnected
     if (state() != QTcpSocket::ConnectedState) {
         qCDebug(aprsisclient_js8)
             << "APRSISClient Connecting:" << m_host << m_port;
         connectToHost(m_host, m_port);
-        if (!waitForConnected(5000)) {
-            qCDebug(aprsisclient_js8)
-                << "APRSISClient Connection Error:" << errorString();
-            return;
-        }
-    }
-
-    auto re = QRegularExpression("(full|unavailable|busy)");
-    auto line = QString(readLine());
-    if (line.toLower().indexOf(re) >= 0) {
-        qCDebug(aprsisclient_js8) << "APRSISClient Connection Busy:" << line;
         return;
     }
 
-    if (write(loginFrame(m_localCall).toLocal8Bit()) == -1) {
-        qCDebug(aprsisclient_js8)
-            << "APRSISClient Write Login Error:" << errorString();
+    // if we're connected but not logged in, wait
+    if (!m_isLoggedIn) {
         return;
     }
 
-    if (!waitForReadyRead(5000)) {
-        qCDebug(aprsisclient_js8)
-            << "APRSISClient Login Error: Server Not Responding";
-        return;
-    }
-
-    line = QString(readAll());
-    if (line.toLower().indexOf(re) >= 0) {
-        qCDebug(aprsisclient_js8) << "APRSISClient Server Busy:" << line;
-        return;
-    }
-
+    // process queue
     QQueue<QPair<QString, QDateTime>> delayed;
 
     while (!m_frameQueue.isEmpty()) {
@@ -415,18 +417,6 @@ void APRSISClient::processQueue(bool disconnect) {
         }
 
         qCDebug(aprsisclient_js8) << "APRSISClient Write:" << data;
-        if (waitForReadyRead(5000)) {
-            line = QString(readLine());
-
-            qCDebug(aprsisclient_js8) << "APRSISClient Read:" << line;
-
-            if (line.toLower().indexOf(re) >= 0) {
-                qCDebug(aprsisclient_js8)
-                    << "APRSISClient Cannot Write Error:" << line;
-                return;
-            }
-        }
-
         m_frameQueue.dequeue();
     }
 
@@ -435,9 +425,91 @@ void APRSISClient::processQueue(bool disconnect) {
         m_frameQueue.enqueue(delayed.dequeue());
     }
 
-    if (disconnect) {
+    if (disconnect && !m_incomingRelayEnabled) {
         disconnectFromHost();
     }
+}
+
+void APRSISClient::onSocketConnected() {
+    qCDebug(aprsisclient_js8) << "APRSISClient Connected";
+
+    QString loginFrameStr;
+    if (m_incomingRelayEnabled) {
+        // Include filter in login frame
+        loginFrameStr = loginFrame(m_localCall, "filter t/m");
+        qCDebug(aprsisclient_js8) << "APRSISClient Login with filter t/m";
+    } else {
+        loginFrameStr = loginFrame(m_localCall);
+    }
+
+    if (write(loginFrameStr.toLocal8Bit()) == -1) {
+        qCDebug(aprsisclient_js8)
+            << "APRSISClient Write Login Error:" << errorString();
+        return;
+    }
+
+    // assume logged in for now, real verification is harder with async
+    // but typically APRS-IS sends a line starting with #
+    // we'll handle that in readyRead if needed, but for now allow writing
+    m_isLoggedIn = true;
+
+    // process any pending queue items
+    processQueue(!m_incomingRelayEnabled);
+}
+
+void APRSISClient::onSocketReadyRead() {
+    while (canReadLine()) {
+        auto line = QString::fromUtf8(readLine()).trimmed();
+        if (line.isEmpty()) {
+            continue;
+        }
+
+        qCDebug(aprsisclient_js8) << "APRSISClient Read:" << line;
+
+        if (line.startsWith("#")) {
+            // server comment / login response
+            continue;
+        }
+
+        // Parse message for relay
+        // Format: SOURCE>PATH::DEST     :MESSAGE
+        // Regex: ^([^>]+)>[^:]+::([A-Z0-9 ]{9}):(.*)$
+        static QRegularExpression msgRe(
+            "^([^>]+)>[^:]+::([A-Z0-9 ]{9}):(.*)$");
+        auto match = msgRe.match(line);
+        if (match.hasMatch()) {
+            auto from = match.captured(1);
+            auto to = match.captured(2).trimmed();
+            auto msg = match.captured(3);
+
+            qCDebug(aprsisclient_js8) << "APRSISClient Parsed Message:"
+                                      << "From:" << from
+                                      << "To:" << to
+                                      << "Msg:" << msg;
+
+            emit messageReceived(from, to, msg);
+        } else {
+             qCDebug(aprsisclient_js8) << "APRSISClient: No Regex Match for:" << line;
+        }
+    }
+}
+
+void APRSISClient::onSocketDisconnected() {
+    qCDebug(aprsisclient_js8) << "APRSISClient Disconnected";
+    m_isLoggedIn = false;
+
+    if (m_incomingRelayEnabled) {
+        // retry connection if we're supposed to be persistent
+        QTimer::singleShot(5000, this, [this]() {
+            if (m_incomingRelayEnabled && state() != QTcpSocket::ConnectedState) {
+                processQueue(false);
+            }
+        });
+    }
+}
+
+void APRSISClient::onSocketError(QAbstractSocket::SocketError) {
+    qCDebug(aprsisclient_js8) << "APRSISClient Error:" << errorString();
 }
 
 Q_LOGGING_CATEGORY(aprsisclient_js8, "aprsisclient.js8", QtWarningMsg)

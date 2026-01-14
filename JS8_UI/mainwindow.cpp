@@ -233,6 +233,12 @@ MainWindow::MainWindow(QString const &program_info, QDir const &temp_directory,
             &APRSISClient::setServer);
     connect(this, &MainWindow::aprsClientSetSkipPercent, m_aprsClient,
             &APRSISClient::setSkipPercent);
+    connect(this, &MainWindow::aprsClientSetIncomingRelayEnabled, m_aprsClient,
+            &APRSISClient::setIncomingRelayEnabled);
+    connect(&m_config, &Configuration::spot_to_aprs_relay_changed, m_aprsClient,
+            &APRSISClient::setIncomingRelayEnabled);
+    connect(m_aprsClient, &APRSISClient::messageReceived, this,
+            &MainWindow::onAPRSMessageReceived);
     connect(&m_networkThread, &QThread::finished, m_aprsClient,
             &QObject::deleteLater);
 
@@ -2401,6 +2407,7 @@ void MainWindow::prepareSpotting() {
         emit aprsClientSetSkipPercent(0.25);
         emit aprsClientSetServer(m_config.aprs_server_name(),
                                  m_config.aprs_server_port());
+        emit aprsClientSetIncomingRelayEnabled(m_config.spot_to_aprs_relay());
         emit aprsClientSetPaused(false);
         ui->spotButton->setChecked(true);
     } else {
@@ -4699,11 +4706,25 @@ void MainWindow::restoreMessage() {
     addMessageText(Varicode::rstrip(m_lastTxMessage), true);
 }
 
+/**
+ * @brief Resets the frame-level transmission state after a message completes.
+ *
+ * This function clears the frame queue and resets frame counters, preparing
+ * the system for the next message transmission. Importantly, it does NOT
+ * clear m_txMessageQueue, which holds pending high-level messages (e.g.,
+ * queued APRS relay messages) that should be transmitted after the current
+ * transmission completes.
+ *
+ * @note Called via resetMessage() -> on_stopTxButton_clicked() when
+ *       transmission ends.
+ */
 void MainWindow::resetMessageTransmitQueue() {
     m_txFrameCount = 0;
     m_txFrameCountSent = 0;
     m_txFrameQueue.clear();
-    m_txMessageQueue.clear();
+    // Note: m_txMessageQueue is intentionally NOT cleared here.
+    // It holds pending messages (e.g., APRS relay messages) that should
+    // be transmitted after the current transmission completes.
 
     // reset the total message sent
     m_totalTxMessage.clear();
@@ -7796,6 +7817,25 @@ void MainWindow::processSpots() {
     }
 }
 
+/**
+ * @brief Processes the outgoing message queue and initiates transmission.
+ *
+ * This function is called periodically (once per second) to check if there
+ * are pending messages in m_txMessageQueue that can be transmitted. It
+ * implements several guard conditions to ensure safe transmission:
+ *
+ * - The frame queue (m_txFrameQueue) must be empty
+ * - The message text box must be empty
+ * - No active transmission in progress (m_transmitting and m_txFrameCount)
+ * - Low priority messages must wait 30 seconds after last transmission
+ *
+ * When conditions are met, the next message is dequeued, placed in the
+ * message text box, and transmission is initiated for high-priority messages.
+ *
+ * @note This function works in conjunction with resetMessageTransmitQueue()
+ *       to support queuing multiple messages (e.g., APRS relay messages)
+ *       that are transmitted sequentially.
+ */
 void MainWindow::processTxQueue() {
 #if IDLE_BLOCKS_TX
     if (m_tx_watchdog) {
@@ -7828,6 +7868,11 @@ void MainWindow::processTxQueue() {
 
     // our message box needs to be empty...
     if (!ui->extFreeTextMsgEdit->toPlainText().isEmpty()) {
+        return;
+    }
+
+    // don't process if we're currently transmitting...
+    if (isMessageQueuedForTransmit()) {
         return;
     }
 
@@ -7883,6 +7928,61 @@ void displayBandActivity(); // JS8_Mainwindow/displayBandActivity.cpp
 
 // updateCallActivity
 void displayCallActivity(); // JS8_Mainwindow/displayCallActivity.cpp
+
+void MainWindow::onAPRSMessageReceived(QString from, QString to, QString message) {
+    qCDebug(mainwindow_js8) << "APRS Message Received from" << from << "to"
+                            << to << ":" << message;
+    
+    // Explicitly log to ensure we see it
+    qDebug() << "DEBUG: APRS Message Received from" << from << "to" << to << ":" << message;
+
+    if (!m_config.spot_to_aprs_relay()) {
+        qDebug() << "DEBUG: APRS relay disabled";
+        return;
+    }
+
+    // Check if we have heard the destination station
+    if (!m_callActivity.contains(to)) {
+        qDebug() << "DEBUG: Destination not in heard list:" << to;
+        return;
+    }
+
+    // Check if the station is "active" if aging is enabled
+    if (m_config.callsign_aging() > 0) {
+        auto lastHeard = m_callActivity[to].utcTimestamp;
+        if (lastHeard.secsTo(DriftingDateTime::currentDateTimeUtc()) >
+            m_config.callsign_aging() * 60) {
+            qDebug() << "DEBUG: Destination aged out:" << to;
+            return;
+        }
+    }
+
+    // Strip APRS message checksum (format: {number})
+    // Handles cases with or without closing brace, and optional whitespace
+    QRegularExpression aprsChecksumRe("\\{\\d+\\}?\\s*$");
+    message.remove(aprsChecksumRe);
+    message = message.trimmed();
+
+    qDebug() << "DEBUG: APRS Message after checksum strip:" << message;
+
+    // Construct the relay message
+    // @APRSIS MSG to:<DESTCALL> <MESSAGE> DE <SENDER>
+    QString relayMsg = QString("@APRSIS MSG to:%1 %2 DE %3")
+                           .arg(to)
+                           .arg(message)
+                           .arg(from);
+
+    qCDebug(mainwindow_js8)
+        << "Relaying APRS message from" << from << "to" << to << ":" << message;
+
+    // Show a notice in the UI
+    writeNoticeTextToUI(
+        DriftingDateTime::currentDateTimeUtc(),
+        QString("APRS-IS Relay: %1 -> %2: %3").arg(from).arg(to).arg(message));
+
+    // Enqueue message with high priority
+    enqueueMessage(PriorityHigh, relayMsg, -1, nullptr);
+}
 
 void MainWindow::emitPTT(bool on) {
     qCDebug(mainwindow_js8) << "Setting PTT to" << (on ? "on" : "off");

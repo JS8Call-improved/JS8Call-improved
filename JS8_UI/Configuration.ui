@@ -2203,7 +2203,7 @@ transmitting periods.</string>
               <string>Network Services</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_9">
-              <item row="2" column="0">
+              <item row="3" column="0">
                <widget class="QLabel" name="udp_server_label_2">
                 <property name="text">
                  <string>APRS Server:</string>
@@ -2216,7 +2216,7 @@ transmitting periods.</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QLabel" name="label_18">
                 <property name="text">
                  <string>APRS Server Port:</string>
@@ -2229,10 +2229,10 @@ transmitting periods.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="1" colspan="2">
+              <item row="5" column="1" colspan="2">
                <widget class="QLineEdit" name="spot_blacklist_line_edit"/>
               </item>
-              <item row="2" column="1" colspan="2">
+              <item row="3" column="1" colspan="2">
                <widget class="QLineEdit" name="aprs_server_line_edit">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -2271,14 +2271,24 @@ transmitting periods.</string>
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="2" column="0" colspan="2">
+               <widget class="QCheckBox" name="enable_aprs_relay_check_box">
+                <property name="toolTip">
+                 <string>When enabled, messages received from APRS-IS destined for stations in your Heard List will be relayed via JS8 (Group @APRSIS).</string>
+                </property>
+                <property name="text">
+                 <string>Enable relaying inbound APRS messages to Heard List stations</string>
+                </property>
+               </widget>
+              </item>
+              <item row="5" column="0">
                <widget class="QLabel" name="label_31">
                 <property name="text">
                  <string>Never send spotting reports from these callsigns (comma separated):</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1" colspan="2">
+              <item row="4" column="1" colspan="2">
                <widget class="QSpinBox" name="aprs_server_port_spin_box">
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the service port number of the APRS server that should receive updates. If this is zero no updates will be broadcast.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

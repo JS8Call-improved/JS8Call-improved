@@ -12,11 +12,13 @@
 Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
 class APRSISClient : public QTcpSocket {
+    Q_OBJECT
+
   public:
     APRSISClient(QString host, quint16 port, QObject *parent = nullptr);
 
     static quint32 hashCallsign(QString callsign);
-    static QString loginFrame(QString callsign);
+    static QString loginFrame(QString callsign, QString filter = QString());
     static QPair<float, float> grid2deg(QString grid);
     static QPair<QString, QString> grid2aprs(QString grid);
     static QString stripSSID(QString call);
@@ -30,6 +32,7 @@ class APRSISClient : public QTcpSocket {
     void processQueue(bool disconnect = true);
 
   public slots:
+    void setIncomingRelayEnabled(bool enabled);
 
     void setSkipPercent(float skipPercent) { m_skipPercent = skipPercent; }
 
@@ -60,8 +63,17 @@ class APRSISClient : public QTcpSocket {
         if (m_paused)
             return;
 
-        processQueue(true);
+        processQueue(!m_incomingRelayEnabled);
     }
+
+  signals:
+    void messageReceived(QString from, QString to, QString message);
+
+  private slots:
+    void onSocketConnected();
+    void onSocketReadyRead();
+    void onSocketDisconnected();
+    void onSocketError(QAbstractSocket::SocketError socketError);
 
   private:
     QString m_localCall;
@@ -72,6 +84,8 @@ class APRSISClient : public QTcpSocket {
     quint16 m_port;
     QTimer m_timer;
     bool m_paused;
+    bool m_incomingRelayEnabled;
+    bool m_isLoggedIn;
     float m_skipPercent;
 };
 
