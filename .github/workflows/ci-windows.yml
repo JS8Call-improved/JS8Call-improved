@@ -9,10 +9,15 @@ on:
         type: string
         default: 'Release'
       release-ver:
-        description: 'Release Version (v2.5.0)'
+        description: 'Release Version (v2.5.1)'
         required: false
         type: string
-        default: 'v2.5.0'
+        default: 'v2.5.1'
+      environment:
+        description: 'Environment to run in'
+        type: environment
+        default: CI
+        required: false
   pull_request:
   workflow_call:
     inputs:
@@ -20,12 +25,12 @@ on:
         description: 'Build type (Debug/Release)'
         required: false
         type: string
-        default: 'Release'
+        default: 'Debug'
       release-ver:
-        description: 'Release Version (v2.5.0)'
+        description: 'Release Version (v2.5.1)'
         required: false
         type: string      
-        default: 'v2.5.0'        
+        default: 'v2.5.1'        
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
@@ -34,6 +39,7 @@ jobs:
   build_windows-2025:
     runs-on: windows-2025
     permissions: write-all
+    environment: ${{ inputs.environment }}
 
     steps:
     - run: git config --global core.autocrlf input
@@ -92,11 +98,19 @@ jobs:
         cd ./build
         cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
 
-    - name: Build JS8Call
+    - name: Build JS8Call (CI build)
+      if: inputs.environment == 'CI'
       shell: msys2 {0}
       run: |
         cd ./build
         cmake --build . --config Debug
+
+    - name: Build JS8Call (Release build)
+      if: inputs.environment == 'Release'
+      shell: msys2 {0}
+      run: |
+        cd ./build
+        cmake --build . --config Release
 
     - name: Move exe into install directory
       shell: msys2 {0}
@@ -113,17 +127,24 @@ jobs:
         cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libusb-1.0.dll' JS8Call/
         cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libwinpthread-1.dll' JS8Call/
 
-    - name: Get secrets
+    - name: Get secrets (CI)
+      if: ${{ inputs.environment == 'CI' }}
       shell: pwsh
-      env:
-        CODE_SIGNING_PFX_BASE64: ${{ secrets.CI_CODE_SIGNING_PFX_BASE64 }}
-        PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
       run: |
         echo "${{ secrets.CI_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
         certutil -decode 'D:/a/JS8Call-improved/cert.base64' 'D:/a/JS8Call-improved/certificate.pfx'
       continue-on-error: true
 
-    - name: Sign JS8Call
+    - name: Get secrets (Release)
+      if: ${{ inputs.environment == 'Release' }}
+      shell: pwsh
+      run: |
+        echo "${{ secrets.RELEASE_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
+        certutil -decode 'D:/a/JS8Call-improved/cert.base64' 'D:/a/JS8Call-improved/certificate.pfx'
+      continue-on-error: false
+
+    - name: Sign JS8Call (CI)
+      if: ${{ inputs.environment == 'CI' }}
       shell: pwsh
       env: 
         PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
@@ -136,19 +157,34 @@ jobs:
         & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" libfftw3*.dll
       continue-on-error: true
 
+    - name: Sign JS8Call (Release)
+      if: ${{ inputs.environment == 'Release' }}
+      shell: pwsh
+      env: 
+        PFX_CERTIFICATE_PASSWORD: ${{ secrets.RELEASE_PFX_CERTIFICATE_PASSWORD }}
+      run: |
+        cd ./build/JS8Call/
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" *.exe
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" libhamlib*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" libusb*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" libwinpthread*.dll
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" libfftw3*.dll
+      continue-on-error: false
+
     - name: INNO Setup (Release build)
-      if: ${{ inputs.release-ver }}
+      if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       run: |
         cd ./build/
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-${{ inputs.release-ver }}_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: INNO Setup (CI build)
-      if: ${{ !inputs.release-ver }}
+      if: ${{ inputs.environment == 'CI' }}
       run: |
         cd ./build/
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
-    - name: Installer signtool run
+    - name: Installer signtool run (CI build)
+      if: ${{ inputs.environment == 'CI' }}
       env:
         PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
       run: |
@@ -156,8 +192,17 @@ jobs:
         & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" JS8Call-installer-*.exe
       continue-on-error: true
 
+    - name: Installer signtool run (Release build)
+      if: ${{ inputs.environment == 'Release' }}
+      env:
+        PFX_CERTIFICATE_PASSWORD: ${{ secrets.RELEASE_PFX_CERTIFICATE_PASSWORD }}
+      run: |
+        cd ./build/JS8Call/
+        & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe' sign /fd SHA256 /v /f 'D:/a/JS8Call-improved/certificate.pfx' /p "$env:PFX_CERTIFICATE_PASSWORD" JS8Call-installer-*.exe
+      continue-on-error: false
+
     - name: Attestation (Release Only)
-      if: ${{ inputs.release-ver }}
+      if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: '${{ github.workspace }}/build/JS8Call/*'
