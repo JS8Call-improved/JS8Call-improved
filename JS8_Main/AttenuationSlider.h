@@ -3,14 +3,15 @@
 
 #include <QSlider>
 
-class AttenuationSlider final : public QSlider {
-  public:
-    explicit AttenuationSlider(QWidget *parent = nullptr) : QSlider{parent} {}
+class AttenuationSlider final : public QSlider
+{
+public:
+    explicit AttenuationSlider(QWidget* parent = nullptr) : QSlider { parent } { }
 
-  protected:
-    void paintEvent(QPaintEvent *) override;
+protected:
+    void paintEvent(QPaintEvent*) override;
 
-  private:
+private:
     int yValue(int) const;
 };
 

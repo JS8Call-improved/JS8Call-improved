@@ -1,26 +1,27 @@
 #include "TransceiverBase.h"
 
-#include <exception>
-
 #include <QDebug>
 #include <QString>
 #include <QThread>
 #include <QTimer>
+#include <exception>
 
 #include "moc_TransceiverBase.cpp"
 
-namespace {
+namespace
+{
 auto const unexpected = TransceiverBase::tr("Unexpected rig error");
 }
 
-void TransceiverBase::start(unsigned sequence_number) noexcept {
+void TransceiverBase::start(unsigned sequence_number) noexcept
+{
     QString message;
     try {
-        may_update u{this, true};
+        may_update u { this, true };
         shutdown();
         startup();
         last_sequence_number_ = sequence_number;
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         message = e.what();
     } catch (...) {
         message = unexpected;
@@ -30,14 +31,14 @@ void TransceiverBase::start(unsigned sequence_number) noexcept {
     }
 }
 
-void TransceiverBase::set(TransceiverState const &s,
-                          unsigned sequence_number) noexcept {
+void TransceiverBase::set(TransceiverState const& s, unsigned sequence_number) noexcept
+{
     TRACE_CAT("TransceiverBase", "#:" << sequence_number << s);
 
     QString message;
     try {
-        may_update u{this, true};
-        bool was_online{requested_.online()};
+        may_update u { this, true };
+        bool was_online { requested_.online() };
         if (!s.online() && was_online) {
             shutdown();
         } else if (s.online() && !was_online) {
@@ -45,8 +46,8 @@ void TransceiverBase::set(TransceiverState const &s,
             startup();
         }
         if (requested_.online()) {
-            bool ptt_on{false};
-            bool ptt_off{false};
+            bool ptt_on { false };
+            bool ptt_off { false };
             if (s.ptt() != requested_.ptt()) {
                 ptt_on = s.ptt();
                 ptt_off = !s.ptt();
@@ -58,10 +59,9 @@ void TransceiverBase::set(TransceiverState const &s,
                                       // commands while switching from
                                       // Tx to Rx
             }
-            if (s.frequency() // ignore bogus zero frequencies
+            if (s.frequency()                                // ignore bogus zero frequencies
                 && ((s.frequency() != requested_.frequency() // and QSY
-                     || (s.mode() != UNK &&
-                         s.mode() != requested_.mode())) // or mode change
+                     || (s.mode() != UNK && s.mode() != requested_.mode())) // or mode change
                     || ptt_off)) // or just returned to rx
             {
                 do_frequency(s.frequency(), s.mode(), ptt_off);
@@ -71,13 +71,11 @@ void TransceiverBase::set(TransceiverState const &s,
                 requested_.frequency(actual_.frequency());
                 requested_.mode(actual_.mode());
             }
-            if (!s.tx_frequency() ||
-                (s.tx_frequency() > 10000 // ignore bogus startup values
-                 && s.tx_frequency() <
-                        std::numeric_limits<Frequency>::max() - 10000)) {
-                if ((s.tx_frequency() != requested_.tx_frequency() // and QSY
-                     || (s.mode() != UNK &&
-                         s.mode() != requested_.mode())) // or mode change
+            if (!s.tx_frequency()
+                || (s.tx_frequency() > 10000 // ignore bogus startup values
+                    && s.tx_frequency() < std::numeric_limits<Frequency>::max() - 10000)) {
+                if ((s.tx_frequency() != requested_.tx_frequency()          // and QSY
+                     || (s.mode() != UNK && s.mode() != requested_.mode())) // or mode change
                     // || s.split () != requested_.split ())) // or split change
                     || (s.tx_frequency() && ptt_on)) // or about to tx split
                 {
@@ -102,7 +100,7 @@ void TransceiverBase::set(TransceiverState const &s,
             requested_.ptt(actual_.ptt());
         }
         last_sequence_number_ = sequence_number;
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         message = e.what();
     } catch (...) {
         message = unexpected;
@@ -112,15 +110,17 @@ void TransceiverBase::set(TransceiverState const &s,
     }
 }
 
-void TransceiverBase::startup() {
+void TransceiverBase::startup()
+{
     Q_EMIT resolution(do_start());
     do_post_start();
     actual_.online(true);
     requested_.online(true);
 }
 
-void TransceiverBase::shutdown() {
-    may_update u{this};
+void TransceiverBase::shutdown()
+{
+    may_update u { this };
     if (requested_.online()) {
         try {
             // try and ensure PTT isn't left set
@@ -141,11 +141,12 @@ void TransceiverBase::shutdown() {
     requested_.online(false);
 }
 
-void TransceiverBase::stop() noexcept {
+void TransceiverBase::stop() noexcept
+{
     QString message;
     try {
         shutdown();
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         message = e.what();
     } catch (...) {
         message = unexpected;
@@ -157,32 +158,43 @@ void TransceiverBase::stop() noexcept {
     }
 }
 
-void TransceiverBase::update_rx_frequency(Frequency rx) {
+void TransceiverBase::update_rx_frequency(Frequency rx)
+{
     actual_.frequency(rx);
     requested_.frequency(rx); // track rig changes
 }
 
-void TransceiverBase::update_other_frequency(Frequency tx) {
+void TransceiverBase::update_other_frequency(Frequency tx)
+{
     actual_.tx_frequency(tx);
 }
 
-void TransceiverBase::update_split(bool state) { actual_.split(state); }
+void TransceiverBase::update_split(bool state)
+{
+    actual_.split(state);
+}
 
-void TransceiverBase::update_mode(MODE m) {
+void TransceiverBase::update_mode(MODE m)
+{
     actual_.mode(m);
     requested_.mode(m); // track rig changes
 }
 
-void TransceiverBase::update_PTT(bool state) { actual_.ptt(state); }
+void TransceiverBase::update_PTT(bool state)
+{
+    actual_.ptt(state);
+}
 
-void TransceiverBase::update_complete(bool force_signal) {
+void TransceiverBase::update_complete(bool force_signal)
+{
     if ((do_pre_update() && actual_ != last_) || force_signal) {
         Q_EMIT update(actual_, last_sequence_number_);
         last_ = actual_;
     }
 }
 
-void TransceiverBase::offline(QString const &reason) {
+void TransceiverBase::offline(QString const& reason)
+{
     Q_EMIT failure(reason);
     try {
         shutdown();

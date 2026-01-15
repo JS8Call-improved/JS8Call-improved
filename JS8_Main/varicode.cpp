@@ -18,208 +18,207 @@
  *
  **/
 
-#include <stdexcept>
-
-#include <boost/format.hpp>
-
 #include <QLoggingCategory>
 #include <QMap>
 #include <QSet>
+#include <boost/format.hpp>
+#include <stdexcept>
 
 #define CRCPP_INCLUDE_ESOTERIC_CRC_DEFINITIONS
 #define CRCPP_USE_CPP11
+#include <cmath>
 #include <vendor/CRCpp/CRC.h>
 
 #include "JS8_Mode/decodedtext.h"
 #include "JS8_jsc/jsc.h"
 #include "varicode.h"
 
-#include <cmath>
-
 Q_DECLARE_LOGGING_CATEGORY(varicode_js8)
 
 const int nalphabet = 41;
-QString alphabet = {
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?"}; // alphabet to encode _into_
-                                                  // for FT8 freetext
-                                                  // transmission
-QString alphabet72 = {
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-+/?."};
-QString grid_pattern = {
-    R"((?<grid>[A-X]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2})?)*)+)"};
-QString orig_compound_callsign_pattern = {
-    R"((?<callsign>(\d|[A-Z])+\/?((\d|[A-Z]){2,})(\/(\d|[A-Z])+)?(\/(\d|[A-Z])+)?))"};
+QString alphabet = { "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?" }; // alphabet to encode _into_
+                                                                    // for FT8 freetext
+                                                                    // transmission
+QString alphabet72 = { "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-+/?." };
+QString grid_pattern = { R"((?<grid>[A-X]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2})?)*)+)" };
+QString orig_compound_callsign_pattern
+    = { R"((?<callsign>(\d|[A-Z])+\/?((\d|[A-Z]){2,})(\/(\d|[A-Z])+)?(\/(\d|[A-Z])+)?))" };
 QString base_callsign_pattern = {
-    R"((?<callsign>\b(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<portable>[/][P])?\b))"};
+    R"((?<callsign>\b(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<portable>[/][P])?\b))"
+};
 // QString compound_callsign_pattern =
 // {R"((?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?)\b)"};
 QString compound_callsign_pattern = {
-    R"((?<callsign>(?:[@]?|\b)(?<extended>[A-Z0-9\/@][A-Z0-9\/]{0,2}[\/]?[A-Z0-9\/]{0,3}[\/]?[A-Z0-9\/]{0,3})\b))"};
-QString pack_callsign_pattern = {
-    R"(([0-9A-Z ])([0-9A-Z])([0-9])([A-Z ])([A-Z ])([A-Z ]))"};
-QString alphanumeric = {
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ /@"}; // callsign and grid alphabet
+    R"((?<callsign>(?:[@]?|\b)(?<extended>[A-Z0-9\/@][A-Z0-9\/]{0,2}[\/]?[A-Z0-9\/]{0,3}[\/]?[A-Z0-9\/]{0,3})\b))"
+};
+QString pack_callsign_pattern = { R"(([0-9A-Z ])([0-9A-Z])([0-9])([A-Z ])([A-Z ])([A-Z ]))" };
+QString alphanumeric = { "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ /@" }; // callsign and grid alphabet
 
 QMap<QString, int> directed_cmds = {
     // any changes here need to be made also in the directed regular xpression
     // for parsing
     // ?*^&@
-    {" HEARTBEAT", -1}, // this is my heartbeat (unused except for faux
-                        // processing of HBs as directed commands)
-    {" HB", -1}, // this is my heartbeat (unused except for faux processing of
-                 // HBs as directed commands)
-    {" CQ", -1}, // this is my cq (unused except for faux processing of CQs as
-                 // directed commands)
+    { " HEARTBEAT",     -1 }, // this is my heartbeat (unused except for faux
+                          // processing of HBs as directed commands)
+    { " HB",            -1 }, // this is my heartbeat (unused except for faux processing of
+                          // HBs as directed commands)
+    { " CQ",            -1 }, // this is my cq (unused except for faux processing of CQs as
+                          // directed commands)
 
-    {" SNR?", 0}, // query snr
-    {"?", 0},     // compat
+    { " SNR?",          0  }, // query snr
+    { "?",              0  }, // compat
 
-    {" DIT DIT", 1}, // two bits
+    { " DIT DIT",       1  }, // two bits
 
-    {" HEARING?", 3}, // query station calls heard
+    { " HEARING?",      3  }, // query station calls heard
 
-    {" GRID?", 4}, // query grid
+    { " GRID?",         4  }, // query grid
 
-    {">", 5}, // relay message
+    { ">",              5  }, // relay message
 
-    {" STATUS?", 6}, // query idle message
+    { " STATUS?",       6  }, // query idle message
 
-    {" STATUS", 7}, // this is my status
+    { " STATUS",        7  }, // this is my status
 
-    {" HEARING", 8}, // these are the stations i'm hearing
+    { " HEARING",       8  }, // these are the stations i'm hearing
 
-    {" MSG", 9}, // this is a complete message
+    { " MSG",           9  }, // this is a complete message
 
-    {" MSG TO:", 10}, // store message at a station
+    { " MSG TO:",       10 }, // store message at a station
 
-    {" QUERY", 11}, // generic query
+    { " QUERY",         11 }, // generic query
 
-    {" QUERY MSGS", 12},  // do you have any stored messages?
-    {" QUERY MSGS?", 12}, // do you have any stored messages?
+    { " QUERY MSGS",    12 }, // do you have any stored messages?
+    { " QUERY MSGS?",   12 }, // do you have any stored messages?
 
-    {" QUERY CALL", 13}, // can you transmit a ping to callsign?
+    { " QUERY CALL",    13 }, // can you transmit a ping to callsign?
 
     // {" ",           14  }, // reserved
 
-    {" GRID", 15}, // this is my current grid locator
+    { " GRID",          15 }, // this is my current grid locator
 
-    {" INFO?", 16}, // what is your info message?
-    {" INFO", 17},  // this is my info message
+    { " INFO?",         16 }, // what is your info message?
+    { " INFO",          17 }, // this is my info message
 
-    {" FB", 18},      // fine business
-    {" HW CPY?", 19}, // how do you copy?
-    {" SK", 20},      // end of contact
-    {" RR", 21},      // roger roger
+    { " FB",            18 }, // fine business
+    { " HW CPY?",       19 }, // how do you copy?
+    { " SK",            20 }, // end of contact
+    { " RR",            21 }, // roger roger
 
-    {" QSL?", 22}, // do you copy?
-    {" QSL", 23},  // i copy
+    { " QSL?",          22 }, // do you copy?
+    { " QSL",           23 }, // i copy
 
-    {" CMD", 24}, // command
+    { " CMD",           24 }, // command
 
-    {" SNR", 25}, // seen a station at the provided snr
-    {" NO", 26},  // negative confirm
-    {" YES", 27}, // confirm
-    {" 73", 28},  // best regards, end of contact
+    { " SNR",           25 }, // seen a station at the provided snr
+    { " NO",            26 }, // negative confirm
+    { " YES",           27 }, // confirm
+    { " 73",            28 }, // best regards, end of contact
 
-    {" NACK", 2}, // negative acknowledge
-    {" ACK", 14}, // acknowledge (was reserved in 2.1)
+    { " NACK",          2  }, // negative acknowledge
+    { " ACK",           14 }, // acknowledge (was reserved in 2.1)
 
-    {" HEARTBEAT SNR", 29}, // (was ACK in 2.1, now deprecated)
+    { " HEARTBEAT SNR", 29 }, // (was ACK in 2.1, now deprecated)
 
-    {" AGN?", 30}, // repeat message
-    {"  ", 31},    // send freetext (weird artifact)
-    {" ", 31},     // send freetext
+    { " AGN?",          30 }, // repeat message
+    { "  ",             31 }, // send freetext (weird artifact)
+    { " ",              31 }, // send freetext
 };
 
 // commands allowed to be processed
-QSet<int> allowed_cmds = {-1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                          10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-                          21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+QSet<int> allowed_cmds = { -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+                           16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 };
 
 // commands that result in an autoreply (which can be relayed)
-QSet<int> autoreply_cmds = {0, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 16, 30};
+QSet<int> autoreply_cmds = { 0, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 16, 30 };
 
 // commands that should be buffered
-QSet<int> buffered_cmds = {5, 9, 10, 11, 12, 13, 15, 24};
+QSet<int> buffered_cmds = { 5, 9, 10, 11, 12, 13, 15, 24 };
 
 // commands that may include an SNR value
-QSet<int> snr_cmds = {25, 29};
+QSet<int> snr_cmds = { 25, 29 };
 
 // commands that are checksummed and their crc size
-QMap<int, int> checksum_cmds = {{5, 16},  {9, 16},  {10, 16}, {11, 16},
-                                {12, 16}, {13, 16}, {15, 0},  {24, 16}};
+QMap<int, int> checksum_cmds = {
+    { 5,  16 },
+    { 9,  16 },
+    { 10, 16 },
+    { 11, 16 },
+    { 12, 16 },
+    { 13, 16 },
+    { 15, 0  },
+    { 24, 16 }
+};
 
 QString callsign_pattern = QString("(?<callsign>[@]?[A-Z0-9/]+)");
-QString optional_cmd_pattern =
-    QString("(?<cmd>\\s?(?:AGN[?]|QSL[?]|HW CPY[?]|MSG "
-            "TO[:]|SNR[?]|INFO[?]|GRID[?]|STATUS[?]|QUERY "
-            "MSGS[?]|HEARING[?]|(?:(?:STATUS|HEARING|QUERY CALL|QUERY "
-            "MSGS|QUERY|CMD|MSG|NACK|ACK|73|YES|NO|HEARTBEAT "
-            "SNR|SNR|QSL|RR|SK|FB|INFO|GRID|DIT DIT)(?=[ ]|$))|[?> ]))?");
+QString optional_cmd_pattern
+    = QString("(?<cmd>\\s?(?:AGN[?]|QSL[?]|HW CPY[?]|MSG "
+              "TO[:]|SNR[?]|INFO[?]|GRID[?]|STATUS[?]|QUERY "
+              "MSGS[?]|HEARING[?]|(?:(?:STATUS|HEARING|QUERY CALL|QUERY "
+              "MSGS|QUERY|CMD|MSG|NACK|ACK|73|YES|NO|HEARTBEAT "
+              "SNR|SNR|QSL|RR|SK|FB|INFO|GRID|DIT DIT)(?=[ ]|$))|[?> ]))?");
 QString optional_grid_pattern = QString("(?<grid>\\s?[A-R]{2}[0-9]{2})?");
-QString optional_extended_grid_pattern =
-    QString("^(?<grid>\\s?(?:[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2})?)*))?");
-QString optional_num_pattern =
-    QString("(?<num>(?<=SNR)\\s?[-+]?(?:3[01]|[0-2]?[0-9]))?");
+QString optional_extended_grid_pattern
+    = QString("^(?<grid>\\s?(?:[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2})?)*))?");
+QString optional_num_pattern = QString("(?<num>(?<=SNR)\\s?[-+]?(?:3[01]|[0-2]?[0-9]))?");
 
-QRegularExpression directed_re("^" + callsign_pattern + optional_cmd_pattern +
-                               optional_num_pattern);
+QRegularExpression directed_re("^" + callsign_pattern + optional_cmd_pattern
+                               + optional_num_pattern);
 
 QRegularExpression heartbeat_re(
     R"(^\s*(?<callsign>[@](?:ALLCALL|HB)\s+)?(?<type>CQ CQ CQ|CQ DX|CQ QRP|CQ CONTEST|CQ FIELD|CQ FD|CQ CQ|CQ|HB|HEARTBEAT(?!\s+SNR))(?:\s(?<grid>[A-R]{2}[0-9]{2}))?\b)");
 
-QRegularExpression
-    compound_re("^\\s*[`]" + callsign_pattern + "(?<extra>" +
-                optional_grid_pattern + // there's a reason this is first (see:
-                                        // buildMessageFrames)
-                optional_cmd_pattern + optional_num_pattern + ")");
+QRegularExpression compound_re("^\\s*[`]" + callsign_pattern + "(?<extra>" + optional_grid_pattern
+                               + // there's a reason this is first (see:
+                                 // buildMessageFrames)
+                               optional_cmd_pattern + optional_num_pattern + ")");
 
 QMap<QString, QString> hufftable = {
     // char   code                 weight
-    {" ", "01"},       // 1.0
-    {"E", "100"},      // 0.5
-    {"T", "1101"},     // 0.333333333333
-    {"A", "0011"},     // 0.25
-    {"O", "11111"},    // 0.2
-    {"I", "11100"},    // 0.166666666667
-    {"N", "10111"},    // 0.142857142857
-    {"S", "10100"},    // 0.125
-    {"H", "00011"},    // 0.111111111111
-    {"R", "00000"},    // 0.1
-    {"D", "111011"},   // 0.0909090909091
-    {"L", "110011"},   // 0.0833333333333
-    {"C", "110001"},   // 0.0769230769231
-    {"U", "101101"},   // 0.0714285714286
-    {"M", "101011"},   // 0.0666666666667
-    {"W", "001011"},   // 0.0625
-    {"F", "001001"},   // 0.0588235294118
-    {"G", "000101"},   // 0.0555555555556
-    {"Y", "000011"},   // 0.0526315789474
-    {"P", "1111011"},  // 0.05
-    {"B", "1111001"},  // 0.047619047619
-    {".", "1110100"},  // 0.0434782608696
-    {"V", "1100101"},  // 0.0416666666667
-    {"K", "1100100"},  // 0.04
-    {"-", "1100001"},  // 0.0384615384615
-    {"+", "1100000"},  // 0.037037037037
-    {"?", "1011001"},  // 0.0344827586207
-    {"!", "1011000"},  // 0.0333333333333
-    {"\"", "1010101"}, // 0.0322580645161
-    {"X", "1010100"},  // 0.03125
-    {"0", "0010101"},  // 0.030303030303
-    {"J", "0010100"},  // 0.0294117647059
-    {"1", "0010001"},  // 0.0285714285714
-    {"Q", "0010000"},  // 0.0277777777778
-    {"2", "0001001"},  // 0.027027027027
-    {"Z", "0001000"},  // 0.0263157894737
-    {"3", "0000101"},  // 0.025641025641
-    {"5", "0000100"},  // 0.025
-    {"4", "11110101"}, // 0.0243902439024
-    {"9", "11110100"}, // 0.0238095238095
-    {"8", "11110001"}, // 0.0232558139535
-    {"6", "11110000"}, // 0.0227272727273
-    {"7", "11101011"}, // 0.0222222222222
-    {"/", "11101010"}, // 0.0217391304348
+    { " ",  "01"       }, // 1.0
+    { "E",  "100"      }, // 0.5
+    { "T",  "1101"     }, // 0.333333333333
+    { "A",  "0011"     }, // 0.25
+    { "O",  "11111"    }, // 0.2
+    { "I",  "11100"    }, // 0.166666666667
+    { "N",  "10111"    }, // 0.142857142857
+    { "S",  "10100"    }, // 0.125
+    { "H",  "00011"    }, // 0.111111111111
+    { "R",  "00000"    }, // 0.1
+    { "D",  "111011"   }, // 0.0909090909091
+    { "L",  "110011"   }, // 0.0833333333333
+    { "C",  "110001"   }, // 0.0769230769231
+    { "U",  "101101"   }, // 0.0714285714286
+    { "M",  "101011"   }, // 0.0666666666667
+    { "W",  "001011"   }, // 0.0625
+    { "F",  "001001"   }, // 0.0588235294118
+    { "G",  "000101"   }, // 0.0555555555556
+    { "Y",  "000011"   }, // 0.0526315789474
+    { "P",  "1111011"  }, // 0.05
+    { "B",  "1111001"  }, // 0.047619047619
+    { ".",  "1110100"  }, // 0.0434782608696
+    { "V",  "1100101"  }, // 0.0416666666667
+    { "K",  "1100100"  }, // 0.04
+    { "-",  "1100001"  }, // 0.0384615384615
+    { "+",  "1100000"  }, // 0.037037037037
+    { "?",  "1011001"  }, // 0.0344827586207
+    { "!",  "1011000"  }, // 0.0333333333333
+    { "\"", "1010101"  }, // 0.0322580645161
+    { "X",  "1010100"  }, // 0.03125
+    { "0",  "0010101"  }, // 0.030303030303
+    { "J",  "0010100"  }, // 0.0294117647059
+    { "1",  "0010001"  }, // 0.0285714285714
+    { "Q",  "0010000"  }, // 0.0277777777778
+    { "2",  "0001001"  }, // 0.027027027027
+    { "Z",  "0001000"  }, // 0.0263157894737
+    { "3",  "0000101"  }, // 0.025641025641
+    { "5",  "0000100"  }, // 0.025
+    { "4",  "11110101" }, // 0.0243902439024
+    { "9",  "11110100" }, // 0.0238095238095
+    { "8",  "11110001" }, // 0.0232558139535
+    { "6",  "11110000" }, // 0.0227272727273
+    { "7",  "11101011" }, // 0.0222222222222
+    { "/",  "11101010" }, // 0.0217391304348
 };
 
 QChar ESC = '\\';   // Escape char
@@ -231,77 +230,83 @@ quint16 nusergrid = nbasegrid + 10;
 quint16 nmaxgrid = (1 << 15) - 1;
 
 QMap<QString, quint32> basecalls = {
-    {"<....>", nbasecall + 1},   // incomplete callsign
-    {"@ALLCALL", nbasecall + 2}, // ALLCALL group
-    {"@JS8NET", nbasecall + 3},  // JS8NET group
+    { "<....>",     nbasecall + 1  }, // incomplete callsign
+    { "@ALLCALL",   nbasecall + 2  }, // ALLCALL group
+    { "@JS8NET",    nbasecall + 3  }, // JS8NET group
 
     // continental dx
-    {"@DX/NA", nbasecall + 4},  // North America DX group
-    {"@DX/SA", nbasecall + 5},  // South America DX group
-    {"@DX/EU", nbasecall + 6},  // Europe DX group
-    {"@DX/AS", nbasecall + 7},  // Asia DX group
-    {"@DX/AF", nbasecall + 8},  // Africa DX group
-    {"@DX/OC", nbasecall + 9},  // Oceania DX group
-    {"@DX/AN", nbasecall + 10}, // Antarctica DX group
+    { "@DX/NA",     nbasecall + 4  }, // North America DX group
+    { "@DX/SA",     nbasecall + 5  }, // South America DX group
+    { "@DX/EU",     nbasecall + 6  }, // Europe DX group
+    { "@DX/AS",     nbasecall + 7  }, // Asia DX group
+    { "@DX/AF",     nbasecall + 8  }, // Africa DX group
+    { "@DX/OC",     nbasecall + 9  }, // Oceania DX group
+    { "@DX/AN",     nbasecall + 10 }, // Antarctica DX group
 
     // itu regions
-    {"@REGION/1", nbasecall + 11}, // ITU Region 1
-    {"@REGION/2", nbasecall + 12}, // ITU Region 2
-    {"@REGION/3", nbasecall + 13}, // ITU Region 3
+    { "@REGION/1",  nbasecall + 11 }, // ITU Region 1
+    { "@REGION/2",  nbasecall + 12 }, // ITU Region 2
+    { "@REGION/3",  nbasecall + 13 }, // ITU Region 3
 
     // generic
-    {"@GROUP/0", nbasecall + 14}, // Generic group
-    {"@GROUP/1", nbasecall + 15}, // Generic group
-    {"@GROUP/2", nbasecall + 16}, // Generic group
-    {"@GROUP/3", nbasecall + 17}, // Generic group
-    {"@GROUP/4", nbasecall + 18}, // Generic group
-    {"@GROUP/5", nbasecall + 19}, // Generic group
-    {"@GROUP/6", nbasecall + 20}, // Generic group
-    {"@GROUP/7", nbasecall + 21}, // Generic group
-    {"@GROUP/8", nbasecall + 22}, // Generic group
-    {"@GROUP/9", nbasecall + 23}, // Generic group
+    { "@GROUP/0",   nbasecall + 14 }, // Generic group
+    { "@GROUP/1",   nbasecall + 15 }, // Generic group
+    { "@GROUP/2",   nbasecall + 16 }, // Generic group
+    { "@GROUP/3",   nbasecall + 17 }, // Generic group
+    { "@GROUP/4",   nbasecall + 18 }, // Generic group
+    { "@GROUP/5",   nbasecall + 19 }, // Generic group
+    { "@GROUP/6",   nbasecall + 20 }, // Generic group
+    { "@GROUP/7",   nbasecall + 21 }, // Generic group
+    { "@GROUP/8",   nbasecall + 22 }, // Generic group
+    { "@GROUP/9",   nbasecall + 23 }, // Generic group
 
     // ops
-    {"@COMMAND", nbasecall + 24}, // Command group
-    {"@CONTROL", nbasecall + 25}, // Control group
-    {"@NET", nbasecall + 26},     // Net group
-    {"@NTS", nbasecall + 27},     // NTS group
+    { "@COMMAND",   nbasecall + 24 }, // Command group
+    { "@CONTROL",   nbasecall + 25 }, // Control group
+    { "@NET",       nbasecall + 26 }, // Net group
+    { "@NTS",       nbasecall + 27 }, // NTS group
 
     // reserved groups
-    {"@RESERVE/0", nbasecall + 28}, // Reserved
-    {"@RESERVE/1", nbasecall + 29}, // Reserved
-    {"@RESERVE/2", nbasecall + 30}, // Reserved
-    {"@RESERVE/3", nbasecall + 31}, // Reserved
-    {"@RESERVE/4", nbasecall + 32}, // Reserved
+    { "@RESERVE/0", nbasecall + 28 }, // Reserved
+    { "@RESERVE/1", nbasecall + 29 }, // Reserved
+    { "@RESERVE/2", nbasecall + 30 }, // Reserved
+    { "@RESERVE/3", nbasecall + 31 }, // Reserved
+    { "@RESERVE/4", nbasecall + 32 }, // Reserved
 
     // special groups
-    {"@APRSIS", nbasecall + 33},   // APRS GROUP
-    {"@RAGCHEW", nbasecall + 34},  // RAGCHEW GROUP
-    {"@JS8", nbasecall + 35},      // JS8 GROUP
-    {"@EMCOMM", nbasecall + 36},   // EMCOMM GROUP
-    {"@ARES", nbasecall + 37},     // ARES GROUP
-    {"@MARS", nbasecall + 38},     // MARS GROUP
-    {"@AMRRON", nbasecall + 39},   // AMRRON GROUP
-    {"@RACES", nbasecall + 40},    // RACES GROUP
-    {"@RAYNET", nbasecall + 41},   // RAYNET GROUP
-    {"@RADAR", nbasecall + 42},    // RADAR GROUP
-    {"@SKYWARN", nbasecall + 43},  // SKYWARN GROUP
-    {"@CQ", nbasecall + 44},       // CQ GROUP
-    {"@HB", nbasecall + 45},       // HB GROUP
-    {"@QSO", nbasecall + 46},      // QSO GROUP
-    {"@QSOPARTY", nbasecall + 47}, // QSO PARTY GROUP
-    {"@CONTEST", nbasecall + 48},  // CONTEST GROUP
-    {"@FIELDDAY", nbasecall + 49}, // FIELD DAY GROUP
-    {"@SOTA", nbasecall + 50},     // SOTA GROUP
-    {"@IOTA", nbasecall + 51},     // IOTA GROUP
-    {"@POTA", nbasecall + 52},     // POTA GROUP
-    {"@QRP", nbasecall + 53},      // QRP GROUP
-    {"@QRO", nbasecall + 54},      // QRO GROUP
+    { "@APRSIS",    nbasecall + 33 }, // APRS GROUP
+    { "@RAGCHEW",   nbasecall + 34 }, // RAGCHEW GROUP
+    { "@JS8",       nbasecall + 35 }, // JS8 GROUP
+    { "@EMCOMM",    nbasecall + 36 }, // EMCOMM GROUP
+    { "@ARES",      nbasecall + 37 }, // ARES GROUP
+    { "@MARS",      nbasecall + 38 }, // MARS GROUP
+    { "@AMRRON",    nbasecall + 39 }, // AMRRON GROUP
+    { "@RACES",     nbasecall + 40 }, // RACES GROUP
+    { "@RAYNET",    nbasecall + 41 }, // RAYNET GROUP
+    { "@RADAR",     nbasecall + 42 }, // RADAR GROUP
+    { "@SKYWARN",   nbasecall + 43 }, // SKYWARN GROUP
+    { "@CQ",        nbasecall + 44 }, // CQ GROUP
+    { "@HB",        nbasecall + 45 }, // HB GROUP
+    { "@QSO",       nbasecall + 46 }, // QSO GROUP
+    { "@QSOPARTY",  nbasecall + 47 }, // QSO PARTY GROUP
+    { "@CONTEST",   nbasecall + 48 }, // CONTEST GROUP
+    { "@FIELDDAY",  nbasecall + 49 }, // FIELD DAY GROUP
+    { "@SOTA",      nbasecall + 50 }, // SOTA GROUP
+    { "@IOTA",      nbasecall + 51 }, // IOTA GROUP
+    { "@POTA",      nbasecall + 52 }, // POTA GROUP
+    { "@QRP",       nbasecall + 53 }, // QRP GROUP
+    { "@QRO",       nbasecall + 54 }, // QRO GROUP
 };
 
 QMap<quint32, QString> cqs = {
-    {0, "CQ CQ CQ"}, {1, "CQ DX"}, {2, "CQ QRP"}, {3, "CQ CONTEST"},
-    {4, "CQ FIELD"}, {5, "CQ FD"}, {6, "CQ CQ"},  {7, "CQ"},
+    { 0, "CQ CQ CQ"   },
+    { 1, "CQ DX"      },
+    { 2, "CQ QRP"     },
+    { 3, "CQ CONTEST" },
+    { 4, "CQ FIELD"   },
+    { 5, "CQ FD"      },
+    { 6, "CQ CQ"      },
+    { 7, "CQ"         },
 };
 
 // status flags in HB messages are deprecated as of 2.2, later versions will
@@ -309,43 +314,44 @@ QMap<quint32, QString> cqs = {
 // start with HB you'll have to address the packHeartbeatMessage and how the
 // function computes the isAlt flag.
 QMap<quint32, QString> hbs = {
-    {0, "HB"}, // HB
-    {1, "HB"}, // HB AUTO
-    {2, "HB"}, // HB AUTO RELAY
-    {3, "HB"}, // HB AUTO RELAY SPOT
-    {4, "HB"}, // HB      RELAY
-    {5, "HB"}, // HB      RELAY SPOT
-    {6, "HB"}, // HB            SPOT
-    {7, "HB"}, // HB AUTO       SPOT
+    { 0, "HB" }, // HB
+    { 1, "HB" }, // HB AUTO
+    { 2, "HB" }, // HB AUTO RELAY
+    { 3, "HB" }, // HB AUTO RELAY SPOT
+    { 4, "HB" }, // HB      RELAY
+    { 5, "HB" }, // HB      RELAY SPOT
+    { 6, "HB" }, // HB            SPOT
+    { 7, "HB" }, // HB AUTO       SPOT
 };
 
 QMap<int, int> dbm2mw = {
-    {0, 1},        //   1mW
-    {3, 2},        //   2mW
-    {7, 5},        //   5mW
-    {10, 10},      //  10mW
-    {13, 20},      //  20mW
-    {17, 50},      //  50mW
-    {20, 100},     // 100mW
-    {23, 200},     // 200mW
-    {27, 500},     // 500mW
-    {30, 1000},    //    1W
-    {33, 2000},    //    2W
-    {37, 5000},    //    5W
-    {40, 10000},   //   10W
-    {43, 20000},   //   20W
-    {47, 50000},   //   50W
-    {50, 100000},  //  100W
-    {53, 200000},  //  200W
-    {57, 500000},  //  500W
-    {60, 1000000}, // 1000W
+    { 0,  1         }, //   1mW
+    { 3,  2         }, //   2mW
+    { 7,  5         }, //   5mW
+    { 10, 10        }, //  10mW
+    { 13, 20        }, //  20mW
+    { 17, 50        }, //  50mW
+    { 20, 100       }, // 100mW
+    { 23, 200       }, // 200mW
+    { 27, 500       }, // 500mW
+    { 30, 1000      }, //    1W
+    { 33, 2000      }, //    2W
+    { 37, 5000      }, //    5W
+    { 40, 10000     }, //   10W
+    { 43, 20000     }, //   20W
+    { 47, 50000     }, //   50W
+    { 50, 100000    }, //  100W
+    { 53, 200000    }, //  200W
+    { 57, 500000    }, //  500W
+    { 60, 1'000'000 }, // 1000W
 };
 
 /*
  * UTILITIES
  */
 
-int mwattsToDbm(int mwatts) {
+int mwattsToDbm(int mwatts)
+{
     int dbm = 0;
     auto values = dbm2mw.values();
     std::sort(values.begin(), values.end());
@@ -360,7 +366,8 @@ int mwattsToDbm(int mwatts) {
     return dbm;
 }
 
-int dbmTomwatts(int dbm) {
+int dbmTomwatts(int dbm)
+{
     if (dbm2mw.contains(dbm)) {
         return dbm2mw[dbm];
     }
@@ -371,7 +378,8 @@ int dbmTomwatts(int dbm) {
     return iter.value();
 }
 
-QString Varicode::extendedChars() {
+QString Varicode::extendedChars()
+{
     static QString c;
     if (c.size() == 0) {
         for (quint32 i = 0; i < JSC::prefixSize; i++) {
@@ -384,7 +392,8 @@ QString Varicode::extendedChars() {
     return c;
 }
 
-QString Varicode::escape(const QString &text) {
+QString Varicode::escape(const QString& text)
+{
     static const int size = 6;
     QString escaped;
     escaped.reserve(size * text.size());
@@ -406,7 +415,8 @@ QString Varicode::escape(const QString &text) {
     return escaped;
 }
 
-QString Varicode::unescape(const QString &text) {
+QString Varicode::unescape(const QString& text)
+{
     QString unescaped(text);
 #if JS8_USE_ESCAPE_SUB_CHAR
     static const int size = 5;
@@ -418,14 +428,14 @@ QString Varicode::unescape(const QString &text) {
     qsizetype pos = 0;
     QRegularExpressionMatch match;
     while ((pos = unescaped.indexOf(r, pos, &match)) != -1) {
-        unescaped.replace(pos++, size,
-                          QChar(match.captured(1).right(4).toUShort(0, 16)));
+        unescaped.replace(pos++, size, QChar(match.captured(1).right(4).toUShort(0, 16)));
     }
 
     return unescaped;
 }
 
-QString Varicode::rstrip(const QString &str) {
+QString Varicode::rstrip(const QString& str)
+{
     qsizetype n = str.size() - 1;
     for (; n >= 0; --n) {
         if (str.at(n).isSpace()) {
@@ -436,7 +446,8 @@ QString Varicode::rstrip(const QString &str) {
     return "";
 }
 
-QString Varicode::lstrip(const QString &str) {
+QString Varicode::lstrip(const QString& str)
+{
     qsizetype len = str.size();
     for (int n = 0; n < len; n++) {
         if (str.at(n).isSpace()) {
@@ -450,23 +461,29 @@ QString Varicode::lstrip(const QString &str) {
 /*
  * VARICODE
  */
-QMap<QString, QString> Varicode::defaultHuffTable() { return hufftable; }
+QMap<QString, QString> Varicode::defaultHuffTable()
+{
+    return hufftable;
+}
 
-QString Varicode::cqString(int number) {
+QString Varicode::cqString(int number)
+{
     if (!cqs.contains(number)) {
-        return QString{};
+        return QString {};
     }
     return cqs[number];
 }
 
-QString Varicode::hbString(int number) {
+QString Varicode::hbString(int number)
+{
     if (!hbs.contains(number)) {
-        return QString{};
+        return QString {};
     }
     return hbs[number];
 }
 
-bool Varicode::startsWithCQ(QString text) {
+bool Varicode::startsWithCQ(QString text)
+{
     foreach (auto cq, cqs.values()) {
         if (text.startsWith(cq)) {
             return true;
@@ -475,7 +492,8 @@ bool Varicode::startsWithCQ(QString text) {
     return false;
 }
 
-bool Varicode::startsWithHB(QString text) {
+bool Varicode::startsWithHB(QString text)
+{
     foreach (auto hb, hbs.values()) {
         if (text.startsWith(hb)) {
             return true;
@@ -484,20 +502,19 @@ bool Varicode::startsWithHB(QString text) {
     return false;
 }
 
-QString Varicode::formatSNR(int snr) {
+QString Varicode::formatSNR(int snr)
+{
     if (snr < -60 || snr > 60) {
         return QString();
     }
 
-    return QString("%1%2")
-        .arg(snr >= 0 ? "+" : "")
-        .arg(snr, snr < 0 ? 3 : 2, 10, QChar('0'));
+    return QString("%1%2").arg(snr >= 0 ? "+" : "").arg(snr, snr < 0 ? 3 : 2, 10, QChar('0'));
 }
 
-QString Varicode::checksum16(QString const &input) {
+QString Varicode::checksum16(QString const& input)
+{
     auto fromBytes = input.toLocal8Bit();
-    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(),
-                              CRC::CRC_16_KERMIT());
+    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(), CRC::CRC_16_KERMIT());
     auto checksum = Varicode::pack16bits(crc);
     if (checksum.length() < 3) {
         checksum += QString(" ").repeated(3 - checksum.length());
@@ -505,17 +522,17 @@ QString Varicode::checksum16(QString const &input) {
     return checksum;
 }
 
-bool Varicode::checksum16Valid(QString const &checksum, QString const &input) {
+bool Varicode::checksum16Valid(QString const& checksum, QString const& input)
+{
     auto fromBytes = input.toLocal8Bit();
-    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(),
-                              CRC::CRC_16_KERMIT());
+    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(), CRC::CRC_16_KERMIT());
     return Varicode::pack16bits(crc) == checksum;
 }
 
-QString Varicode::checksum32(QString const &input) {
+QString Varicode::checksum32(QString const& input)
+{
     auto fromBytes = input.toLocal8Bit();
-    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(),
-                              CRC::CRC_32_BZIP2());
+    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(), CRC::CRC_32_BZIP2());
     auto checksum = Varicode::pack32bits(crc);
     if (checksum.length() < 6) {
         checksum += QString(" ").repeated(6 - checksum.length());
@@ -523,14 +540,15 @@ QString Varicode::checksum32(QString const &input) {
     return checksum;
 }
 
-bool Varicode::checksum32Valid(QString const &checksum, QString const &input) {
+bool Varicode::checksum32Valid(QString const& checksum, QString const& input)
+{
     auto fromBytes = input.toLocal8Bit();
-    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(),
-                              CRC::CRC_32_BZIP2());
+    auto crc = CRC::Calculate(fromBytes.data(), fromBytes.length(), CRC::CRC_32_BZIP2());
     return Varicode::pack32bits(crc) == checksum;
 }
 
-QStringList Varicode::parseCallsigns(QString const &input) {
+QStringList Varicode::parseCallsigns(QString const& input)
+{
     QStringList callsigns;
     QRegularExpression re(compound_callsign_pattern);
     QRegularExpressionMatchIterator iter = re.globalMatch(input);
@@ -552,7 +570,8 @@ QStringList Varicode::parseCallsigns(QString const &input) {
     return callsigns;
 }
 
-QStringList Varicode::parseGrids(const QString &input) {
+QStringList Varicode::parseGrids(const QString& input)
+{
     QStringList grids;
     QRegularExpression re(grid_pattern);
     QRegularExpressionMatchIterator iter = re.globalMatch(input);
@@ -570,14 +589,15 @@ QStringList Varicode::parseGrids(const QString &input) {
     return grids;
 }
 
-QList<QPair<int, QVector<bool>>>
-Varicode::huffEncode(const QMap<QString, QString> &huff, QString const &text) {
+QList<QPair<int, QVector<bool>>> Varicode::huffEncode(const QMap<QString, QString>& huff,
+                                                      QString const& text)
+{
     QList<QPair<int, QVector<bool>>> out;
 
     int i = 0;
 
     auto keys = huff.keys();
-    std::sort(keys.begin(), keys.end(), [](QString const &a, QString const &b) {
+    std::sort(keys.begin(), keys.end(), [](QString const& a, QString const& b) {
         auto alen = a.length();
         auto blen = b.length();
         if (blen < alen) {
@@ -594,7 +614,7 @@ Varicode::huffEncode(const QMap<QString, QString> &huff, QString const &text) {
         bool found = false;
         foreach (auto ch, keys) {
             if (QStringView(text.begin() + i, text.end()).startsWith(ch)) {
-                out.append({ch.length(), Varicode::strToBits(huff[ch])});
+                out.append({ ch.length(), Varicode::strToBits(huff[ch]) });
                 i += ch.length();
                 found = true;
                 break;
@@ -609,8 +629,8 @@ Varicode::huffEncode(const QMap<QString, QString> &huff, QString const &text) {
     return out;
 }
 
-QString Varicode::huffDecode(QMap<QString, QString> const &huff,
-                             QVector<bool> const &bitvec) {
+QString Varicode::huffDecode(QMap<QString, QString> const& huff, QVector<bool> const& bitvec)
+{
     QString text;
 
     QString bits = Varicode::bitsToStr(bitvec);
@@ -638,13 +658,15 @@ QString Varicode::huffDecode(QMap<QString, QString> const &huff,
     return text;
 }
 
-QSet<QString> Varicode::huffValidChars(const QMap<QString, QString> &huff) {
+QSet<QString> Varicode::huffValidChars(const QMap<QString, QString>& huff)
+{
     auto const keys = huff.keys();
     return QSet<QString>(keys.begin(), keys.end());
 }
 
 // convert char* array of 0 bytes and 1 bytes to bool vector
-QVector<bool> Varicode::bytesToBits(char *bitvec, int n) {
+QVector<bool> Varicode::bytesToBits(char* bitvec, int n)
+{
     QVector<bool> bits;
     for (int i = 0; i < n; i++) {
         bits.append(bitvec[i] == 0x01);
@@ -653,7 +675,8 @@ QVector<bool> Varicode::bytesToBits(char *bitvec, int n) {
 }
 
 // convert string of 0s and 1s to bool vector
-QVector<bool> Varicode::strToBits(QString const &bitvec) {
+QVector<bool> Varicode::strToBits(QString const& bitvec)
+{
     QVector<bool> bits;
     foreach (auto ch, bitvec) {
         bits.append(ch == '1');
@@ -661,7 +684,8 @@ QVector<bool> Varicode::strToBits(QString const &bitvec) {
     return bits;
 }
 
-QString Varicode::bitsToStr(QVector<bool> const &bitvec) {
+QString Varicode::bitsToStr(QVector<bool> const& bitvec)
+{
     QString bits;
     foreach (auto bit, bitvec) {
         bits.append(bit ? "1" : "0");
@@ -669,7 +693,8 @@ QString Varicode::bitsToStr(QVector<bool> const &bitvec) {
     return bits;
 }
 
-QVector<bool> Varicode::intToBits(quint64 value, int expected) {
+QVector<bool> Varicode::intToBits(quint64 value, int expected)
+{
     QVector<bool> bits;
 
     while (value) {
@@ -686,7 +711,8 @@ QVector<bool> Varicode::intToBits(quint64 value, int expected) {
     return bits;
 }
 
-quint64 Varicode::bitsToInt(QVector<bool> const value) {
+quint64 Varicode::bitsToInt(QVector<bool> const value)
+{
     quint64 v = 0;
     foreach (bool bit, value) {
         v = (v << 1) + (int)(bit);
@@ -694,7 +720,8 @@ quint64 Varicode::bitsToInt(QVector<bool> const value) {
     return v;
 }
 
-quint64 Varicode::bitsToInt(QVector<bool>::ConstIterator start, int n) {
+quint64 Varicode::bitsToInt(QVector<bool>::ConstIterator start, int n)
+{
     quint64 v = 0;
     for (int i = 0; i < n; i++) {
         int bit = (int)(*start);
@@ -704,7 +731,8 @@ quint64 Varicode::bitsToInt(QVector<bool>::ConstIterator start, int n) {
     return v;
 }
 
-QVector<bool> Varicode::bitsListToBits(QList<QVector<bool>> &list) {
+QVector<bool> Varicode::bitsListToBits(QList<QVector<bool>>& list)
+{
     QVector<bool> out;
     foreach (auto vec, list) {
         out += vec;
@@ -712,21 +740,30 @@ QVector<bool> Varicode::bitsListToBits(QList<QVector<bool>> &list) {
     return out;
 }
 
-quint8 Varicode::unpack5bits(QString const &value) {
+quint8 Varicode::unpack5bits(QString const& value)
+{
     return alphabet.indexOf(value.at(0));
 }
 
 // pack a 5-bit value from 0 to 31 into a single character
-QString Varicode::pack5bits(quint8 packed) { return alphabet.at(packed % 32); }
+QString Varicode::pack5bits(quint8 packed)
+{
+    return alphabet.at(packed % 32);
+}
 
-quint8 Varicode::unpack6bits(QString const &value) {
+quint8 Varicode::unpack6bits(QString const& value)
+{
     return alphabet.indexOf(value.at(0));
 }
 
 // pack a 6-bit value from 0 to 40 into a single character
-QString Varicode::pack6bits(quint8 packed) { return alphabet.at(packed % 41); }
+QString Varicode::pack6bits(quint8 packed)
+{
+    return alphabet.at(packed % 41);
+}
 
-quint16 Varicode::unpack16bits(QString const &value) {
+quint16 Varicode::unpack16bits(QString const& value)
+{
     int a = alphabet.indexOf(value.at(0));
     int b = alphabet.indexOf(value.at(1));
     int c = alphabet.indexOf(value.at(2));
@@ -741,7 +778,8 @@ quint16 Varicode::unpack16bits(QString const &value) {
 }
 
 // pack a 16-bit value into a three character sequence
-QString Varicode::pack16bits(quint16 packed) {
+QString Varicode::pack16bits(quint16 packed)
+{
     QString out;
     quint16 tmp = packed / (nalphabet * nalphabet);
 
@@ -756,30 +794,33 @@ QString Varicode::pack16bits(quint16 packed) {
     return out;
 }
 
-quint32 Varicode::unpack32bits(QString const &value) {
-    return (quint32)(unpack16bits(value.left(3))) << 16 |
-           unpack16bits(value.right(3));
+quint32 Varicode::unpack32bits(QString const& value)
+{
+    return (quint32)(unpack16bits(value.left(3))) << 16 | unpack16bits(value.right(3));
 }
 
-QString Varicode::pack32bits(quint32 packed) {
+QString Varicode::pack32bits(quint32 packed)
+{
     quint16 a = (packed & 0xFFFF0000) >> 16;
     quint16 b = packed & 0xFFFF;
     return pack16bits(a) + pack16bits(b);
 }
 
-quint64 Varicode::unpack64bits(QString const &value) {
-    return (quint64)(unpack32bits(value.left(6))) << 32 |
-           unpack32bits(value.right(6));
+quint64 Varicode::unpack64bits(QString const& value)
+{
+    return (quint64)(unpack32bits(value.left(6))) << 32 | unpack32bits(value.right(6));
 }
 
-QString Varicode::pack64bits(quint64 packed) {
+QString Varicode::pack64bits(quint64 packed)
+{
     quint32 a = (packed & 0xFFFFFFFF00000000) >> 32;
     quint32 b = packed & 0xFFFFFFFF;
     return pack32bits(a) + pack32bits(b);
 }
 
 // returns the first 64 bits and sets the last 8 bits in pRem
-quint64 Varicode::unpack72bits(QString const &text, quint8 *pRem) {
+quint64 Varicode::unpack72bits(QString const& text, quint8* pRem)
+{
     quint64 value = 0;
     quint8 rem = 0;
     quint8 mask2 = ((1 << 2) - 1);
@@ -799,7 +840,8 @@ quint64 Varicode::unpack72bits(QString const &text, quint8 *pRem) {
     return value;
 }
 
-QString Varicode::pack72bits(quint64 value, quint8 rem) {
+QString Varicode::pack72bits(quint64 value, quint8 rem)
+{
     QChar packed[12]; // 12 x 6bit characters
 
     quint8 mask4 = ((1 << 4) - 1);
@@ -827,9 +869,9 @@ QString Varicode::pack72bits(quint64 value, quint8 rem) {
 // pack a 4-digit alpha-numeric + space into a 22 bit value
 // 21 bits for the data + 1 bit for a flag indicator
 // giving us a total of 5.5 bits per character
-quint32 Varicode::packAlphaNumeric22(QString const &value, bool isFlag) {
-    QString word =
-        QString(value).replace(QRegularExpression("[^A-Z0-9/ ]"), "");
+quint32 Varicode::packAlphaNumeric22(QString const& value, bool isFlag)
+{
+    QString word = QString(value).replace(QRegularExpression("[^A-Z0-9/ ]"), "");
     if (word.length() < 4) {
         word = word + QString(" ").repeated(4 - word.length());
     }
@@ -845,7 +887,8 @@ quint32 Varicode::packAlphaNumeric22(QString const &value, bool isFlag) {
     return packed;
 }
 
-QString Varicode::unpackAlphaNumeric22(quint32 packed, bool *isFlag) {
+QString Varicode::unpackAlphaNumeric22(quint32 packed, bool* isFlag)
+{
     QChar word[4];
 
     if (isFlag)
@@ -880,9 +923,9 @@ QString Varicode::unpackAlphaNumeric22(quint32 packed, bool *isFlag) {
 // [@] [R] [A] [ ] [C] [E] [S] [ ] [ ] [ ] [ ]
 //
 // giving us a total of 4.5-5.55 bits per character
-quint64 Varicode::packAlphaNumeric50(QString const &value) {
-    QString word =
-        QString(value).replace(QRegularExpression("[^A-Z0-9 /@]"), "");
+quint64 Varicode::packAlphaNumeric50(QString const& value)
+{
+    QString word = QString(value).replace(QRegularExpression("[^A-Z0-9 /@]"), "");
     if (word.length() > 3 && word.at(3) != '/') {
         word.insert(3, ' ');
     }
@@ -894,18 +937,14 @@ quint64 Varicode::packAlphaNumeric50(QString const &value) {
         word = word + QString(" ").repeated(11 - word.length());
     }
 
-    quint64 a = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 * 38 * 38 *
-                alphanumeric.indexOf(word.at(0));
-    quint64 b = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 * 38 *
-                alphanumeric.indexOf(word.at(1));
-    quint64 c = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 *
-                alphanumeric.indexOf(word.at(2));
-    quint64 d =
-        (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * (int)(word.at(3) == '/');
-    quint64 e =
-        (quint64)38 * 38 * 38 * 2 * 38 * 38 * alphanumeric.indexOf(word.at(4));
-    quint64 f =
-        (quint64)38 * 38 * 38 * 2 * 38 * alphanumeric.indexOf(word.at(5));
+    quint64 a
+        = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 * 38 * 38 * alphanumeric.indexOf(word.at(0));
+    quint64 b
+        = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 * 38 * alphanumeric.indexOf(word.at(1));
+    quint64 c = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * 2 * alphanumeric.indexOf(word.at(2));
+    quint64 d = (quint64)38 * 38 * 38 * 2 * 38 * 38 * 38 * (int)(word.at(3) == '/');
+    quint64 e = (quint64)38 * 38 * 38 * 2 * 38 * 38 * alphanumeric.indexOf(word.at(4));
+    quint64 f = (quint64)38 * 38 * 38 * 2 * 38 * alphanumeric.indexOf(word.at(5));
     quint64 g = (quint64)38 * 38 * 38 * 2 * alphanumeric.indexOf(word.at(6));
     quint64 h = (quint64)38 * 38 * 38 * (int)(word.at(7) == '/');
     quint64 i = (quint64)38 * 38 * alphanumeric.indexOf(word.at(8));
@@ -917,7 +956,8 @@ quint64 Varicode::packAlphaNumeric50(QString const &value) {
     return packed;
 }
 
-QString Varicode::unpackAlphaNumeric50(quint64 packed) {
+QString Varicode::unpackAlphaNumeric50(quint64 packed)
+{
     QChar word[11];
 
     quint64 tmp = packed % 38;
@@ -970,7 +1010,8 @@ QString Varicode::unpackAlphaNumeric50(quint64 packed) {
 }
 
 // pack a callsign into a 28-bit value and a boolean portable flag
-quint32 Varicode::packCallsign(QString const &value, bool *pPortable) {
+quint32 Varicode::packCallsign(QString const& value, bool* pPortable)
+{
     quint32 packed = 0;
 
     QString callsign = value.toUpper().trimmed();
@@ -993,8 +1034,7 @@ quint32 Varicode::packCallsign(QString const &value, bool *pPortable) {
     }
 
     // workaround for guinea
-    if (callsign.startsWith("3X") && 'A' <= callsign.at(2) &&
-        callsign.at(2) <= 'Z') {
+    if (callsign.startsWith("3X") && 'A' <= callsign.at(2) && callsign.at(2) <= 'Z') {
         callsign = "Q" + callsign.mid(2);
     }
 
@@ -1007,7 +1047,7 @@ quint32 Varicode::packCallsign(QString const &value, bool *pPortable) {
         return packed;
     }
 
-    QStringList permutations = {callsign};
+    QStringList permutations = { callsign };
     if (slen == 2) {
         permutations.append(" " + callsign + "   ");
     }
@@ -1049,7 +1089,8 @@ quint32 Varicode::packCallsign(QString const &value, bool *pPortable) {
     return packed;
 }
 
-QString Varicode::unpackCallsign(quint32 value, bool portable) {
+QString Varicode::unpackCallsign(quint32 value, bool portable)
+{
     foreach (auto key, basecalls.keys()) {
         if (basecalls[key] == value) {
             return key;
@@ -1085,8 +1126,7 @@ QString Varicode::unpackCallsign(quint32 value, bool portable) {
         callsign = "3DA0" + callsign.mid(3);
     }
 
-    if (callsign.startsWith("Q") and 'A' <= callsign.at(1) &&
-        callsign.at(1) <= 'Z') {
+    if (callsign.startsWith("Q") and 'A' <= callsign.at(1) && callsign.at(1) <= 'Z') {
         callsign = "3X" + callsign.mid(1);
     }
 
@@ -1097,7 +1137,8 @@ QString Varicode::unpackCallsign(quint32 value, bool portable) {
     return callsign.trimmed();
 }
 
-QString Varicode::deg2grid(float dlong, float dlat) {
+QString Varicode::deg2grid(float dlong, float dlat)
+{
     QChar grid[6];
 
     if (dlong < -180) {
@@ -1130,7 +1171,8 @@ QString Varicode::deg2grid(float dlong, float dlat) {
     return QString(grid, 6);
 }
 
-QPair<float, float> Varicode::grid2deg(QString const &grid) {
+QPair<float, float> Varicode::grid2deg(QString const& grid)
+{
     QPair<float, float> longLat;
 
     QString g = grid;
@@ -1156,7 +1198,8 @@ QPair<float, float> Varicode::grid2deg(QString const &grid) {
 }
 
 // pack a 4-digit maidenhead grid locator into a 15-bit value
-quint16 Varicode::packGrid(QString const &value) {
+quint16 Varicode::packGrid(QString const& value)
+{
     QString grid = QString(value).trimmed();
     if (grid.length() < 4) {
         return (1 << 15) - 1;
@@ -1169,7 +1212,8 @@ quint16 Varicode::packGrid(QString const &value) {
     return ((ilong + 180) / 2) * 180 + ilat;
 }
 
-QString Varicode::unpackGrid(quint16 value) {
+QString Varicode::unpackGrid(quint16 value)
+{
     if (value > nbasegrid) {
         return "";
     }
@@ -1181,7 +1225,8 @@ QString Varicode::unpackGrid(quint16 value) {
 }
 
 // pack a number or snr into an integer between 0 & 62
-quint8 Varicode::packNum(QString const &num, bool *ok) {
+quint8 Varicode::packNum(QString const& num, bool* ok)
+{
     int inum = 0;
     if (num.isEmpty()) {
         if (ok)
@@ -1195,7 +1240,8 @@ quint8 Varicode::packNum(QString const &num, bool *ok) {
 
 // pack a reduced fidelity command and a number into the extra bits provided
 // between nbasegrid and nmaxgrid
-quint8 Varicode::packCmd(quint8 cmd, quint8 num, bool *pPackedNum) {
+quint8 Varicode::packCmd(quint8 cmd, quint8 num, bool* pPackedNum)
+{
     // quint8 allowed = nmaxgrid - nbasegrid - 1;
 
     // if cmd == snr
@@ -1219,7 +1265,8 @@ quint8 Varicode::packCmd(quint8 cmd, quint8 num, bool *pPackedNum) {
     return value;
 }
 
-quint8 Varicode::unpackCmd(quint8 value, quint8 *pNum) {
+quint8 Varicode::unpackCmd(quint8 value, quint8* pNum)
+{
     // if the first bit is 1, this is an SNR with a number encoded in the lower
     // 6 bits
     if (value & (1 << 7)) {
@@ -1242,35 +1289,38 @@ quint8 Varicode::unpackCmd(quint8 value, quint8 *pNum) {
     }
 }
 
-bool Varicode::isSNRCommand(const QString &cmd) {
+bool Varicode::isSNRCommand(const QString& cmd)
+{
     return directed_cmds.contains(cmd) && snr_cmds.contains(directed_cmds[cmd]);
 }
 
-bool Varicode::isCommandAllowed(const QString &cmd) {
-    return directed_cmds.contains(cmd) &&
-           allowed_cmds.contains(directed_cmds[cmd]);
+bool Varicode::isCommandAllowed(const QString& cmd)
+{
+    return directed_cmds.contains(cmd) && allowed_cmds.contains(directed_cmds[cmd]);
 }
 
-bool Varicode::isCommandBuffered(const QString &cmd) {
-    return directed_cmds.contains(cmd) &&
-           (cmd.contains(" ") || buffered_cmds.contains(directed_cmds[cmd]));
+bool Varicode::isCommandBuffered(const QString& cmd)
+{
+    return directed_cmds.contains(cmd)
+        && (cmd.contains(" ") || buffered_cmds.contains(directed_cmds[cmd]));
 }
 
-int Varicode::isCommandChecksumed(const QString &cmd) {
-    if (!directed_cmds.contains(cmd) ||
-        !checksum_cmds.contains(directed_cmds[cmd])) {
+int Varicode::isCommandChecksumed(const QString& cmd)
+{
+    if (!directed_cmds.contains(cmd) || !checksum_cmds.contains(directed_cmds[cmd])) {
         return 0;
     }
 
     return checksum_cmds[directed_cmds[cmd]];
 }
 
-bool Varicode::isCommandAutoreply(const QString &cmd) {
-    return directed_cmds.contains(cmd) &&
-           (autoreply_cmds.contains(directed_cmds[cmd]));
+bool Varicode::isCommandAutoreply(const QString& cmd)
+{
+    return directed_cmds.contains(cmd) && (autoreply_cmds.contains(directed_cmds[cmd]));
 }
 
-bool isValidCompoundCallsign(QStringView callsign) {
+bool isValidCompoundCallsign(QStringView callsign)
+{
     // compound calls cannot be > 9 characters after removing the /
     if (callsign.length() - callsign.count('/') > 9) {
         return false;
@@ -1293,20 +1343,22 @@ bool isValidCompoundCallsign(QStringView callsign) {
         return true;
     }
 
-    if (callsign.length() > 2 && QRegularExpression("[0-9][A-Z]|[A-Z][0-9]")
+    if (callsign.length() > 2
+        && QRegularExpression("[0-9][A-Z]|[A-Z][0-9]")
 #if (QT_VERSION < QT_VERSION_CHECK(6, 5, 0))
-                                     .match(callsign)
+               .match(callsign)
 #else
-                                     .matchView(callsign)
+               .matchView(callsign)
 #endif
-                                     .hasMatch()) {
+               .hasMatch()) {
         return true;
     }
 
     return false;
 }
 
-bool Varicode::isValidCallsign(const QString &callsign, bool *pIsCompound) {
+bool Varicode::isValidCallsign(const QString& callsign, bool* pIsCompound)
+{
     if (basecalls.contains(callsign)) {
         if (pIsCompound)
             *pIsCompound = false;
@@ -1317,10 +1369,8 @@ bool Varicode::isValidCallsign(const QString &callsign, bool *pIsCompound) {
     if (match.hasMatch() && (match.capturedLength() == callsign.length())) {
         if (pIsCompound)
             *pIsCompound = false;
-        return callsign.length() > 2 &&
-               QRegularExpression("[0-9][A-Z]|[A-Z][0-9]")
-                   .match(callsign)
-                   .hasMatch();
+        return callsign.length() > 2
+            && QRegularExpression("[0-9][A-Z]|[A-Z][0-9]").match(callsign).hasMatch();
     }
 
     match = QRegularExpression("^" + compound_callsign_pattern).match(callsign);
@@ -1338,7 +1388,8 @@ bool Varicode::isValidCallsign(const QString &callsign, bool *pIsCompound) {
     return false;
 }
 
-bool Varicode::isCompoundCallsign(const QString &callsign) {
+bool Varicode::isCompoundCallsign(const QString& callsign)
+{
     if (basecalls.contains(callsign) && !callsign.startsWith("@")) {
         return false;
     }
@@ -1355,13 +1406,13 @@ bool Varicode::isCompoundCallsign(const QString &callsign) {
 
     bool isValid = isValidCompoundCallsign(match.capturedView(0));
 
-    qCDebug(varicode_js8) << "is valid compound?" << match.capturedView(0)
-                          << isValid;
+    qCDebug(varicode_js8) << "is valid compound?" << match.capturedView(0) << isValid;
 
     return isValid;
 }
 
-bool Varicode::isGroupAllowed(const QString &group) {
+bool Varicode::isGroupAllowed(const QString& group)
+{
     const QSet<QString> disallowed = {
         "@APRSIS",
         "@JS8NET",
@@ -1373,8 +1424,8 @@ bool Varicode::isGroupAllowed(const QString &group) {
 // CQ DX EM73
 // CQ QRP EM73
 // HB EM73
-QString Varicode::packHeartbeatMessage(QString const &text,
-                                       const QString &callsign, int *n) {
+QString Varicode::packHeartbeatMessage(QString const& text, const QString& callsign, int* n)
+{
     QString frame;
 
     auto parsedText = heartbeat_re.match(text);
@@ -1401,8 +1452,7 @@ QString Varicode::packHeartbeatMessage(QString const &text,
     }
 
     quint16 packed_extra = nmaxgrid; // which will display an empty string
-    if (extra.length() == 4 &&
-        QRegularExpression(grid_pattern).match(extra).hasMatch()) {
+    if (extra.length() == 4 && QRegularExpression(grid_pattern).match(extra).hasMatch()) {
         packed_extra = Varicode::packGrid(extra);
     }
 
@@ -1413,8 +1463,7 @@ QString Varicode::packHeartbeatMessage(QString const &text,
         cqNumber = cqs.key(type, 0);
     }
 
-    frame = packCompoundFrame(callsign, Varicode::FrameHeartbeat, packed_extra,
-                              cqNumber);
+    frame = packCompoundFrame(callsign, Varicode::FrameHeartbeat, packed_extra, cqNumber);
     if (frame.isEmpty()) {
         if (n)
             *n = 0;
@@ -1426,15 +1475,18 @@ QString Varicode::packHeartbeatMessage(QString const &text,
     return frame;
 }
 
-QStringList Varicode::unpackHeartbeatMessage(const QString &text, quint8 *pType,
-                                             bool *isAlt, quint8 *pBits3) {
+QStringList Varicode::unpackHeartbeatMessage(const QString& text,
+                                             quint8* pType,
+                                             bool* isAlt,
+                                             quint8* pBits3)
+{
     quint8 type = Varicode::FrameHeartbeat;
     quint16 num = nmaxgrid;
     quint8 bits3 = 0;
 
     QStringList unpacked = unpackCompoundFrame(text, &type, &num, &bits3);
     if (unpacked.isEmpty() || type != Varicode::FrameHeartbeat) {
-        return QStringList{};
+        return QStringList {};
     }
 
     unpacked.append(Varicode::unpackGrid(num & ((1 << 15) - 1)));
@@ -1452,7 +1504,8 @@ QStringList Varicode::unpackHeartbeatMessage(const QString &text, quint8 *pType,
 // KN4CRD/XXXX EM73
 // XXXX/KN4CRD EM73
 // KN4CRD/P
-QString Varicode::packCompoundMessage(QString const &text, int *n) {
+QString Varicode::packCompoundMessage(QString const& text, int* n)
+{
     QString frame;
 
     qCDebug(varicode_js8) << "trying to pack compound message" << text;
@@ -1480,16 +1533,13 @@ QString Varicode::packCompoundMessage(QString const &text, int *n) {
     quint8 type = Varicode::FrameCompound;
     quint16 extra = nmaxgrid;
 
-    qCDebug(varicode_js8) << "try pack cmd" << cmd
-                          << directed_cmds.contains(cmd)
+    qCDebug(varicode_js8) << "try pack cmd" << cmd << directed_cmds.contains(cmd)
                           << Varicode::isCommandAllowed(cmd);
 
-    if (!cmd.isEmpty() && directed_cmds.contains(cmd) &&
-        Varicode::isCommandAllowed(cmd)) {
+    if (!cmd.isEmpty() && directed_cmds.contains(cmd) && Varicode::isCommandAllowed(cmd)) {
         bool packedNum = false;
         quint8 inum = Varicode::packNum(num, nullptr);
-        extra =
-            nusergrid + Varicode::packCmd(directed_cmds[cmd], inum, &packedNum);
+        extra = nusergrid + Varicode::packCmd(directed_cmds[cmd], inum, &packedNum);
 
         type = Varicode::FrameCompoundDirected;
     } else if (!grid.isEmpty()) {
@@ -1503,16 +1553,16 @@ QString Varicode::packCompoundMessage(QString const &text, int *n) {
     return frame;
 }
 
-QStringList Varicode::unpackCompoundMessage(const QString &text, quint8 *pType,
-                                            quint8 *pBits3) {
+QStringList Varicode::unpackCompoundMessage(const QString& text, quint8* pType, quint8* pBits3)
+{
     quint8 type = Varicode::FrameCompound;
     quint16 extra = nmaxgrid;
     quint8 bits3 = 0;
 
     QStringList unpacked = unpackCompoundFrame(text, &type, &extra, &bits3);
-    if (unpacked.isEmpty() || (type != Varicode::FrameCompound &&
-                               type != Varicode::FrameCompoundDirected)) {
-        return QStringList{};
+    if (unpacked.isEmpty()
+        || (type != Varicode::FrameCompound && type != Varicode::FrameCompoundDirected)) {
+        return QStringList {};
     }
 
     if (extra <= nbasegrid) {
@@ -1539,8 +1589,8 @@ QStringList Varicode::unpackCompoundMessage(const QString &text, quint8 *pType,
     return unpacked;
 }
 
-QString Varicode::packCompoundFrame(const QString &callsign, quint8 type,
-                                    quint16 num, quint8 bits3) {
+QString Varicode::packCompoundFrame(const QString& callsign, quint8 type, quint16 num, quint8 bits3)
+{
     QString frame;
 
     // needs to be a compound type...
@@ -1562,15 +1612,15 @@ QString Varicode::packCompoundFrame(const QString &callsign, quint8 type,
     quint8 packed_8 = (packed_5 << 3) | bits3;
 
     // [3][50][11],[5][3] = 72
-    auto bits = (Varicode::intToBits(packed_flag, 3) +
-                 Varicode::intToBits(packed_callsign, 50) +
-                 Varicode::intToBits(packed_11, 11));
+    auto bits = (Varicode::intToBits(packed_flag, 3) + Varicode::intToBits(packed_callsign, 50)
+                 + Varicode::intToBits(packed_11, 11));
 
     return Varicode::pack72bits(Varicode::bitsToInt(bits), packed_8);
 }
 
-QStringList Varicode::unpackCompoundFrame(const QString &text, quint8 *pType,
-                                          quint16 *pNum, quint8 *pBits3) {
+QStringList
+    Varicode::unpackCompoundFrame(const QString& text, quint8* pType, quint16* pNum, quint8* pBits3)
+{
     QStringList unpacked;
 
     if (text.length() < 12 || text.contains(" ")) {
@@ -1579,8 +1629,7 @@ QStringList Varicode::unpackCompoundFrame(const QString &text, quint8 *pType,
 
     // [3][50][11],[5][3] = 72
     quint8 packed_8 = 0;
-    auto bits =
-        Varicode::intToBits(Varicode::unpack72bits(text, &packed_8), 64);
+    auto bits = Varicode::intToBits(Varicode::unpack72bits(text, &packed_8), 64);
 
     quint8 packed_5 = packed_8 >> 3;
     quint8 packed_3 = packed_8 & ((1 << 3) - 1);
@@ -1588,8 +1637,7 @@ QStringList Varicode::unpackCompoundFrame(const QString &text, quint8 *pType,
     quint8 packed_flag = Varicode::bitsToInt(bits.mid(0, 3));
 
     // needs to be a ping type...
-    if (packed_flag == Varicode::FrameData ||
-        packed_flag == Varicode::FrameDirected) {
+    if (packed_flag == Varicode::FrameData || packed_flag == Varicode::FrameDirected) {
         return unpacked;
     }
 
@@ -1617,10 +1665,14 @@ QStringList Varicode::unpackCompoundFrame(const QString &text, quint8 *pType,
 // J1Y?
 // KN4CRD: J1Y$
 // KN4CRD: J1Y! HELLO WORLD
-QString Varicode::packDirectedMessage(const QString &text,
-                                      const QString &mycall, QString *pTo,
-                                      bool *pToCompound, QString *pCmd,
-                                      QString *pNum, int *n) {
+QString Varicode::packDirectedMessage(const QString& text,
+                                      const QString& mycall,
+                                      QString* pTo,
+                                      bool* pToCompound,
+                                      QString* pCmd,
+                                      QString* pNum,
+                                      int* n)
+{
     QString frame;
 
     auto match = directed_re.match(text);
@@ -1648,8 +1700,7 @@ QString Varicode::packDirectedMessage(const QString &text,
 
     // ensure we have a valid callsign
     bool isToCompound = false;
-    bool validToCallsign =
-        (to != mycall) && Varicode::isValidCallsign(to, &isToCompound);
+    bool validToCallsign = (to != mycall) && Varicode::isValidCallsign(to, &isToCompound);
     if (!validToCallsign) {
         qCDebug(varicode_js8) << "to" << to << "is not a valid callsign";
         if (n)
@@ -1670,12 +1721,10 @@ QString Varicode::packDirectedMessage(const QString &text,
         to = "<....>";
     }
 
-    qCDebug(varicode_js8) << "directed" << validToCallsign << isToCompound
-                          << to;
+    qCDebug(varicode_js8) << "directed" << validToCallsign << isToCompound << to;
 
     // validate command
-    if (!Varicode::isCommandAllowed(cmd) &&
-        !Varicode::isCommandAllowed(cmd.trimmed())) {
+    if (!Varicode::isCommandAllowed(cmd) && !Varicode::isCommandAllowed(cmd.trimmed())) {
         if (n)
             *n = 0;
         return frame;
@@ -1712,14 +1761,11 @@ QString Varicode::packDirectedMessage(const QString &text,
         packed_cmd = directed_cmds[cmdOut];
     }
     quint8 packed_flag = Varicode::FrameDirected;
-    quint8 packed_extra =
-        ((((int)portable_from) << 7) + (((int)portable_to) << 6) + inum);
+    quint8 packed_extra = ((((int)portable_from) << 7) + (((int)portable_to) << 6) + inum);
 
     // [3][28][28][5],[2][6] = 72
-    auto bits = (Varicode::intToBits(packed_flag, 3) +
-                 Varicode::intToBits(packed_from, 28) +
-                 Varicode::intToBits(packed_to, 28) +
-                 Varicode::intToBits(packed_cmd % 32, 5));
+    auto bits = (Varicode::intToBits(packed_flag, 3) + Varicode::intToBits(packed_from, 28)
+                 + Varicode::intToBits(packed_to, 28) + Varicode::intToBits(packed_cmd % 32, 5));
 
     if (pCmd)
         *pCmd = cmdOut;
@@ -1728,8 +1774,8 @@ QString Varicode::packDirectedMessage(const QString &text,
     return Varicode::pack72bits(Varicode::bitsToInt(bits), packed_extra);
 }
 
-QStringList Varicode::unpackDirectedMessage(const QString &text,
-                                            quint8 *pType) {
+QStringList Varicode::unpackDirectedMessage(const QString& text, quint8* pType)
+{
     QStringList unpacked;
 
     if (text.length() < 12 || text.contains(" ")) {
@@ -1774,8 +1820,8 @@ QStringList Varicode::unpackDirectedMessage(const QString &text,
     return unpacked;
 }
 
-QString packHuffMessage(const QString &input, const QVector<bool> prefix,
-                        int *n) {
+QString packHuffMessage(const QString& input, const QVector<bool> prefix, int* n)
+{
     static const int frameSize = 72;
 
     QString frame;
@@ -1795,8 +1841,7 @@ QString packHuffMessage(const QString &input, const QVector<bool> prefix,
 
     // only pack huff messages that only contain valid chars
     QString::const_iterator it;
-    QSet<QString> validChars =
-        Varicode::huffValidChars(Varicode::defaultHuffTable());
+    QSet<QString> validChars = Varicode::huffValidChars(Varicode::defaultHuffTable());
     for (it = input.constBegin(); it != input.constEnd(); it++) {
         auto ch = (*it).toUpper();
         if (!validChars.contains(ch)) {
@@ -1807,8 +1852,7 @@ QString packHuffMessage(const QString &input, const QVector<bool> prefix,
     }
 
     // pack using the default huff table
-    foreach (auto pair,
-             Varicode::huffEncode(Varicode::defaultHuffTable(), input)) {
+    foreach (auto pair, Varicode::huffEncode(Varicode::defaultHuffTable(), input)) {
         auto charN = pair.first;
         auto charBits = pair.second;
         if (frameBits.length() + charBits.length() < frameSize) {
@@ -1842,8 +1886,8 @@ QString packHuffMessage(const QString &input, const QVector<bool> prefix,
     return frame;
 }
 
-QString packCompressedMessage(const QString &input, QVector<bool> prefix,
-                              int *n) {
+QString packCompressedMessage(const QString& input, QVector<bool> prefix, int* n)
+{
     static const int frameSize = 72;
 
     QString frame;
@@ -1874,8 +1918,7 @@ QString packCompressedMessage(const QString &input, QVector<bool> prefix,
         break;
     }
 
-    qCDebug(varicode_js8) << "Compressed bits" << frameBits.length() << "chars"
-                          << i;
+    qCDebug(varicode_js8) << "Compressed bits" << frameBits.length() << "chars" << i;
 
     int pad = frameSize - frameBits.length();
     if (pad) {
@@ -1900,15 +1943,15 @@ QString packCompressedMessage(const QString &input, QVector<bool> prefix,
 
 // TODO: DEPRECATED in 2.2 (we will eventually stop transmitting these frames)
 // pack data message using 70 bits available flagged as data by the first 2 bits
-QString Varicode::packDataMessage(const QString &input, int *n) {
+QString Varicode::packDataMessage(const QString& input, int* n)
+{
     QString huffFrame;
     int huffChars = 0;
-    huffFrame = packHuffMessage(input, {true, false}, &huffChars);
+    huffFrame = packHuffMessage(input, { true, false }, &huffChars);
 
     QString compressedFrame;
     int compressedChars = 0;
-    compressedFrame =
-        packCompressedMessage(input, {true, true}, &compressedChars);
+    compressedFrame = packCompressedMessage(input, { true, true }, &compressedChars);
 
     if (huffChars > compressedChars) {
         if (n)
@@ -1924,7 +1967,8 @@ QString Varicode::packDataMessage(const QString &input, int *n) {
 // TODO: DEPRECATED in 2.2 (still available for decoding legacy frames, but will
 // eventually no longer be decodable) unpack data message using 70 bits
 // available flagged as data by the first 2 bits
-QString Varicode::unpackDataMessage(const QString &text) {
+QString Varicode::unpackDataMessage(const QString& text)
+{
     QString unpacked;
 
     if (text.length() < 12 || text.contains(" ")) {
@@ -1963,15 +2007,16 @@ QString Varicode::unpackDataMessage(const QString &text) {
 
 // pack data message using the full 72 bits available (with the data flag in the
 // i3bit header)
-QString Varicode::packFastDataMessage(const QString &input, int *n) {
+QString Varicode::packFastDataMessage(const QString& input, int* n)
+{
 #if JS8_FAST_DATA_CAN_USE_HUFF
     QString huffFrame;
     int huffChars = 0;
-    huffFrame = packHuffMessage(input, {false}, &huffChars);
+    huffFrame = packHuffMessage(input, { false }, &huffChars);
 
     QString compressedFrame;
     int compressedChars = 0;
-    compressedFrame = packCompressedMessage(input, {true}, &compressedChars);
+    compressedFrame = packCompressedMessage(input, { true }, &compressedChars);
 
     if (huffChars > compressedChars) {
         if (n)
@@ -1995,7 +2040,8 @@ QString Varicode::packFastDataMessage(const QString &input, int *n) {
 
 // unpack data message using the full 72 bits available (with the data flag in
 // the i3bit header)
-QString Varicode::unpackFastDataMessage(const QString &text) {
+QString Varicode::unpackFastDataMessage(const QString& text)
+{
     QString unpacked;
 
     if (text.length() < 12 || text.contains(" ")) {
@@ -2034,18 +2080,22 @@ QString Varicode::unpackFastDataMessage(const QString &text) {
 }
 
 // TODO: remove the dependence on providing all this data?
-QList<QPair<QString, int>>
-Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
-                             QString const &selectedCall, QString const &text,
-                             bool forceIdentify, bool forceData, int submode,
-                             MessageInfo *pInfo) {
+QList<QPair<QString, int>> Varicode::buildMessageFrames(QString const& mycall,
+                                                        QString const& mygrid,
+                                                        QString const& selectedCall,
+                                                        QString const& text,
+                                                        bool forceIdentify,
+                                                        bool forceData,
+                                                        int submode,
+                                                        MessageInfo* pInfo)
+{
 
-#define ALLOW_SEND_COMPOUND 1
-#define ALLOW_SEND_COMPOUND_DIRECTED 1
-#define AUTO_PREPEND_DIRECTED 1
-#define AUTO_REMOVE_MYCALL 1
+#define ALLOW_SEND_COMPOUND                        1
+#define ALLOW_SEND_COMPOUND_DIRECTED               1
+#define AUTO_PREPEND_DIRECTED                      1
+#define AUTO_REMOVE_MYCALL                         1
 #define AUTO_PREPEND_DIRECTED_ALLOW_TEXT_CALLSIGNS 1
-#define ALLOW_FORCE_IDENTIFY 1
+#define ALLOW_FORCE_IDENTIFY                       1
 
     bool mycallCompound = Varicode::isCompoundCallsign(mycall);
 
@@ -2054,7 +2104,7 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
 #if JS8_NO_MULTILINE
     // auto lines = text.split(QRegExp("[\\r\\n]"), QString::SkipEmptyParts);
 #else
-    QStringList lines = {text};
+    QStringList lines = { text };
 #endif
 
     foreach (QString line, lines) {
@@ -2093,17 +2143,16 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
         // if we have a selected call and the text doesn't start with that
         // call... and if this isn't a raw message (starting with "`")...
         // then...
-        if (!selectedCall.isEmpty() && !line.startsWith(selectedCall) &&
-            !line.startsWith("`") && !forceData) {
-            bool lineStartsWithBaseCall =
-                (line.startsWith("@ALLCALL") || Varicode::startsWithCQ(line) ||
-                 Varicode::startsWithHB(line));
+        if (!selectedCall.isEmpty() && !line.startsWith(selectedCall) && !line.startsWith("`")
+            && !forceData) {
+            bool lineStartsWithBaseCall
+                = (line.startsWith("@ALLCALL") || Varicode::startsWithCQ(line)
+                   || Varicode::startsWithHB(line));
 
 #if AUTO_PREPEND_DIRECTED_ALLOW_TEXT_CALLSIGNS
             auto calls = Varicode::parseCallsigns(line);
-            bool lineStartsWithStandardCall = !calls.isEmpty() &&
-                                              line.startsWith(calls.first()) &&
-                                              calls.first().length() > 3;
+            bool lineStartsWithStandardCall
+                = !calls.isEmpty() && line.startsWith(calls.first()) && calls.first().length() > 3;
 #else
             bool lineStartsWithStandardCall = false;
 #endif
@@ -2145,19 +2194,22 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
             QString dirTo;
             QString dirNum;
             bool dirToCompound = false;
-            QString dirFrame = Varicode::packDirectedMessage(
-                line, mycall, &dirTo, &dirToCompound, &dirCmd, &dirNum, &n);
+            QString dirFrame = Varicode::packDirectedMessage(line,
+                                                             mycall,
+                                                             &dirTo,
+                                                             &dirToCompound,
+                                                             &dirCmd,
+                                                             &dirNum,
+                                                             &n);
             if (dirToCompound) {
-                qCDebug(varicode_js8)
-                    << "directed message to field is compound" << dirTo;
+                qCDebug(varicode_js8) << "directed message to field is compound" << dirTo;
             }
 
 #if ALLOW_FORCE_IDENTIFY
             // if we're sending a data message, then ensure our callsign is
             // included automatically
-            bool isLikelyDataFrame = lineFrames.isEmpty() &&
-                                     selectedCall.isEmpty() &&
-                                     dirTo.isEmpty() && l == 0 && o == 0;
+            bool isLikelyDataFrame = lineFrames.isEmpty() && selectedCall.isEmpty()
+                && dirTo.isEmpty() && l == 0 && o == 0;
             if (forceIdentify && isLikelyDataFrame && !line.contains(mycall)) {
                 line = QString("%1: %2").arg(mycall).arg(line);
             }
@@ -2204,13 +2256,13 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
             }
 
             if (useBcn) {
-                lineFrames.append({frame, Varicode::JS8Call});
+                lineFrames.append({ frame, Varicode::JS8Call });
                 line = line.mid(l);
             }
 
 #if ALLOW_SEND_COMPOUND
             if (useCmp) {
-                lineFrames.append({frame, Varicode::JS8Call});
+                lineFrames.append({ frame, Varicode::JS8Call });
                 line = line.mid(o);
             }
 #endif
@@ -2244,25 +2296,22 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
                  * -> <KN4CRD/P EM73> then <J1Y/P ACK>
                  **/
                 if (mycallCompound || dirToCompound) {
-                    qCDebug(varicode_js8)
-                        << "compound?" << mycallCompound << dirToCompound;
+                    qCDebug(varicode_js8) << "compound?" << mycallCompound << dirToCompound;
                     // Cases 1, 2, 3 all send a standard compound frame first...
-                    QString deCompoundMessage =
-                        QString("`%1 %2").arg(mycall).arg(mygrid);
-                    QString deCompoundFrame = Varicode::packCompoundMessage(
-                        deCompoundMessage, nullptr);
+                    QString deCompoundMessage = QString("`%1 %2").arg(mycall).arg(mygrid);
+                    QString deCompoundFrame
+                        = Varicode::packCompoundMessage(deCompoundMessage, nullptr);
                     if (!deCompoundFrame.isEmpty()) {
-                        lineFrames.append({deCompoundFrame, Varicode::JS8Call});
+                        lineFrames.append({ deCompoundFrame, Varicode::JS8Call });
                     }
 
                     // Followed, by a standard OR compound directed message...
-                    QString dirCompoundMessage =
-                        QString("`%1%2%3").arg(dirTo).arg(dirCmd).arg(dirNum);
-                    QString dirCompoundFrame = Varicode::packCompoundMessage(
-                        dirCompoundMessage, nullptr);
+                    QString dirCompoundMessage
+                        = QString("`%1%2%3").arg(dirTo).arg(dirCmd).arg(dirNum);
+                    QString dirCompoundFrame
+                        = Varicode::packCompoundMessage(dirCompoundMessage, nullptr);
                     if (!dirCompoundFrame.isEmpty()) {
-                        lineFrames.append(
-                            {dirCompoundFrame, Varicode::JS8Call});
+                        lineFrames.append({ dirCompoundFrame, Varicode::JS8Call });
                     }
                     shouldUseStandardFrame = false;
                 }
@@ -2270,15 +2319,14 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
 
                 if (shouldUseStandardFrame) {
                     // otherwise, just send the standard directed frame
-                    lineFrames.append({frame, Varicode::JS8Call});
+                    lineFrames.append({ frame, Varicode::JS8Call });
                 }
 
                 line = line.mid(n);
 
                 // generate a checksum for buffered commands with line data
                 if (Varicode::isCommandBuffered(dirCmd) && !line.isEmpty()) {
-                    qCDebug(varicode_js8) << "generating checksum for line"
-                                          << line << line.mid(1);
+                    qCDebug(varicode_js8) << "generating checksum for line" << line << line.mid(1);
 
                     // strip leading whitespace after a buffered directed
                     // command
@@ -2298,8 +2346,7 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
                         line = line + " " + Varicode::checksum16(line);
                     } else if (checksumSize == 0) {
                         // pass
-                        qCDebug(varicode_js8)
-                            << "no checksum required for cmd" << dirCmd;
+                        qCDebug(varicode_js8) << "no checksum required for cmd" << dirCmd;
                     }
                     qCDebug(varicode_js8) << "after:" << line;
                 }
@@ -2313,8 +2360,8 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
 
             if (useDat) {
                 // use the standard data frame
-                lineFrames.append({frame, fastDataFrame ? Varicode::JS8CallData
-                                                        : Varicode::JS8Call});
+                lineFrames.append(
+                    { frame, fastDataFrame ? Varicode::JS8CallData : Varicode::JS8Call });
                 line = line.mid(m);
             }
         }
@@ -2330,19 +2377,34 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
     return allFrames;
 }
 
-BuildMessageFramesThread::BuildMessageFramesThread(
-    const QString &mycall, const QString &mygrid, const QString &selectedCall,
-    const QString &text, bool forceIdentify, bool forceData, int submode,
-    QObject *parent)
-    : QThread(parent), m_mycall{mycall}, m_mygrid{mygrid},
-      m_selectedCall{selectedCall}, m_text{text},
-      m_forceIdentify{forceIdentify}, m_forceData{forceData},
-      m_submode{submode} {}
+BuildMessageFramesThread::BuildMessageFramesThread(const QString& mycall,
+                                                   const QString& mygrid,
+                                                   const QString& selectedCall,
+                                                   const QString& text,
+                                                   bool forceIdentify,
+                                                   bool forceData,
+                                                   int submode,
+                                                   QObject* parent) :
+    QThread(parent),
+    m_mycall { mycall },
+    m_mygrid { mygrid },
+    m_selectedCall { selectedCall },
+    m_text { text },
+    m_forceIdentify { forceIdentify },
+    m_forceData { forceData },
+    m_submode { submode }
+{
+}
 
-void BuildMessageFramesThread::run() {
-    auto results =
-        Varicode::buildMessageFrames(m_mycall, m_mygrid, m_selectedCall, m_text,
-                                     m_forceIdentify, m_forceData, m_submode);
+void BuildMessageFramesThread::run()
+{
+    auto results = Varicode::buildMessageFrames(m_mycall,
+                                                m_mygrid,
+                                                m_selectedCall,
+                                                m_text,
+                                                m_forceIdentify,
+                                                m_forceData,
+                                                m_submode);
 
     // TODO: jsherer - we wouldn't normally use decodedtext.h here... but it's
     // useful for computing the actual frames transmitted.
@@ -2360,21 +2422,16 @@ void BuildMessageFramesThread::run() {
     emit resultReady(transmitText, results.length());
 }
 
-Varicode::SubmodeType Varicode::intToSubmode(int sm) {
+Varicode::SubmodeType Varicode::intToSubmode(int sm)
+{
     switch (sm) {
-    case Varicode::JS8CallNormal:
-        return Varicode::JS8CallNormal;
-    case Varicode::JS8CallFast:
-        return Varicode::JS8CallFast;
-    case Varicode::JS8CallTurbo:
-        return Varicode::JS8CallTurbo;
-    case Varicode::JS8CallSlow:
-        return Varicode::JS8CallSlow;
-    case Varicode::JS8CallUltra:
-        return Varicode::JS8CallUltra;
+    case Varicode::JS8CallNormal: return Varicode::JS8CallNormal;
+    case Varicode::JS8CallFast: return Varicode::JS8CallFast;
+    case Varicode::JS8CallTurbo: return Varicode::JS8CallTurbo;
+    case Varicode::JS8CallSlow: return Varicode::JS8CallSlow;
+    case Varicode::JS8CallUltra: return Varicode::JS8CallUltra;
     };
-    throw std::invalid_argument{
-        boost::str(boost::format("Unexpected JS8 submode %1%") % sm)};
+    throw std::invalid_argument { boost::str(boost::format("Unexpected JS8 submode %1%") % sm) };
 }
 
 Q_LOGGING_CATEGORY(varicode_js8, "varicode.js8", QtWarningMsg)

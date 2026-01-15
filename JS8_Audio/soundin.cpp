@@ -4,11 +4,11 @@
  */
 #include "soundin.h"
 
-#include "JS8_Main/DriftingDateTime.h"
 #include <QAudioFormat>
 #include <QLoggingCategory>
 #include <QSysInfo>
 
+#include "JS8_Main/DriftingDateTime.h"
 #include "moc_soundin.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(soundin_js8)
@@ -19,20 +19,19 @@ Q_DECLARE_LOGGING_CATEGORY(soundin_js8)
  * @return true 
  * @return false 
  */
-bool SoundInput::audioError() const {
+bool SoundInput::audioError() const
+{
     bool result(true);
 
     Q_ASSERT_X(m_stream, "SoundInput", "programming error");
     if (m_stream) {
         switch (m_stream->error()) {
         case QAudio::OpenError:
-            Q_EMIT error(
-                tr("An error opening the audio input device has occurred."));
+            Q_EMIT error(tr("An error opening the audio input device has occurred."));
             break;
 
         case QAudio::IOError:
-            Q_EMIT error(tr(
-                "An error occurred during read from the audio input device."));
+            Q_EMIT error(tr("An error occurred during read from the audio input device."));
             break;
 
         case QAudio::UnderrunError:
@@ -45,9 +44,7 @@ bool SoundInput::audioError() const {
                             "usable at this time."));
             break;
 
-        case QAudio::NoError:
-            result = false;
-            break;
+        case QAudio::NoError: result = false; break;
         }
     }
     return result;
@@ -61,8 +58,11 @@ bool SoundInput::audioError() const {
  * @param sink The AudioDevice sink to write audio data to.
  * @param channel The audio channel configuration (Mono or Stereo).
  */
-void SoundInput::start(QAudioDevice const &device, int framesPerBuffer,
-                       AudioDevice *sink, AudioDevice::Channel channel) {
+void SoundInput::start(QAudioDevice const& device,
+                       int framesPerBuffer,
+                       AudioDevice* sink,
+                       AudioDevice::Channel channel)
+{
     Q_ASSERT(sink);
 
     stop();
@@ -82,19 +82,17 @@ void SoundInput::start(QAudioDevice const &device, int framesPerBuffer,
     if (!device.isFormatSupported(format)) {
         //      qCDebug (soundin_js8) << "Nearest supported audio format:" <<
         //      device.nearestFormat (format);
-        Q_EMIT error(
-            tr("Requested input audio format is not supported on device."));
+        Q_EMIT error(tr("Requested input audio format is not supported on device."));
         return;
     }
     //  qCDebug (soundin_js8) << "Selected audio input format:" << format;
 
-    m_stream.reset(new QAudioSource{device, format});
+    m_stream.reset(new QAudioSource { device, format });
     if (audioError()) {
         return;
     }
 
-    connect(m_stream.data(), &QAudioSource::stateChanged, this,
-            &SoundInput::handleStateChanged);
+    connect(m_stream.data(), &QAudioSource::stateChanged, this, &SoundInput::handleStateChanged);
 
     m_stream->setBufferSize(m_stream->format().bytesForFrames(framesPerBuffer));
     if (sink->initialize(QIODevice::WriteOnly, channel)) {
@@ -108,7 +106,8 @@ void SoundInput::start(QAudioDevice const &device, int framesPerBuffer,
 /**
  * @brief Suspends audio input.
  */
-void SoundInput::suspend() {
+void SoundInput::suspend()
+{
     if (m_stream) {
         m_stream->suspend();
         audioError();
@@ -118,7 +117,8 @@ void SoundInput::suspend() {
 /**
  * @brief Resumes audio input.
  */
-void SoundInput::resume() {
+void SoundInput::resume()
+{
     //  qCDebug(soundin_js8) << "Resume" <<
     //  fmod(0.001*DriftingDateTime::currentMSecsSinceEpoch(),6.0);
     if (m_sink) {
@@ -135,22 +135,17 @@ void SoundInput::resume() {
  * @brief Handles state changes of the audio input.
  * @param newState The new state of the audio input.
  */
-void SoundInput::handleStateChanged(QAudio::State newState) const {
+void SoundInput::handleStateChanged(QAudio::State newState) const
+{
     // qCDebug (soundin_js8) << "SoundInput::handleStateChanged: newState:" <<
     // newState;
 
     switch (newState) {
-    case QAudio::IdleState:
-        Q_EMIT status(tr("Idle"));
-        break;
+    case QAudio::IdleState: Q_EMIT status(tr("Idle")); break;
 
-    case QAudio::ActiveState:
-        Q_EMIT status(tr("Receiving"));
-        break;
+    case QAudio::ActiveState: Q_EMIT status(tr("Receiving")); break;
 
-    case QAudio::SuspendedState:
-        Q_EMIT status(tr("Suspended"));
-        break;
+    case QAudio::SuspendedState: Q_EMIT status(tr("Suspended")); break;
 
     case QAudio::StoppedState:
         if (audioError()) {
@@ -165,7 +160,8 @@ void SoundInput::handleStateChanged(QAudio::State newState) const {
 /**
  * @brief Stops audio input.
  */
-void SoundInput::stop() {
+void SoundInput::stop()
+{
     if (m_stream) {
         m_stream->stop();
     }
@@ -179,6 +175,9 @@ void SoundInput::stop() {
 /**
  * @brief Destructs the SoundInput object.
  */
-SoundInput::~SoundInput() { stop(); }
+SoundInput::~SoundInput()
+{
+    stop();
+}
 
 Q_LOGGING_CATEGORY(soundin_js8, "soundin.js8", QtWarningMsg)

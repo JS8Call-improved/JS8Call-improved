@@ -1,21 +1,28 @@
 #ifndef W_F_HPP__
 #define W_F_HPP__
 
-#include "JS8_Include/commons.h"
 #include <QColor>
 #include <QFlags>
 #include <QList>
 #include <QMetaType>
 #include <QVector>
 
+#include "JS8_Include/commons.h"
+
 class QString;
 
-namespace WF {
+namespace WF
+{
 Q_NAMESPACE
 
 // Spectrum type, defines the types of waterfall spectrum displays.
 
-enum class Spectrum { Current, Cumulative, LinearAvg };
+enum class Spectrum
+{
+    Current,
+    Cumulative,
+    LinearAvg
+};
 Q_ENUM_NS(Spectrum)
 
 // Maximum width of the screen in pixels.
@@ -46,7 +53,12 @@ using SWide = std::array<float, MaxScreenWidth>;
 //   3. Current - Averaging has completed; data is current and not
 //                a duplicate of the last frame.
 
-enum class Sink { Drained = 0x0, Summary = 0x1, Current = 0x2 };
+enum class Sink
+{
+    Drained = 0x0,
+    Summary = 0x1,
+    Current = 0x2
+};
 
 Q_DECLARE_FLAGS(State, Sink)
 
@@ -70,15 +82,16 @@ Q_DECLARE_FLAGS(State, Sink)
 //
 //	Includes a design GUI to create or adjust a Palette.
 //
-class Palette {
-  public:
+class Palette
+{
+public:
     using Colours = QList<QColor>;
 
     Palette() = default;
-    explicit Palette(Colours const &);
-    explicit Palette(QString const &file_path);
-    Palette(Palette const &) = default;
-    Palette &operator=(Palette const &) = default;
+    explicit Palette(Colours const&);
+    explicit Palette(QString const& file_path);
+    Palette(Palette const&) = default;
+    Palette& operator=(Palette const&) = default;
 
     Colours colours() const { return colours_; }
 
@@ -88,7 +101,7 @@ class Palette {
     // returns true if colours have been modified
     bool design();
 
-  private:
+private:
     Colours colours_;
 };
 } // namespace WF

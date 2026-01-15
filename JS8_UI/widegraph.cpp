@@ -1,11 +1,5 @@
 #include "widegraph.h"
-#include "Configuration.h"
-#include "JS8_Include/EventFilter.h"
-#include "JS8_Include/SettingsGroup.h"
-#include "JS8_Main/DriftingDateTime.h"
-#include "JS8_Main/JS8MessageBox.h"
-#include "JS8_Main/varicode.h"
-#include "ui_widegraph.h"
+
 #include <QElapsedTimer>
 #include <QLoggingCategory>
 #include <QMenu>
@@ -16,11 +10,19 @@
 #include <algorithm>
 #include <cmath>
 
+#include "Configuration.h"
+#include "JS8_Include/EventFilter.h"
+#include "JS8_Include/SettingsGroup.h"
+#include "JS8_Main/DriftingDateTime.h"
+#include "JS8_Main/JS8MessageBox.h"
+#include "JS8_Main/varicode.h"
 #include "moc_widegraph.cpp"
+#include "ui_widegraph.h"
 
 Q_DECLARE_LOGGING_CATEGORY(widegraph_js8)
 
-namespace {
+namespace
+{
 auto const user_defined = QObject::tr("User Defined");
 
 // Time formats; we're likely only ever to use the second.
@@ -28,7 +30,8 @@ auto const user_defined = QObject::tr("User Defined");
 constexpr QStringView TIME_FORMAT_MINS = u"hh:mm";
 constexpr QStringView TIME_FORMAT_SECS = u"hh:mm:ss";
 
-constexpr auto timeFormat(int const period) {
+constexpr auto timeFormat(int const period)
+{
     return period < 60 ? TIME_FORMAT_SECS : TIME_FORMAT_MINS;
 }
 
@@ -36,7 +39,8 @@ constexpr auto timeFormat(int const period) {
 // blocked during the set operation and restoring the prior
 // blocked state afterward.
 
-void setValueBlocked(int const value, QSpinBox *block) {
+void setValueBlocked(int const value, QSpinBox* block)
+{
     QSignalBlocker blocker(block);
     block->setValue(value);
 };
@@ -45,7 +49,8 @@ void setValueBlocked(int const value, QSpinBox *block) {
 // blocked during the set operation and restoring the prior
 // blocked state afterward.
 
-void setValueBlocked(int const value, QDial *block) {
+void setValueBlocked(int const value, QDial* block)
+{
     QSignalBlocker blocker(block);
     block->setValue(value);
 };
@@ -54,30 +59,35 @@ void setValueBlocked(int const value, QDial *block) {
 // blocked during the set operation and restoring the prior
 // blocked state afterward.
 
-void setValueBlocked(bool const value, QCheckBox *block) {
+void setValueBlocked(bool const value, QCheckBox* block)
+{
     QSignalBlocker blocker(block);
     block->setChecked(value);
 };
 } // namespace
 
-WideGraph::WideGraph(QSettings *settings, QWidget *parent)
-    : QWidget{parent}, ui{new Ui::WideGraph}, m_settings{settings},
-      m_drawTimer{new QTimer(this)}, m_autoSyncTimer{new QTimer(this)},
-      m_palettes_path{":/Palettes"}, m_timeFormat{timeFormat(m_TRperiod)} {
+WideGraph::WideGraph(QSettings* settings, QWidget* parent) :
+    QWidget { parent },
+    ui { new Ui::WideGraph },
+    m_settings { settings },
+    m_drawTimer { new QTimer(this) },
+    m_autoSyncTimer { new QTimer(this) },
+    m_palettes_path { ":/Palettes" },
+    m_timeFormat { timeFormat(m_TRperiod) }
+{
     ui->setupUi(this);
 
     setMaximumHeight(880);
 
     ui->splitter->setChildrenCollapsible(false);
-    ui->splitter->setCollapsible(ui->splitter->indexOf(ui->controls_widget),
-                                 false);
+    ui->splitter->setCollapsible(ui->splitter->indexOf(ui->controls_widget), false);
     ui->splitter->updateGeometry();
 
     // If the escape key is pressed while the filter center spin box has focus,
     // put the default value in the filter center field.
 
     ui->filterCenterSpinBox->installEventFilter(new EventFilter::EscapeKeyPress(
-        [this](QKeyEvent *) {
+        [this](QKeyEvent*) {
             setFilterCenter(1500);
             return true;
         },
@@ -87,7 +97,7 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
     // put the default value in the filter width field.
 
     ui->filterWidthSpinBox->installEventFilter(new EventFilter::EscapeKeyPress(
-        [this](QKeyEvent *) {
+        [this](QKeyEvent*) {
             setFilterWidth(2000);
             return true;
         },
@@ -98,88 +108,80 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
     // value of the dials. Same thing in the reverse direction, but with events
     // blocked to avoid recursion.
 
-    connect(ui->filterCenterDial, &QDial::valueChanged, ui->filterCenterSpinBox,
+    connect(ui->filterCenterDial,
+            &QDial::valueChanged,
+            ui->filterCenterSpinBox,
             &QSpinBox::setValue);
-    connect(ui->filterWidthDial, &QDial::valueChanged, ui->filterWidthSpinBox,
-            &QSpinBox::setValue);
+    connect(ui->filterWidthDial, &QDial::valueChanged, ui->filterWidthSpinBox, &QSpinBox::setValue);
 
     connect(ui->filterCenterSpinBox,
-            QOverload<int>::of(&QSpinBox::valueChanged), this,
-            [this](int const value) {
-                setValueBlocked(value, ui->filterCenterDial);
-            });
-    connect(ui->filterWidthSpinBox, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, [this](int const value) {
-                setValueBlocked(value, ui->filterWidthDial);
-            });
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            [this](int const value) { setValueBlocked(value, ui->filterCenterDial); });
+    connect(ui->filterWidthSpinBox,
+            QOverload<int>::of(&QSpinBox::valueChanged),
+            this,
+            [this](int const value) { setValueBlocked(value, ui->filterWidthDial); });
 
     ui->widePlot->setCursor(Qt::CrossCursor);
     ui->widePlot->setMaximumWidth(WF::MaxScreenWidth);
     ui->widePlot->setMaximumHeight(800);
 
     ui->widePlot->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(
-        ui->widePlot, &CPlotter::customContextMenuRequested, this,
-        [this](const QPoint &pos) {
-            auto menu = new QMenu(this);
+    connect(ui->widePlot, &CPlotter::customContextMenuRequested, this, [this](const QPoint& pos) {
+        auto menu = new QMenu(this);
 
-            auto const f = ui->widePlot->frequencyAt(pos.x());
+        auto const f = ui->widePlot->frequencyAt(pos.x());
 
-            auto offsetAction =
-                menu->addAction(QString("Set &Offset to %1 Hz").arg(f));
-            connect(offsetAction, &QAction::triggered, this,
-                    [this, f]() { ui->offsetSpinBox->setValue(f); });
+        auto offsetAction = menu->addAction(QString("Set &Offset to %1 Hz").arg(f));
+        connect(offsetAction, &QAction::triggered, this, [this, f]() {
+            ui->offsetSpinBox->setValue(f);
+        });
 
-            menu->addSeparator();
+        menu->addSeparator();
 
-            if (m_filterEnabled) {
-                auto disableAction =
-                    menu->addAction(QString("&Disable Filter"));
-                connect(disableAction, &QAction::triggered, this,
-                        [this]() { ui->filterCheckBox->setChecked(false); });
+        if (m_filterEnabled) {
+            auto disableAction = menu->addAction(QString("&Disable Filter"));
+            connect(disableAction, &QAction::triggered, this, [this]() {
+                ui->filterCheckBox->setChecked(false);
+            });
+        }
+
+        auto centerAction = menu->addAction(QString("Set Filter &Center to %1 Hz").arg(f));
+        connect(centerAction, &QAction::triggered, this, [this, f]() {
+            ui->filterCenterSpinBox->setValue(f);
+            ui->filterCheckBox->setChecked(true);
+        });
+
+        auto widthMenu = menu->addMenu("Set Filter &Width to...");
+        auto widths = QList<int> { 25, 50, 75, 100, 250, 500, 750, 1000, 1500, 2000 };
+        foreach (auto width, widths) {
+            if (width < m_filterMinWidth) {
+                continue;
             }
-
-            auto centerAction =
-                menu->addAction(QString("Set Filter &Center to %1 Hz").arg(f));
-            connect(centerAction, &QAction::triggered, this, [this, f]() {
-                ui->filterCenterSpinBox->setValue(f);
+            auto widthAction = widthMenu->addAction(QString("%1 Hz").arg(width));
+            connect(widthAction, &QAction::triggered, this, [this, width]() {
+                ui->filterWidthSpinBox->setValue(width);
                 ui->filterCheckBox->setChecked(true);
             });
+        }
 
-            auto widthMenu = menu->addMenu("Set Filter &Width to...");
-            auto widths =
-                QList<int>{25, 50, 75, 100, 250, 500, 750, 1000, 1500, 2000};
-            foreach (auto width, widths) {
-                if (width < m_filterMinWidth) {
-                    continue;
-                }
-                auto widthAction =
-                    widthMenu->addAction(QString("%1 Hz").arg(width));
-                connect(widthAction, &QAction::triggered, this,
-                        [this, width]() {
-                            ui->filterWidthSpinBox->setValue(width);
-                            ui->filterCheckBox->setChecked(true);
-                        });
-            }
-
-            menu->popup(ui->widePlot->mapToGlobal(pos));
-        });
+        menu->popup(ui->widePlot->mapToGlobal(pos));
+    });
 
     connect(ui->widePlot, &CPlotter::changeFreq, this, &WideGraph::changeFreq);
 
     {
 
         // Restore user's settings
-        SettingsGroup g{m_settings, "WideGraph"};
-        restoreGeometry(
-            m_settings->value("geometry", saveGeometry()).toByteArray());
+        SettingsGroup g { m_settings, "WideGraph" };
+        restoreGeometry(m_settings->value("geometry", saveGeometry()).toByteArray());
         ui->widePlot->setPlotZero(m_settings->value("PlotZero", 0).toInt());
         ui->widePlot->setPlotGain(m_settings->value("PlotGain", 0).toInt());
         ui->widePlot->setPlot2dGain(m_settings->value("Plot2dGain", 0).toInt());
         ui->widePlot->setPlot2dZero(m_settings->value("Plot2dZero", 0).toInt());
         ui->widePlot->setFlatten(m_settings->value("Flatten", true).toBool());
-        ui->widePlot->setBinsPerPixel(
-            m_settings->value("BinsPerPixel", 2).toInt());
+        ui->widePlot->setBinsPerPixel(m_settings->value("BinsPerPixel", 2).toInt());
         ui->widePlot->setPercent2D(m_settings->value("Percent2D", 0).toInt());
         ui->zeroSlider->setValue(ui->widePlot->plotZero());
         ui->gainSlider->setValue(ui->widePlot->plotGain());
@@ -194,9 +196,7 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
         ui->waterfallAvgSpinBox->setValue(m_waterfallAvg);
         ui->widePlot->setWaterfallAvg(m_waterfallAvg);
         ui->widePlot->setSpectrum(
-            m_settings
-                ->value("WaterfallSpectrum",
-                        QVariant::fromValue(WF::Spectrum::Current))
+            m_settings->value("WaterfallSpectrum", QVariant::fromValue(WF::Spectrum::Current))
                 .value<WF::Spectrum>());
         if (ui->widePlot->spectrum() == WF::Spectrum::Current)
             ui->spec2dComboBox->setCurrentIndex(0);
@@ -205,22 +205,18 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
         if (ui->widePlot->spectrum() == WF::Spectrum::LinearAvg)
             ui->spec2dComboBox->setCurrentIndex(2);
         ui->widePlot->setStartFreq(m_settings->value("StartFreq", 500).toInt());
-        ui->centerSpinBox->setValue(
-            m_settings->value("CenterOffset", 1500).toInt());
+        ui->centerSpinBox->setValue(m_settings->value("CenterOffset", 1500).toInt());
         ui->fStartSpinBox->setValue(ui->widePlot->startFreq());
-        m_waterfallPalette =
-            m_settings->value("WaterfallPalette", "Default").toString();
-        m_userPalette = WF::Palette{
-            m_settings->value("UserPalette").value<WF::Palette::Colours>()};
-        ui->controls_widget->setVisible(
-            !m_settings->value("HideControls", false).toBool());
+        m_waterfallPalette = m_settings->value("WaterfallPalette", "Default").toString();
+        m_userPalette
+            = WF::Palette { m_settings->value("UserPalette").value<WF::Palette::Colours>() };
+        ui->controls_widget->setVisible(!m_settings->value("HideControls", false).toBool());
         ui->fpsSpinBox->setValue(m_settings->value("WaterfallFPS", 4).toInt());
         ui->decodeAttemptCheckBox->setChecked(
             m_settings->value("DisplayDecodeAttempts", false).toBool());
         ui->autoDriftAutoStopCheckBox->setChecked(
             m_settings->value("StopAutoSyncOnDecode", true).toBool());
-        ui->autoDriftStopSpinBox->setValue(
-            m_settings->value("StopAutoSyncAfter", 1).toInt());
+        ui->autoDriftStopSpinBox->setValue(m_settings->value("StopAutoSyncAfter", 1).toInt());
 
         auto splitState = m_settings->value("SplitState").toByteArray();
         if (!splitState.isEmpty()) {
@@ -229,20 +225,17 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
 
         setFilterCenter(m_settings->value("FilterCenter", 1500).toInt());
         setFilterWidth(m_settings->value("FilterWidth", 2000).toInt());
-        setFilterOpacityPercent(
-            m_settings->value("FilterOpacityPercent", 50).toInt());
+        setFilterOpacityPercent(m_settings->value("FilterOpacityPercent", 50).toInt());
         setFilterEnabled(m_settings->value("FilterEnabled", true).toBool());
     }
 
-    for (auto const &file : m_palettes_path.entryList(
-             QDir::NoDotAndDotDot | QDir::System | QDir::Hidden |
-                 QDir::AllDirs | QDir::Files,
+    for (auto const& file : m_palettes_path.entryList(
+             QDir::NoDotAndDotDot | QDir::System | QDir::Hidden | QDir::AllDirs | QDir::Files,
              QDir::DirsFirst)) {
         auto const item = QFileInfo(file).completeBaseName();
         ui->paletteComboBox->addItem(item);
         if (item == m_waterfallPalette) {
-            ui->paletteComboBox->setCurrentIndex(ui->paletteComboBox->count() -
-                                                 1);
+            ui->paletteComboBox->setCurrentIndex(ui->paletteComboBox->count() - 1);
         }
     }
 
@@ -255,8 +248,7 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
 
     connect(m_drawTimer, &QTimer::timeout, this, [this] {
         auto const fps = std::clamp(ui->fpsSpinBox->value(), 1, 100);
-        qint64 const loopMs =
-            1000 / (fps * devicePixelRatio()) * m_waterfallAvg;
+        qint64 const loopMs = 1000 / (fps * devicePixelRatio()) * m_waterfallAvg;
         QElapsedTimer timer;
 
         // Start the elapsed timer and do the drawing, unless we're paused.
@@ -273,8 +265,7 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
             int const secondInPeriod = secondInToday % m_TRperiod;
 
             if (secondInPeriod < m_lastSecondInPeriod) {
-                ui->widePlot->drawLine(
-                    now.toString(m_timeFormat).append(m_band));
+                ui->widePlot->drawLine(now.toString(m_timeFormat).append(m_band));
             }
             m_lastSecondInPeriod = secondInPeriod;
 
@@ -292,9 +283,8 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
 
         // Compute the processing time and adjust loop to hit the next frame.
 
-        m_drawTimer->start(
-            std::max(std::chrono::milliseconds(loopMs - timer.elapsed()),
-                     std::chrono::milliseconds::zero()));
+        m_drawTimer->start(std::max(std::chrono::milliseconds(loopMs - timer.elapsed()),
+                                    std::chrono::milliseconds::zero()));
     });
 
     m_drawTimer->setTimerType(Qt::PreciseTimer);
@@ -304,14 +294,15 @@ WideGraph::WideGraph(QSettings *settings, QWidget *parent)
 
 WideGraph::~WideGraph() = default;
 
-void WideGraph::closeEvent(QCloseEvent *event) {
+void WideGraph::closeEvent(QCloseEvent* event)
+{
     saveSettings();
     QWidget::closeEvent(event);
 }
 
 void WideGraph::saveSettings() // saveSettings
 {
-    SettingsGroup g{m_settings, "WideGraph"};
+    SettingsGroup g { m_settings, "WideGraph" };
     m_settings->setValue("geometry", saveGeometry());
     m_settings->setValue("PlotZero", ui->widePlot->plotZero());
     m_settings->setValue("PlotGain", ui->widePlot->plotGain());
@@ -320,67 +311,64 @@ void WideGraph::saveSettings() // saveSettings
     m_settings->setValue("SmoothYellow", ui->smoSpinBox->value());
     m_settings->setValue("Percent2D", ui->widePlot->percent2D());
     m_settings->setValue("WaterfallAvg", ui->waterfallAvgSpinBox->value());
-    m_settings->setValue("WaterfallSpectrum",
-                         QVariant::fromValue(ui->widePlot->spectrum()));
+    m_settings->setValue("WaterfallSpectrum", QVariant::fromValue(ui->widePlot->spectrum()));
     m_settings->setValue("BinsPerPixel", ui->widePlot->binsPerPixel());
     m_settings->setValue("StartFreq", ui->widePlot->startFreq());
     m_settings->setValue("WaterfallPalette", m_waterfallPalette);
-    m_settings->setValue("UserPalette",
-                         QVariant::fromValue(m_userPalette.colours()));
+    m_settings->setValue("UserPalette", QVariant::fromValue(m_userPalette.colours()));
     m_settings->setValue("Flatten", ui->widePlot->flatten());
     m_settings->setValue("HideControls", ui->controls_widget->isHidden());
     m_settings->setValue("CenterOffset", ui->centerSpinBox->value());
     m_settings->setValue("FilterCenter", m_filterCenter);
     m_settings->setValue("FilterWidth", m_filterWidth);
     m_settings->setValue("FilterEnabled", m_filterEnabled);
-    m_settings->setValue("FilterOpacityPercent",
-                         ui->filterOpacitySpinBox->value());
+    m_settings->setValue("FilterOpacityPercent", ui->filterOpacitySpinBox->value());
     m_settings->setValue("SplitState", ui->splitter->saveState());
     m_settings->setValue("WaterfallFPS", ui->fpsSpinBox->value());
-    m_settings->setValue("DisplayDecodeAttempts",
-                         ui->decodeAttemptCheckBox->isChecked());
-    m_settings->setValue("StopAutoSyncOnDecode",
-                         ui->autoDriftAutoStopCheckBox->isChecked());
-    m_settings->setValue("StopAutoSyncAfter",
-                         ui->autoDriftStopSpinBox->value());
+    m_settings->setValue("DisplayDecodeAttempts", ui->decodeAttemptCheckBox->isChecked());
+    m_settings->setValue("StopAutoSyncOnDecode", ui->autoDriftAutoStopCheckBox->isChecked());
+    m_settings->setValue("StopAutoSyncAfter", ui->autoDriftStopSpinBox->value());
 }
 
-bool WideGraph::shouldDisplayDecodeAttempts() const {
+bool WideGraph::shouldDisplayDecodeAttempts() const
+{
     return ui->decodeAttemptCheckBox->isChecked();
 }
 
-bool WideGraph::isAutoSyncEnabled() const {
+bool WideGraph::isAutoSyncEnabled() const
+{
     // enabled if we're auto drifting
     // and we are not auto stopping
     // or if we are auto stopping,
     // we have auto sync decodes left
-    return ui->autoDriftButton->isChecked() &&
-           (!ui->autoDriftAutoStopCheckBox->isChecked() ||
-            m_autoSyncDecodesLeft > 0);
+    return ui->autoDriftButton->isChecked()
+        && (!ui->autoDriftAutoStopCheckBox->isChecked() || m_autoSyncDecodesLeft > 0);
 }
 
-bool WideGraph::shouldAutoSyncSubmode(int const submode) const {
-    return isAutoSyncEnabled() && (submode == Varicode::JS8CallSlow ||
-                                   submode == Varicode::JS8CallNormal
-                                   //  || submode == Varicode::JS8CallFast
-                                   //  || submode == Varicode::JS8CallTurbo
-                                   //  || submode == Varicode::JS8CallUltra
-                                  );
+bool WideGraph::shouldAutoSyncSubmode(int const submode) const
+{
+    return isAutoSyncEnabled()
+        && (submode == Varicode::JS8CallSlow || submode == Varicode::JS8CallNormal
+            //  || submode == Varicode::JS8CallFast
+            //  || submode == Varicode::JS8CallTurbo
+            //  || submode == Varicode::JS8CallUltra
+        );
 }
 
-void WideGraph::notifyDriftedSignalsDecoded(int const signalsDecoded) {
+void WideGraph::notifyDriftedSignalsDecoded(int const signalsDecoded)
+{
     // qCDebug(widegraph_js8) << "decoded" << signalsDecoded << "with" <<
     // m_autoSyncDecodesLeft << "left";
 
     m_autoSyncDecodesLeft -= signalsDecoded;
 
-    if (ui->autoDriftAutoStopCheckBox->isChecked() &&
-        m_autoSyncDecodesLeft <= 0) {
+    if (ui->autoDriftAutoStopCheckBox->isChecked() && m_autoSyncDecodesLeft <= 0) {
         ui->autoDriftButton->setChecked(false);
     }
 }
 
-void WideGraph::on_autoDriftButton_toggled(bool const checked) {
+void WideGraph::on_autoDriftButton_toggled(bool const checked)
+{
     if (!m_autoSyncConnected) {
         connect(m_autoSyncTimer, &QTimer::timeout, this, [this]() {
             // if auto drift isn't checked, don't worry about this...
@@ -395,10 +383,9 @@ void WideGraph::on_autoDriftButton_toggled(bool const checked) {
 
             // set new text and decrement timeleft
             auto const text = ui->autoDriftButton->text();
-            auto const newText =
-                QString("%1 (%2)")
-                    .arg(text.left(text.indexOf("(")).trimmed())
-                    .arg(m_autoSyncTimeLeft--);
+            auto const newText = QString("%1 (%2)")
+                                     .arg(text.left(text.indexOf("(")).trimmed())
+                                     .arg(m_autoSyncTimeLeft--);
 
             ui->autoDriftButton->setText(newText);
         });
@@ -415,44 +402,41 @@ void WideGraph::on_autoDriftButton_toggled(bool const checked) {
             m_autoSyncTimeLeft = 120;
             m_autoSyncTimer->setInterval(1000);
             m_autoSyncTimer->start();
-            ui->autoDriftButton->setText(QString("%1 (%2)")
-                                             .arg(text.replace("Start", "Stop"))
-                                             .arg(m_autoSyncTimeLeft--));
+            ui->autoDriftButton->setText(
+                QString("%1 (%2)").arg(text.replace("Start", "Stop")).arg(m_autoSyncTimeLeft--));
         } else {
             m_autoSyncTimeLeft = 0;
             m_autoSyncTimer->stop();
-            ui->autoDriftButton->setText(text.left(text.indexOf("("))
-                                             .trimmed()
-                                             .replace("Stop", "Start"));
+            ui->autoDriftButton->setText(
+                text.left(text.indexOf("(")).trimmed().replace("Stop", "Start"));
         }
     } else {
         if (checked) {
             m_autoSyncDecodesLeft = ui->autoDriftStopSpinBox->value();
-            ui->autoDriftButton->setText(text.left(text.indexOf("("))
-                                             .trimmed()
-                                             .replace("Start", "Stop"));
+            ui->autoDriftButton->setText(
+                text.left(text.indexOf("(")).trimmed().replace("Start", "Stop"));
             ui->autoDriftStopSpinBox->setEnabled(false);
         } else {
             m_autoSyncDecodesLeft = 0;
-            ui->autoDriftButton->setText(text.left(text.indexOf("("))
-                                             .trimmed()
-                                             .replace("Stop", "Start"));
+            ui->autoDriftButton->setText(
+                text.left(text.indexOf("(")).trimmed().replace("Stop", "Start"));
             ui->autoDriftStopSpinBox->setEnabled(true);
         }
     }
 }
 
-void WideGraph::drawDecodeLine(QColor const &color, int const ia,
-                               int const ib) {
+void WideGraph::drawDecodeLine(QColor const& color, int const ia, int const ib)
+{
     ui->widePlot->drawDecodeLine(color, ia, ib);
 }
 
-void WideGraph::drawHorizontalLine(QColor const &color, int const x,
-                                   int const width) {
+void WideGraph::drawHorizontalLine(QColor const& color, int const x, int const width)
+{
     ui->widePlot->drawHorizontalLine(color, x, width);
 }
 
-void WideGraph::dataSink(WF::SPlot const &s, float const df3) {
+void WideGraph::dataSink(WF::SPlot const& s, float const df3)
+{
     QMutexLocker lock(&m_drawLock);
 
     // If we need a fresh picture, just copy the entirety of the inbound
@@ -462,8 +446,7 @@ void WideGraph::dataSink(WF::SPlot const &s, float const df3) {
     if (m_waterfallNow == 0) {
         m_splot = s;
     } else {
-        std::transform(s.begin(), s.end(), m_splot.begin(), m_splot.begin(),
-                       std::plus<>{});
+        std::transform(s.begin(), s.end(), m_splot.begin(), m_splot.begin(), std::plus<> {});
     }
 
     // We can be confident at this point we've got summary data in the
@@ -490,20 +473,16 @@ void WideGraph::dataSink(WF::SPlot const &s, float const df3) {
         // only on the data to be displayed, rather than all of it.
 
         auto const bpp = ui->widePlot->binsPerPixel();
-        auto sit = m_splot.begin() +
-                   static_cast<int>(ui->widePlot->startFreq() / df3 + 0.5f);
+        auto sit = m_splot.begin() + static_cast<int>(ui->widePlot->startFreq() / df3 + 0.5f);
         auto it = m_swide.begin();
-        auto const end =
-            it + std::min(m_swide.size(),
-                          static_cast<std::size_t>(5000.0f / (bpp * df3)));
-        auto const avg = [runs = m_waterfallNow](auto const value) {
-            return value / runs;
-        };
+        auto const end
+            = it + std::min(m_swide.size(), static_cast<std::size_t>(5000.0f / (bpp * df3)));
+        auto const avg = [runs = m_waterfallNow](auto const value) { return value / runs; };
 
         for (; it != end; ++it, sit += bpp) {
-            *it = 10.0f *
-                  std::log10(bpp * std::transform_reduce(sit, sit + bpp, 0.0f,
-                                                         std::plus<>{}, avg));
+            *it = 10.0f
+                * std::log10(bpp
+                             * std::transform_reduce(sit, sit + bpp, 0.0f, std::plus<> {}, avg));
         }
 
         // Next round, we'll need a fresh picture, and we've now progressed
@@ -514,13 +493,18 @@ void WideGraph::dataSink(WF::SPlot const &s, float const df3) {
     }
 }
 
-void WideGraph::on_bppSpinBox_valueChanged(int const n) {
+void WideGraph::on_bppSpinBox_valueChanged(int const n)
+{
     ui->widePlot->setBinsPerPixel(n);
 }
 
-void WideGraph::on_qsyPushButton_clicked() { emit qsy(freq() - centerFreq()); }
+void WideGraph::on_qsyPushButton_clicked()
+{
+    emit qsy(freq() - centerFreq());
+}
 
-void WideGraph::on_offsetSpinBox_valueChanged(int const n) {
+void WideGraph::on_offsetSpinBox_valueChanged(int const n)
+{
     if (n == freq())
         return;
 
@@ -531,55 +515,69 @@ void WideGraph::on_offsetSpinBox_valueChanged(int const n) {
     emit changeFreq(newFreq);
 }
 
-void WideGraph::on_waterfallAvgSpinBox_valueChanged(int const n) {
+void WideGraph::on_waterfallAvgSpinBox_valueChanged(int const n)
+{
     m_waterfallAvg = n;
     ui->widePlot->setWaterfallAvg(n);
 }
 
-void WideGraph::keyPressEvent(QKeyEvent *event) {
+void WideGraph::keyPressEvent(QKeyEvent* event)
+{
     switch (event->key()) {
-    case Qt::Key_F11:
-        emit f11f12(11);
-        break;
-    case Qt::Key_F12:
-        emit f11f12(12);
-        break;
-    default:
-        event->ignore();
+    case Qt::Key_F11: emit f11f12(11); break;
+    case Qt::Key_F12: emit f11f12(12); break;
+    default: event->ignore();
     }
 }
 
-int WideGraph::freq() const { return ui->widePlot->freq(); }
+int WideGraph::freq() const
+{
+    return ui->widePlot->freq();
+}
 
-int WideGraph::centerFreq() const { return ui->centerSpinBox->value(); }
+int WideGraph::centerFreq() const
+{
+    return ui->centerSpinBox->value();
+}
 
-int WideGraph::nStartFreq() const { return ui->widePlot->startFreq(); }
+int WideGraph::nStartFreq() const
+{
+    return ui->widePlot->startFreq();
+}
 
-int WideGraph::filterMinimum() const {
+int WideGraph::filterMinimum() const
+{
     return std::clamp(m_filterCenter - m_filterWidth / 2, 0, 5000);
 }
 
-int WideGraph::filterMaximum() const {
+int WideGraph::filterMaximum() const
+{
     return std::clamp(m_filterCenter + m_filterWidth / 2, 0, 5000);
 }
 
-bool WideGraph::filterEnabled() const { return m_filterEnabled; }
+bool WideGraph::filterEnabled() const
+{
+    return m_filterEnabled;
+}
 
-void WideGraph::setFilterCenter(int const value) {
+void WideGraph::setFilterCenter(int const value)
+{
     m_filterCenter = value;
     setValueBlocked(value, ui->filterCenterSpinBox);
     setValueBlocked(value, ui->filterCenterDial);
     ui->widePlot->setFilter(m_filterCenter, m_filterWidth);
 }
 
-void WideGraph::setFilterWidth(int const value) {
+void WideGraph::setFilterWidth(int const value)
+{
     m_filterWidth = value;
     setValueBlocked(value, ui->filterWidthSpinBox);
     setValueBlocked(value, ui->filterWidthDial);
     ui->widePlot->setFilter(m_filterCenter, m_filterWidth);
 }
 
-void WideGraph::setFilterMinimumBandwidth(int const width) {
+void WideGraph::setFilterMinimumBandwidth(int const width)
+{
     m_filterMinWidth = width;
 
     ui->filterWidthSpinBox->setMinimum(width);
@@ -588,7 +586,8 @@ void WideGraph::setFilterMinimumBandwidth(int const width) {
     setFilterWidth(std::max(m_filterWidth, width));
 }
 
-void WideGraph::setFilterEnabled(bool enabled) {
+void WideGraph::setFilterEnabled(bool enabled)
+{
     m_filterEnabled = enabled;
 
     ui->filterCenterSyncButton->setEnabled(enabled);
@@ -602,33 +601,36 @@ void WideGraph::setFilterEnabled(bool enabled) {
     ui->widePlot->setFilterEnabled(enabled);
 }
 
-void WideGraph::setFilterOpacityPercent(int const n) {
+void WideGraph::setFilterOpacityPercent(int const n)
+{
     setValueBlocked(n, ui->filterOpacitySpinBox);
     ui->widePlot->setFilterOpacity(int((float(n) / 100.0) * 255));
 }
 
-void WideGraph::setPeriod(int const ntrperiod) {
+void WideGraph::setPeriod(int const ntrperiod)
+{
     m_TRperiod = ntrperiod;
     m_timeFormat = timeFormat(m_TRperiod);
 }
 
-void WideGraph::setFreq(int const audio_qrg) {
+void WideGraph::setFreq(int const audio_qrg)
+{
     emit setXIT(audio_qrg);
     ui->widePlot->setFreq(audio_qrg);
     ui->offsetSpinBox->setValue(audio_qrg);
 }
 
-void WideGraph::setSubMode(int const n) { ui->widePlot->setSubMode(n); }
+void WideGraph::setSubMode(int const n)
+{
+    ui->widePlot->setSubMode(n);
+}
 
-void WideGraph::on_spec2dComboBox_currentIndexChanged(int const index) {
+void WideGraph::on_spec2dComboBox_currentIndexChanged(int const index)
+{
     ui->smoSpinBox->setEnabled(false);
     switch (index) {
-    case 0:
-        ui->widePlot->setSpectrum(WF::Spectrum::Current);
-        break;
-    case 1:
-        ui->widePlot->setSpectrum(WF::Spectrum::Cumulative);
-        break;
+    case 0: ui->widePlot->setSpectrum(WF::Spectrum::Current); break;
+    case 1: ui->widePlot->setSpectrum(WF::Spectrum::Cumulative); break;
     case 2:
         ui->widePlot->setSpectrum(WF::Spectrum::LinearAvg);
         ui->smoSpinBox->setEnabled(true);
@@ -636,25 +638,29 @@ void WideGraph::on_spec2dComboBox_currentIndexChanged(int const index) {
     }
 }
 
-void WideGraph::setDialFreq(float const dialFreq) {
+void WideGraph::setDialFreq(float const dialFreq)
+{
     ui->widePlot->setDialFreq(dialFreq);
 }
 
-void WideGraph::setTimeControlsVisible(bool const visible) {
+void WideGraph::setTimeControlsVisible(bool const visible)
+{
     setControlsVisible(visible, false);
     ui->tabWidget->setCurrentWidget(ui->timingTab);
 }
 
-bool WideGraph::timeControlsVisible() const {
+bool WideGraph::timeControlsVisible() const
+{
     return controlsVisible() && ui->tabWidget->currentWidget() == ui->timingTab;
 }
 
-void WideGraph::setControlsVisible(bool const visible, bool const controlTab) {
+void WideGraph::setControlsVisible(bool const visible, bool const controlTab)
+{
     if (ui->controls_widget->isVisible() != visible) {
         if (visible) {
             if (m_sizes.isEmpty()) {
                 auto const width = ui->splitter->width();
-                m_sizes = {width, width / 4};
+                m_sizes = { width, width / 4 };
             }
             ui->splitter->setSizes(m_sizes);
             if (controlTab) {
@@ -667,110 +673,138 @@ void WideGraph::setControlsVisible(bool const visible, bool const controlTab) {
     }
 }
 
-bool WideGraph::controlsVisible() const {
+bool WideGraph::controlsVisible() const
+{
     return ui->controls_widget->isVisible();
 }
 
-void WideGraph::setBand(QString const &band) {
+void WideGraph::setBand(QString const& band)
+{
     m_band = QString(4, ' ').append(band);
 }
 
-void WideGraph::on_fStartSpinBox_valueChanged(int const n) {
+void WideGraph::on_fStartSpinBox_valueChanged(int const n)
+{
     ui->widePlot->setStartFreq(n);
 }
 
-void WideGraph::readPalette() {
+void WideGraph::readPalette()
+{
     try {
         ui->widePlot->setColors(
-            user_defined == m_waterfallPalette
-                ? WF::Palette{m_userPalette}.interpolate()
-                : WF::Palette{m_palettes_path.absoluteFilePath(
-                                  m_waterfallPalette + ".pal")}
-                      .interpolate());
-    } catch (std::exception const &e) {
+            user_defined == m_waterfallPalette ?
+                WF::Palette { m_userPalette }.interpolate() :
+                WF::Palette { m_palettes_path.absoluteFilePath(m_waterfallPalette + ".pal") }
+                    .interpolate());
+    } catch (std::exception const& e) {
         JS8MessageBox::warning_message(this, tr("Read Palette"), e.what());
     }
 }
 
-void WideGraph::on_paletteComboBox_activated(int const palette_index) {
+void WideGraph::on_paletteComboBox_activated(int const palette_index)
+{
     m_waterfallPalette = ui->paletteComboBox->itemText(palette_index);
     readPalette();
 }
 
-void WideGraph::on_cbFlatten_toggled(bool const flatten) {
+void WideGraph::on_cbFlatten_toggled(bool const flatten)
+{
     ui->widePlot->setFlatten(flatten);
 }
 
-void WideGraph::on_adjust_palette_push_button_clicked(bool) {
+void WideGraph::on_adjust_palette_push_button_clicked(bool)
+{
     try {
         if (m_userPalette.design()) {
             m_waterfallPalette = user_defined;
             ui->paletteComboBox->setCurrentText(m_waterfallPalette);
             readPalette();
         }
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         JS8MessageBox::warning_message(this, tr("Read Palette"), e.what());
     }
 }
 
-void WideGraph::on_gainSlider_valueChanged(int const value) {
+void WideGraph::on_gainSlider_valueChanged(int const value)
+{
     ui->widePlot->setPlotGain(value);
 }
 
-void WideGraph::on_zeroSlider_valueChanged(int const value) {
+void WideGraph::on_zeroSlider_valueChanged(int const value)
+{
     ui->widePlot->setPlotZero(value);
 }
 
-void WideGraph::on_gain2dSlider_valueChanged(int const value) {
+void WideGraph::on_gain2dSlider_valueChanged(int const value)
+{
     ui->widePlot->setPlot2dGain(value);
 }
 
-void WideGraph::on_zero2dSlider_valueChanged(int const value) {
+void WideGraph::on_zero2dSlider_valueChanged(int const value)
+{
     ui->widePlot->setPlot2dZero(value);
 }
 
-void WideGraph::on_smoSpinBox_valueChanged(int const n) { m_nsmo = n; }
+void WideGraph::on_smoSpinBox_valueChanged(int const n)
+{
+    m_nsmo = n;
+}
 
-int WideGraph::smoothYellow() const { return m_nsmo; }
+int WideGraph::smoothYellow() const
+{
+    return m_nsmo;
+}
 
-void WideGraph::on_sbPercent2dPlot_valueChanged(int const n) {
+void WideGraph::on_sbPercent2dPlot_valueChanged(int const n)
+{
     ui->widePlot->setPercent2D(n);
 }
 
-void WideGraph::on_filterCenterSpinBox_valueChanged(int const value) {
+void WideGraph::on_filterCenterSpinBox_valueChanged(int const value)
+{
     if (!ui->filterCenterSpinBox->hasFocus())
         setFilterCenter(value);
 }
 
-void WideGraph::on_filterCenterSpinBox_editingFinished() {
+void WideGraph::on_filterCenterSpinBox_editingFinished()
+{
     setFilterCenter(ui->filterCenterSpinBox->value());
 }
 
-void WideGraph::on_filterWidthSpinBox_valueChanged(int const value) {
+void WideGraph::on_filterWidthSpinBox_valueChanged(int const value)
+{
     if (!ui->filterWidthSpinBox->hasFocus())
         setFilterWidth(value);
 }
 
-void WideGraph::on_filterWidthSpinBox_editingFinished() {
+void WideGraph::on_filterWidthSpinBox_editingFinished()
+{
     setFilterWidth(ui->filterWidthSpinBox->value());
 }
 
-void WideGraph::on_filterCenterSyncButton_clicked() {
+void WideGraph::on_filterCenterSyncButton_clicked()
+{
     setFilterCenter(ui->offsetSpinBox->value());
 }
 
-void WideGraph::on_filterCheckBox_toggled(bool const b) { setFilterEnabled(b); }
+void WideGraph::on_filterCheckBox_toggled(bool const b)
+{
+    setFilterEnabled(b);
+}
 
-void WideGraph::on_filterOpacitySpinBox_valueChanged(int const n) {
+void WideGraph::on_filterOpacitySpinBox_valueChanged(int const n)
+{
     setFilterOpacityPercent(n);
 }
 
-void WideGraph::on_driftSpinBox_valueChanged(int const n) {
+void WideGraph::on_driftSpinBox_valueChanged(int const n)
+{
     if (n != DriftingDateTime::drift())
         emit want_new_drift(n);
 }
 
-void WideGraph::on_driftSyncButton_clicked() {
+void WideGraph::on_driftSyncButton_clicked()
+{
     auto const now = QDateTime::currentDateTimeUtc();
     qint64 const pos = m_TRperiod - (now.time().second() % m_TRperiod);
     qint64 const neg = (now.time().second() % m_TRperiod) - m_TRperiod;
@@ -779,7 +813,8 @@ void WideGraph::on_driftSyncButton_clicked() {
     emit want_new_drift(sec * 1000);
 }
 
-void WideGraph::on_driftSyncEndButton_clicked() {
+void WideGraph::on_driftSyncEndButton_clicked()
+{
     auto const now = QDateTime::currentDateTimeUtc();
     qint64 const pos = m_TRperiod - (now.time().second() % m_TRperiod);
     qint64 const neg = (now.time().second() % m_TRperiod) - m_TRperiod;
@@ -788,7 +823,8 @@ void WideGraph::on_driftSyncEndButton_clicked() {
     emit want_new_drift(sec * 1000);
 }
 
-void WideGraph::on_driftSyncMinuteButton_clicked() {
+void WideGraph::on_driftSyncMinuteButton_clicked()
+{
     auto const now = QDateTime::currentDateTimeUtc();
     qint64 const val = now.time().second();
     qint64 const sec = val < 30 ? -val : 60 - val;
@@ -796,14 +832,16 @@ void WideGraph::on_driftSyncMinuteButton_clicked() {
     emit want_new_drift(sec * 1000);
 }
 
-void WideGraph::on_driftSyncResetButton_clicked() { emit want_new_drift(0); }
+void WideGraph::on_driftSyncResetButton_clicked()
+{
+    emit want_new_drift(0);
+}
 
-void WideGraph::onDriftChanged(qint64 const n) {
+void WideGraph::onDriftChanged(qint64 const n)
+{
     qCDebug(widegraph_js8) << "Incoming new drift milliseconds:" << n
-                           << ", computer clock time:"
-                           << QDateTime::currentDateTimeUtc()
-                           << ", drifted time:"
-                           << DriftingDateTime::currentDateTimeUtc();
+                           << ", computer clock time:" << QDateTime::currentDateTimeUtc()
+                           << ", drifted time:" << DriftingDateTime::currentDateTimeUtc();
 
     if (ui->driftSpinBox->value() != n)
         ui->driftSpinBox->setValue(n);

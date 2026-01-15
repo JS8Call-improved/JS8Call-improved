@@ -10,20 +10,19 @@
 //
 // thanks to Herb Sutter (http://herbsutter.com/gotw/_101/) for the implementation
 //
-template<typename T>
-class pimpl
+template <typename T> class pimpl
 {
 private:
-  std::unique_ptr<T> m_;
+    std::unique_ptr<T> m_;
 
 public:
-  pimpl ();
-  template<typename ...Args> pimpl (Args&& ...);
-  ~pimpl ();
-  T * operator -> ();
-  T const * operator -> () const;
-  T& operator * ();
-  T const& operator * () const;
+    pimpl();
+    template <typename... Args> pimpl(Args&&...);
+    ~pimpl();
+    T* operator->();
+    T const* operator->() const;
+    T& operator*();
+    T const& operator*() const;
 };
 
 #endif

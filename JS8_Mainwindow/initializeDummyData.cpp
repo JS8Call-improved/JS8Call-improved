@@ -5,7 +5,8 @@
  *  group messaging function
  */
 
-void MainWindow::initializeDummyData() {
+void MainWindow::initializeDummyData()
+{
     if (!QApplication::applicationName().contains("dummy")) {
         return;
     }
@@ -153,8 +154,8 @@ void MainWindow::initializeDummyData() {
         m_config.writeable_data_dir().absoluteFilePath(QString("test.db3")));
     auto inbox = Inbox(path);
     if (inbox.open()) {
-        qCDebug(mainwindow_js8) << "test inbox opened"
-                                << inbox.count("test", "$", "%") << "messages";
+        qCDebug(mainwindow_js8) << "test inbox opened" << inbox.count("test", "$", "%")
+                                << "messages";
 
         // int i = inbox.append(Message("test", "booya1"));
 
@@ -169,8 +170,7 @@ void MainWindow::initializeDummyData() {
         qCDebug(mainwindow_js8) << inbox.del(i);
 
         foreach (auto pair, inbox.values("test", "$", "%", 0, 5)) {
-            qCDebug(mainwindow_js8)
-                << pair.first << QString(pair.second.toJson());
+            qCDebug(mainwindow_js8) << pair.first << QString(pair.second.toJson());
         }
     }
 
@@ -190,10 +190,9 @@ void MainWindow::initializeDummyData() {
         m_config.addGroup("@GROUP42");
     }
 
-    QList<QString> calls = {"KN4CRD", "VE7/KN4CRD", "KN4CRD/P", "KC9QNE",
-                            "KI6SSI", "K0OG",       "LB9YH",    "VE7/LB9YH",
-                            "M0IAX",  "N0JDS",      "OH8STN",   "VA3OSO",
-                            "VK1MIC", "W0FW"};
+    QList<QString> calls
+        = { "KN4CRD",    "VE7/KN4CRD", "KN4CRD/P", "KC9QNE", "KI6SSI", "K0OG",   "LB9YH",
+            "VE7/LB9YH", "M0IAX",      "N0JDS",    "OH8STN", "VA3OSO", "VK1MIC", "W0FW" };
 
     auto dt = DriftingDateTime::currentDateTimeUtc().addSecs(-300);
 
@@ -202,10 +201,10 @@ void MainWindow::initializeDummyData() {
         CallDetail cd = {};
         cd.call = call;
         cd.through = i == 2 ? "KN4CRD" : "";
-        cd.dial = 7078000;
+        cd.dial = 7'078'000;
         cd.offset = 500 + 100 * i;
         cd.snr = i == 3 ? -100 : i;
-        cd.ackTimestamp = i == 1 ? dt.addSecs(-900) : QDateTime{};
+        cd.ackTimestamp = i == 1 ? dt.addSecs(-900) : QDateTime {};
         cd.utcTimestamp = dt;
         cd.grid = i == 5 ? "J042" : i == 6 ? " FN42FN42FN" : "";
         cd.tdrift = 0.1 * i;
@@ -215,14 +214,12 @@ void MainWindow::initializeDummyData() {
         ActivityDetail ad = {};
         ad.bits = Varicode::JS8CallFirst | Varicode::JS8CallLast;
         ad.snr = i == 3 ? -100 : i;
-        ad.dial = 7078000;
+        ad.dial = 7'078'000;
         ad.offset = 500 + 100 * i;
-        ad.text = QString("%1: %2 TEST MESSAGE")
-                      .arg(call)
-                      .arg(m_config.my_callsign());
+        ad.text = QString("%1: %2 TEST MESSAGE").arg(call).arg(m_config.my_callsign());
         ad.utcTimestamp = dt;
         ad.submode = cd.submode;
-        m_bandActivity[500 + 100 * i] = {ad};
+        m_bandActivity[500 + 100 * i] = { ad };
 
         markOffsetDirected(500 + 100 * i, false);
 
@@ -232,7 +229,7 @@ void MainWindow::initializeDummyData() {
     ActivityDetail adHB1 = {};
     adHB1.bits = Varicode::JS8CallFirst;
     adHB1.snr = 0;
-    adHB1.dial = 7078000;
+    adHB1.dial = 7'078'000;
     adHB1.offset = 750;
     adHB1.text = QString("KN4CRD: HB AUTO EM73");
     adHB1.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
@@ -242,7 +239,7 @@ void MainWindow::initializeDummyData() {
     ActivityDetail adHB2 = {};
     adHB2.bits = Varicode::JS8CallLast;
     adHB2.snr = 0;
-    adHB2.dial = 7078000;
+    adHB2.dial = 7'078'000;
     adHB2.offset = 750;
     adHB2.text = QString(" MSG ID 1");
     adHB2.utcTimestamp = DriftingDateTime::currentDateTimeUtc();
@@ -261,31 +258,49 @@ void MainWindow::initializeDummyData() {
 
     QString eot = m_config.eot();
 
-    displayTextForFreq(QString("KN4CRD: @ALLCALL? %1 ").arg(eot), 42,
+    displayTextForFreq(QString("KN4CRD: @ALLCALL? %1 ").arg(eot),
+                       42,
                        DriftingDateTime::currentDateTimeUtc().addSecs(-315),
-                       true, true, true);
-    displayTextForFreq(QString("J1Y: KN4CRD SNR -05 %1 ").arg(eot), 42,
+                       true,
+                       true,
+                       true);
+    displayTextForFreq(QString("J1Y: KN4CRD SNR -05 %1 ").arg(eot),
+                       42,
                        DriftingDateTime::currentDateTimeUtc().addSecs(-300),
-                       false, true, true);
-    displayTextForFreq(QString("HELLO BRAVE  NEW   WORLD    %1 ").arg(eot), 42,
+                       false,
+                       true,
+                       true);
+    displayTextForFreq(QString("HELLO BRAVE  NEW   WORLD    %1 ").arg(eot),
+                       42,
                        DriftingDateTime::currentDateTimeUtc().addSecs(-300),
-                       false, true, true);
+                       false,
+                       true,
+                       true);
 
     auto now = DriftingDateTime::currentDateTimeUtc();
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now,
-                       false, true, true);
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now,
-                       false, true, true); // should be hidden (duplicate)
-    displayTextForFreq(QString("OH8STN: JY1 ACK -12 %1 ").arg(eot), 780, now,
-                       false, true, true);
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780, now, false, true, true);
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot),
+                       780,
+                       now,
+                       false,
+                       true,
+                       true); // should be hidden (duplicate)
+    displayTextForFreq(QString("OH8STN: JY1 ACK -12 %1 ").arg(eot), 780, now, false, true, true);
 
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -10 %1 ").arg(eot), 800, now,
-                       false, true, true);
-    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot), 780,
-                       now.addSecs(120), false, true, true);
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -10 %1 ").arg(eot), 800, now, false, true, true);
+    displayTextForFreq(QString("KN4CRD: JY1 ACK -12 %1 ").arg(eot),
+                       780,
+                       now.addSecs(120),
+                       false,
+                       true,
+                       true);
 
     displayTextForFreq(QString("HELLO\\nBRAVE\\nNEW\\nWORLD %1 ").arg(eot),
-                       1500, now, false, true, true);
+                       1500,
+                       now,
+                       false,
+                       true,
+                       true);
 
     displayActivity(true);
 }

@@ -1,15 +1,18 @@
 #include "Geodesic.h"
-#include "JS8_Include/Maidenhead.h"
+
 #include <QCache>
 #include <QMutex>
 #include <QMutexLocker>
 #include <concepts>
 
+#include "JS8_Include/Maidenhead.h"
+
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Epsilon values for Lat / Long comparisons; if we find after conversion
 // to coordinates that a pair of grids are either identical or antipodes,
 // within these limits, we'll return early rather than computing results.
@@ -22,22 +25,23 @@ constexpr auto LL_EPSILON_ANTIPODES = 1.e-6f;
 // concern; we simply guarantee to the presentation layer that these are
 // what we provide, deferring translation to somewhere above us.
 
-constexpr QStringView COMPASS[] = {u"\u2191N",  u"\u2197NE", u"\u2192E",
-                                   u"\u2198SE", u"\u2193S",  u"\u2199SW",
-                                   u"\u2190W",  u"\u2196NW"};
+constexpr QStringView COMPASS[] = { u"\u2191N", u"\u2197NE", u"\u2192E", u"\u2198SE",
+                                    u"\u2193S", u"\u2199SW", u"\u2190W", u"\u2196NW" };
 } // namespace
 
 /******************************************************************************/
 // Input Normalization
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Structure used to perform lookups; represents normalized, i.e.,
 // validated, trimmed fore and aft, converted to upper case, grid
 // identifiers, and an indication if either are only sufficiently
 // long to contain square data, rather than subsquare or extended.
 
-struct Data {
+struct Data
+{
     QString origin;
     QString remote;
     bool square;
@@ -46,12 +50,14 @@ struct Data {
 // Given a pair of strings that have passed validity checking, create
 // and return normalized data.
 
-auto normalize(QStringView const origin, QStringView const remote) {
+auto normalize(QStringView const origin, QStringView const remote)
+{
     auto const normalizedOrigin = origin.trimmed().toString().toUpper();
     auto const normalizedRemote = remote.trimmed().toString().toUpper();
 
-    return Data{normalizedOrigin, normalizedRemote,
-                normalizedOrigin.length() < 6 || normalizedRemote.length() < 6};
+    return Data { normalizedOrigin,
+                  normalizedRemote,
+                  normalizedOrigin.length() < 6 || normalizedRemote.length() < 6 };
 }
 } // namespace
 
@@ -59,21 +65,24 @@ auto normalize(QStringView const origin, QStringView const remote) {
 // Grid Square to Coordinates
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Grid to coordinate transformation, with results exactly matching those
 // of the Fortran subroutine grid2deg() within the domain of grid2deg(),
 // which is only up to subsquare. Input is a 4, 6, or 8 character grid
 // square, validated and normalized by the functions above.
 
-template <qsizetype Offset> auto gridData(QStringView const grid) {
+template <qsizetype Offset> auto gridData(QStringView const grid)
+{
     static_assert(Offset == 0 || Offset == 1);
-    return std::array{
-        grid[Offset].unicode() - u'A', grid[Offset + 2].unicode() - u'0',
-        (grid.size() > 4 ? grid[Offset + 4].unicode() : u'M') - u'A',
-        (grid.size() > 6 ? grid[Offset + 6].unicode() : u'4') - u'0'};
+    return std::array { grid[Offset].unicode() - u'A',
+                        grid[Offset + 2].unicode() - u'0',
+                        (grid.size() > 4 ? grid[Offset + 4].unicode() : u'M') - u'A',
+                        (grid.size() > 6 ? grid[Offset + 6].unicode() : u'4') - u'0' };
 }
 
-inline auto gridLat(QStringView const grid) {
+inline auto gridLat(QStringView const grid)
+{
     // 1: A-R,  10° each, field, one of 18 zones of latitude
     // 3: 0-9,   1° each, 100 squares within field
     // 5: A-X, 2.5' each, 576 subsquares within square
@@ -81,12 +90,12 @@ inline auto gridLat(QStringView const grid) {
 
     auto const data = gridData<1>(grid);
 
-    return (-90 + 10 * data[0]) + data[1] +
-           ((2.5f * (data[2] + 0.5f)) / 60.0f) +
-           ((15 * (data[3] + 0.5f)) / 3600.0f);
+    return (-90 + 10 * data[0]) + data[1] + ((2.5f * (data[2] + 0.5f)) / 60.0f)
+        + ((15 * (data[3] + 0.5f)) / 3600.0f);
 }
 
-inline auto gridLon(QStringView const grid) {
+inline auto gridLon(QStringView const grid)
+{
     // 0: A-R, 20° each, field, one of 18 zones of longitude
     // 2: 0-9,  2° each, 100 squares within field
     // 4: A-X,  5' each, 576 subsquares within square
@@ -94,44 +103,45 @@ inline auto gridLon(QStringView const grid) {
 
     auto const data = gridData<0>(grid);
 
-    return (180 - 20 * data[0]) - (2 * data[1]) -
-           ((5 * (data[2] + 0.5f)) / 60.0f) -
-           ((30 * (data[3] + 0.5f)) / 3600.0f);
+    return (180 - 20 * data[0]) - (2 * data[1]) - ((5 * (data[2] + 0.5f)) / 60.0f)
+        - ((30 * (data[3] + 0.5f)) / 3600.0f);
 }
 
-class Coords {
-  private:
+class Coords
+{
+private:
     // Data members
 
     float m_lat;
     float m_lon;
 
-  public:
+public:
     // Inline Accessors
 
     auto lat() const { return m_lat; }
+
     auto lon() const { return m_lon; }
 
     // Constructor
 
-    Coords(QStringView const grid)
-        : m_lat(gridLat(grid)), m_lon(gridLon(grid)) {}
+    Coords(QStringView const grid) : m_lat(gridLat(grid)), m_lon(gridLon(grid)) { }
 
     // Determine if these coordinates are identical to those provided,
     // within the defined epsilon limit.
 
-    bool isIdenticalTo(Coords const other) const {
+    bool isIdenticalTo(Coords const other) const
+    {
         auto const latValue = std::abs(lat() - other.lat());
         auto const lonValue = std::abs(lon() - other.lon());
 
-        return ((latValue < LL_EPSILON_IDENTICAL) &&
-                (lonValue < LL_EPSILON_IDENTICAL));
+        return ((latValue < LL_EPSILON_IDENTICAL) && (lonValue < LL_EPSILON_IDENTICAL));
     }
 
     // Determine if these coordinates are antipodes of those provided,
     // within the defined epsilon limit.
 
-    bool isAntipodesOf(Coords const other) const {
+    bool isAntipodesOf(Coords const other) const
+    {
         // We subtract the longitudes and add 720 degrees to ensure
         // a positive result; modulo 360 of that results in a value
         // in the range [-180, 180].
@@ -140,8 +150,7 @@ class Coords {
         auto const latValue = std::abs(lat() + other.lat());
         auto const lonValue = std::abs(range - 180.0f);
 
-        return ((latValue < LL_EPSILON_ANTIPODES) &&
-                (lonValue < LL_EPSILON_ANTIPODES));
+        return ((latValue < LL_EPSILON_ANTIPODES) && (lonValue < LL_EPSILON_ANTIPODES));
     }
 };
 } // namespace
@@ -150,7 +159,8 @@ class Coords {
 // Coordinates to Azimuth / Distance
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Collapsed and simplified versions of two of JHT's original Fortran
 // subroutines, azdist() and geodist(). Given normalized data, return
 // the azimuth in degrees and the distance in kilometers.
@@ -163,7 +173,8 @@ namespace {
 //
 // Note that as with the original routines, West longitude is positive.
 
-auto azdist(Data const &data) {
+auto azdist(Data const& data)
+{
     // If they've given us the same grids, reward them appropriately.
 
     if (data.origin == data.remote)
@@ -171,8 +182,8 @@ auto azdist(Data const &data) {
 
     // Convert the grids to coordinates.
 
-    auto const origin = Coords{data.origin};
-    auto const remote = Coords{data.remote};
+    auto const origin = Coords { data.origin };
+    auto const remote = Coords { data.remote };
 
     // Grids that looked different prior to conversion to coordinates
     // can nevertheless be practically on top of one another; we can't
@@ -260,18 +271,17 @@ auto azdist(Data const &data) {
     auto const E = -2.0f * CD;
     auto const Y = U - V;
     auto const A = -D * E;
-    auto const dist = AL * SD *
-                      (T - (F / 4.0f) * (T * X - Y) +
-                       FF64 * (X * (A + (T - (A + E) / 2.0f) * X) +
-                               Y * (-2.0f * D + E * Y) + D * X * Y)) /
-                      1000.0f;
+    auto const dist = AL * SD
+        * (T - (F / 4.0f) * (T * X - Y)
+           + FF64 * (X * (A + (T - (A + E) / 2.0f) * X) + Y * (-2.0f * D + E * Y) + D * X * Y))
+        / 1000.0f;
     auto const TDLPM = std::tan(
-        (DLR + (-((E * (4.0f - X) + 2.0f * Y) *
-                  ((F / 2.0f) * T + FF64 * (32.0f * T + (A - 20.0f * T) * X -
-                                            2.0f * (D + 2.0f) * Y)) /
-                  4.0f) *
-                std::tan(DLR))) /
-        2.0f);
+        (DLR
+         + (-((E * (4.0f - X) + 2.0f * Y)
+              * ((F / 2.0f) * T + FF64 * (32.0f * T + (A - 20.0f * T) * X - 2.0f * (D + 2.0f) * Y))
+              / 4.0f)
+            * std::tan(DLR)))
+        / 2.0f);
     auto const HAPBR = std::atan2(SDTM, (CTM * TDLPM));
     auto const HAMBR = std::atan2(CDTM, (STM * TDLPM));
 
@@ -295,7 +305,8 @@ auto azdist(Data const &data) {
 // Local Utilities
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Displayable units. No need to translate these; the SI units are
 // universal, and the standard units are only used in English.
 
@@ -305,7 +316,8 @@ constexpr QStringView UNITS_MI = u"mi";
 // In the spirit of the Fortran NINT() function, round and convert the
 // provided floating-point value to an integer, for display purposes.
 
-template <std::floating_point T> auto nint(T const value) {
+template <std::floating_point T> auto nint(T const value)
+{
     return static_cast<int>(std::round(value));
 }
 } // namespace
@@ -314,24 +326,25 @@ template <std::floating_point T> auto nint(T const value) {
 // Public Implementation
 /******************************************************************************/
 
-namespace Geodesic {
+namespace Geodesic
+{
 // Return as a compass direction, i.e., directional arrow and cardinal
 // direction, or an empty string view if invalid.
 
-QStringView Azimuth::compass() const {
-    return isValid() ? COMPASS[static_cast<int>((m_value + 22.5f) / 45.0f) % 8]
-                     : QStringView{};
+QStringView Azimuth::compass() const
+{
+    return isValid() ? COMPASS[static_cast<int>((m_value + 22.5f) / 45.0f) % 8] : QStringView {};
 }
 
 // Return azimuth as a numeric string, to the nearest whole degree.
 // If the caller requests units, we'll append a degree symbol.
 
-QString Azimuth::toString(bool const units) const {
+QString Azimuth::toString(bool const units) const
+{
     if (!isValid())
-        return QString{};
+        return QString {};
 
-    return units ? QString("%1°").arg(nint(m_value))
-                 : QString::number(nint(m_value));
+    return units ? QString("%1°").arg(nint(m_value)) : QString::number(nint(m_value));
 }
 
 // Return distance as a numeric string, to the nearest whole kilometer
@@ -342,22 +355,19 @@ QString Azimuth::toString(bool const units) const {
 //
 // If the caller requests units, we'll append them.
 
-QString Distance::toString(bool const miles, bool const units) const {
+QString Distance::toString(bool const miles, bool const units) const
+{
     if (!isValid())
-        return QString{};
+        return QString {};
 
     auto value = isClose() ? CLOSE : m_value;
     if (miles)
         value /= 1.609344f;
 
     if (units && isClose())
-        return QString("<%1 %2")
-            .arg(nint(value))
-            .arg(miles ? UNITS_MI : UNITS_KM);
+        return QString("<%1 %2").arg(nint(value)).arg(miles ? UNITS_MI : UNITS_KM);
     else if (units)
-        return QString("%1 %2")
-            .arg(nint(value))
-            .arg(miles ? UNITS_MI : UNITS_KM);
+        return QString("%1 %2").arg(nint(value)).arg(miles ? UNITS_MI : UNITS_KM);
     else if (isClose())
         return QString("<%1").arg(nint(value));
     else
@@ -405,7 +415,8 @@ QString Distance::toString(bool const miles, bool const units) const {
 // This function is reentrant, but practically speaking, it'd be unusual
 // for this to be called from anything other than the GUI thread.
 
-Vector vector(QStringView const origin, QStringView const remote) {
+Vector vector(QStringView const origin, QStringView const remote)
+{
     using Cache = QCache<QString, Vector>;
 
     static QMutex mutex;
@@ -418,8 +429,7 @@ Vector vector(QStringView const origin, QStringView const remote) {
     // sanity check that what we've been handed could be expected to work.
     // If not, return a vector with invalid azimuth and invalid distance.
 
-    if (!Maidenhead::valid(origin.trimmed()) ||
-        !Maidenhead::valid(remote.trimmed())) {
+    if (!Maidenhead::valid(origin.trimmed()) || !Maidenhead::valid(remote.trimmed())) {
         return Vector();
     }
 

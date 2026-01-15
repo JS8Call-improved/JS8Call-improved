@@ -4,6 +4,7 @@
 #include <QMetaType>
 #include <QStandardItemEditorCreator>
 
+#include "FrequencyLineEdit.h"
 #include "FrequencyList.h"
 #include "IARURegions.h"
 #include "JS8_Audio/AudioDevice.h"
@@ -14,14 +15,14 @@
 #include "StationList.h"
 #include "WF.h"
 
-#include "FrequencyLineEdit.h"
-
-QItemEditorFactory *item_editor_factory() {
-    static QItemEditorFactory *our_item_editor_factory = new QItemEditorFactory;
+QItemEditorFactory* item_editor_factory()
+{
+    static QItemEditorFactory* our_item_editor_factory = new QItemEditorFactory;
     return our_item_editor_factory;
 }
 
-void register_types() {
+void register_types()
+{
     // types in Radio.h are registered in their own translation unit
     // as they are needed in the wsjtx_udp shared library too
 
@@ -29,14 +30,12 @@ void register_types() {
     // used as signal/slot connection arguments since the new Qt 5.5
     // Q_ENUM macro only seems to register the unqualified name
 
-    item_editor_factory()->registerEditor(
-        qMetaTypeId<Radio::Frequency>(),
-        new QStandardItemEditorCreator<FrequencyLineEdit>());
+    item_editor_factory()->registerEditor(qMetaTypeId<Radio::Frequency>(),
+                                          new QStandardItemEditorCreator<FrequencyLineEdit>());
     // auto frequency_delta_type_id = qRegisterMetaType<Radio::FrequencyDelta>
     // ("FrequencyDelta");
-    item_editor_factory()->registerEditor(
-        qMetaTypeId<Radio::FrequencyDelta>(),
-        new QStandardItemEditorCreator<FrequencyDeltaLineEdit>());
+    item_editor_factory()->registerEditor(qMetaTypeId<Radio::FrequencyDelta>(),
+                                          new QStandardItemEditorCreator<FrequencyDeltaLineEdit>());
 
     // V100 Frequency list model
     qRegisterMetaType<FrequencyList_v2::Item>("Item_v2");
@@ -53,23 +52,16 @@ void register_types() {
     qRegisterMetaType<StationList::Stations>("Stations");
 
     // Transceiver
-    qRegisterMetaType<Transceiver::TransceiverState>(
-        "Transceiver::TransceiverState");
+    qRegisterMetaType<Transceiver::TransceiverState>("Transceiver::TransceiverState");
     qRegisterMetaType<Transceiver::MODE>("Transceiver::MODE");
 
     // Transceiver factory
-    qRegisterMetaType<TransceiverFactory::DataBits>(
-        "TransceiverFactory::DataBits");
-    qRegisterMetaType<TransceiverFactory::StopBits>(
-        "TransceiverFactory::StopBits");
-    qRegisterMetaType<TransceiverFactory::Handshake>(
-        "TransceiverFactory::Handshake");
-    qRegisterMetaType<TransceiverFactory::PTTMethod>(
-        "TransceiverFactory::PTTMethod");
-    qRegisterMetaType<TransceiverFactory::TXAudioSource>(
-        "TransceiverFactory::TXAudioSource");
-    qRegisterMetaType<TransceiverFactory::SplitMode>(
-        "TransceiverFactory::SplitMode");
+    qRegisterMetaType<TransceiverFactory::DataBits>("TransceiverFactory::DataBits");
+    qRegisterMetaType<TransceiverFactory::StopBits>("TransceiverFactory::StopBits");
+    qRegisterMetaType<TransceiverFactory::Handshake>("TransceiverFactory::Handshake");
+    qRegisterMetaType<TransceiverFactory::PTTMethod>("TransceiverFactory::PTTMethod");
+    qRegisterMetaType<TransceiverFactory::TXAudioSource>("TransceiverFactory::TXAudioSource");
+    qRegisterMetaType<TransceiverFactory::SplitMode>("TransceiverFactory::SplitMode");
 
     // Waterfall
     qRegisterMetaType<WF::Spectrum>("Spectrum");

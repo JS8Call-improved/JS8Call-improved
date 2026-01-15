@@ -5,19 +5,20 @@
 
 class QLabel;
 
-class SignalMeter final : public QWidget {
+class SignalMeter final : public QWidget
+{
     Q_OBJECT
 
-  public:
+public:
     // Constructor
 
-    explicit SignalMeter(QWidget *parent = nullptr);
+    explicit SignalMeter(QWidget* parent = nullptr);
 
     // Slots
 
     Q_SLOT void setValue(float value, float valueMax);
 
-  private:
+private:
     // Forward declarations
 
     class Scale;
@@ -25,9 +26,9 @@ class SignalMeter final : public QWidget {
 
     // Data members
 
-    Scale *m_scale;
-    Meter *m_meter;
-    QLabel *m_value;
+    Scale* m_scale;
+    Meter* m_meter;
+    QLabel* m_value;
 };
 
 #endif // SIGNALMETER_HPP__

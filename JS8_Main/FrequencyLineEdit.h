@@ -10,29 +10,30 @@ class QWidget;
 //
 // MHz frequency line edits with validation
 //
-class FrequencyLineEdit final : public QLineEdit {
+class FrequencyLineEdit final : public QLineEdit
+{
     Q_OBJECT;
     Q_PROPERTY(Frequency frequency READ frequency WRITE frequency USER true);
 
-  public:
+public:
     using Frequency = Radio::Frequency;
 
-    explicit FrequencyLineEdit(QWidget *parent = nullptr);
+    explicit FrequencyLineEdit(QWidget* parent = nullptr);
 
     // Property frequency implementation
     Frequency frequency() const;
     void frequency(Frequency);
 };
 
-class FrequencyDeltaLineEdit final : public QLineEdit {
+class FrequencyDeltaLineEdit final : public QLineEdit
+{
     Q_OBJECT;
-    Q_PROPERTY(FrequencyDelta frequency_delta READ frequency_delta WRITE
-                   frequency_delta USER true);
+    Q_PROPERTY(FrequencyDelta frequency_delta READ frequency_delta WRITE frequency_delta USER true);
 
-  public:
+public:
     using FrequencyDelta = Radio::FrequencyDelta;
 
-    explicit FrequencyDeltaLineEdit(QWidget *parent = nullptr);
+    explicit FrequencyDeltaLineEdit(QWidget* parent = nullptr);
 
     // Property frequency_delta implementation
     FrequencyDelta frequency_delta() const;

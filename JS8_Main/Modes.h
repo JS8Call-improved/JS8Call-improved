@@ -25,40 +25,40 @@ class QModelIndex;
 //
 // 	Implements a concrete sub-class of the QAbstractListModel class.
 //
-class Modes final : public QAbstractListModel {
+class Modes final : public QAbstractListModel
+{
     Q_OBJECT
     Q_ENUMS(Mode)
 
-  public:
+public:
     //
     // This enumeration contains the supported modes, to complement this
     // an array of human readable strings in the implementation
     // (Modes.cpp) must be maintained in parallel.
     //
-    enum Mode {
+    enum Mode
+    {
         ALL, // matches with all modes
         JS8,
         MODES_END_SENTINAL_AND_COUNT // this must be last
     };
     Q_ENUM(Mode)
 
-    explicit Modes(QObject *parent = nullptr);
+    explicit Modes(QObject* parent = nullptr);
 
     // translate between enumeration and human readable strings
-    static char const *name(Mode);
-    static Mode value(QString const &);
+    static char const* name(Mode);
+    static Mode value(QString const&);
 
     // Implement the QAbstractListModel interface
-    int rowCount(QModelIndex const &parent = QModelIndex{}) const override {
-        return parent.isValid()
-                   ? 0
-                   : MODES_END_SENTINAL_AND_COUNT; // Number of modes in Mode
-                                                   // enumeration class
+    int rowCount(QModelIndex const& parent = QModelIndex {}) const override
+    {
+        return parent.isValid() ? 0 : MODES_END_SENTINAL_AND_COUNT; // Number of modes in Mode
+                                                                    // enumeration class
     }
-    QVariant data(QModelIndex const &,
-                  int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation,
-                        int = Qt::DisplayRole) const override;
+
+    QVariant data(QModelIndex const&, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation, int = Qt::DisplayRole) const override;
 };
 
 // Qt boilerplate to make the Modes::Mode enumeration a type that can

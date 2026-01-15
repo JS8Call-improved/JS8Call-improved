@@ -1,11 +1,11 @@
 #ifndef TRANSCEIVER_BASE_HPP__
 #define TRANSCEIVER_BASE_HPP__
 
+#include <QLoggingCategory>
+#include <QString>
 #include <stdexcept>
 
 #include "Transceiver.h"
-#include <QLoggingCategory>
-#include <QString>
 
 //
 // Base Transceiver Implementation
@@ -55,61 +55,66 @@
 //  Transceiver implementation, thus allowing multiple state component
 //  updates to be signalled together if required.
 //
-class TransceiverBase : public Transceiver {
+class TransceiverBase : public Transceiver
+{
     Q_OBJECT;
 
-  protected:
-    TransceiverBase(QObject *parent)
-        : Transceiver{parent}, last_sequence_number_{0} {}
+protected:
+    TransceiverBase(QObject* parent) : Transceiver { parent }, last_sequence_number_ { 0 } { }
 
-  public:
+public:
     //
     // Implement the Transceiver abstract interface.
     //
     void start(unsigned sequence_number) noexcept override final;
-    void set(TransceiverState const &,
-             unsigned sequence_number) noexcept override final;
+    void set(TransceiverState const&, unsigned sequence_number) noexcept override final;
     void stop() noexcept override final;
 
     //
     // Query operations
     //
-    TransceiverState const &state() const { return actual_; }
+    TransceiverState const& state() const { return actual_; }
 
-  protected:
+protected:
     //
     // Error exception which is thrown to signal unexpected errors.
     //
-    struct error : public std::runtime_error {
-        explicit error(char const *const msg) : std::runtime_error(msg) {}
-        explicit error(QString const &msg)
-            : std::runtime_error(msg.toStdString()) {}
+    struct error : public std::runtime_error
+    {
+        explicit error(char const* const msg) : std::runtime_error(msg) { }
+
+        explicit error(QString const& msg) : std::runtime_error(msg.toStdString()) { }
     };
 
     // Template methods that sub classes implement to do what they need to do.
     //
     // These methods may throw exceptions to signal errors.
-    virtual int
-    do_start() = 0; // returns resolution, See Transceiver::resolution
-    virtual void do_post_start() {}
+    virtual int do_start() = 0; // returns resolution, See Transceiver::resolution
+
+    virtual void do_post_start() { }
 
     virtual void do_stop() = 0;
-    virtual void do_post_stop() {}
+
+    virtual void do_post_stop() { }
 
     virtual void do_frequency(Frequency, MODE, bool no_ignore) = 0;
-    virtual void do_post_frequency(Frequency, MODE) {}
+
+    virtual void do_post_frequency(Frequency, MODE) { }
 
     /** Work around hamlib bug
      * [#1966](https://github.com/Hamlib/Hamlib/issues/1966). */
-    inline virtual void hamlib_bug_bandaid(TransceiverState const &) {};
+    inline virtual void hamlib_bug_bandaid(TransceiverState const&) {};
     virtual void do_tx_frequency(Frequency, MODE, bool no_ignore) = 0;
-    virtual void do_post_tx_frequency(Frequency, MODE) {}
+
+    virtual void do_post_tx_frequency(Frequency, MODE) { }
 
     virtual void do_mode(MODE) = 0;
-    virtual void do_post_mode(MODE) {}
+
+    virtual void do_post_mode(MODE) { }
 
     virtual void do_ptt(bool = true) = 0;
-    virtual void do_post_ptt(bool = true) {}
+
+    virtual void do_post_ptt(bool = true) { }
 
     virtual void do_sync(bool force_signal = false, bool no_poll = false) = 0;
 
@@ -126,22 +131,26 @@ class TransceiverBase : public Transceiver {
     void update_complete(bool force_signal = false);
 
     // sub class may asynchronously take the rig offline by calling this
-    void offline(QString const &reason);
+    void offline(QString const& reason);
 
-  private:
+private:
     void startup();
     void shutdown();
     bool maybe_low_resolution(Frequency low_res, Frequency high_res);
 
     // use this convenience class to notify in update methods
-    class may_update {
-      public:
-        explicit may_update(TransceiverBase *self, bool force_signal = false)
-            : self_{self}, force_signal_{force_signal} {}
+    class may_update
+    {
+    public:
+        explicit may_update(TransceiverBase* self, bool force_signal = false) :
+            self_ { self }, force_signal_ { force_signal }
+        {
+        }
+
         ~may_update() { self_->update_complete(force_signal_); }
 
-      private:
-        TransceiverBase *self_;
+    private:
+        TransceiverBase* self_;
         bool force_signal_;
     };
 
@@ -153,11 +162,9 @@ class TransceiverBase : public Transceiver {
 
 // some trace macros
 Q_DECLARE_LOGGING_CATEGORY(transceiverbase_js8)
-#define TRACE_CAT(FAC, MSG)                                                    \
-    qCDebug(transceiverbase_js8)                                               \
-        << QString{"%1::%2:"}.arg((FAC)).arg(__func__) << MSG
-#define TRACE_CAT_POLL(FAC, MSG)                                               \
-    qCDebug(transceiverbase_js8)                                               \
-        << QString{"%1::%2:"}.arg((FAC)).arg(__func__) << MSG
+#define TRACE_CAT(FAC, MSG)                                                                        \
+    qCDebug(transceiverbase_js8) << QString { "%1::%2:" }.arg((FAC)).arg(__func__) << MSG
+#define TRACE_CAT_POLL(FAC, MSG)                                                                   \
+    qCDebug(transceiverbase_js8) << QString { "%1::%2:" }.arg((FAC)).arg(__func__) << MSG
 
 #endif

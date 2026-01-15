@@ -1,13 +1,12 @@
 #ifndef HRD_TRANSCEIVER_HPP__
 #define HRD_TRANSCEIVER_HPP__
 
-#include <memory>
-#include <tuple>
-#include <vector>
-
 #include <QScopedPointer>
 #include <QString>
 #include <QStringList>
+#include <memory>
+#include <tuple>
+#include <vector>
 
 #include "PollingTransceiver.h"
 #include "TransceiverFactory.h"
@@ -24,18 +23,20 @@ class QByteArray;
 // which can  be enabled by wrapping  a HamlibTransceiver instantiated
 // as a "Hamlib Dummy" transceiver in the Transceiver factory method.
 //
-class HRDTransceiver final : public PollingTransceiver {
-  public:
-    static void register_transceivers(TransceiverFactory::Transceivers *,
-                                      int id);
+class HRDTransceiver final : public PollingTransceiver
+{
+public:
+    static void register_transceivers(TransceiverFactory::Transceivers*, int id);
 
     // takes ownership of wrapped Transceiver
     explicit HRDTransceiver(std::unique_ptr<TransceiverBase> wrapped,
-                            QString const &server, bool use_for_ptt,
+                            QString const& server,
+                            bool use_for_ptt,
                             TransceiverFactory::TXAudioSource,
-                            int poll_interval, QObject *parent = nullptr);
+                            int poll_interval,
+                            QObject* parent = nullptr);
 
-  protected:
+protected:
     // Implement the TransceiverBase interface.
     int do_start() override;
     void do_stop() override;
@@ -47,16 +48,17 @@ class HRDTransceiver final : public PollingTransceiver {
     // Implement the PollingTransceiver interface.
     void poll() override;
 
-  private:
-    QString send_command(QString const &, bool no_debug = false,
-                         bool prepend_context = true, bool recurse = false);
-    QByteArray read_reply(QString const &command);
-    void send_simple_command(QString const &, bool no_debug = false);
-    bool write_to_port(char const *, qint64 length);
-    int find_button(QRegularExpression const &) const;
-    int find_dropdown(QRegularExpression const &) const;
-    std::vector<int> find_dropdown_selection(int dropdown,
-                                             QRegularExpression const &) const;
+private:
+    QString send_command(QString const&,
+                         bool no_debug = false,
+                         bool prepend_context = true,
+                         bool recurse = false);
+    QByteArray read_reply(QString const& command);
+    void send_simple_command(QString const&, bool no_debug = false);
+    bool write_to_port(char const*, qint64 length);
+    int find_button(QRegularExpression const&) const;
+    int find_dropdown(QRegularExpression const&) const;
+    std::vector<int> find_dropdown_selection(int dropdown, QRegularExpression const&) const;
     int get_dropdown(int, bool no_debug = false);
     void set_dropdown(int, int);
     void set_button(int button_index, bool checked = true);
@@ -68,9 +70,9 @@ class HRDTransceiver final : public PollingTransceiver {
     // versa.
     using ModeMap = std::vector<std::tuple<MODE, std::vector<int>>>;
 
-    void map_modes(int dropdown, ModeMap *);
-    int lookup_mode(MODE, ModeMap const &) const;
-    MODE lookup_mode(int, ModeMap const &) const;
+    void map_modes(int dropdown, ModeMap*);
+    int lookup_mode(MODE, ModeMap const&) const;
+    MODE lookup_mode(int, ModeMap const&) const;
     void set_data_mode(MODE);
     MODE get_data_mode(MODE, bool no_debug = false);
 
@@ -85,10 +87,11 @@ class HRDTransceiver final : public PollingTransceiver {
     QString server_; // The TCP/IP addrress and port for
                      // the HRD server.
 
-    QTcpSocket *hrd_; // The TCP/IP client that links to the
+    QTcpSocket* hrd_; // The TCP/IP client that links to the
                       // HRD server.
 
-    enum {
+    enum
+    {
         none,
         v4,
         v5
@@ -138,14 +141,13 @@ class HRDTransceiver final : public PollingTransceiver {
 
     ModeMap mode_B_map_; // The map of modes for VFO B.
 
-    int data_mode_toggle_button_; // Button to toggle DATA mode
-    int data_mode_on_button_;     // Button to enable DATA mode
-    int data_mode_off_button_;    // Button to disable DATA mode
-    int data_mode_dropdown_;      // Index of data mode drop down, may
-                                  // be -1 if no such drop down exists
-    std::vector<int>
-        data_mode_dropdown_selection_on_; // The drop down
-                                          // selection to turn on data mode.
+    int data_mode_toggle_button_;                      // Button to toggle DATA mode
+    int data_mode_on_button_;                          // Button to enable DATA mode
+    int data_mode_off_button_;                         // Button to disable DATA mode
+    int data_mode_dropdown_;                           // Index of data mode drop down, may
+                                                       // be -1 if no such drop down exists
+    std::vector<int> data_mode_dropdown_selection_on_; // The drop down
+                                                       // selection to turn on data mode.
 
     std::vector<int> data_mode_dropdown_selection_off_; // The drop
                                                         // down selection to

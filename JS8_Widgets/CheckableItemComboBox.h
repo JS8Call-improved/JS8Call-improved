@@ -12,24 +12,25 @@ class QStandardItem;
  * @brief QComboBox with support of checkboxes
  * http://stackoverflow.com/questions/8422760/combobox-of-checkboxes
  */
-class CheckableItemComboBox : public LazyFillComboBox {
+class CheckableItemComboBox : public LazyFillComboBox
+{
     Q_OBJECT
 
-  public:
-    explicit CheckableItemComboBox(QWidget *parent = nullptr);
-    QStandardItem *addCheckItem(QString const &label, QVariant const &data,
-                                Qt::CheckState checkState);
+public:
+    explicit CheckableItemComboBox(QWidget* parent = nullptr);
+    QStandardItem*
+        addCheckItem(QString const& label, QVariant const& data, Qt::CheckState checkState);
 
-  protected:
-    bool eventFilter(QObject *, QEvent *) override;
+protected:
+    bool eventFilter(QObject*, QEvent*) override;
 
-  private:
+private:
     void update_text();
 
     Q_SLOT void model_data_changed();
-    Q_SLOT void item_pressed(QModelIndex const &);
+    Q_SLOT void item_pressed(QModelIndex const&);
 
-  private:
+private:
     QScopedPointer<QStandardItemModel> model_;
 };
 

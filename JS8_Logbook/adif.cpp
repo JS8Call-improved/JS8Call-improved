@@ -4,10 +4,10 @@
  */
 #include "adif.h"
 
-#include <QFile>
-#include <QTextStream>
 #include <QDateTime>
+#include <QFile>
 #include <QLoggingCategory>
+#include <QTextStream>
 Q_DECLARE_LOGGING_CATEGORY(adif_js8)
 
 
@@ -192,32 +192,32 @@ void ADIF::init(QString const& filename)
  */
 QString ADIF::extractField(QString const& record, QString const& fieldName) const
 {
-    qsizetype fieldNameIndex = record.indexOf ('<' + fieldName + ':', 0, Qt::CaseInsensitive);
-    if (fieldNameIndex >=0)
-    {
-        qsizetype closingBracketIndex = record.indexOf('>',fieldNameIndex);
-        qsizetype fieldLengthIndex    = record.indexOf(':',fieldNameIndex);  // find the size delimiter
-        qsizetype dataTypeIndex       = -1;
-        if (fieldLengthIndex >= 0)
-        {
-          dataTypeIndex = record.indexOf(':',fieldLengthIndex+1);  // check for a second : indicating there is a data type
-          if (dataTypeIndex > closingBracketIndex)
-            dataTypeIndex = -1; // second : was found but it was beyond the closing >
+    qsizetype fieldNameIndex = record.indexOf('<' + fieldName + ':', 0, Qt::CaseInsensitive);
+    if (fieldNameIndex >= 0) {
+        qsizetype closingBracketIndex = record.indexOf('>', fieldNameIndex);
+        qsizetype fieldLengthIndex = record.indexOf(':', fieldNameIndex); // find the size delimiter
+        qsizetype dataTypeIndex = -1;
+        if (fieldLengthIndex >= 0) {
+            dataTypeIndex = record.indexOf(
+                ':',
+                fieldLengthIndex + 1); // check for a second : indicating there is a data type
+            if (dataTypeIndex > closingBracketIndex)
+                dataTypeIndex = -1; // second : was found but it was beyond the closing >
         }
 
-        if ((closingBracketIndex > fieldNameIndex) && (fieldLengthIndex > fieldNameIndex) && (fieldLengthIndex< closingBracketIndex))
-        {
-            qsizetype fieldLengthCharCount = closingBracketIndex - fieldLengthIndex -1;
+        if ((closingBracketIndex > fieldNameIndex) && (fieldLengthIndex > fieldNameIndex)
+            && (fieldLengthIndex < closingBracketIndex)) {
+            qsizetype fieldLengthCharCount = closingBracketIndex - fieldLengthIndex - 1;
             if (dataTypeIndex >= 0)
-              fieldLengthCharCount -= 2; // data type indicator is always a colon followed by a single character
-            QString fieldLengthString = record.mid(fieldLengthIndex+1,fieldLengthCharCount);
+                fieldLengthCharCount
+                    -= 2; // data type indicator is always a colon followed by a single character
+            QString fieldLengthString = record.mid(fieldLengthIndex + 1, fieldLengthCharCount);
             int fieldLength = fieldLengthString.toInt();
-            if (fieldLength > 0)
-            {
-              QString field = record.mid(closingBracketIndex+1,fieldLength);
-              return field;
+            if (fieldLength > 0) {
+                QString field = record.mid(closingBracketIndex + 1, fieldLength);
+                return field;
             }
-       }
+        }
     }
     return "";
 }
@@ -229,58 +229,48 @@ void ADIF::load()
 {
     _data.clear();
     QFile inputFile(_filename);
-    if (inputFile.open(QIODevice::ReadOnly))
-    {
-      QTextStream in(&inputFile);
-      QString buffer;
-      bool pre_read {false};
-      qsizetype end_position {-1};
+    if (inputFile.open(QIODevice::ReadOnly)) {
+        QTextStream in(&inputFile);
+        QString buffer;
+        bool pre_read { false };
+        qsizetype end_position { -1 };
 
-      // skip optional header record
-      do
-        {
-          buffer += in.readLine () + '\n';
-          if (buffer.startsWith (QChar {'<'})) // denotes no header
+        // skip optional header record
+        do {
+            buffer += in.readLine() + '\n';
+            if (buffer.startsWith(QChar { '<' })) // denotes no header
             {
-              pre_read = true;
+                pre_read = true;
+            } else {
+                end_position = buffer.indexOf("<EOH>", 0, Qt::CaseInsensitive);
             }
-          else
-            {
-              end_position = buffer.indexOf ("<EOH>", 0, Qt::CaseInsensitive);
-            }
-        }
-      while (!in.atEnd () && !pre_read && end_position < 0);
-      if (!pre_read)            // found header
+        } while (!in.atEnd() && !pre_read && end_position < 0);
+        if (!pre_read) // found header
         {
-          buffer.remove (0, end_position + 5);
+            buffer.remove(0, end_position + 5);
         }
-      while (buffer.size () || !in.atEnd ())
-        {
-          do
-            {
-              end_position = buffer.indexOf ("<EOR>", 0, Qt::CaseInsensitive);
-              if (!in.atEnd () && end_position < 0)
-                {
-                  buffer += in.readLine () + '\n';
+        while (buffer.size() || !in.atEnd()) {
+            do {
+                end_position = buffer.indexOf("<EOR>", 0, Qt::CaseInsensitive);
+                if (!in.atEnd() && end_position < 0) {
+                    buffer += in.readLine() + '\n';
                 }
-            }
-          while (!in.atEnd () && end_position < 0);
-          qsizetype record_length {end_position >= 0 ? end_position + 5 : -1};
-          auto record = buffer.left (record_length).trimmed ();
-          auto next_record = buffer.indexOf (QChar {'<'}, record_length);
-          buffer.remove (0, next_record >=0 ? next_record : buffer.size ());
-          record = record.mid (record.indexOf (QChar {'<'}));
-          add (extractField (record, "CALL")
-               , extractField (record, "BAND")
-               , extractField (record, "MODE")
-               , extractField (record, "SUBMODE")
-               , extractField (record, "GRIDSQUARE")
-               , extractField (record, "QSO_DATE")
-               , extractField (record, "NAME")
-               , extractField (record, "COMMENT")
-               );
+            } while (!in.atEnd() && end_position < 0);
+            qsizetype record_length { end_position >= 0 ? end_position + 5 : -1 };
+            auto record = buffer.left(record_length).trimmed();
+            auto next_record = buffer.indexOf(QChar { '<' }, record_length);
+            buffer.remove(0, next_record >= 0 ? next_record : buffer.size());
+            record = record.mid(record.indexOf(QChar { '<' }));
+            add(extractField(record, "CALL"),
+                extractField(record, "BAND"),
+                extractField(record, "MODE"),
+                extractField(record, "SUBMODE"),
+                extractField(record, "GRIDSQUARE"),
+                extractField(record, "QSO_DATE"),
+                extractField(record, "NAME"),
+                extractField(record, "COMMENT"));
         }
-        inputFile.close ();
+        inputFile.close();
     }
 }
 
@@ -295,7 +285,14 @@ void ADIF::load()
  * @param name The name of the operator.
  * @param comment Any comments associated with the QSO.
  */
-void ADIF::add(QString const& call, QString const& band, QString const& mode, QString const& submode, QString const &grid, QString const& date, QString const& name, QString const& comment)
+void ADIF::add(QString const& call,
+               QString const& band,
+               QString const& mode,
+               QString const& submode,
+               QString const& grid,
+               QString const& date,
+               QString const& name,
+               QString const& comment)
 {
     QSO q;
     q.call = call;
@@ -307,11 +304,10 @@ void ADIF::add(QString const& call, QString const& band, QString const& mode, QS
     q.name = name;
     q.comment = comment;
 
-    if (q.call.size ())
-      {
-        _data.insert(q.call,q);
+    if (q.call.size()) {
+        _data.insert(q.call, q);
         // qCDebug(adif_js8) << "Added as worked:" << call << band << mode << date;
-      }
+    }
 }
 
 /**
@@ -323,15 +319,11 @@ void ADIF::add(QString const& call, QString const& band, QString const& mode, QS
 bool ADIF::match(QString const& call, QString const& band) const
 {
     QList<QSO> qsos = _data.values(call);
-    if (qsos.size()>0)
-    {
+    if (qsos.size() > 0) {
         QSO q;
-        foreach(q,qsos)
-        {
-            if (     (band.compare(q.band,Qt::CaseInsensitive) == 0)
-                  || (band=="")
-                  || (q.band==""))
-            {
+        foreach (q, qsos) {
+            if ((band.compare(q.band, Qt::CaseInsensitive) == 0) || (band == "")
+                || (q.band == "")) {
                 return true;
             }
         }
@@ -356,12 +348,11 @@ QList<ADIF::QSO> ADIF::find(QString const& call) const
 QList<QString> ADIF::getCallList() const
 {
     QList<QString> p;
-    QMultiHash<QString,QSO>::const_iterator i = _data.constBegin();
-     while (i != _data.constEnd())
-     {
-         p << i.key();
-         ++i;
-     }
+    QMultiHash<QString, QSO>::const_iterator i = _data.constBegin();
+    while (i != _data.constEnd()) {
+        p << i.key();
+        ++i;
+    }
     return p;
 }
 
@@ -394,53 +385,59 @@ qsizetype ADIF::getCount() const
  * @param additionalFields A map of additional ADIF fields to include.
  * @return The ADIF record as a QByteArray.
  */
-QByteArray ADIF::QSOToADIF(QString const& hisCall, QString const& hisGrid, QString const& mode, QString const& submode
-                           , QString const& rptSent, QString const& rptRcvd, QDateTime const& dateTimeOn
-                           , QDateTime const& dateTimeOff, QString const& band, QString const& comments
-                           , QString const& name, QString const& strDialFreq, QString const& m_myCall
-                           , QString const& m_myGrid, QString const& operator_call, QMap<QString, QVariant> const &additionalFields)
+QByteArray ADIF::QSOToADIF(QString const& hisCall,
+                           QString const& hisGrid,
+                           QString const& mode,
+                           QString const& submode,
+                           QString const& rptSent,
+                           QString const& rptRcvd,
+                           QDateTime const& dateTimeOn,
+                           QDateTime const& dateTimeOff,
+                           QString const& band,
+                           QString const& comments,
+                           QString const& name,
+                           QString const& strDialFreq,
+                           QString const& m_myCall,
+                           QString const& m_myGrid,
+                           QString const& operator_call,
+                           QMap<QString, QVariant> const& additionalFields)
 {
-  QString t;
-  t = "<call:" + QString::number(hisCall.length()) + ">" + hisCall;
-  t += " <gridsquare:" + QString::number(hisGrid.length()) + ">" + hisGrid;
-  t += " <mode:" + QString::number(mode.length()) + ">" + mode;
-  if(!submode.isEmpty()){
-    t += " <submode:" + QString::number(submode.length()) + ">" + submode;
-  }
-  t += " <rst_sent:" + QString::number(rptSent.length()) + ">" + rptSent;
-  t += " <rst_rcvd:" + QString::number(rptRcvd.length()) + ">" + rptRcvd;
-  t += " <qso_date:8>" + dateTimeOn.date().toString("yyyyMMdd");
-  t += " <time_on:6>" + dateTimeOn.time().toString("hhmmss");
-  t += " <qso_date_off:8>" + dateTimeOff.date().toString("yyyyMMdd");
-  t += " <time_off:6>" + dateTimeOff.time().toString("hhmmss");
-  t += " <band:" + QString::number(band.length()) + ">" + band;
-  t += " <freq:" + QString::number(strDialFreq.length()) + ">" + strDialFreq;
-  t += " <station_callsign:" + QString::number(m_myCall.length()) + ">" +
-      m_myCall;
-  t += " <my_gridsquare:" + QString::number(m_myGrid.length()) + ">" +
-      m_myGrid;
-  if (comments != "")
-    t += " <comment:" + QString::number(comments.length()) +
-        ">" + comments;
-  if (name != "")
-    t += " <name:" + QString::number(name.length()) +
-        ">" + name;
-  if (operator_call!="")
-      t+=" <operator:" + QString::number(operator_call.length()) +
-              ">" + operator_call;
+    QString t;
+    t = "<call:" + QString::number(hisCall.length()) + ">" + hisCall;
+    t += " <gridsquare:" + QString::number(hisGrid.length()) + ">" + hisGrid;
+    t += " <mode:" + QString::number(mode.length()) + ">" + mode;
+    if (!submode.isEmpty()) {
+        t += " <submode:" + QString::number(submode.length()) + ">" + submode;
+    }
+    t += " <rst_sent:" + QString::number(rptSent.length()) + ">" + rptSent;
+    t += " <rst_rcvd:" + QString::number(rptRcvd.length()) + ">" + rptRcvd;
+    t += " <qso_date:8>" + dateTimeOn.date().toString("yyyyMMdd");
+    t += " <time_on:6>" + dateTimeOn.time().toString("hhmmss");
+    t += " <qso_date_off:8>" + dateTimeOff.date().toString("yyyyMMdd");
+    t += " <time_off:6>" + dateTimeOff.time().toString("hhmmss");
+    t += " <band:" + QString::number(band.length()) + ">" + band;
+    t += " <freq:" + QString::number(strDialFreq.length()) + ">" + strDialFreq;
+    t += " <station_callsign:" + QString::number(m_myCall.length()) + ">" + m_myCall;
+    t += " <my_gridsquare:" + QString::number(m_myGrid.length()) + ">" + m_myGrid;
+    if (comments != "")
+        t += " <comment:" + QString::number(comments.length()) + ">" + comments;
+    if (name != "")
+        t += " <name:" + QString::number(name.length()) + ">" + name;
+    if (operator_call != "")
+        t += " <operator:" + QString::number(operator_call.length()) + ">" + operator_call;
 
-  foreach(auto key, additionalFields.keys()){
-      auto k = key.toUpper();
-      auto value = additionalFields[k].toString();
+    foreach (auto key, additionalFields.keys()) {
+        auto k = key.toUpper();
+        auto value = additionalFields[k].toString();
 
-      if(ADIF_FIELDS.contains(k)){
-        t += QString(" <%1:%2>%3").arg(k).arg(value.length()).arg(value);
-      } else {
-        t += QString(" <APP_JS8CALL_%1:%2>%3").arg(k).arg(value.length()).arg(value);
-      }
-  }
+        if (ADIF_FIELDS.contains(k)) {
+            t += QString(" <%1:%2>%3").arg(k).arg(value.length()).arg(value);
+        } else {
+            t += QString(" <APP_JS8CALL_%1:%2>%3").arg(k).arg(value.length()).arg(value);
+        }
+    }
 
-  return t.toLatin1 ();
+    return t.toLatin1();
 }
 
 /**
@@ -453,11 +450,10 @@ bool ADIF::addQSOToFile(QByteArray const& ADIF_record)
     QFile f2(_filename);
     if (!f2.open(QIODevice::Text | QIODevice::Append))
         return false;
-    else
-    {
+    else {
         QTextStream out(&f2);
-        if (f2.size()==0)
-            out << "JS8Call ADIF Export<eoh>" << Qt::endl;  // new file
+        if (f2.size() == 0)
+            out << "JS8Call ADIF Export<eoh>" << Qt::endl; // new file
 
         out << ADIF_record << " <eor>" << Qt::endl;
         out.flush();

@@ -15,18 +15,21 @@
 #include "JS8_Main/Bands.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/JS8MessageBox.h"
-
 #include "moc_logqso.cpp"
 #include "ui_logqso.h"
 
-LogQSO::LogQSO(QString const &programTitle, QSettings *settings,
-               Configuration const *config, QWidget *parent)
-    : QDialog{parent, Qt::WindowStaysOnTopHint | Qt::WindowTitleHint |
-                          Qt::WindowSystemMenuHint},
-      ui(new Ui::LogQSO), m_settings(settings), m_config{config} {
+LogQSO::LogQSO(QString const& programTitle,
+               QSettings* settings,
+               Configuration const* config,
+               QWidget* parent) :
+    QDialog { parent, Qt::WindowStaysOnTopHint | Qt::WindowTitleHint | Qt::WindowSystemMenuHint },
+    ui(new Ui::LogQSO),
+    m_settings(settings),
+    m_config { config }
+{
     ui->setupUi(this);
     setWindowTitle(programTitle + " - Log QSO");
-    ui->grid->setValidator(new Maidenhead::StandardValidator{this});
+    ui->grid->setValidator(new Maidenhead::StandardValidator { this });
 
     auto b = ui->buttonBox->button(QDialogButtonBox::Save);
     if (b) {
@@ -34,9 +37,12 @@ LogQSO::LogQSO(QString const &programTitle, QSettings *settings,
     }
 }
 
-LogQSO::~LogQSO() {}
+LogQSO::~LogQSO()
+{
+}
 
-bool LogQSO::acceptText(QString text) {
+bool LogQSO::acceptText(QString text)
+{
     auto w = focusWidget();
     if (!w) {
         return false;
@@ -47,7 +53,7 @@ bool LogQSO::acceptText(QString text) {
         return false;
     }
 
-    auto l = static_cast<QLineEdit *>(w);
+    auto l = static_cast<QLineEdit*>(w);
     if (l->text().isEmpty()) {
         // set
         l->setText(text);
@@ -59,35 +65,44 @@ bool LogQSO::acceptText(QString text) {
     return true;
 }
 
-QString LogQSO::currentCall() { return ui->call->text().trimmed(); }
+QString LogQSO::currentCall()
+{
+    return ui->call->text().trimmed();
+}
 
-void LogQSO::on_start_now_button_pressed() {
+void LogQSO::on_start_now_button_pressed()
+{
     ui->start_date_time->setDateTime(DriftingDateTime::currentDateTimeUtc());
 }
 
-void LogQSO::on_end_now_button_pressed() {
+void LogQSO::on_end_now_button_pressed()
+{
     ui->end_date_time->setDateTime(DriftingDateTime::currentDateTimeUtc());
 }
 
-void LogQSO::on_add_new_field_button_pressed() { createAdditionalField(); }
+void LogQSO::on_add_new_field_button_pressed()
+{
+    createAdditionalField();
+}
 
-void LogQSO::createAdditionalField(QString key, QString value) {
-    QLineEdit *l = new QLineEdit(this);
+void LogQSO::createAdditionalField(QString key, QString value)
+{
+    QLineEdit* l = new QLineEdit(this);
     if (!value.isEmpty()) {
         l->setText(value);
     }
 
-    QComboBox *c = new QComboBox(this);
+    QComboBox* c = new QComboBox(this);
     c->insertItems(0, ADIF_FIELDS);
     c->insertItem(0, "");
     c->setEditable(true);
     c->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    connect(c, &QComboBox::currentTextChanged, this, [l](const QString &text) {
+    connect(c, &QComboBox::currentTextChanged, this, [l](const QString& text) {
         l->setProperty("fieldKey", QVariant(text));
     });
     c->setCurrentText(key);
 
-    auto layout = static_cast<QFormLayout *>(ui->additionalFields->layout());
+    auto layout = static_cast<QFormLayout*>(ui->additionalFields->layout());
     layout->addRow(c, l);
 
     // set tab ordering
@@ -108,7 +123,8 @@ void LogQSO::createAdditionalField(QString key, QString value) {
     updateGeometry();
 }
 
-QVariantMap LogQSO::collectAdditionalFields() {
+QVariantMap LogQSO::collectAdditionalFields()
+{
     QVariantMap additionalFields;
     foreach (auto field, m_additionalFieldsControls) {
         auto key = field->property("fieldKey").toString();
@@ -120,19 +136,19 @@ QVariantMap LogQSO::collectAdditionalFields() {
     return additionalFields;
 }
 
-void LogQSO::resetAdditionalFields() {
+void LogQSO::resetAdditionalFields()
+{
     ui->additionalFields->setVisible(false);
 
     if (!m_additionalFieldsControls.isEmpty()) {
-        auto layout =
-            static_cast<QFormLayout *>(ui->additionalFields->layout());
+        auto layout = static_cast<QFormLayout*>(ui->additionalFields->layout());
 
 #if QT_VERSION >= 0x050800
         for (int i = 0, count = layout->rowCount(); i < count; i++) {
             layout->removeRow(0);
         }
 #else
-        QLayoutItem *child;
+        QLayoutItem* child;
         while ((child = layout->takeAt(0)) != 0) {
             delete child;
         }
@@ -145,17 +161,15 @@ void LogQSO::resetAdditionalFields() {
     updateGeometry();
 }
 
-void LogQSO::loadSettings() {
+void LogQSO::loadSettings()
+{
     m_settings->beginGroup("LogQSO");
-    restoreGeometry(
-        m_settings->value("geometry", saveGeometry()).toByteArray());
-    ui->cbComments->setChecked(
-        m_settings->value("SaveComments", false).toBool());
+    restoreGeometry(m_settings->value("geometry", saveGeometry()).toByteArray());
+    ui->cbComments->setChecked(m_settings->value("SaveComments", false).toBool());
     m_comments = m_settings->value("LogComments", "").toString();
 
     resetAdditionalFields();
-    auto additionalFields =
-        m_settings->value("AdditionalFields", {}).toStringList();
+    auto additionalFields = m_settings->value("AdditionalFields", {}).toStringList();
     QSet<QString> additionalFieldsSet;
     foreach (auto key, additionalFields) {
         if (key.isEmpty()) {
@@ -172,13 +186,14 @@ void LogQSO::loadSettings() {
     m_settings->endGroup();
 }
 
-void LogQSO::storeSettings() const {
+void LogQSO::storeSettings() const
+{
     m_settings->beginGroup("LogQSO");
     m_settings->setValue("geometry", saveGeometry());
     m_settings->setValue("SaveComments", ui->cbComments->isChecked());
     m_settings->setValue("LogComments", m_comments);
 
-    auto additionalFields = QStringList{};
+    auto additionalFields = QStringList {};
     foreach (auto field, m_additionalFieldsControls) {
         auto key = field->property("fieldKey").toString();
         if (key.isEmpty()) {
@@ -191,12 +206,19 @@ void LogQSO::storeSettings() const {
     m_settings->endGroup();
 }
 
-void LogQSO::initLogQSO(QString const &hisCall, QString const &hisGrid,
-                        QString mode, QString const &rptSent,
-                        QString const &rptRcvd, QDateTime const &dateTimeOn,
-                        QDateTime const &dateTimeOff, Radio::Frequency dialFreq,
-                        QString const &myCall, QString const &myGrid,
-                        QString const &opCall, QString const &comments) {
+void LogQSO::initLogQSO(QString const& hisCall,
+                        QString const& hisGrid,
+                        QString mode,
+                        QString const& rptSent,
+                        QString const& rptRcvd,
+                        QDateTime const& dateTimeOn,
+                        QDateTime const& dateTimeOff,
+                        Radio::Frequency dialFreq,
+                        QString const& myCall,
+                        QString const& myGrid,
+                        QString const& opCall,
+                        QString const& comments)
+{
     if (!isHidden())
         return;
 
@@ -231,9 +253,10 @@ void LogQSO::initLogQSO(QString const &hisCall, QString const &hisGrid,
     show();
 }
 
-void LogQSO::accept() {
-    QString hisCall, hisGrid, mode, submode, rptSent, rptRcvd, dateOn, dateOff,
-        timeOn, timeOff, band, operator_call;
+void LogQSO::accept()
+{
+    QString hisCall, hisGrid, mode, submode, rptSent, rptRcvd, dateOn, dateOff, timeOn, timeOff,
+        band, operator_call;
     QString comments, name;
 
     hisCall = ui->call->text().toUpper();
@@ -256,47 +279,57 @@ void LogQSO::accept() {
     // Log this QSO to ADIF file "js8call_log.adi"
     QString filename = "js8call_log.adi"; // TODO allow user to set
     ADIF adifile;
-    auto adifilePath = QDir{QStandardPaths::writableLocation(
-                                QStandardPaths::AppLocalDataLocation)}
-                           .absoluteFilePath(filename);
+    auto adifilePath
+        = QDir { QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) }
+              .absoluteFilePath(filename);
     adifile.init(adifilePath);
 
     auto additionalFields = collectAdditionalFields();
 
-    QByteArray ADIF{adifile.QSOToADIF(
-        hisCall, hisGrid, mode, submode, rptSent, rptRcvd, m_dateTimeOn,
-        m_dateTimeOff, band, comments, name, strDialFreq, m_myCall, m_myGrid,
-        operator_call, additionalFields)};
+    QByteArray ADIF { adifile.QSOToADIF(hisCall,
+                                        hisGrid,
+                                        mode,
+                                        submode,
+                                        rptSent,
+                                        rptRcvd,
+                                        m_dateTimeOn,
+                                        m_dateTimeOff,
+                                        band,
+                                        comments,
+                                        name,
+                                        strDialFreq,
+                                        m_myCall,
+                                        m_myGrid,
+                                        operator_call,
+                                        additionalFields) };
 
     if (!adifile.addQSOToFile(ADIF)) {
-        JS8MessageBox::warning_message(
-            this, tr("Log file error"),
-            tr("Cannot open \"%1\"").arg(adifilePath));
+        JS8MessageBox::warning_message(this,
+                                       tr("Log file error"),
+                                       tr("Cannot open \"%1\"").arg(adifilePath));
     }
 
     // Log this QSO to file "js8call.log"
-    static QFile f{QDir{
-        QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)}
-                       .absoluteFilePath("js8call.log")};
+    static QFile f { QDir { QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) }
+                         .absoluteFilePath("js8call.log") };
     if (!f.open(QIODevice::Text | QIODevice::Append)) {
-        JS8MessageBox::warning_message(
-            this, tr("Log file error"),
-            tr("Cannot open \"%1\" for append").arg(f.fileName()),
-            tr("Error: %1").arg(f.errorString()));
+        JS8MessageBox::warning_message(this,
+                                       tr("Log file error"),
+                                       tr("Cannot open \"%1\" for append").arg(f.fileName()),
+                                       tr("Error: %1").arg(f.errorString()));
     } else {
-        QStringList logEntryItems = {
-            m_dateTimeOn.date().toString("yyyy-MM-dd"),
-            m_dateTimeOn.time().toString("hh:mm:ss"),
-            m_dateTimeOff.date().toString("yyyy-MM-dd"),
-            m_dateTimeOff.time().toString("hh:mm:ss"),
-            hisCall,
-            hisGrid,
-            strDialFreq,
-            (mode == "MFSK" ? "JS8" : mode),
-            rptSent,
-            rptRcvd,
-            comments,
-            name};
+        QStringList logEntryItems = { m_dateTimeOn.date().toString("yyyy-MM-dd"),
+                                      m_dateTimeOn.time().toString("hh:mm:ss"),
+                                      m_dateTimeOff.date().toString("yyyy-MM-dd"),
+                                      m_dateTimeOff.time().toString("hh:mm:ss"),
+                                      hisCall,
+                                      hisGrid,
+                                      strDialFreq,
+                                      (mode == "MFSK" ? "JS8" : mode),
+                                      rptSent,
+                                      rptRcvd,
+                                      comments,
+                                      name };
 
         if (!additionalFields.isEmpty()) {
             foreach (auto value, additionalFields.values()) {
@@ -311,9 +344,22 @@ void LogQSO::accept() {
         f.close();
     }
 
-    Q_EMIT acceptQSO(m_dateTimeOff, hisCall, hisGrid, m_dialFreq, mode, submode,
-                     rptSent, rptRcvd, comments, name, m_dateTimeOn,
-                     operator_call, m_myCall, m_myGrid, ADIF, additionalFields);
+    Q_EMIT acceptQSO(m_dateTimeOff,
+                     hisCall,
+                     hisGrid,
+                     m_dialFreq,
+                     mode,
+                     submode,
+                     rptSent,
+                     rptRcvd,
+                     comments,
+                     name,
+                     m_dateTimeOn,
+                     operator_call,
+                     m_myCall,
+                     m_myGrid,
+                     ADIF,
+                     additionalFields);
 
     // Clean up and finish logging
     ui->call->clear();
@@ -324,7 +370,8 @@ void LogQSO::accept() {
 // closeEvent is only called from the system menu close widget for a
 // modeless dialog so we use the hideEvent override to store the
 // window settings
-void LogQSO::hideEvent(QHideEvent *e) {
+void LogQSO::hideEvent(QHideEvent* e)
+{
     storeSettings();
     QDialog::hideEvent(e);
 }

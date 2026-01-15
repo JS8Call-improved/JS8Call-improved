@@ -9,16 +9,18 @@
 #include <QScopedPointer>
 #include <QThread>
 
-class ProcessThread : public QThread {
+class ProcessThread : public QThread
+{
     Q_OBJECT
-  public:
-    ProcessThread(QObject *parent = nullptr);
+public:
+    ProcessThread(QObject* parent = nullptr);
     ~ProcessThread();
 
-    void setProcess(QProcess *proc, int msecs = 1000);
-    QProcess *process() { return m_proc.data(); }
+    void setProcess(QProcess* proc, int msecs = 1000);
 
-  protected:
+    QProcess* process() { return m_proc.data(); }
+
+protected:
     QScopedPointer<QProcess> m_proc;
 };
 

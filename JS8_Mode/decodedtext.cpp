@@ -3,15 +3,18 @@
  * @brief Implementation of DecodedText class
  */
 #include "decodedtext.h"
-#include "JS8_Include/commons.h"
+
 #include <JS8_Main/varicode.h>
 #include <QStringBuilder>
+
+#include "JS8_Include/commons.h"
 
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Quality level below which we'll consider a decode to be suspect;
 // the UI will generally enclose the decode within [] characters to
 // denote it as being sketchy.
@@ -23,25 +26,21 @@ constexpr auto QUALITY_THRESHOLD = 0.17f;
 // Local Routines
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Translation of standard submode IDs to their character equivalents.
 // this is only used when writing out to ALL.TXT, so we've defined it
 // here, but arguably it should be part of JS8::Submode or Varicode.
 
-QChar submodeChar(int const submode) {
+QChar submodeChar(int const submode)
+{
     switch (submode) {
-    case Varicode::SubmodeType::JS8CallNormal:
-        return 'A';
-    case Varicode::SubmodeType::JS8CallFast:
-        return 'B';
-    case Varicode::SubmodeType::JS8CallTurbo:
-        return 'C';
-    case Varicode::SubmodeType::JS8CallSlow:
-        return 'E';
-    case Varicode::SubmodeType::JS8CallUltra:
-        return 'I';
-    default:
-        return '~';
+    case Varicode::SubmodeType::JS8CallNormal: return 'A';
+    case Varicode::SubmodeType::JS8CallFast: return 'B';
+    case Varicode::SubmodeType::JS8CallTurbo: return 'C';
+    case Varicode::SubmodeType::JS8CallSlow: return 'E';
+    case Varicode::SubmodeType::JS8CallUltra: return 'I';
+    default: return '~';
     }
 }
 
@@ -49,7 +48,8 @@ QChar submodeChar(int const submode) {
 // parts; the parts are at this point guaranteed to be at least of
 // size 2, but any part might be empty.
 
-QString buildCompound(QStringList const &parts) {
+QString buildCompound(QStringList const& parts)
+{
     auto subset = parts.mid(0, 2);
     subset.removeAll("");
     return subset.join('/');
@@ -78,13 +78,27 @@ QString buildCompound(QStringList const &parts) {
  * @param snr 
  * @param dt 
  */
-DecodedText::DecodedText(QString const &frame, int bits, int submode,
-                         bool isLowConfidence, int time, int frequencyOffset,
-                         float snr, float dt)
-    : frameType_(Varicode::FrameUnknown), frame_(frame), isAlt_(false),
-      isHeartbeat_(false), isLowConfidence_(isLowConfidence), message_(frame_),
-      bits_(bits), submode_(submode), time_(time),
-      frequencyOffset_(frequencyOffset), snr_(snr), dt_(dt) {
+DecodedText::DecodedText(QString const& frame,
+                         int bits,
+                         int submode,
+                         bool isLowConfidence,
+                         int time,
+                         int frequencyOffset,
+                         float snr,
+                         float dt) :
+    frameType_(Varicode::FrameUnknown),
+    frame_(frame),
+    isAlt_(false),
+    isHeartbeat_(false),
+    isLowConfidence_(isLowConfidence),
+    message_(frame_),
+    bits_(bits),
+    submode_(submode),
+    time_(time),
+    frequencyOffset_(frequencyOffset),
+    snr_(snr),
+    dt_(dt)
+{
     auto const m = message().trimmed();
 
     if (m.length() < 12 || m.contains(' '))
@@ -104,7 +118,8 @@ DecodedText::DecodedText(QString const &frame, int bits, int submode,
  * @return true 
  * @return false 
  */
-bool DecodedText::tryUnpackFastData(QString const &m) {
+bool DecodedText::tryUnpackFastData(QString const& m)
+{
     if ((bits_ & Varicode::JS8CallData) != Varicode::JS8CallData)
         return false;
 
@@ -126,7 +141,8 @@ bool DecodedText::tryUnpackFastData(QString const &m) {
  * @return true 
  * @return false 
  */
-bool DecodedText::tryUnpackData(QString const &m) {
+bool DecodedText::tryUnpackData(QString const& m)
+{
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
 
@@ -148,15 +164,15 @@ bool DecodedText::tryUnpackData(QString const &m) {
  * @return true 
  * @return false 
  */
-bool DecodedText::tryUnpackHeartbeat(QString const &m) {
+bool DecodedText::tryUnpackHeartbeat(QString const& m)
+{
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
 
     bool isAlt = false;
     quint8 type = Varicode::FrameUnknown;
     quint8 bits3 = 0;
-    auto const parts =
-        Varicode::unpackHeartbeatMessage(m, &type, &isAlt, &bits3);
+    auto const parts = Varicode::unpackHeartbeatMessage(m, &type, &isAlt, &bits3);
 
     if (parts.length() < 2)
         return false;
@@ -193,13 +209,13 @@ bool DecodedText::tryUnpackHeartbeat(QString const &m) {
  * @return true 
  * @return false 
  */
-bool DecodedText::tryUnpackCompound(QString const &m) {
+bool DecodedText::tryUnpackCompound(QString const& m)
+{
     quint8 type = Varicode::FrameUnknown;
     quint8 bits3 = 0;
     auto const parts = Varicode::unpackCompoundMessage(m, &type, &bits3);
 
-    if (parts.length() < 2 ||
-        (bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
+    if (parts.length() < 2 || (bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
 
     frameType_ = type;
@@ -212,7 +228,7 @@ bool DecodedText::tryUnpackCompound(QString const &m) {
         message_ = compound_ % extra_ % ' ';
 
         directed_.reserve(parts.size() - 2 + 2);
-        directed_ = {"<....>", compound_};
+        directed_ = { "<....>", compound_ };
         directed_ += parts.mid(2);
     }
 
@@ -227,7 +243,8 @@ bool DecodedText::tryUnpackCompound(QString const &m) {
  * @return true 
  * @return false 
  */
-bool DecodedText::tryUnpackDirected(QString const &m) {
+bool DecodedText::tryUnpackDirected(QString const& m)
+{
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
         return false;
 
@@ -240,8 +257,7 @@ bool DecodedText::tryUnpackDirected(QString const &m) {
     switch (parts.length()) {
     case 3: // Directed message         => "0: 12 "
     case 4: // Directed numeric message => "0: 12 3 "
-        message_ =
-            parts.at(0) % ": " % parts.at(1) % parts.mid(2).join(' ') % ' ';
+        message_ = parts.at(0) % ": " % parts.at(1) % parts.mid(2).join(' ') % ' ';
         break;
     default: // Free text message
         message_ = parts.join("");
@@ -271,10 +287,17 @@ bool DecodedText::tryUnpackDirected(QString const &m) {
  * 
  * @param decoded 
  */
-DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
-    : DecodedText(QString::fromStdString(decoded.data), decoded.type,
-                  decoded.mode, decoded.quality < QUALITY_THRESHOLD,
-                  decoded.utc, decoded.frequency, decoded.snr, decoded.xdt) {}
+DecodedText::DecodedText(JS8::Event::Decoded const& decoded) :
+    DecodedText(QString::fromStdString(decoded.data),
+                decoded.type,
+                decoded.mode,
+                decoded.quality < QUALITY_THRESHOLD,
+                decoded.utc,
+                decoded.frequency,
+                decoded.snr,
+                decoded.xdt)
+{
+}
 
 // Constructor used internally; we're basically taking advantage of the ability
 // of this class to unpack, and as such this probably doesn't belong here, but
@@ -287,9 +310,10 @@ DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
  * @param bits 
  * @param submode 
  */
-DecodedText::DecodedText(QString const &frame, int const bits,
-                         int const submode)
-    : DecodedText(frame, bits, submode, false, 0, 0, 0.0f, 0.0f) {}
+DecodedText::DecodedText(QString const& frame, int const bits, int const submode) :
+    DecodedText(frame, bits, submode, false, 0, 0, 0.0f, 0.0f)
+{
+}
 
 // Simple word split for free text messages; preallocate memory for
 // efficiency; add whole message as item 0 to mimic regular expression
@@ -300,7 +324,8 @@ DecodedText::DecodedText(QString const &frame, int const bits,
  * 
  * @return QStringList 
  */
-QStringList DecodedText::messageWords() const {
+QStringList DecodedText::messageWords() const
+{
     QStringList words;
 
     words.reserve(message_.count(' ') + 2);
@@ -318,7 +343,8 @@ QStringList DecodedText::messageWords() const {
  * 
  * @return QString 
  */
-QString DecodedText::string() const {
+QString DecodedText::string() const
+{
     struct hour_minute_second hms = decode_time(time_);
 
     return QStringLiteral("%1:%2:%3%4 %5 %6 %7  %8         %9   ")
@@ -330,10 +356,12 @@ QString DecodedText::string() const {
                                             // characters, padded with zeroes.
         .arg(snr_, 3, 10, QChar(' '))       // Right-aligned integer with 3
                                             // characters, padded with spaces
-        .arg(dt_, 4, 'f', 1) // Right-aligned float with 1 decimal point
-        .arg(frequencyOffset_, 4, 10,
-             QChar(' ')) // Right-aligned integer with 4 characters, passed with
-                         // spaces
+        .arg(dt_, 4, 'f', 1)                // Right-aligned float with 1 decimal point
+        .arg(frequencyOffset_,
+             4,
+             10,
+             QChar(' '))            // Right-aligned integer with 4 characters, passed with
+                                    // spaces
         .arg(submodeChar(submode_)) // Single character
         .arg(frame_)                // Fixed string, 12 characters
         .arg(bits_);                // Single 3-bit integer

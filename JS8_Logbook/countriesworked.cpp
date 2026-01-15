@@ -11,8 +11,8 @@
 void CountriesWorked::init(const QStringList countryNames)
 {
     _data.clear();
-    foreach(QString name,countryNames)
-      _data.insert(name,false);
+    foreach (QString name, countryNames)
+        _data.insert(name, false);
 }
 
 /**
@@ -22,7 +22,7 @@ void CountriesWorked::init(const QStringList countryNames)
 void CountriesWorked::setAsWorked(const QString countryName)
 {
     if (_data.contains(countryName))
-      _data.insert(countryName,true);
+        _data.insert(countryName, true);
 }
 
 /**
@@ -33,7 +33,7 @@ void CountriesWorked::setAsWorked(const QString countryName)
 bool CountriesWorked::getHasWorked(const QString countryName) const
 {
     if (_data.contains(countryName))
-      return _data.value(countryName);
+        return _data.value(countryName);
 
     return false;
 }
@@ -45,9 +45,9 @@ bool CountriesWorked::getHasWorked(const QString countryName) const
 qsizetype CountriesWorked::getWorkedCount() const
 {
     qsizetype count = 0;
-	foreach (bool value,_data)
-		if (value)
-			count += 1;
+    foreach (bool value, _data)
+        if (value)
+            count += 1;
     return count;
 }
 
@@ -59,6 +59,3 @@ qsizetype CountriesWorked::getSize() const
 {
     return _data.count();
 }
-
-
-

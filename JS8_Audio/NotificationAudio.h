@@ -10,21 +10,22 @@
 
 class SoundOutput;
 
-class NotificationAudio : public QObject {
+class NotificationAudio : public QObject
+{
     Q_OBJECT
 
-  public:
-    explicit NotificationAudio(QObject *parent = nullptr);
+public:
+    explicit NotificationAudio(QObject* parent = nullptr);
     ~NotificationAudio();
 
-  public slots:
+public slots:
     void status(QString message);
     void error(QString message);
-    void setDevice(const QAudioDevice &device, unsigned msBuffer = 0);
-    void play(const QString &filePath);
+    void setDevice(const QAudioDevice& device, unsigned msBuffer = 0);
+    void play(const QString& filePath);
     void stop();
 
-  private:
+private:
     using Entry = QPair<QAudioFormat, QByteArray>;
     using Cache = QHash<QString, Entry>;
 

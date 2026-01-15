@@ -1,10 +1,9 @@
 #ifndef NETWORK_SERVER_LOOKUP_HPP__
 #define NETWORK_SERVER_LOOKUP_HPP__
 
-#include <tuple>
-
 #include <QAbstractSocket>
 #include <QHostAddress>
+#include <tuple>
 
 class QString;
 
@@ -29,10 +28,11 @@ class QString;
 // If no suitable host address is found QHostAddress::Null will be
 // returned in the first member of the result tuple.
 //
-std::tuple<QHostAddress, quint16> network_server_lookup(
-    QString query, quint16 default_service_port,
-    QHostAddress default_host_address = QHostAddress::LocalHost,
-    QAbstractSocket::NetworkLayerProtocol protocol =
-        QAbstractSocket::AnyIPProtocol);
+std::tuple<QHostAddress, quint16>
+    network_server_lookup(QString query,
+                          quint16 default_service_port,
+                          QHostAddress default_host_address = QHostAddress::LocalHost,
+                          QAbstractSocket::NetworkLayerProtocol protocol
+                          = QAbstractSocket::AnyIPProtocol);
 
 #endif

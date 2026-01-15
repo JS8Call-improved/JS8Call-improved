@@ -18,10 +18,11 @@ class MainWindow;
  * UDP protocol format, allowing JS8Call to communicate with WSJT-X and
  * other applications that support the WSJT-X protocol.
  */
-class WSJTXMessageMapper : public QObject {
+class WSJTXMessageMapper : public QObject
+{
     Q_OBJECT
 
-  public:
+public:
     /**
      * @brief Construct a WSJT-X message mapper
      *
@@ -29,9 +30,9 @@ class WSJTXMessageMapper : public QObject {
      * @param main_window Main window instance for accessing JS8Call state
      * @param parent Parent QObject
      */
-    explicit WSJTXMessageMapper(WSJTXMessageClient *client,
-                                MainWindow *main_window,
-                                QObject *parent = nullptr);
+    explicit WSJTXMessageMapper(WSJTXMessageClient* client,
+                                MainWindow* main_window,
+                                QObject* parent = nullptr);
 
     /**
      * @brief Send a Status update message
@@ -50,12 +51,17 @@ class WSJTXMessageMapper : public QObject {
      * @param decoding Whether currently decoding
      * @param tx_message Current TX message text
      */
-    void sendStatusUpdate(Radio::Frequency dial_freq, Radio::Frequency offset,
-                          QString const &mode, QString const &dx_call,
-                          QString const &de_call, QString const &de_grid,
-                          QString const &dx_grid, bool tx_enabled,
-                          bool transmitting, bool decoding,
-                          QString const &tx_message);
+    void sendStatusUpdate(Radio::Frequency dial_freq,
+                          Radio::Frequency offset,
+                          QString const& mode,
+                          QString const& dx_call,
+                          QString const& de_call,
+                          QString const& de_grid,
+                          QString const& dx_grid,
+                          bool tx_enabled,
+                          bool transmitting,
+                          bool decoding,
+                          QString const& tx_message);
 
     /**
      * @brief Send a Decode message
@@ -71,9 +77,14 @@ class WSJTXMessageMapper : public QObject {
      * @param message Decoded message text
      * @param low_confidence Whether decode confidence is low
      */
-    void sendDecode(bool is_new, QTime time, qint32 snr, float delta_time,
-                    quint32 delta_frequency, QString const &mode,
-                    QString const &message, bool low_confidence);
+    void sendDecode(bool is_new,
+                    QTime time,
+                    qint32 snr,
+                    float delta_time,
+                    quint32 delta_frequency,
+                    QString const& mode,
+                    QString const& message,
+                    bool low_confidence);
 
     /**
      * @brief Send a QSO Logged message
@@ -90,24 +101,32 @@ class WSJTXMessageMapper : public QObject {
      * @param my_call My callsign
      * @param my_grid My grid square
      */
-    void sendQSOLogged(QDateTime time_off, QString const &dx_call,
-                       QString const &dx_grid, Radio::Frequency dial_frequency,
-                       QString const &mode, QString const &report_sent,
-                       QString const &report_received, QString const &my_call,
-                       QString const &my_grid);
+    void sendQSOLogged(QDateTime time_off,
+                       QString const& dx_call,
+                       QString const& dx_grid,
+                       Radio::Frequency dial_frequency,
+                       QString const& mode,
+                       QString const& report_sent,
+                       QString const& report_received,
+                       QString const& my_call,
+                       QString const& my_grid);
 
-  private slots:
-    void handleReply(QTime, qint32 snr, float delta_time,
-                     quint32 delta_frequency, QString const &mode,
-                     QString const &message_text, bool low_confidence,
+private slots:
+    void handleReply(QTime,
+                     qint32 snr,
+                     float delta_time,
+                     quint32 delta_frequency,
+                     QString const& mode,
+                     QString const& message_text,
+                     bool low_confidence,
                      quint8 modifiers);
-    void handleFreeText(QString const &text, bool send);
+    void handleFreeText(QString const& text, bool send);
     void handleHaltTx(bool auto_only);
-    void handleLocation(QString const &location);
+    void handleLocation(QString const& location);
 
-  private:
-    WSJTXMessageClient *client_;
-    MainWindow *main_window_;
+private:
+    WSJTXMessageClient* client_;
+    MainWindow* main_window_;
 };
 
 #endif

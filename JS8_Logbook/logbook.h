@@ -7,12 +7,12 @@
 #define LOGBOOK_H
 
 
-#include <QString>
 #include <QFont>
+#include <QString>
 
-#include "countrydat.h"
-#include "countriesworked.h"
 #include "adif.h"
+#include "countriesworked.h"
+#include "countrydat.h"
 #include "n3fjp.h"
 
 class QDir;
@@ -21,28 +21,33 @@ class LogBook
 {
 public:
     void init();
-    bool hasWorkedBefore(const QString &call, const QString &band);
+    bool hasWorkedBefore(const QString& call, const QString& band);
     void match(/*in*/ const QString call,
-              /*out*/ QString &countryName,
-                      bool &callWorkedBefore,
-                      bool &countryWorkedBefore) const;
+               /*out*/ QString& countryName,
+               bool& callWorkedBefore,
+               bool& countryWorkedBefore) const;
     bool findCallDetails(/*in*/
-                        const QString call,
-                        /*out*/
-                        QString &grid,
-                        QString &date,
-                        QString &name,
-                        QString &comment) const;
-    void addAsWorked(const QString call, const QString band, const QString mode, const QString submode, const QString grid, const QString date, const QString name, const QString comment);
+                         const QString call,
+                         /*out*/
+                         QString& grid,
+                         QString& date,
+                         QString& name,
+                         QString& comment) const;
+    void addAsWorked(const QString call,
+                     const QString band,
+                     const QString mode,
+                     const QString submode,
+                     const QString grid,
+                     const QString date,
+                     const QString name,
+                     const QString comment);
 
 private:
-   CountryDat _countries;
-   CountriesWorked _worked;
-   ADIF _log;
+    CountryDat _countries;
+    CountriesWorked _worked;
+    ADIF _log;
 
-   void _setAlreadyWorkedFromLog();
-
+    void _setAlreadyWorkedFromLog();
 };
 
 #endif // LOGBOOK_H
-

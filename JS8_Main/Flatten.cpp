@@ -1,4 +1,5 @@
 #include "Flatten.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -28,7 +29,8 @@
 // Flatten Constants
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Tunable settings; degree of the polynomial used for the baseline
 // curve fit, and the percentile of the span at which to sample. In
 // general, a 5th degree polynomial and the 10th percentile should
@@ -42,8 +44,7 @@ constexpr auto FLATTEN_SAMPLE = 10;
 // odd, resulting in an even number of coefficients.
 
 static_assert(FLATTEN_DEGREE & 1, "Degree must be odd");
-static_assert(FLATTEN_SAMPLE >= 0 && FLATTEN_SAMPLE <= 100,
-              "Sample must be a percentage");
+static_assert(FLATTEN_SAMPLE >= 0 && FLATTEN_SAMPLE <= 100, "Sample must be a percentage");
 
 // Since we know the degree of the polynomial, and thus the number of
 // nodes that we're going to use, we can do all the trigonometry work
@@ -90,11 +91,9 @@ constexpr auto FLATTEN_NODES = []() {
             auto const x14 = x12 * x2;
             auto const x16 = x8 * x8;
 
-            return coefficients[0] + coefficients[1] * x2 +
-                   coefficients[2] * x4 + coefficients[3] * x6 +
-                   coefficients[4] * x8 + coefficients[5] * x10 +
-                   coefficients[6] * x12 + coefficients[7] * x14 +
-                   coefficients[8] * x16;
+            return coefficients[0] + coefficients[1] * x2 + coefficients[2] * x4
+                + coefficients[3] * x6 + coefficients[4] * x8 + coefficients[5] * x10
+                + coefficients[6] * x12 + coefficients[7] * x14 + coefficients[8] * x16;
         };
 
         // Reduce x to [0, RAD_360)
@@ -118,7 +117,7 @@ constexpr auto FLATTEN_NODES = []() {
     // call std::cos() here, as it's required to be constexpr in
     // C++20 and above, and presumably it'll be of high quality.
 
-    auto nodes = std::array<double, FLATTEN_DEGREE + 1>{};
+    auto nodes = std::array<double, FLATTEN_DEGREE + 1> {};
     constexpr auto slice = std::numbers::pi / (2.0 * nodes.size());
 
     for (std::size_t i = 0; i < nodes.size(); ++i) {
@@ -133,10 +132,10 @@ constexpr auto FLATTEN_NODES = []() {
 // Private Implementation
 /******************************************************************************/
 
-class Flatten::Impl {
+class Flatten::Impl
+{
     using Points = Eigen::Matrix<double, FLATTEN_NODES.size(), 2>;
-    using Vandermonde =
-        Eigen::Matrix<double, FLATTEN_NODES.size(), FLATTEN_NODES.size()>;
+    using Vandermonde = Eigen::Matrix<double, FLATTEN_NODES.size(), FLATTEN_NODES.size()>;
     using Coefficients = Eigen::Vector<double, FLATTEN_NODES.size()>;
 
     Points p;
@@ -148,24 +147,22 @@ class Flatten::Impl {
     // it sees here when the optimizer is involved, but even without it,
     // we'll likely see fused multiply-add instructions.
 
-    inline auto evaluate(float const x) const {
-        return [this]<Eigen::Index... I>(
-                   std::size_t const i,
-                   std::integer_sequence<Eigen::Index, I...>) {
+    inline auto evaluate(float const x) const
+    {
+        return [this]<Eigen::Index... I>(std::size_t const i,
+                                         std::integer_sequence<Eigen::Index, I...>) {
             auto baseline = 0.0;
             auto exponent = 1.0;
 
-            ((baseline += (c[I * 2] + c[I * 2 + 1] * i) * exponent,
-              exponent *= i * i),
-             ...);
+            ((baseline += (c[I * 2] + c[I * 2 + 1] * i) * exponent, exponent *= i * i), ...);
 
             return static_cast<float>(baseline);
-        }(x, std::make_integer_sequence<Eigen::Index,
-                                        Coefficients::SizeAtCompileTime / 2>{});
+        }(x, std::make_integer_sequence<Eigen::Index, Coefficients::SizeAtCompileTime / 2> {});
     }
 
-  public:
-    void operator()(float *const data, std::size_t const size) {
+public:
+    void operator()(float* const data, std::size_t const size)
+    {
         // Loop invariants; sentinel one past the end of the range, and
         // the number of points in each of the arms on either side of a
         // node.
@@ -215,16 +212,19 @@ class Flatten::Impl {
 // Public Implementation
 /******************************************************************************/
 
-Flatten::Flatten(bool const flatten)
-    : m_impl(flatten ? std::make_unique<Impl>() : nullptr) {}
+Flatten::Flatten(bool const flatten) : m_impl(flatten ? std::make_unique<Impl>() : nullptr)
+{
+}
 
 Flatten::~Flatten() = default;
 
-void Flatten::operator()(bool const flatten) {
+void Flatten::operator()(bool const flatten)
+{
     m_impl.reset(flatten ? new Impl() : nullptr);
 }
 
-void Flatten::operator()(float *const data, std::size_t const size) {
+void Flatten::operator()(float* const data, std::size_t const size)
+{
     if (m_impl && size)
         (*m_impl)(data, size);
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QDebug>
+#include <QLoggingCategory>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -9,12 +11,10 @@
 #include <sstream>
 #include <vector>
 
-#include <QDebug>
-#include <QLoggingCategory>
-
 Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 
-namespace js8 {
+namespace js8
+{
 /**
  * @brief Compute per-tone/symbol noise medians and whiten LLRs for a JS8 frame.
  *
@@ -23,9 +23,11 @@ namespace js8 {
  * templated on matrix dimensions, so it stays header-only; used inside the JS8
  * decoder per candidate.
  */
-template <int NROWS, int ND, int N> class WhiteningProcessor {
-  public:
-    struct Result {
+template <int NROWS, int ND, int N> class WhiteningProcessor
+{
+public:
+    struct Result
+    {
         std::array<float, 3 * ND> llr0;
         std::array<float, 3 * ND> llr1;
         bool whiteningApplied;
@@ -35,23 +37,22 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
         double avgAbsPost;
     };
 
-    static Result process(std::array<std::array<float, ND>, NROWS> const &s1,
-                          std::array<int, ND> const &symbolWinners,
-                          float erasureThreshold, bool debug) {
-        auto const median =
-            [](std::vector<float> &values) -> std::optional<float> {
+    static Result process(std::array<std::array<float, ND>, NROWS> const& s1,
+                          std::array<int, ND> const& symbolWinners,
+                          float erasureThreshold,
+                          bool debug)
+    {
+        auto const median = [](std::vector<float>& values) -> std::optional<float> {
             if (values.empty())
                 return std::nullopt;
 
             auto const mid = values.size() / 2;
 
-            std::nth_element(values.begin(), values.begin() + mid,
-                             values.end());
+            std::nth_element(values.begin(), values.begin() + mid, values.end());
             float med = values[mid];
 
             if ((values.size() % 2) == 0 && mid > 0) {
-                std::nth_element(values.begin(), values.begin() + (mid - 1),
-                                 values.end());
+                std::nth_element(values.begin(), values.begin() + (mid - 1), values.end());
                 med = 0.5f * (med + values[mid - 1]);
             }
 
@@ -60,8 +61,7 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
 
         // Estimate per-tone noise using non-winning tone magnitudes across the
         // frame.
-        auto const toneNoise =
-            [&]() -> std::optional<std::array<float, NROWS>> {
+        auto const toneNoise = [&]() -> std::optional<std::array<float, NROWS>> {
             std::array<std::vector<float>, NROWS> toneSamples;
             std::array<float, NROWS> noise = {};
 
@@ -130,25 +130,20 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
         }();
 
         if (symbolNoise && !symbolNoise->empty() && debug) {
-            auto const [minIt, maxIt] =
-                std::minmax_element(symbolNoise->begin(), symbolNoise->end());
-            float const avg = std::accumulate(symbolNoise->begin(),
-                                              symbolNoise->end(), 0.0f) /
-                              static_cast<float>(symbolNoise->size());
+            auto const [minIt, maxIt]
+                = std::minmax_element(symbolNoise->begin(), symbolNoise->end());
+            float const avg = std::accumulate(symbolNoise->begin(), symbolNoise->end(), 0.0f)
+                / static_cast<float>(symbolNoise->size());
 
-            qCDebug(decoder_js8)
-                << "symbolNoise avg/min/max" << avg << *minIt << *maxIt;
+            qCDebug(decoder_js8) << "symbolNoise avg/min/max" << avg << *minIt << *maxIt;
         }
 
-        Result result{};
+        Result result {};
 
-        bool const disableWhitening =
-            std::getenv("JS8_DISABLE_WHITENING") != nullptr;
-        bool const whiteningAvailable = toneNoise && symbolNoise &&
-                                        !symbolNoise->empty() &&
-                                        !disableWhitening;
-        bool const applyErasureInWhitening =
-            whiteningAvailable && erasureThreshold > 0.0f;
+        bool const disableWhitening = std::getenv("JS8_DISABLE_WHITENING") != nullptr;
+        bool const whiteningAvailable
+            = toneNoise && symbolNoise && !symbolNoise->empty() && !disableWhitening;
+        bool const applyErasureInWhitening = whiteningAvailable && erasureThreshold > 0.0f;
         double sumAbsPre = 0.0;
         double sumAbsPost = 0.0;
         std::size_t erasures = 0;
@@ -164,23 +159,23 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
                 ps[i] = s1[i][j];
 
             // Assign to `bmeta` in column order, with correct values
-            result.llr0[i1] = std::max({ps[4], ps[5], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[2], ps[3]}); // r4
-            result.llr0[i2] = std::max({ps[2], ps[3], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[4], ps[5]}); // r2
-            result.llr0[i4] = std::max({ps[1], ps[3], ps[5], ps[7]}) -
-                              std::max({ps[0], ps[2], ps[4], ps[6]}); // r1
+            result.llr0[i1] = std::max({ ps[4], ps[5], ps[6], ps[7] })
+                - std::max({ ps[0], ps[1], ps[2], ps[3] }); // r4
+            result.llr0[i2] = std::max({ ps[2], ps[3], ps[6], ps[7] })
+                - std::max({ ps[0], ps[1], ps[4], ps[5] }); // r2
+            result.llr0[i4] = std::max({ ps[1], ps[3], ps[5], ps[7] })
+                - std::max({ ps[0], ps[2], ps[4], ps[6] }); // r1
 
-            for (auto &x : ps)
+            for (auto& x : ps)
                 x = std::log(x + 1e-32f);
 
             // Assign to `bmetb` in column order, with correct values
-            result.llr1[i1] = std::max({ps[4], ps[5], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[2], ps[3]}); // r4
-            result.llr1[i2] = std::max({ps[2], ps[3], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[4], ps[5]}); // r2
-            result.llr1[i4] = std::max({ps[1], ps[3], ps[5], ps[7]}) -
-                              std::max({ps[0], ps[2], ps[4], ps[6]}); // r1
+            result.llr1[i1] = std::max({ ps[4], ps[5], ps[6], ps[7] })
+                - std::max({ ps[0], ps[1], ps[2], ps[3] }); // r4
+            result.llr1[i2] = std::max({ ps[2], ps[3], ps[6], ps[7] })
+                - std::max({ ps[0], ps[1], ps[4], ps[5] }); // r2
+            result.llr1[i4] = std::max({ ps[1], ps[3], ps[5], ps[7] })
+                - std::max({ ps[0], ps[2], ps[4], ps[6] }); // r1
 
             if (whiteningAvailable) {
                 int const winner = symbolWinners[j];
@@ -188,7 +183,7 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
                 float const sn = std::max(0.0f, (*symbolNoise)[j]);
                 float const localNoise = std::sqrt(tn * sn + 1e-12f);
 
-                auto const applyWhitening = [&](float &value) {
+                auto const applyWhitening = [&](float& value) {
                     float const pre = std::abs(value);
                     sumAbsPre += pre;
 
@@ -196,8 +191,7 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
                         value /= localNoise;
                     }
 
-                    if (applyErasureInWhitening &&
-                        std::abs(value) < erasureThreshold) {
+                    if (applyErasureInWhitening && std::abs(value) < erasureThreshold) {
                         value = 0.0f;
                         ++erasures;
                     }
@@ -214,7 +208,7 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
             }
         }
 
-        auto const normalizeLLR = [](auto &llr) {
+        auto const normalizeLLR = [](auto& llr) {
             float sum = 0.0f;
             float sum_of_squares = 0.0f;
 
@@ -228,7 +222,7 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
             float const variance = llr2av - llrav * llrav;
             float const llrsig = std::sqrt(variance > 0.0f ? variance : llr2av);
 
-            for (float &val : llr)
+            for (float& val : llr)
                 val = (val / llrsig) * 2.83f;
         };
 
@@ -238,14 +232,12 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
         normalizeLLR(result.llr1);
 
         if (whiteningAvailable && debug) {
-            auto const total =
-                static_cast<double>(result.llr0.size() + result.llr1.size());
+            auto const total = static_cast<double>(result.llr0.size() + result.llr1.size());
             double const avgPre = total > 0.0 ? sumAbsPre / total : 0.0;
             double const avgPost = total > 0.0 ? sumAbsPost / total : 0.0;
 
-            qCDebug(decoder_js8) << "LLR whitening applied"
-                                 << "avg|LLR| pre/post:" << avgPre << avgPost
-                                 << "erasures:" << erasures;
+            qCDebug(decoder_js8) << "LLR whitening applied" << "avg|LLR| pre/post:" << avgPre
+                                 << avgPost << "erasures:" << erasures;
         }
 
         result.whiteningApplied = whiteningAvailable;

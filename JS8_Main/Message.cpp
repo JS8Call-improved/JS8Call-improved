@@ -19,6 +19,7 @@
  **/
 
 #include "Message.h"
+
 #include "DriftingDateTime.h"
 #include "MessageError.h"
 
@@ -26,16 +27,19 @@
 // Constants
 /******************************************************************************/
 
-namespace {
-constexpr qint64 EPOCH = 1499299200000; // July 6, 2017
+namespace
+{
+constexpr qint64 EPOCH = 1'499'299'200'000; // July 6, 2017
 }
 
 /******************************************************************************/
 // Local Utilities
 /******************************************************************************/
 
-namespace {
-auto generateId() {
+namespace
+{
+auto generateId()
+{
     return QString::number(DriftingDateTime::currentMSecsSinceEpoch() - EPOCH);
 }
 } // namespace
@@ -44,7 +48,8 @@ auto generateId() {
 // Message::Data Implementation
 /******************************************************************************/
 
-struct Message::Data final : public QSharedData {
+struct Message::Data final : public QSharedData
+{
     // Return the ID value from the variant map, if there is one, or zero
     // if there's no ID in the map.
 
@@ -53,14 +58,13 @@ struct Message::Data final : public QSharedData {
     // Generate a new ID value and insert it into the map, replacing any ID
     // value that might already have been present. Return the ID value.
 
-    qint64 insertId() {
-        return params_.insert("_ID", generateId())->toLongLong();
-    }
+    qint64 insertId() { return params_.insert("_ID", generateId())->toLongLong(); }
 
     // If there's a non-zero ID in the variant map, return it, otherwise
     // generate one, insert it, and return it.
 
-    qint64 ensureId() {
+    qint64 ensureId()
+    {
         if (auto const it = params_.find("_ID"); it != params_.end()) {
             if (auto const id = it->toLongLong())
                 return id;
@@ -80,16 +84,18 @@ struct Message::Data final : public QSharedData {
 // Constructors
 /******************************************************************************/
 
-Message::Message() : d_{new Data} {}
+Message::Message() : d_ { new Data }
+{
+}
 
-Message::Message(QString const &type, QString const &value) : Message() {
+Message::Message(QString const& type, QString const& value) : Message()
+{
     d_->type_ = type, d_->value_ = value;
     d_->insertId();
 }
 
-Message::Message(QString const &type, QString const &value,
-                 QVariantMap const &params)
-    : Message() {
+Message::Message(QString const& type, QString const& value, QVariantMap const& params) : Message()
+{
     d_->type_ = type, d_->value_ = value;
     d_->params_ = params;
     d_->ensureId();
@@ -99,70 +105,92 @@ Message::Message(QString const &type, QString const &value,
 // Assignment, copying, and destruction
 /******************************************************************************/
 
-Message &Message::operator=(Message &&) noexcept = default;
-Message &Message::operator=(Message const &) = default;
-Message::Message(Message const &) = default;
-Message::Message(Message &&) noexcept = default;
+Message& Message::operator=(Message&&) noexcept = default;
+Message& Message::operator=(Message const&) = default;
+Message::Message(Message const&) = default;
+Message::Message(Message&&) noexcept = default;
 Message::~Message() = default;
 
 /******************************************************************************/
 // Accessors
 /******************************************************************************/
 
-qint64 Message::id() const { return d_->id(); }
+qint64 Message::id() const
+{
+    return d_->id();
+}
 
-QString Message::type() const { return d_->type_; }
+QString Message::type() const
+{
+    return d_->type_;
+}
 
-QString Message::value() const { return d_->value_; }
+QString Message::value() const
+{
+    return d_->value_;
+}
 
-QVariantMap Message::params() const { return d_->params_; }
+QVariantMap Message::params() const
+{
+    return d_->params_;
+}
 
 /******************************************************************************/
 // Manipulators
 /******************************************************************************/
 
-qint64 Message::ensureId() { return d_->ensureId(); }
+qint64 Message::ensureId()
+{
+    return d_->ensureId();
+}
 
-void Message::setType(QString const &type) { d_->type_ = type; }
+void Message::setType(QString const& type)
+{
+    d_->type_ = type;
+}
 
-void Message::setValue(QString const &value) { d_->value_ = value; }
+void Message::setValue(QString const& value)
+{
+    d_->value_ = value;
+}
 
 /******************************************************************************/
 // Deserialization
 /******************************************************************************/
 
-Message Message::fromJson(QByteArray const &json) {
+Message Message::fromJson(QByteArray const& json)
+{
     QJsonParseError parse;
     QJsonDocument document = QJsonDocument::fromJson(json, &parse);
 
     if (parse.error)
-        throw std::system_error{MessageError::Code::json_parsing_error,
-                                parse.errorString().toStdString()};
+        throw std::system_error { MessageError::Code::json_parsing_error,
+                                  parse.errorString().toStdString() };
 
     return fromJson(document);
 }
 
-Message Message::fromJson(QJsonDocument const &json) {
+Message Message::fromJson(QJsonDocument const& json)
+{
     if (!json.isObject())
-        throw std::system_error{MessageError::Code::json_not_an_object};
+        throw std::system_error { MessageError::Code::json_not_an_object };
 
     return fromJson(json.object());
 }
 
-Message Message::fromJson(QJsonObject const &json) {
+Message Message::fromJson(QJsonObject const& json)
+{
     Message message;
 
     if (auto const it = json.find("type"); it != json.end() && it->isString()) {
         message.d_->type_ = it->toString();
     }
 
-    if (auto const it = json.find("value");
-        it != json.end() && it->isString()) {
+    if (auto const it = json.find("value"); it != json.end() && it->isString()) {
         message.d_->value_ = it->toString();
     }
 
-    if (auto const it = json.find("params");
-        it != json.end() && it->isObject()) {
+    if (auto const it = json.find("params"); it != json.end() && it->isObject()) {
         message.d_->params_ = it->toObject().toVariantMap();
     }
 
@@ -173,23 +201,32 @@ Message Message::fromJson(QJsonObject const &json) {
 // Conversions
 /******************************************************************************/
 
-QByteArray Message::toJson() const {
+QByteArray Message::toJson() const
+{
     return toJsonDocument().toJson(QJsonDocument::Compact);
 }
 
-QJsonDocument Message::toJsonDocument() const {
+QJsonDocument Message::toJsonDocument() const
+{
     return QJsonDocument(toJsonObject());
 }
 
-QJsonObject Message::toJsonObject() const {
-    return {{"type", d_->type_},
-            {"value", d_->value_},
-            {"params", QJsonObject::fromVariantMap(d_->params_)}};
+QJsonObject Message::toJsonObject() const
+{
+    return {
+        { "type",   d_->type_                                },
+        { "value",  d_->value_                               },
+        { "params", QJsonObject::fromVariantMap(d_->params_) }
+    };
 }
 
-QVariantMap Message::toVariantMap() const {
+QVariantMap Message::toVariantMap() const
+{
     return {
-        {"type", d_->type_}, {"value", d_->value_}, {"params", d_->params_}};
+        { "type",   d_->type_   },
+        { "value",  d_->value_  },
+        { "params", d_->params_ }
+    };
 }
 
 /******************************************************************************/

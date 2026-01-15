@@ -5,16 +5,17 @@
 
 class QString;
 
-class TraceFile final {
-  public:
-    explicit TraceFile(QString const &TraceFile_file_path);
+class TraceFile final
+{
+public:
+    explicit TraceFile(QString const& TraceFile_file_path);
     ~TraceFile();
 
     // copying not allowed
-    TraceFile(TraceFile const &) = delete;
-    TraceFile &operator=(TraceFile const &) = delete;
+    TraceFile(TraceFile const&) = delete;
+    TraceFile& operator=(TraceFile const&) = delete;
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };

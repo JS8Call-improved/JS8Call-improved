@@ -20,10 +20,12 @@
 */
 
 #include "countrydat.h"
-#include "JS8_Main/Radio.h"
+
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
+
+#include "JS8_Main/Radio.h"
 
 /**
  * @brief Initialize the CountryDat instance with the specified filename.
@@ -43,9 +45,8 @@ void CountryDat::init(const QString filename)
 QString CountryDat::_extractName(const QString line) const
 {
     int s1 = line.indexOf(':');
-    if (s1>=0)
-    {
-        QString name = line.mid(0,s1);
+    if (s1 >= 0) {
+        QString name = line.mid(0, s1);
         return name;
     }
     return "";
@@ -57,14 +58,13 @@ QString CountryDat::_extractName(const QString line) const
  * @param a The opening bracket.
  * @param b The closing bracket.
  */
-void CountryDat::_removeBrackets(QString &line, const QString a, const QString b) const
+void CountryDat::_removeBrackets(QString& line, const QString a, const QString b) const
 {
     int s1 = line.indexOf(a);
-    while (s1 >= 0)
-    {
-      int s2 = line.indexOf(b);
-      line = line.mid(0,s1) + line.mid(s2+1,-1);
-      s1 = line.indexOf(a);
+    while (s1 >= 0) {
+        int s2 = line.indexOf(b);
+        line = line.mid(0, s1) + line.mid(s2 + 1, -1);
+        s1 = line.indexOf(a);
     }
 }
 
@@ -74,22 +74,21 @@ void CountryDat::_removeBrackets(QString &line, const QString a, const QString b
  * @param more Output parameter indicating if more prefixes are expected.
  * @return A list of extracted prefixes.
  */
-QStringList CountryDat::_extractPrefix(QString &line, bool &more) const
+QStringList CountryDat::_extractPrefix(QString& line, bool& more) const
 {
     line = line.remove(" \n");
-    line = line.replace(" ","");
+    line = line.replace(" ", "");
 
-    _removeBrackets(line,"(",")");
-    _removeBrackets(line,"[","]");
-    _removeBrackets(line,"<",">");
-    _removeBrackets(line,"~","~");
+    _removeBrackets(line, "(", ")");
+    _removeBrackets(line, "[", "]");
+    _removeBrackets(line, "<", ">");
+    _removeBrackets(line, "~", "~");
 
     int s1 = line.indexOf(';');
     more = true;
-    if (s1 >= 0)
-    {
-      line = line.mid(0,s1);
-      more = false;
+    if (s1 >= 0) {
+        line = line.mid(0, s1);
+        more = false;
     }
 
     QStringList r = line.split(',');
@@ -106,45 +105,40 @@ void CountryDat::load()
     _countryNames.clear(); //used by countriesWorked
 
     QFile inputFile(_filename);
-    if (inputFile.open(QIODevice::ReadOnly))
-    {
-       QTextStream in(&inputFile);
-       while ( !in.atEnd() )
-       {
-          QString line1 = in.readLine();
-          if ( !in.atEnd() )
-          {
-            QString line2 = in.readLine();
+    if (inputFile.open(QIODevice::ReadOnly)) {
+        QTextStream in(&inputFile);
+        while (!in.atEnd()) {
+            QString line1 = in.readLine();
+            if (!in.atEnd()) {
+                QString line2 = in.readLine();
 
-            QString name = _extractName(line1);
-            if (name.length()>0)
-            {
-              QString continent=line1.mid(36,2);
-              QString principalPrefix=line1.mid(69,4);
-              int i1=principalPrefix.indexOf(":");
-              if(i1>0) principalPrefix=principalPrefix.mid(0,i1);
-              name += "; " + principalPrefix + "; " + continent;
-                _countryNames << name;
-                bool more = true;
-                QStringList prefixs;
-                while (more)
-                {
-                    QStringList p = _extractPrefix(line2,more);
-                    prefixs += p;
-                    if (more)
-                        line2 = in.readLine();
-                }
+                QString name = _extractName(line1);
+                if (name.length() > 0) {
+                    QString continent = line1.mid(36, 2);
+                    QString principalPrefix = line1.mid(69, 4);
+                    int i1 = principalPrefix.indexOf(":");
+                    if (i1 > 0)
+                        principalPrefix = principalPrefix.mid(0, i1);
+                    name += "; " + principalPrefix + "; " + continent;
+                    _countryNames << name;
+                    bool more = true;
+                    QStringList prefixs;
+                    while (more) {
+                        QStringList p = _extractPrefix(line2, more);
+                        prefixs += p;
+                        if (more)
+                            line2 = in.readLine();
+                    }
 
-                QString p;
-                foreach(p,prefixs)
-                {
-                    if (p.length() > 0)
-                        _data.insert(p,name);
+                    QString p;
+                    foreach (p, prefixs) {
+                        if (p.length() > 0)
+                            _data.insert(p, name);
+                    }
                 }
             }
-          }
-       }
-    inputFile.close();
+        }
+        inputFile.close();
     }
 }
 
@@ -155,25 +149,22 @@ void CountryDat::load()
  */
 QString CountryDat::find(QString call) const
 {
-  call = call.toUpper ();
+    call = call.toUpper();
 
-  // check for exact match first
-  if (_data.contains ("=" + call))
-    {
-      return fixup (_data.value ("=" + call), call);
+    // check for exact match first
+    if (_data.contains("=" + call)) {
+        return fixup(_data.value("=" + call), call);
     }
 
-  auto prefix = Radio::effective_prefix (call);
-  auto match_candidate = prefix;
-  while (match_candidate.size () >= 1)
-    {
-      if (_data.contains (match_candidate))
-        {
-          return fixup (_data.value (match_candidate), prefix);
+    auto prefix = Radio::effective_prefix(call);
+    auto match_candidate = prefix;
+    while (match_candidate.size() >= 1) {
+        if (_data.contains(match_candidate)) {
+            return fixup(_data.value(match_candidate), prefix);
         }
-      match_candidate = match_candidate.left (match_candidate.size () - 1);
+        match_candidate = match_candidate.left(match_candidate.size() - 1);
     }
-  return QString {};
+    return QString {};
 }
 
 /**
@@ -182,16 +173,15 @@ QString CountryDat::find(QString call) const
  * @param call The callsign to check for special rules.
  * @return The potentially modified country name.
  */
-QString CountryDat::fixup (QString country, QString const& call) const
+QString CountryDat::fixup(QString country, QString const& call) const
 {
-  //
-  // deal with special rules that cty.dat does not cope with
-  //
+    //
+    // deal with special rules that cty.dat does not cope with
+    //
 
-  // KG4 2x1 and 2x3 calls that map to Gitmo are mainland US not Gitmo
-  if (call.startsWith ("KG4") && call.size () != 5 && call.size () != 3)
-    {
-      country.replace ("Guantanamo Bay; KG4; NA", "United States; K; NA");
+    // KG4 2x1 and 2x3 calls that map to Gitmo are mainland US not Gitmo
+    if (call.startsWith("KG4") && call.size() != 5 && call.size() != 3) {
+        country.replace("Guantanamo Bay; KG4; NA", "United States; K; NA");
     }
-  return country;
+    return country;
 }

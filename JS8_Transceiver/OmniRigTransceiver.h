@@ -1,15 +1,13 @@
 #ifndef OMNI_RIG_TRANSCEIVER_HPP__
 #define OMNI_RIG_TRANSCEIVER_HPP__
 
-#include <memory>
-
 #include <QScopedPointer>
 #include <QString>
-
-#include "TransceiverBase.h"
-#include "TransceiverFactory.h"
+#include <memory>
 
 #include "OmniRig.h"
+#include "TransceiverBase.h"
+#include "TransceiverFactory.h"
 
 //
 // OmniRig Transceiver Interface
@@ -19,21 +17,25 @@
 // which can  be enabled by wrapping  a HamlibTransceiver instantiated
 // as a "Hamlib Dummy" transceiver in the Transceiver factory method.
 //
-class OmniRigTransceiver final : public TransceiverBase {
+class OmniRigTransceiver final : public TransceiverBase
+{
     Q_OBJECT;
 
-  public:
-    static void register_transceivers(TransceiverFactory::Transceivers *,
-                                      int id1, int id2);
+public:
+    static void register_transceivers(TransceiverFactory::Transceivers*, int id1, int id2);
 
-    enum RigNumber { One = 1, Two };
+    enum RigNumber
+    {
+        One = 1,
+        Two
+    };
 
     // takes ownership of wrapped Transceiver
     explicit OmniRigTransceiver(std::unique_ptr<TransceiverBase> wrapped,
                                 RigNumber,
                                 TransceiverFactory::PTTMethod ptt_type,
-                                QString const &ptt_port,
-                                QObject *parent = nullptr);
+                                QString const& ptt_port,
+                                QObject* parent = nullptr);
 
     int do_start() override;
     void do_stop() override;
@@ -43,15 +45,14 @@ class OmniRigTransceiver final : public TransceiverBase {
     void do_ptt(bool on) override;
     void do_sync(bool force_signal, bool no_poll) override;
 
-  private:
+private:
     Q_SLOT void timeout_check();
     Q_SLOT void handle_COM_exception(int, QString, QString, QString);
     Q_SLOT void handle_visible_change();
     Q_SLOT void handle_rig_type_change(int rig_number);
     Q_SLOT void handle_status_change(int rig_number);
     Q_SLOT void handle_params_change(int rig_number, int params);
-    Q_SLOT void handle_custom_reply(int, QVariant const &command,
-                                    QVariant const &reply);
+    Q_SLOT void handle_custom_reply(int, QVariant const& command, QVariant const& reply);
 
     static MODE map_mode(OmniRig::RigParamX param);
     static OmniRig::RigParamX map_mode(MODE mode);

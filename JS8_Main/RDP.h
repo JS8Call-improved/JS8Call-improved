@@ -6,7 +6,8 @@
 #include <QPolygonF>
 #include <QStack>
 
-class RDP {
+class RDP
+{
     // This gets called approximately 10 times per second, and until
     // the associated view resizes, it's going to need exactly the
     // same amount of stack and tracking array as it did last time.
@@ -16,7 +17,7 @@ class RDP {
     QStack<QPair<qsizetype, qsizetype>> stack;
     QBitArray array;
 
-  public:
+public:
     // Process the provided polygon through the Ramer–Douglas–Peucker
     // algorithm at the requested epsilon level, modifying it in-place
     // and returning an iterator suitable for erase-remove idiom usage,
@@ -34,7 +35,7 @@ class RDP {
     // the number of elided points, and as with std::remove_if(), these
     // points exist in memory but in an unspecified state.
 
-    QPolygonF::iterator operator()(QPolygonF &polygon, qreal epsilon = 2.0);
+    QPolygonF::iterator operator()(QPolygonF& polygon, qreal epsilon = 2.0);
 };
 
 #endif
