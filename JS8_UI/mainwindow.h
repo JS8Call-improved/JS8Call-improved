@@ -68,6 +68,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "JS8_Audio/AudioDevice.h"
@@ -122,15 +123,14 @@
 #include "messagereplydialog.h"
 #include "messagewindow.h"
 #include "ui_mainwindow.h"
-#include <functional>
-#include <unordered_map>
 
 Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 
 extern int volatile itone[JS8_NUM_SYMBOLS]; // Audio tones for all Tx symbols
 
 //--------------------------------------------------------------- MainWindow
-namespace Ui {
+namespace Ui
+{
 class MainWindow;
 }
 
@@ -157,7 +157,8 @@ typedef std::function<void()> Callback;
 
 class WSJTXMessageMapper; // Forward declaration
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
     Q_OBJECT;
     friend class WSJTXMessageMapper; // Allow WSJTXMessageMapper to access
                                      // private members
@@ -165,18 +166,21 @@ class MainWindow : public QMainWindow {
     struct CallDetail;
     struct CommandDetail;
 
-  public:
+public:
     using Frequency = Radio::Frequency;
     using FrequencyDelta = Radio::FrequencyDelta;
     using Mode = Modes::Mode;
 
-    explicit MainWindow(QString const &program_info, QDir const &temp_directory,
-                        bool multiple, MultiSettings *settings,
-                        QWidget *parent = nullptr);
+    explicit MainWindow(QString const& program_info,
+                        QDir const& temp_directory,
+                        bool multiple,
+                        MultiSettings* settings,
+                        QWidget* parent = nullptr);
     ~MainWindow();
 
-  private:
-    struct SortByReverse {
+private:
+    struct SortByReverse
+    {
         QString by;
         bool reverse;
     };
@@ -195,10 +199,10 @@ class MainWindow : public QMainWindow {
     bool m_hbButtonIsLongterm;
     bool m_cqButtonIsLongterm;
 
-  public slots:
-    void showSoundInError(const QString &errorMsg);
-    void showSoundOutError(const QString &errorMsg);
-    void showStatusMessage(const QString &statusMsg);
+public slots:
+    void showSoundInError(const QString& errorMsg);
+    void showSoundOutError(const QString& errorMsg);
+    void showStatusMessage(const QString& statusMsg);
     void dataSink(qint64 frames);
     /**
      * The name `guiUpdate` suggests updating of the views from the models
@@ -213,34 +217,38 @@ class MainWindow : public QMainWindow {
     bool tryRestoreFreqOffset();
     void changeFreq(int);
 
-    bool hasExistingMessageBufferToMe(int *pOffset);
-    bool hasExistingMessageBuffer(int submode, int offset, bool drift,
-                                  int *pPrevOffset);
+    bool hasExistingMessageBufferToMe(int* pOffset);
+    bool hasExistingMessageBuffer(int submode, int offset, bool drift, int* pPrevOffset);
     bool hasClosedExistingMessageBuffer(int offset);
     void logCallActivity(CallDetail d, bool spot = true);
     void logHeardGraph(QString from, QString to);
-    QString lookupCallInCompoundCache(QString const &call);
+    QString lookupCallInCompoundCache(QString const& call);
     void cacheActivity(QString key);
     void restoreActivity(QString key);
     void clearActivity();
     void clearBandActivity();
     void clearRXActivity();
     void clearCallActivity();
-    void createGroupCallsignTableRows(QTableWidget *table,
-                                      const QString &selectedCall,
-                                      bool &showIconColumn);
-    void displayTextForFreq(QString text, int freq, QDateTime date, bool isTx,
-                            bool isNewLine, bool isLast);
+    void createGroupCallsignTableRows(QTableWidget* table,
+                                      const QString& selectedCall,
+                                      bool& showIconColumn);
+    void displayTextForFreq(QString text,
+                            int freq,
+                            QDateTime date,
+                            bool isTx,
+                            bool isNewLine,
+                            bool isLast);
     void writeNoticeTextToUI(QDateTime date, QString text);
-    int writeMessageTextToUI(QDateTime date, QString text, int freq, bool isTx,
-                             int block = -1);
+    int writeMessageTextToUI(QDateTime date, QString text, int freq, bool isTx, int block = -1);
     bool isMessageQueuedForTransmit();
     bool isInDecodeDelayThreshold(int seconds);
     void prependMessageText(QString text);
-    void addMessageText(QString text, bool clear = false,
-                        bool selectFirstPlaceholder = false);
-    void confirmThenEnqueueMessage(int timeout, int priority, QString message,
-                                   int offset, Callback c);
+    void addMessageText(QString text, bool clear = false, bool selectFirstPlaceholder = false);
+    void confirmThenEnqueueMessage(int timeout,
+                                   int priority,
+                                   QString message,
+                                   int offset,
+                                   Callback c);
     void enqueueMessage(int priority, QString message, int offset, Callback c);
     void resetMessage();
     void resetMessageUI();
@@ -248,30 +256,31 @@ class MainWindow : public QMainWindow {
     void initializeDummyData();
     void initializeGroupMessage();
     bool ensureCallsignSet(bool alert = true);
-    bool ensureKeyNotStuck(QString const &text);
+    bool ensureKeyNotStuck(QString const& text);
     bool ensureNotIdle();
     bool ensureCanTransmit();
-    bool ensureCreateMessageReady(const QString &text);
-    QString createMessage(QString const &text, bool *pDisableTypeahead);
-    QString appendMessage(QString const &text, bool isData,
-                          bool *pDisableTypeahead);
-    QString createMessageTransmitQueue(QString const &text, bool reset,
-                                       bool isData, bool *pDisableTypeahead);
+    bool ensureCreateMessageReady(const QString& text);
+    QString createMessage(QString const& text, bool* pDisableTypeahead);
+    QString appendMessage(QString const& text, bool isData, bool* pDisableTypeahead);
+    QString createMessageTransmitQueue(QString const& text,
+                                       bool reset,
+                                       bool isData,
+                                       bool* pDisableTypeahead);
     void resetMessageTransmitQueue();
     QPair<QString, int> popMessageFrame();
-    void tryNotify(const QString &key);
-    void processDecodeEvent(JS8::Event::Variant const &);
+    void tryNotify(const QString& key);
+    void processDecodeEvent(JS8::Event::Variant const&);
 
     void updateCQButtonDisplay();
     void updateHBButtonDisplay();
 
-  protected:
-    void keyPressEvent(QKeyEvent *) override;
-    void closeEvent(QCloseEvent *) override;
-    void childEvent(QChildEvent *) override;
-    bool eventFilter(QObject *, QEvent *) override;
+protected:
+    void keyPressEvent(QKeyEvent*) override;
+    void closeEvent(QCloseEvent*) override;
+    void childEvent(QChildEvent*) override;
+    bool eventFilter(QObject*, QEvent*) override;
 
-  private slots:
+private slots:
     void initialize_fonts();
     void on_menuModeJS8_aboutToShow();
     void on_menuControl_aboutToShow();
@@ -307,7 +316,7 @@ class MainWindow : public QMainWindow {
     void on_spotButton_clicked(bool checked);
     void on_monitorButton_clicked(bool);
     void on_actionAbout_triggered();
-    void resetPushButtonToggleText(QPushButton *btn);
+    void resetPushButtonToggleText(QPushButton* btn);
     void on_stopTxButton_clicked();
     void on_dialFreqUpButton_clicked();
     void on_dialFreqDownButton_clicked();
@@ -316,12 +325,17 @@ class MainWindow : public QMainWindow {
     void on_actionCopyright_Notice_triggered();
     void on_actionUser_Guide_triggered();
     bool decode(qint32 k);
-    bool isDecodeReady(int submode, qint32 k, qint32 k0,
-                       qint32 *pCurrentDecodeStart, qint32 *pNextDecodeStart,
-                       qint32 *pStart, qint32 *pSz, qint32 *pCycle);
+    bool isDecodeReady(int submode,
+                       qint32 k,
+                       qint32 k0,
+                       qint32* pCurrentDecodeStart,
+                       qint32* pNextDecodeStart,
+                       qint32* pStart,
+                       qint32* pSz,
+                       qint32* pCycle);
     bool decodeEnqueueReady(qint32 k, qint32 k0);
     bool decodeEnqueueReadyExperiment(qint32 k, qint32 k0);
-    bool decodeProcessQueue(qint32 *pSubmode);
+    bool decodeProcessQueue(qint32* pSubmode);
     void decodeStart();
     void decodeBusy(bool b);
     void decodeDone();
@@ -346,11 +360,10 @@ class MainWindow : public QMainWindow {
     void startTx();
     void stopTx();
     void stopTx2();
-    void buildFrequencyMenu(QMenu *menu);
-    void buildHeartbeatMenu(QMenu *menu);
-    void buildCQMenu(QMenu *menu);
-    void buildRepeatMenu(QMenu *menu, QPushButton *button, bool isLowInterval,
-                         int *interval);
+    void buildFrequencyMenu(QMenu* menu);
+    void buildHeartbeatMenu(QMenu* menu);
+    void buildCQMenu(QMenu* menu);
+    void buildRepeatMenu(QMenu* menu, QPushButton* button, bool isLowInterval, int* interval);
     void sendHB();
     void sendHeartbeatAck(QString to, int snr, QString extra);
     void on_hbMacroButton_toggled(bool checked);
@@ -364,24 +377,24 @@ class MainWindow : public QMainWindow {
     void on_statusMacroButton_clicked();
     void setShowColumn(QString tableKey, QString columnKey, bool value);
     bool showColumn(QString tableKey, QString columnKey, bool default_ = true);
-    void buildShowColumnsMenu(QMenu *menu, QString tableKey);
+    void buildShowColumnsMenu(QMenu* menu, QString tableKey);
     void setSortBy(QString key, QString value);
-    QString getSortBy(QString const &key, QString const &defaultValue) const;
-    SortByReverse getSortByReverse(QString const &key,
-                                   QString const &defaultValue) const;
-    void buildSortByMenu(QMenu *menu, QString key, QString defaultValue,
+    QString getSortBy(QString const& key, QString const& defaultValue) const;
+    SortByReverse getSortByReverse(QString const& key, QString const& defaultValue) const;
+    void buildSortByMenu(QMenu* menu,
+                         QString key,
+                         QString defaultValue,
                          QList<QPair<QString, QString>> values);
-    void buildBandActivitySortByMenu(QMenu *menu);
-    void buildCallActivitySortByMenu(QMenu *menu);
-    void buildQueryMenu(QMenu *, QString callsign);
+    void buildBandActivitySortByMenu(QMenu* menu);
+    void buildCallActivitySortByMenu(QMenu* menu);
+    void buildQueryMenu(QMenu*, QString callsign);
     QMap<QString, QString> buildMacroValues();
     void buildColumnLabelMap();
-    void buildSuggestionsMenu(QMenu *menu, QTextEdit *edit,
-                              const QPoint &point);
-    void buildSavedMessagesMenu(QMenu *menu);
-    void buildRelayMenu(QMenu *menu);
-    QAction *buildRelayAction(QString call);
-    void buildEditMenu(QMenu *, QTextEdit *);
+    void buildSuggestionsMenu(QMenu* menu, QTextEdit* edit, const QPoint& point);
+    void buildSavedMessagesMenu(QMenu* menu);
+    void buildRelayMenu(QMenu* menu);
+    QAction* buildRelayAction(QString call);
+    void buildEditMenu(QMenu*, QTextEdit*);
     void on_queryButton_pressed();
     void on_macrosMacroButton_pressed();
     void on_deselectButton_pressed();
@@ -390,27 +403,34 @@ class MainWindow : public QMainWindow {
     QString generateCallDetail(QString selectedCall);
     void on_tableWidgetCalls_cellClicked(int row, int col);
     void on_tableWidgetCalls_cellDoubleClicked(int row, int col);
-    QList<QPair<QString, int>> buildMessageFrames(QString const &text,
-                                                  bool isData,
-                                                  bool *pDisableTypeahead);
+    QList<QPair<QString, int>>
+        buildMessageFrames(QString const& text, bool isData, bool* pDisableTypeahead);
     bool prepareNextMessageFrame();
     bool isFreqOffsetFree(int f, int bw);
     int findFreeFreqOffset(int fmin, int fmax, int bw);
     void setDrift(int n);
     void on_tuneButton_clicked(bool);
-    void acceptQSO(QDateTime const &, QString const &call, QString const &grid,
-                   Frequency dial_freq, QString const &mode,
-                   QString const &submode, QString const &rpt_sent,
-                   QString const &rpt_received, QString const &comments,
-                   QString const &name, QDateTime const &QSO_date_on,
-                   QString const &operator_call, QString const &my_call,
-                   QString const &my_grid, QByteArray const &ADIF,
-                   QVariantMap const &additionalFields);
+    void acceptQSO(QDateTime const&,
+                   QString const& call,
+                   QString const& grid,
+                   Frequency dial_freq,
+                   QString const& mode,
+                   QString const& submode,
+                   QString const& rpt_sent,
+                   QString const& rpt_received,
+                   QString const& comments,
+                   QString const& name,
+                   QDateTime const& QSO_date_on,
+                   QString const& operator_call,
+                   QString const& my_call,
+                   QString const& my_grid,
+                   QByteArray const& ADIF,
+                   QVariantMap const& additionalFields);
     void on_readFreq_clicked();
     void on_outAttenuation_valueChanged(int);
     void rigOpen();
-    void handle_transceiver_update(Transceiver::TransceiverState const &);
-    void handle_transceiver_failure(QString const &reason);
+    void handle_transceiver_update(Transceiver::TransceiverState const&);
+    void handle_transceiver_failure(QString const& reason);
     void band_changed();
     void monitor(bool);
     void end_tuning();
@@ -424,14 +444,13 @@ class MainWindow : public QMainWindow {
 
     void emitPTT(bool on);
     void emitTones();
-    void udpNetworkMessage(Message const &message);
-    void tcpNetworkMessage(Message const &message);
-    void networkMessage(Message const &message);
+    void udpNetworkMessage(Message const& message);
+    void tcpNetworkMessage(Message const& message);
+    void networkMessage(Message const& message);
     bool canSendNetworkMessage();
-    void sendNetworkMessage(QString const &type, QString const &message);
-    void sendNetworkMessage(QString const &type, QString const &message,
-                            const QVariantMap &params);
-    void pskReporterError(QString const &);
+    void sendNetworkMessage(QString const& type, QString const& message);
+    void sendNetworkMessage(QString const& type, QString const& message, const QVariantMap& params);
+    void pskReporterError(QString const&);
     void TxAgain();
     void checkVersion(bool alertOnUpToDate);
     void checkStartupWarnings();
@@ -440,16 +459,15 @@ class MainWindow : public QMainWindow {
 
     void manualBandHop(const StationList::Station station);
 
-  private:
+private:
     Q_SIGNAL void apiSetMaxConnections(int n);
     Q_SIGNAL void apiSetServer(QString host, quint16 port);
     Q_SIGNAL void apiStartServer();
     Q_SIGNAL void apiStopServer();
 
-    Q_SIGNAL void aprsClientEnqueueSpot(QString by_call, QString from_call,
-                                        QString grid, QString comment);
-    Q_SIGNAL void aprsClientEnqueueThirdParty(QString by_call,
-                                              QString from_call, QString text);
+    Q_SIGNAL void
+        aprsClientEnqueueSpot(QString by_call, QString from_call, QString grid, QString comment);
+    Q_SIGNAL void aprsClientEnqueueThirdParty(QString by_call, QString from_call, QString text);
     Q_SIGNAL void aprsClientSetSkipPercent(float skipPercent);
     Q_SIGNAL void aprsClientSetServer(QString host, quint16 port);
     Q_SIGNAL void aprsClientSetPaused(bool paused);
@@ -458,25 +476,32 @@ class MainWindow : public QMainWindow {
 
     Q_SIGNAL void pskReporterSendReport(bool);
     Q_SIGNAL void pskReporterSetLocalStation(QString, QString, QString);
-    Q_SIGNAL void pskReporterAddRemoteStation(QString, QString,
-                                              Radio::Frequency, QString, int,
-                                              QDateTime);
+    Q_SIGNAL void
+        pskReporterAddRemoteStation(QString, QString, Radio::Frequency, QString, int, QDateTime);
 
     Q_SIGNAL void spotClientSetLocalStation(QString, QString, QString);
-    Q_SIGNAL void spotClientEnqueueCmd(QString, QString, QString, QString,
-                                       QString, QString, QString, int, int, int,
+    Q_SIGNAL void spotClientEnqueueCmd(QString,
+                                       QString,
+                                       QString,
+                                       QString,
+                                       QString,
+                                       QString,
+                                       QString,
+                                       int,
+                                       int,
+                                       int,
                                        int);
     Q_SIGNAL void spotClientEnqueueSpot(QString, QString, int, int, int, int);
 
     Q_SIGNAL void decodedLineReady(QByteArray t);
-    Q_SIGNAL void playNotification(const QString &name);
-    Q_SIGNAL void initializeNotificationAudioOutputStream(const QAudioDevice &,
-                                                          unsigned) const;
-    Q_SIGNAL void initializeAudioOutputStream(QAudioDevice, unsigned channels,
-                                              unsigned msBuffered) const;
+    Q_SIGNAL void playNotification(const QString& name);
+    Q_SIGNAL void initializeNotificationAudioOutputStream(const QAudioDevice&, unsigned) const;
+    Q_SIGNAL void
+        initializeAudioOutputStream(QAudioDevice, unsigned channels, unsigned msBuffered) const;
     Q_SIGNAL void stopAudioOutputStream() const;
-    Q_SIGNAL void startAudioInputStream(QAudioDevice const &,
-                                        int framesPerBuffer, AudioDevice *sink,
+    Q_SIGNAL void startAudioInputStream(QAudioDevice const&,
+                                        int framesPerBuffer,
+                                        AudioDevice* sink,
                                         AudioDevice::Channel) const;
     Q_SIGNAL void suspendAudioInputStream() const;
     Q_SIGNAL void resumeAudioInputStream() const;
@@ -487,20 +512,23 @@ class MainWindow : public QMainWindow {
     Q_SIGNAL void transmitFrequency(double) const;
     Q_SIGNAL void endTransmitMessage(bool quick = false) const;
     Q_SIGNAL void tune(bool = true) const;
-    Q_SIGNAL void sendMessage(double frequency, int submode, double txDelay,
-                              SoundOutput *, AudioDevice::Channel) const;
+    Q_SIGNAL void sendMessage(double frequency,
+                              int submode,
+                              double txDelay,
+                              SoundOutput*,
+                              AudioDevice::Channel) const;
     Q_SIGNAL void outAttenuationChanged(qreal) const;
     Q_SIGNAL void toggleShorthand() const;
     Q_SIGNAL void submodeChanged(Varicode::SubmodeType) const;
 
-  private:
+private:
     QByteArray wisdomFileName() const;
 
     void writeAllTxt(QStringView message);
     void writeMsgTxt(QStringView message, int snr, int offset);
 
     void currentTextChanged();
-    void tableSelectionChanged(QItemSelection const &, QItemSelection const &);
+    void tableSelectionChanged(QItemSelection const&, QItemSelection const&);
     void setupJS8();
 
     int freq() const { return m_freq; }
@@ -511,7 +539,7 @@ class MainWindow : public QMainWindow {
     void prepareSending(qint64 nowMS);
 
     /** Update the clock shown. */
-    void updateClockUI(const QDateTime &);
+    void updateClockUI(const QDateTime&);
 
     void setFreq(int);
     void transmit();
@@ -523,9 +551,9 @@ class MainWindow : public QMainWindow {
     NetworkAccessManager m_network_manager;
     bool m_valid;
     [[maybe_unused]] bool m_multiple; // Used only in Windows builds
-    MultiSettings *m_multi_settings;
-    QPushButton *m_configurations_button;
-    QSettings *m_settings;
+    MultiSettings* m_multi_settings;
+    QPushButton* m_configurations_button;
+    QSettings* m_settings;
     bool m_settings_read;
     QScopedPointer<Ui::MainWindow> ui;
 
@@ -543,19 +571,19 @@ class MainWindow : public QMainWindow {
     Frequency m_lastDialFreq;
     QString m_lastBand;
 
-    Detector *m_detector;
+    Detector* m_detector;
     unsigned m_FFTSize;
-    SoundInput *m_soundInput;
-    Modulator *m_modulator;
-    SoundOutput *m_soundOutput;
-    NotificationAudio *m_notification;
+    SoundInput* m_soundInput;
+    Modulator* m_modulator;
+    SoundOutput* m_soundOutput;
+    NotificationAudio* m_notification;
 
     // Configuration might one day offer to send a txDelayChanged signal.
     // As long as it doesn't, we poll and compare with the previous value.
     double m_TxDelay; // in seconds.
 
-    TxLoop *m_cq_loop;
-    TxLoop *m_hb_loop;
+    TxLoop* m_cq_loop;
+    TxLoop* m_hb_loop;
 
     QThread m_networkThread;
     QThread m_audioThread;
@@ -585,8 +613,7 @@ class MainWindow : public QMainWindow {
     bool m_btxok; // True if OK to transmit
     bool m_decoderBusy;
     QString m_decoderBusyBand;
-    QMap<qint32, qint32>
-        m_lastDecodeStartMap; // submode, decode k start position
+    QMap<qint32, qint32> m_lastDecodeStartMap; // submode, decode k start position
     Radio::Frequency m_decoderBusyFreq;
     QDateTime m_decoderBusyStartTime;
     bool m_auto;
@@ -641,7 +668,8 @@ class MainWindow : public QMainWindow {
     QString m_msgSent0;
     QString m_opCall;
 
-    struct CallDetail {
+    struct CallDetail
+    {
         QString call;
         QString through;
         QString grid;
@@ -656,7 +684,8 @@ class MainWindow : public QMainWindow {
         int submode;
     };
 
-    struct CommandDetail {
+    struct CommandDetail
+    {
         bool isCompound;
         bool isBuffered;
         QString from;
@@ -675,7 +704,8 @@ class MainWindow : public QMainWindow {
         QString relayPath;
     };
 
-    struct ActivityDetail {
+    struct ActivityDetail
+    {
         bool isLowConfidence;
         bool isCompound;
         bool isDirected;
@@ -691,7 +721,8 @@ class MainWindow : public QMainWindow {
         int submode;
     };
 
-    struct MessageBuffer {
+    struct MessageBuffer
+    {
         CommandDetail cmd;
         QQueue<CallDetail> compound;
         QList<ActivityDetail> msgs;
@@ -716,7 +747,8 @@ class MainWindow : public QMainWindow {
     QString m_totalTxMessage;
 
     // moved from mainwindow.cpp, is used in multiple functions
-    QString since(QDateTime const &time) {
+    QString since(QDateTime const& time)
+    {
         auto const delta = time.secsTo(DriftingDateTime::currentDateTimeUtc());
 
         if (delta >= 60 * 60 * 24)
@@ -737,19 +769,19 @@ class MainWindow : public QMainWindow {
     qint32 m_driftMsMMA_N;
 
     // moved from mainwindow.cpp, is used in multiple functions
-    auto replaceMacros(QString const &text,
-                       QMap<QString, QString> const &values, bool const prune) {
+    auto replaceMacros(QString const& text, QMap<QString, QString> const& values, bool const prune)
+    {
         QString output = text;
 
         for (auto const [key, value] : values.asKeyValueRange()) {
             output = output.replace(key, value.toUpper());
         }
 
-        return prune ? output.replace(QRegularExpression("[<](?:[^>]+)[>]"), "")
-                     : output;
+        return prune ? output.replace(QRegularExpression("[<](?:[^>]+)[>]"), "") : output;
     }
 
-    QList<int> generateOffsets(int minOffset, int maxOffset) {
+    QList<int> generateOffsets(int minOffset, int maxOffset)
+    {
         QList<int> offsets;
 
         // TODO: these offsets aren't ordered correctly...
@@ -760,21 +792,23 @@ class MainWindow : public QMainWindow {
         return offsets;
     }
 
-    enum Priority {
+    enum Priority
+    {
         PriorityLow = 10,
         PriorityNormal = 100,
         PriorityHigh = 1000
     };
 
-    struct PrioritizedMessage {
+    struct PrioritizedMessage
+    {
         QDateTime date;
         int priority;
         QString message;
         int offset;
         Callback callback;
 
-        friend bool operator<(PrioritizedMessage const &a,
-                              PrioritizedMessage const &b) {
+        friend bool operator<(PrioritizedMessage const& a, PrioritizedMessage const& b)
+        {
             if (a.priority < b.priority) {
                 return true;
             }
@@ -782,63 +816,61 @@ class MainWindow : public QMainWindow {
         }
     };
 
-    struct CachedDirectedType {
+    struct CachedDirectedType
+    {
         bool isAllcall;
         QDateTime date;
     };
 
-    struct DecodeParams {
+    struct DecodeParams
+    {
         int submode;
         int start;
         int sz;
     };
 
-    struct FrameCacheKey {
+    struct FrameCacheKey
+    {
         int submode;
         QString frame;
 
-        FrameCacheKey(int submode, QString frame)
-            : submode(submode), frame(std::move(frame)) {}
+        FrameCacheKey(int submode, QString frame) : submode(submode), frame(std::move(frame)) { }
 
-        bool operator==(FrameCacheKey const &) const noexcept = default;
+        bool operator==(FrameCacheKey const&) const noexcept = default;
 
-        struct Hash {
-            std::size_t operator()(FrameCacheKey const &key) const noexcept {
-                std::size_t const h1 = std::hash<int>{}(key.submode);
+        struct Hash
+        {
+            std::size_t operator()(FrameCacheKey const& key) const noexcept
+            {
+                std::size_t const h1 = std::hash<int> {}(key.submode);
                 std::size_t const h2 = qHash(key.frame);
                 return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
             }
         };
     };
 
-    using FrameCache =
-        std::unordered_map<FrameCacheKey, QDateTime, FrameCacheKey::Hash>;
+    using FrameCache = std::unordered_map<FrameCacheKey, QDateTime, FrameCacheKey::Hash>;
     using BandActivity = QMap<int, QList<ActivityDetail>>;
 
     QQueue<DecodeParams> m_decoderQueue;
-    FrameCache m_messageDupeCache;  // submode, frame -> date seen
-    QVariantMap m_showColumnsCache; // table column:key -> show boolean
-    QVariantMap m_sortCache;        // table key -> sort by
+    FrameCache m_messageDupeCache;                       // submode, frame -> date seen
+    QVariantMap m_showColumnsCache;                      // table column:key -> show boolean
+    QVariantMap m_sortCache;                             // table key -> sort by
     QPriorityQueue<PrioritizedMessage> m_txMessageQueue; // messages to be sent
     QQueue<QPair<QString, int>> m_txFrameQueue;          // frames to be sent
-    QQueue<ActivityDetail> m_rxActivityQueue; // all rx activity queue
-    QQueue<CommandDetail>
-        m_rxCommandQueue; // command queue for processing commands
-    QQueue<CallDetail>
-        m_rxCallQueue; // call detail queue for spots to pskreporter
-    QMap<QString, QString>
-        m_compoundCallCache; // base callsign -> compound callsign
+    QQueue<ActivityDetail> m_rxActivityQueue;            // all rx activity queue
+    QQueue<CommandDetail> m_rxCommandQueue;              // command queue for processing commands
+    QQueue<CallDetail> m_rxCallQueue;           // call detail queue for spots to pskreporter
+    QMap<QString, QString> m_compoundCallCache; // base callsign -> compound callsign
     QCache<QString, QDateTime> m_txAllcallCommandCache; // callsign -> last tx
     QCache<int, QDateTime> m_rxRecentCache;             // freq -> last rx
-    QCache<int, CachedDirectedType>
-        m_rxDirectedCache;                // freq -> last directed rx
-    QCache<QString, int> m_rxCallCache;   // call -> last freq seen
-    QMap<int, int> m_rxFrameBlockNumbers; // freq -> block
-    BandActivity m_bandActivity; // freq -> [(text, last timestamp), ...]
-    QMap<int, MessageBuffer> m_messageBuffer; // freq -> (cmd, [frames, ...])
+    QCache<int, CachedDirectedType> m_rxDirectedCache;  // freq -> last directed rx
+    QCache<QString, int> m_rxCallCache;                 // call -> last freq seen
+    QMap<int, int> m_rxFrameBlockNumbers;               // freq -> block
+    BandActivity m_bandActivity;                        // freq -> [(text, last timestamp), ...]
+    QMap<int, MessageBuffer> m_messageBuffer;           // freq -> (cmd, [frames, ...])
     int m_lastClosedMessageBufferOffset;
-    QMap<QString, CallDetail>
-        m_callActivity; // call -> (last freq, last timestamp)
+    QMap<QString, CallDetail> m_callActivity; // call -> (last freq, last timestamp)
 
     QMap<int, QString> m_origRxHeaderLabelMap;           // colIndex, label
     QMap<int, QString> m_origCallActivityHeaderLabelMap; // colIndex, label
@@ -847,24 +879,20 @@ class MainWindow : public QMainWindow {
     QMap<QString, QSet<QString>>
         m_heardGraphOutgoing; // callsign -> [stations who've this callsign has
                               // heard]
-    QMap<QString, QSet<QString>>
-        m_heardGraphIncoming; // callsign -> [stations who've heard this
-                              // callsign]
+    QMap<QString, QSet<QString>> m_heardGraphIncoming; // callsign -> [stations who've heard this
+                                                       // callsign]
 
     QMap<QString, int> m_rxInboxCountCache; // call -> count
 
-    QMap<QString, QMap<QString, CallDetail>>
-        m_callActivityBandCache; // band -> call activity
+    QMap<QString, QMap<QString, CallDetail>> m_callActivityBandCache; // band -> call activity
     QMap<QString, QMap<int, QList<ActivityDetail>>>
         m_bandActivityBandCache;              // band -> band activity
     QMap<QString, QString> m_rxTextBandCache; // band -> rx text
-    QMap<QString, QMap<QString, QSet<QString>>>
-        m_heardGraphOutgoingBandCache; // band -> heard in
-    QMap<QString, QMap<QString, QSet<QString>>>
-        m_heardGraphIncomingBandCache; // band -> heard out
+    QMap<QString, QMap<QString, QSet<QString>>> m_heardGraphOutgoingBandCache; // band -> heard in
+    QMap<QString, QMap<QString, QSet<QString>>> m_heardGraphIncomingBandCache; // band -> heard out
 
     QMap<QString, QDateTime>
-        m_callSelectedTime; // call -> timestamp when callsign was last selected
+        m_callSelectedTime;            // call -> timestamp when callsign was last selected
     QSet<QString> m_callSeenHeartbeat; // call
     int m_previousFreq;
     bool m_shouldRestoreFreq;
@@ -898,45 +926,51 @@ class MainWindow : public QMainWindow {
     bool m_block_pwr_tooltip;
     bool m_PwrBandSetOK;
     Frequency m_lastMonitoredFrequency;
-    MessageClient *m_messageClient;
-    MessageServer *m_messageServer;
-    WSJTXMessageClient *m_wsjtxMessageClient;
-    WSJTXMessageMapper *m_wsjtxMessageMapper;
-    TCPClient *m_n3fjpClient;
-    PSKReporter *m_pskReporter;
-    SpotClient *m_spotClient;
-    APRSISClient *m_aprsClient;
+    MessageClient* m_messageClient;
+    MessageServer* m_messageServer;
+    WSJTXMessageClient* m_wsjtxMessageClient;
+    WSJTXMessageMapper* m_wsjtxMessageMapper;
+    TCPClient* m_n3fjpClient;
+    PSKReporter* m_pskReporter;
+    SpotClient* m_spotClient;
+    APRSISClient* m_aprsClient;
     DisplayManual m_manual;
-    QVariantHash m_pwrBandTxMemory; // Remembers power level by band
-    QVariantHash
-        m_pwrBandTuneMemory; // Remembers power level by band for tuning
+    QVariantHash m_pwrBandTxMemory;   // Remembers power level by band
+    QVariantHash m_pwrBandTuneMemory; // Remembers power level by band for tuning
     QByteArray m_geometryNoControls;
 
     //---------------------------------------------------- private functions
     void readSettings();
-    void set_application_font(QFont const &);
+    void set_application_font(QFont const&);
     void writeSettings();
     void createStatusBar();
     void statusChanged();
-    void rigFailure(QString const &reason);
+    void rigFailure(QString const& reason);
     void spotSetLocal();
     void pskSetLocal();
     void aprsSetLocal();
-    void spotReport(int submode, int dial, int offset, int snr,
-                    QString const &callsign, QString const &grid);
-    void spotCmd(CommandDetail const &cmd);
-    void spotAprsCmd(CommandDetail const &cmd);
-    void pskLogReport(QString const &mode, int dial, int offset, int snr,
-                      QString const &callsign, QString const &grid,
-                      QDateTime const &utcTimestamp);
-    void spotAprsGrid(int dial, int offset, int snr, QString callsign,
-                      QString grid);
+    void spotReport(int submode,
+                    int dial,
+                    int offset,
+                    int snr,
+                    QString const& callsign,
+                    QString const& grid);
+    void spotCmd(CommandDetail const& cmd);
+    void spotAprsCmd(CommandDetail const& cmd);
+    void pskLogReport(QString const& mode,
+                      int dial,
+                      int offset,
+                      int snr,
+                      QString const& callsign,
+                      QString const& grid,
+                      QDateTime const& utcTimestamp);
+    void spotAprsGrid(int dial, int offset, int snr, QString callsign, QString grid);
     Radio::Frequency dialFrequency();
     void setSubmode(int submode);
     void updateCurrentBand();
     void displayDialFrequency();
     void transmitDisplay(bool);
-    void postDecode(bool is_new, QString const &message);
+    void postDecode(bool is_new, QString const& message);
     void displayTransmit();
     void updateModeButtonText();
     void updateButtonDisplay();
@@ -944,14 +978,14 @@ class MainWindow : public QMainWindow {
     void updateTextWordCheckerDisplay();
     void updateTextStatsDisplay(QString text, int count);
     void updateTxButtonDisplay();
-    bool isMyCallIncluded(QString const &text);
-    bool isAllCallIncluded(QString const &text);
-    bool isGroupCallIncluded(const QString &text);
+    bool isMyCallIncluded(QString const& text);
+    bool isAllCallIncluded(QString const& text);
+    bool isGroupCallIncluded(const QString& text);
     QString callsignSelected(bool useInputText = false);
     void callsignSelectedChanged(QString old, QString current);
     bool isRecentOffset(int submode, int offset);
     void markOffsetRecent(int offset);
-    bool isDirectedOffset(int offset, bool *pIsAllCall);
+    bool isDirectedOffset(int offset, bool* pIsAllCall);
     void markOffsetDirected(int offset, bool isAllCall);
     void clearOffsetDirected(int offset);
     void processActivity(bool force = false);
@@ -969,8 +1003,7 @@ class MainWindow : public QMainWindow {
     int getNextMessageIdForCallsign(QString callsign);
     int getLookaheadMessageIdForCallsign(QString callsign, int afterMsgId);
     int getNextGroupMessageIdForCallsign(QString group_name, QString callsign);
-    int getLookaheadGroupMessageIdForCallsign(QString group_name,
-                                              QString callsign, int afterMsgId);
+    int getLookaheadGroupMessageIdForCallsign(QString group_name, QString callsign, int afterMsgId);
     bool markGroupMsgDeliveredForCallsign(int msgId, QString callsign);
     bool markMsgDelivered(int mid, Message msg);
     QStringList parseRelayPathCallsigns(QString from, QString text);
@@ -985,16 +1018,16 @@ class MainWindow : public QMainWindow {
     void statusUpdate();
     void on_the_minute();
     void tryBandHop();
-    void add_child_to_event_filter(QObject *);
-    void remove_child_from_event_filter(QObject *);
+    void add_child_to_event_filter(QObject*);
+    void remove_child_from_event_filter(QObject*);
     void setup_status_bar();
     QString columnLabel(QString defaultLabel);
 
     void resetIdleTimer();
     void incrementIdleTimer();
     void tx_watchdog(bool triggered);
-    void write_frequency_entry(QString const &file_name);
-    void write_transmit_entry(QString const &file_name);
+    void write_frequency_entry(QString const& file_name);
+    void write_transmit_entry(QString const& file_name);
 };
 
 #endif // MAINWINDOW_H

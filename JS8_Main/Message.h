@@ -13,21 +13,21 @@
 #include <QString>
 #include <QVariant>
 
-class Message final {
-  public:
+class Message final
+{
+public:
     // Constructors
 
     Message();
-    Message(QString const &type, QString const &value = {});
-    Message(QString const &type, QString const &value,
-            QVariantMap const &params);
+    Message(QString const& type, QString const& value = {});
+    Message(QString const& type, QString const& value, QVariantMap const& params);
 
     // Copying and moving
 
-    Message(Message const &);
-    Message &operator=(Message const &);
-    Message(Message &&) noexcept;
-    Message &operator=(Message &&) noexcept;
+    Message(Message const&);
+    Message& operator=(Message const&);
+    Message(Message&&) noexcept;
+    Message& operator=(Message&&) noexcept;
 
     // Destructor
 
@@ -43,8 +43,8 @@ class Message final {
     // Manipulators
 
     qint64 ensureId();
-    void setType(QString const &);
-    void setValue(QString const &);
+    void setType(QString const&);
+    void setValue(QString const&);
 
     // Conversions
 
@@ -55,11 +55,11 @@ class Message final {
 
     // Deserialization
 
-    static Message fromJson(QByteArray const &);
-    static Message fromJson(QJsonDocument const &);
-    static Message fromJson(QJsonObject const &);
+    static Message fromJson(QByteArray const&);
+    static Message fromJson(QJsonDocument const&);
+    static Message fromJson(QJsonObject const&);
 
-  private:
+private:
     // Shared data implementation
 
     struct Data;

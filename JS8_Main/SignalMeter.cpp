@@ -3,7 +3,7 @@
 //
 
 #include "SignalMeter.h"
-#include "moc_SignalMeter.cpp"
+
 #include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -12,12 +12,15 @@
 #include <QVBoxLayout>
 #include <boost/circular_buffer.hpp>
 
+#include "moc_SignalMeter.cpp"
+
 // Meter component, which displays to the right of the scale, as a
 // level gauge with a peak hold indicator. Displays green when the
 // level is good, yellow when it's too low, red when it's too high.
 
-class SignalMeter::Meter final : public QWidget {
-  public:
+class SignalMeter::Meter final : public QWidget
+{
+public:
     static constexpr int MAX = 100;
     static constexpr int LO = 15;
     static constexpr int HI = 85;
@@ -28,12 +31,14 @@ class SignalMeter::Meter final : public QWidget {
     // put into the buffer was, and the peak hold level is the largest
     // value in the buffer at any moment.
 
-    explicit Meter(QWidget *parent) : QWidget{parent} {}
+    explicit Meter(QWidget* parent) : QWidget { parent } { }
 
-    QSize sizeHint() const override { return {10, 100}; }
+    QSize sizeHint() const override { return { 10, 100 }; }
 
     int last() const { return m_values.back(); }
+
     int peak() const { return m_peak; }
+
     int max() const { return m_max; }
 
     // Caller has provided us with exciting new information. Since GUI
@@ -48,7 +53,8 @@ class SignalMeter::Meter final : public QWidget {
     // take some care here to ensure that something actually did change
     // such that we'd need to update.
 
-    void setValue(const int value, const int valueMax) {
+    void setValue(const int value, const int valueMax)
+    {
         auto const oldLast = last();
         auto const oldPeak = peak();
         auto const oldMax = max();
@@ -61,13 +67,14 @@ class SignalMeter::Meter final : public QWidget {
             update();
     }
 
-  protected:
+protected:
     // Draw the level bar, which might be of zero height, coloring it
     // appropriately if we're above or below a warning threshold. If
     // our peak level is non-zero, also draw the peak hold indicator.
 
-    void paintEvent(QPaintEvent *) override {
-        QPainter p{this};
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter p { this };
         p.setPen(Qt::NoPen);
 
         if (m_max > HI) {
@@ -80,64 +87,69 @@ class SignalMeter::Meter final : public QWidget {
 
         auto const target = contentsRect();
         auto const scaled = [&target](auto const value) {
-            return QPoint{
-                target.left(),
-                static_cast<int>(target.top() + target.height() -
-                                 value / (double)MAX * target.height())};
+            return QPoint { target.left(),
+                            static_cast<int>(target.top() + target.height()
+                                             - value / (double)MAX * target.height()) };
         };
 
-        p.drawRect(QRect{scaled(last()), target.bottomRight()});
+        p.drawRect(QRect { scaled(last()), target.bottomRight() });
 
         if (peak()) {
             p.setBrush(Qt::white);
             p.setRenderHint(QPainter::Antialiasing);
             p.translate(scaled(peak()));
-            p.drawPolygon(
-                QPolygon{{target.width(), -4}, {target.width(), 4}, {0, 0}});
+            p.drawPolygon(QPolygon {
+                { target.width(), -4 },
+                { target.width(), 4  },
+                { 0,              0  }
+            });
         }
     }
 
-  private:
-    boost::circular_buffer<int> m_values{10};
+private:
+    boost::circular_buffer<int> m_values { 10 };
     int m_peak;
     int m_max;
 };
 
 // Scale component, which displays to the left of the meter.
 
-class SignalMeter::Scale final : public QWidget {
-  private:
+class SignalMeter::Scale final : public QWidget
+{
+private:
     static constexpr int text_indent = 2;
     static constexpr int tick_length = 4;
     static constexpr std::size_t tick_range = 10;
     static constexpr std::size_t tick_count = Meter::MAX / tick_range;
 
-  public:
-    explicit Scale(QWidget *parent) : QWidget{parent} {
+public:
+    explicit Scale(QWidget* parent) : QWidget { parent }
+    {
         setSizePolicy(QSizePolicy::Minimum, QSizePolicy::MinimumExpanding);
     }
 
     QSize sizeHint() const override { return minimumSizeHint(); }
 
-    QSize minimumSizeHint() const override {
-        QFontMetrics metrics{font(), this};
-        return {metrics.horizontalAdvance("00+") + text_indent + tick_length,
-                static_cast<int>(metrics.height() * tick_count)};
+    QSize minimumSizeHint() const override
+    {
+        QFontMetrics metrics { font(), this };
+        return { metrics.horizontalAdvance("00+") + text_indent + tick_length,
+                 static_cast<int>(metrics.height() * tick_count) };
     }
 
-  protected:
-    void paintEvent(QPaintEvent *) override {
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
         auto const target = contentsRect();
         auto const metrics = QFontMetrics(font(), this);
         auto const margin = metrics.height() / 2;
         auto const offset = metrics.height() / 4;
         auto const span = target.height() - metrics.height();
 
-        QPainter p{this};
+        QPainter p { this };
         p.setPen(Qt::white);
 
-        p.drawLine(target.right(), target.top() + margin, target.right(),
-                   target.bottom() - margin);
+        p.drawLine(target.right(), target.top() + margin, target.right(), target.bottom() - margin);
 
         for (std::size_t tick = 0; tick <= tick_count; ++tick) {
             p.save();
@@ -145,10 +157,8 @@ class SignalMeter::Scale final : public QWidget {
                         target.top() + margin + tick * span / tick_count);
             p.drawLine(0, 0, tick_length, 0);
             if (tick & 1) {
-                auto const text =
-                    QString::number(Meter::MAX - tick * tick_range);
-                p.drawText(-(text_indent + metrics.horizontalAdvance(text)),
-                           offset, text);
+                auto const text = QString::number(Meter::MAX - tick * tick_range);
+                p.drawText(-(text_indent + metrics.horizontalAdvance(text)), offset, text);
             }
             p.restore();
         }
@@ -158,9 +168,12 @@ class SignalMeter::Scale final : public QWidget {
 // Signal meter implementation; displays as a scaled level meter above
 // a level value display.
 
-SignalMeter::SignalMeter(QWidget *parent)
-    : QWidget{parent}, m_scale{new Scale{this}}, m_meter{new Meter{this}},
-      m_value{new QLabel{this}} {
+SignalMeter::SignalMeter(QWidget* parent) :
+    QWidget { parent },
+    m_scale { new Scale { this } },
+    m_meter { new Meter { this } },
+    m_value { new QLabel { this } }
+{
     auto outer_layout = new QVBoxLayout;
     outer_layout->setSpacing(8);
 
@@ -190,7 +203,8 @@ SignalMeter::SignalMeter(QWidget *parent)
     setLayout(outer_layout);
 }
 
-void SignalMeter::setValue(const float value, const float valueMax) {
+void SignalMeter::setValue(const float value, const float valueMax)
+{
     m_meter->setValue(value, valueMax);
     m_value->setText(QString::number(value, 'f', 0));
 }

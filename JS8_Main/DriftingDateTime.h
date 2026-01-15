@@ -1,10 +1,11 @@
 #ifndef DRIFTINGDATETIME_H
 #define DRIFTINGDATETIME_H
 
-#include "TwoPhaseSignal.h"
 #include <QDateTime>
 #include <QMutex>
 #include <QPointer>
+
+#include "TwoPhaseSignal.h"
 
 /**
  * JS8Call allows the user to manipulate the clock.
@@ -39,10 +40,11 @@
  * If you want to make sure this is not violated,
  * send the new drift value as a signal.
  **/
-class DriftingDateTimeSingleton : public TwoPhaseSignal {
+class DriftingDateTimeSingleton : public TwoPhaseSignal
+{
     Q_OBJECT
 
-  private:
+private:
     // As this is a subclass of QObject,
     // it lives in a thread: Whatever thread
     // first called getSingleton().
@@ -52,17 +54,17 @@ class DriftingDateTimeSingleton : public TwoPhaseSignal {
 
     static QPointer<DriftingDateTimeSingleton> singleton;
 
-  private:
+private:
     /**
      * This needs to be called by the same thread that constructed the object.
      */
     void setDriftInner(qint64 ms);
 
-  public:
+public:
     /**
      * The first thread that calls this is the thread the singleton lives in.
      */
-    static DriftingDateTimeSingleton &getSingleton();
+    static DriftingDateTimeSingleton& getSingleton();
 
     /**
      * Retrive drift, in milliseconds.
@@ -73,17 +75,20 @@ class DriftingDateTimeSingleton : public TwoPhaseSignal {
     qint64 drift() const;
 
     /** Retrieve drifted "now" as UTC. */
-    inline QDateTime currentDateTimeUtc() const {
+    inline QDateTime currentDateTimeUtc() const
+    {
         return QDateTime::currentDateTimeUtc().addMSecs(drift());
     }
 
     /** Retrieve drifted "now" as local time. */
-    inline QDateTime currentDateTimeLocal() const {
+    inline QDateTime currentDateTimeLocal() const
+    {
         return QDateTime::currentDateTime().addMSecs(drift());
     }
 
     /** Retrieve drifted "now" as milliseconds since epoch. */
-    inline qint64 currentMSecsSinceEpoch() const {
+    inline qint64 currentMSecsSinceEpoch() const
+    {
         return QDateTime::currentMSecsSinceEpoch() + drift();
     }
 
@@ -95,17 +100,15 @@ class DriftingDateTimeSingleton : public TwoPhaseSignal {
      * the number returned is the number of fully elapsed
      * seconds since the epoch.
      */
-    inline qint64 currentSecsSinceEpoch() const {
-        return currentMSecsSinceEpoch() / 1000;
-    }
+    inline qint64 currentSecsSinceEpoch() const { return currentMSecsSinceEpoch() / 1000; }
 
-  public slots:
+public slots:
     /** Set the drift. */
     void setDrift(qint64 ms);
     /** Emits to the driftChanged signal (as per TwoPhaseSignal contract). */
     void onPlumbingCompleted() const;
 
-  signals:
+signals:
     /**
      * Communicate the drift change to anyone who want to know.
      *
@@ -117,8 +120,10 @@ class DriftingDateTimeSingleton : public TwoPhaseSignal {
 };
 
 /** This namespace contains some static convenience functions. */
-namespace DriftingDateTime {
-inline qint64 drift() {
+namespace DriftingDateTime
+{
+inline qint64 drift()
+{
     return DriftingDateTimeSingleton::getSingleton().drift();
 }
 
@@ -128,23 +133,28 @@ inline qint64 drift() {
  * object &DriftingDateTimeSingleton::getSingleton(), slot
  * &DriftingDateTimeSingleton::setDrift .
  */
-inline void setDrift(qint64 ms) {
+inline void setDrift(qint64 ms)
+{
     DriftingDateTimeSingleton::getSingleton().setDrift(ms);
 }
 
-inline QDateTime currentDateTimeUtc() {
+inline QDateTime currentDateTimeUtc()
+{
     return DriftingDateTimeSingleton::getSingleton().currentDateTimeUtc();
 }
 
-inline QDateTime currentDateTimeLocal() {
+inline QDateTime currentDateTimeLocal()
+{
     return DriftingDateTimeSingleton::getSingleton().currentDateTimeLocal();
 }
 
-inline qint64 currentMSecsSinceEpoch() {
+inline qint64 currentMSecsSinceEpoch()
+{
     return DriftingDateTimeSingleton::getSingleton().currentMSecsSinceEpoch();
 }
 
-inline qint64 currentSecsSinceEpoch() {
+inline qint64 currentSecsSinceEpoch()
+{
     return DriftingDateTimeSingleton::getSingleton().currentSecsSinceEpoch();
 }
 }; // namespace DriftingDateTime

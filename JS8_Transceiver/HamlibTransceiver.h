@@ -1,50 +1,50 @@
 #ifndef HAMLIB_TRANSCEIVER_HPP_
 #define HAMLIB_TRANSCEIVER_HPP_
 
-#include <tuple>
-
 #include <QString>
-
 #include <hamlib/rig.h>
+#include <tuple>
 
 #include "PollingTransceiver.h"
 #include "TransceiverFactory.h"
 
-extern "C" {
+extern "C"
+{
 #ifdef JS8_USE_HAMLIB_THREE
-typedef struct rig RIG;
+    typedef struct rig RIG;
 #else
-typedef struct s_rig RIG;
+    typedef struct s_rig RIG;
 #endif
-struct rig_caps;
+    struct rig_caps;
 #ifdef JS8_USE_HAMLIB_THREE
-typedef int vfo_t;
+    typedef int vfo_t;
 #else
-typedef unsigned int vfo_t;
+    typedef unsigned int vfo_t;
 #endif
 }
 
 // hamlib transceiver and PTT mostly delegated directly to hamlib Rig class
-class HamlibTransceiver final : public PollingTransceiver {
+class HamlibTransceiver final : public PollingTransceiver
+{
     Q_OBJECT; // for translation context
 
-  public:
-    static void register_transceivers(TransceiverFactory::Transceivers *);
+public:
+    static void register_transceivers(TransceiverFactory::Transceivers*);
     static void unregister_transceivers();
 
     explicit HamlibTransceiver(int model_number,
-                               TransceiverFactory::ParameterPack const &,
-                               QObject *parent = nullptr);
+                               TransceiverFactory::ParameterPack const&,
+                               QObject* parent = nullptr);
     explicit HamlibTransceiver(TransceiverFactory::PTTMethod ptt_type,
-                               QString const &ptt_port,
-                               QObject *parent = nullptr);
+                               QString const& ptt_port,
+                               QObject* parent = nullptr);
 
-  protected:
+protected:
     /** Work around hamlib bug
      * [#1966](https://github.com/Hamlib/Hamlib/issues/1966). */
-    virtual void hamlib_bug_bandaid(TransceiverState const &s) override;
+    virtual void hamlib_bug_bandaid(TransceiverState const& s) override;
 
-  private:
+private:
     int do_start() override;
     void do_stop() override;
     void do_frequency(Frequency, MODE, bool no_ignore) override;
@@ -54,16 +54,18 @@ class HamlibTransceiver final : public PollingTransceiver {
 
     void poll() override;
 
-    void error_check(int ret_code, QString const &doing) const;
-    void set_conf(char const *item, char const *value);
-    QByteArray get_conf(char const *item);
+    void error_check(int ret_code, QString const& doing) const;
+    void set_conf(char const* item, char const* value);
+    QByteArray get_conf(char const* item);
     Transceiver::MODE map_mode(rmode_t) const;
     rmode_t map_mode(Transceiver::MODE mode) const;
     std::tuple<vfo_t, vfo_t> get_vfos(bool for_split) const;
 
-    struct RIGDeleter {
-        static void cleanup(RIG *);
+    struct RIGDeleter
+    {
+        static void cleanup(RIG*);
     };
+
     QScopedPointer<RIG, RIGDeleter> rig_;
 
     bool back_ptt_port_;

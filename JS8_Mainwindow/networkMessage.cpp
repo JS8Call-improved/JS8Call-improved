@@ -3,12 +3,12 @@
  * @brief member function of the MainWindow class
  *  sends data to external clients via the Network Message API
  */
- /**
+/**
   * @defgroup API Network Message API
   * @brief API commands for external control and data retrieval.
   * @{
 */
- #include "JS8_UI/mainwindow.h"
+#include "JS8_UI/mainwindow.h"
 
 /**
  * @brief Processes an incoming API network message
@@ -19,7 +19,8 @@
  *  
  * @param message The network message to process
 */
-void MainWindow::networkMessage(Message const &message) {
+void MainWindow::networkMessage(Message const& message)
+{
     auto type = message.type();
 
     if (type == "PING") {
@@ -63,31 +64,36 @@ void MainWindow::networkMessage(Message const &message) {
             }
             QString tx_message = m_transmitting ? m_currentMessage : "";
 
-            m_wsjtxMessageMapper->sendStatusUpdate(
-                dialFrequency(), freq(),
-                "JS8", // mode
-                dx_call, m_config.my_callsign(), m_config.my_grid(), dx_grid,
-                true, // tx_enabled
-                m_transmitting,
-                m_decoderBusy || m_monitoring, // decoding
-                tx_message);
+            m_wsjtxMessageMapper->sendStatusUpdate(dialFrequency(),
+                                                   freq(),
+                                                   "JS8", // mode
+                                                   dx_call,
+                                                   m_config.my_callsign(),
+                                                   m_config.my_grid(),
+                                                   dx_grid,
+                                                   true, // tx_enabled
+                                                   m_transmitting,
+                                                   m_decoderBusy || m_monitoring, // decoding
+                                                   tx_message);
         }
 
         // Send native JSON message only if not conflicting with WSJT-X
         bool skip_json = false;
-        if (m_config.wsjtx_protocol_enabled() &&
-            m_config.wsjtx_server_port() == m_config.udp_server_port() &&
-            m_config.wsjtx_server_name() == m_config.udp_server_name()) {
+        if (m_config.wsjtx_protocol_enabled()
+            && m_config.wsjtx_server_port() == m_config.udp_server_port()
+            && m_config.wsjtx_server_name() == m_config.udp_server_name()) {
             skip_json = true;
         }
 
         if (!skip_json) {
-            sendNetworkMessage(
-                "RIG.FREQ", "",
-                {{"_ID", id},
-                 {"FREQ", QVariant((quint64)dialFrequency() + freq())},
-                 {"DIAL", QVariant((quint64)dialFrequency())},
-                 {"OFFSET", QVariant((quint64)freq())}});
+            sendNetworkMessage("RIG.FREQ",
+                               "",
+                               {
+                                   { "_ID",    id                                          },
+                                   { "FREQ",   QVariant((quint64)dialFrequency() + freq()) },
+                                   { "DIAL",   QVariant((quint64)dialFrequency())          },
+                                   { "OFFSET", QVariant((quint64)freq())                   }
+            });
         }
         return;
     }
@@ -126,61 +132,68 @@ void MainWindow::networkMessage(Message const &message) {
 
     /** @brief STATION.GET_CALLSIGN: Returns the configured station callsign. */
     if (type == "STATION.GET_CALLSIGN") {
-        sendNetworkMessage("STATION.CALLSIGN", m_config.my_callsign(),
+        sendNetworkMessage("STATION.CALLSIGN",
+                           m_config.my_callsign(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.GET_GRID: Returns the current Maidenhead grid locator. */
     if (type == "STATION.GET_GRID") {
-        sendNetworkMessage("STATION.GRID", m_config.my_grid(),
+        sendNetworkMessage("STATION.GRID",
+                           m_config.my_grid(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.SET_GRID: Updates the dynamic grid locator for the station. */
     if (type == "STATION.SET_GRID") {
         m_config.set_dynamic_location(message.value());
-        sendNetworkMessage("STATION.GRID", m_config.my_grid(),
+        sendNetworkMessage("STATION.GRID",
+                           m_config.my_grid(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.GET_INFO: Retrieves the station information (QTH). */
     if (type == "STATION.GET_INFO") {
-        sendNetworkMessage("STATION.INFO", m_config.my_info(),
+        sendNetworkMessage("STATION.INFO",
+                           m_config.my_info(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.SET_INFO: Updates the dynamic station information (QTH). */
     if (type == "STATION.SET_INFO") {
         m_config.set_dynamic_station_info(message.value());
-        sendNetworkMessage("STATION.INFO", m_config.my_info(),
+        sendNetworkMessage("STATION.INFO",
+                           m_config.my_info(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.GET_STATUS: Retrieves the current station status message. */
     if (type == "STATION.GET_STATUS") {
-        sendNetworkMessage("STATION.STATUS", m_config.my_status(),
+        sendNetworkMessage("STATION.STATUS",
+                           m_config.my_status(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief STATION.SET_STATUS: Updates the dynamic station status message. */
     if (type == "STATION.SET_STATUS") {
         m_config.set_dynamic_station_status(message.value());
-        sendNetworkMessage("STATION.STATUS", m_config.my_status(),
+        sendNetworkMessage("STATION.STATUS",
+                           m_config.my_status(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @} */ // End STATION Commands
@@ -202,12 +215,11 @@ void MainWindow::networkMessage(Message const &message) {
         auto now = DriftingDateTime::currentDateTimeUtc();
         int callsignAging = m_config.callsign_aging();
         QVariantMap calls = {
-            {"_ID", id},
+            { "_ID", id },
         };
 
         foreach (auto cd, m_callActivity.values()) {
-            if (callsignAging &&
-                cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+            if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                 continue;
             }
             QVariantMap detail;
@@ -222,10 +234,11 @@ void MainWindow::networkMessage(Message const &message) {
     }
     /** @brief RX.GET_CALL_SELECTED: Returns the currently selected callsign. */
     if (type == "RX.GET_CALL_SELECTED") {
-        sendNetworkMessage("RX.CALL_SELECTED", callsignSelected(),
+        sendNetworkMessage("RX.CALL_SELECTED",
+                           callsignSelected(),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** 
@@ -234,7 +247,7 @@ void MainWindow::networkMessage(Message const &message) {
      */
     if (type == "RX.GET_BAND_ACTIVITY") {
         QVariantMap offsets = {
-            {"_ID", id},
+            { "_ID", id },
         };
         for (auto const [offset, activity] : m_bandActivity.asKeyValueRange()) {
             if (activity.isEmpty())
@@ -242,13 +255,14 @@ void MainWindow::networkMessage(Message const &message) {
 
             auto const d = activity.last();
 
-            offsets[QString("%1").arg(offset)] = QVariant(QVariantMap{
-                {"FREQ", QVariant(d.dial + d.offset)},
-                {"DIAL", QVariant(d.dial)},
-                {"OFFSET", QVariant(d.offset)},
-                {"TEXT", QVariant(d.text)},
-                {"SNR", QVariant(d.snr)},
-                {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
+            offsets[QString("%1").arg(offset)] = QVariant(QVariantMap {
+                { "FREQ",   QVariant(d.dial + d.offset)                  },
+                { "DIAL",   QVariant(d.dial)                             },
+                { "OFFSET", QVariant(d.offset)                           },
+                { "TEXT",   QVariant(d.text)                             },
+                { "SNR",    QVariant(d.snr)                              },
+                { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
+            });
         }
 
         sendNetworkMessage("RX.BAND_ACTIVITY", "", offsets);
@@ -256,10 +270,11 @@ void MainWindow::networkMessage(Message const &message) {
     }
     /** @brief RX.GET_TEXT: Retrieves the current RX text buffer. */
     if (type == "RX.GET_TEXT") { /** RX.GET_TEXT */
-        sendNetworkMessage("RX.TEXT", ui->textEditRX->toPlainText().right(1024),
+        sendNetworkMessage("RX.TEXT",
+                           ui->textEditRX->toPlainText().right(1024),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @} */ // End RX Commands
@@ -276,8 +291,8 @@ void MainWindow::networkMessage(Message const &message) {
         sendNetworkMessage("TX.TEXT",
                            ui->extFreeTextMsgEdit->toPlainText().right(1024),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief TX.SET_TEXT: Updates the TX text buffer with new content. */
@@ -286,8 +301,8 @@ void MainWindow::networkMessage(Message const &message) {
         sendNetworkMessage("TX.TEXT",
                            ui->extFreeTextMsgEdit->toPlainText().right(1024),
                            {
-                               {"_ID", id},
-                           });
+                               { "_ID", id },
+        });
         return;
     }
     /** @brief TX.SEND_MESSAGE: Enqueues a message for transmission. */
@@ -309,18 +324,18 @@ void MainWindow::networkMessage(Message const &message) {
      */
     /** @brief MODE.GET_SPEED: Retrieves the current transmission speed mode. */
     if (type == "MODE.GET_SPEED") {
-        sendNetworkMessage("MODE.SPEED", "",
+        sendNetworkMessage("MODE.SPEED",
+                           "",
                            {
-                               {"_ID", id},
-                               {"SPEED", m_nSubMode},
-                           });
+                               { "_ID",   id         },
+                               { "SPEED", m_nSubMode },
+        });
         return;
     }
     /** @brief MODE.SET_SPEED: Updates the transmission speed mode. */
     if (type == "MODE.SET_SPEED") {
         auto ok = false;
-        auto const speed =
-            message.params().value("SPEED", QVariant(m_nSubMode)).toInt(&ok);
+        auto const speed = message.params().value("SPEED", QVariant(m_nSubMode)).toInt(&ok);
         if (ok) {
             if (speed == Varicode::JS8CallNormal)
                 ui->actionModeJS8Normal->setChecked(true);
@@ -334,11 +349,12 @@ void MainWindow::networkMessage(Message const &message) {
                 ui->actionModeJS8Ultra->setChecked(true);
             setupJS8();
         }
-        sendNetworkMessage("MODE.SPEED", "",
+        sendNetworkMessage("MODE.SPEED",
+                           "",
                            {
-                               {"_ID", id},
-                               {"SPEED", m_nSubMode},
-                           });
+                               { "_ID",   id         },
+                               { "SPEED", m_nSubMode },
+        });
         return;
     }
     /** @} */ // End MODE Commands
@@ -351,8 +367,7 @@ void MainWindow::networkMessage(Message const &message) {
      */
     /** @brief INBOX.GET_MESSAGES: Retrieves messages for a specified callsign. */
     if (type == "INBOX.GET_MESSAGES") {
-        QString selectedCall =
-            message.params().value("CALLSIGN", "").toString();
+        QString selectedCall = message.params().value("CALLSIGN", "").toString();
         if (selectedCall.isEmpty()) {
             selectedCall = "%";
         }
@@ -363,38 +378,35 @@ void MainWindow::networkMessage(Message const &message) {
         }
 
         QList<QPair<int, Message>> msgs;
-        msgs.append(
-            inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
-        msgs.append(
-            inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
-        foreach (auto pair, inbox.values("UNREAD", "$.params.FROM",
-                                         selectedCall, 0, 1000)) {
+        msgs.append(inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
+        msgs.append(inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
+        foreach (auto pair, inbox.values("UNREAD", "$.params.FROM", selectedCall, 0, 1000)) {
             msgs.append(pair);
         }
-        std::stable_sort(
-            msgs.begin(), msgs.end(),
-            [](QPair<int, Message> const &a, QPair<int, Message> const &b) {
-                return QVariant::compare(a.second.params().value("UTC"),
-                                         b.second.params().value("UTC")) ==
-                       QPartialOrdering::Greater;
-            });
+        std::stable_sort(msgs.begin(),
+                         msgs.end(),
+                         [](QPair<int, Message> const& a, QPair<int, Message> const& b) {
+                             return QVariant::compare(a.second.params().value("UTC"),
+                                                      b.second.params().value("UTC"))
+                                 == QPartialOrdering::Greater;
+                         });
 
         QVariantList l;
         foreach (auto pair, msgs) {
             l << pair.second.toVariantMap();
         }
 
-        sendNetworkMessage("INBOX.MESSAGES", "",
+        sendNetworkMessage("INBOX.MESSAGES",
+                           "",
                            {
-                               {"_ID", id},
-                               {"MESSAGES", l},
-                           });
+                               { "_ID",      id },
+                               { "MESSAGES", l  },
+        });
         return;
     }
     /** @brief INBOX.STORE_MESSAGE: Stores a message in the inbox for a callsign. */
     if (type == "INBOX.STORE_MESSAGE") {
-        QString selectedCall =
-            message.params().value("CALLSIGN", "").toString();
+        QString selectedCall = message.params().value("CALLSIGN", "").toString();
         if (selectedCall.isEmpty()) {
             return;
         }
@@ -415,11 +427,12 @@ void MainWindow::networkMessage(Message const &message) {
 
         auto mid = addCommandToStorage("STORE", d);
 
-        sendNetworkMessage("INBOX.MESSAGE", "",
+        sendNetworkMessage("INBOX.MESSAGE",
+                           "",
                            {
-                               {"_ID", id},
-                               {"ID", mid},
-                           });
+                               { "_ID", id  },
+                               { "ID",  mid },
+        });
         return;
     }
     /** @} */ // End INBOX Commands
@@ -439,5 +452,6 @@ void MainWindow::networkMessage(Message const &message) {
 
     qCDebug(mainwindow_js8) << "Unable to process networkMessage:" << type;
 }
+
 /** @} */ // end of WINDOW Commands
 /** @} */ // end of API

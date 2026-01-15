@@ -1,32 +1,37 @@
 #include "messagewindow.h"
-#include "JS8_Include/EventFilter.h"
-#include "JS8_Main/Radio.h"
-#include "moc_messagewindow.cpp"
-#include "ui_messagewindow.h"
+
 #include <QDateTime>
 #include <QMenu>
 #include <algorithm>
 
-namespace {
-auto pathSegs(QString const &path) {
+#include "JS8_Include/EventFilter.h"
+#include "JS8_Main/Radio.h"
+#include "moc_messagewindow.cpp"
+#include "ui_messagewindow.h"
+
+namespace
+{
+auto pathSegs(QString const& path)
+{
     auto segs = path.split('>');
     std::reverse(segs.begin(), segs.end());
     return segs;
 }
 } // namespace
 
-MessageWindow::MessageWindow(QWidget *parent)
-    : QDialog(parent), ui(new Ui::MessageWindow) {
+MessageWindow::MessageWindow(QWidget* parent) : QDialog(parent), ui(new Ui::MessageWindow)
+{
     ui->setupUi(this);
 
     // connect selection model changed
     connect(ui->messageTableWidget->selectionModel(),
-            &QItemSelectionModel::selectionChanged, this,
+            &QItemSelectionModel::selectionChanged,
+            this,
             &MessageWindow::messageTableSelectionChanged);
 
     // reply when key pressed in the reply box
     ui->replytextEdit->installEventFilter(new EventFilter::EnterKeyPress(
-        [this](QKeyEvent *const event) {
+        [this](QKeyEvent* const event) {
             if (event->modifiers() & Qt::ShiftModifier)
                 return false;
             ui->replyPushButton->click();
@@ -62,13 +67,18 @@ MessageWindow::MessageWindow(QWidget *parent)
     ui->messageTableWidget->addAction(deleteAction);
 }
 
-MessageWindow::~MessageWindow() { delete ui; }
+MessageWindow::~MessageWindow()
+{
+    delete ui;
+}
 
-void MessageWindow::setCall(const QString &call) {
+void MessageWindow::setCall(const QString& call)
+{
     setWindowTitle(QString("Messages: %1").arg(call == "%" ? "All" : call));
 }
 
-void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs) {
+void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs)
+{
     for (int i = ui->messageTableWidget->rowCount(); i >= 0; i--) {
         ui->messageTableWidget->removeRow(i);
     }
@@ -85,8 +95,7 @@ void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs) {
 
             int col = 0;
 
-            auto typeItem =
-                new QTableWidgetItem(msg.type() == "UNREAD" ? "\u2691" : "");
+            auto typeItem = new QTableWidgetItem(msg.type() == "UNREAD" ? "\u2691" : "");
             typeItem->setData(Qt::UserRole, msg.type());
             typeItem->setTextAlignment(Qt::AlignCenter);
             ui->messageTableWidget->setItem(row, col++, typeItem);
@@ -104,8 +113,8 @@ void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs) {
             ui->messageTableWidget->setItem(row, col++, dateItem);
 
             auto dial = (quint64)params.value("DIAL").toInt();
-            auto dialItem = new QTableWidgetItem(QString("%1 MHz").arg(
-                Radio::pretty_frequency_MHz_string(dial)));
+            auto dialItem = new QTableWidgetItem(
+                QString("%1 MHz").arg(Radio::pretty_frequency_MHz_string(dial)));
             dialItem->setData(Qt::UserRole, dial);
             dialItem->setTextAlignment(Qt::AlignCenter);
             ui->messageTableWidget->setItem(row, col++, dialItem);
@@ -144,18 +153,18 @@ void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs) {
     }
 }
 
-QString MessageWindow::prepareReplyMessage(QString path, QString text) {
+QString MessageWindow::prepareReplyMessage(QString path, QString text)
+{
     return QString("%1 MSG %2").arg(path).arg(text);
 }
 
-void MessageWindow::messageTableSelectionChanged(
-    const QItemSelection & /*selected*/,
-    const QItemSelection & /*deselected*/) {
+void MessageWindow::messageTableSelectionChanged(const QItemSelection& /*selected*/,
+                                                 const QItemSelection& /*deselected*/)
+{
     auto row = ui->messageTableWidget->currentRow();
 
     // message column
-    auto item = ui->messageTableWidget->item(
-        row, ui->messageTableWidget->columnCount() - 1);
+    auto item = ui->messageTableWidget->item(row, ui->messageTableWidget->columnCount() - 1);
     if (!item) {
         return;
     }
@@ -164,12 +173,12 @@ void MessageWindow::messageTableSelectionChanged(
     ui->messageTextEdit->setPlainText(text);
 }
 
-void MessageWindow::on_replyPushButton_clicked() {
+void MessageWindow::on_replyPushButton_clicked()
+{
     auto row = ui->messageTableWidget->currentRow();
 
     // from column
-    auto item = ui->messageTableWidget->item(
-        row, ui->messageTableWidget->columnCount() - 3);
+    auto item = ui->messageTableWidget->item(row, ui->messageTableWidget->columnCount() - 3);
     if (!item) {
         return;
     }

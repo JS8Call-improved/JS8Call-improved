@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QDebug>
+#include <QLoggingCategory>
+#include <QtGlobal>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -7,13 +10,10 @@
 #include <cstdlib>
 #include <optional>
 
-#include <QDebug>
-#include <QLoggingCategory>
-#include <QtGlobal>
-
 Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 
-namespace js8 {
+namespace js8
+{
 /**
  * @brief LDPC erasure threshold config and feedback refinement helpers.
  *
@@ -30,11 +30,12 @@ constexpr float LLR_FEEDBACK_UNCERTAIN_SHRINK = 0.5f;
 constexpr float LLR_FEEDBACK_MAX_MAG = 6.0f;
 constexpr int LDPC_FEEDBACK_MAX_PASSES_DEFAULT = 8;
 
-inline float llrErasureThreshold() {
+inline float llrErasureThreshold()
+{
     float threshold = LLR_ERASURE_THRESHOLD_DEFAULT;
 
     if (auto const env = std::getenv("JS8_LLR_ERASURE_THRESH"); env) {
-        char *end = nullptr;
+        char* end = nullptr;
         float val = std::strtof(env, &end);
 
         if (end != env && std::isfinite(val)) {
@@ -42,21 +43,23 @@ inline float llrErasureThreshold() {
         }
     }
 
-    if (threshold <= 0.0f || !std::isfinite(threshold) ||
-        std::getenv("JS8_DISABLE_ERASURE_THRESHOLDING")) {
+    if (threshold <= 0.0f || !std::isfinite(threshold)
+        || std::getenv("JS8_DISABLE_ERASURE_THRESHOLDING")) {
         return 0.0f;
     }
 
     return threshold;
 }
 
-inline bool ldpcFeedbackEnabled() {
+inline bool ldpcFeedbackEnabled()
+{
     bool ok = false;
     int value = qEnvironmentVariableIntValue("JS8_LDPC_FEEDBACK", &ok);
     return ok ? value != 0 : true;
 }
 
-inline int ldpcFeedbackMaxPasses() {
+inline int ldpcFeedbackMaxPasses()
+{
     bool ok = false;
     int value = qEnvironmentVariableIntValue("JS8_LDPC_MAX_PASSES", &ok);
 
@@ -67,17 +70,19 @@ inline int ldpcFeedbackMaxPasses() {
 }
 
 template <std::size_t N>
-void refineLlrsWithLdpcFeedback(std::array<float, N> const &llrIn,
-                                std::array<int8_t, N> const &cw,
+void refineLlrsWithLdpcFeedback(std::array<float, N> const& llrIn,
+                                std::array<int8_t, N> const& cw,
                                 float erasureThreshold,
-                                std::array<float, N> &llrOut,
-                                int &confidentCount, int &uncertainCount) {
+                                std::array<float, N>& llrOut,
+                                int& confidentCount,
+                                int& uncertainCount)
+{
     llrOut = llrIn;
     confidentCount = 0;
     uncertainCount = 0;
 
     for (std::size_t i = 0; i < llrOut.size(); ++i) {
-        float &value = llrOut[i];
+        float& value = llrOut[i];
 
         if (!std::isfinite(value)) {
             value = 0.0f;

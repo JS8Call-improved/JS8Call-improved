@@ -3,6 +3,7 @@
  * @brief Implementation of AttenuationSlider custom QSlider
  */
 #include "AttenuationSlider.h"
+
 #include <QApplication>
 #include <QPainter>
 #include <QPixmapCache>
@@ -12,7 +13,8 @@
 // Private Implementation
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Tunable dimensions. Note that we're going to fill the handle with
 // strings of the format -##.#, e.g., 0, -22, -16.7, using the default
 // system font, which will generally be 12 point; define accordingly.
@@ -44,7 +46,8 @@ constexpr auto contrastColor = QColor(255, 255, 255, 30);
  * @param size 
  * @return auto 
  */
-auto makePixmap(QSize const size) {
+auto makePixmap(QSize const size)
+{
     if (size.isEmpty())
         return QPixmap();
 
@@ -65,13 +68,14 @@ auto makePixmap(QSize const size) {
  * @param size 
  * @return auto 
  */
-auto makeGroovePixmap(QSize const size) {
+auto makeGroovePixmap(QSize const size)
+{
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
         return pixmap;
     } else {
         auto const rect = QRect(QPoint(), size);
-        auto gradient = QLinearGradient(rect.left(), rect.center().y(),
-                                        rect.right(), rect.center().y());
+        auto gradient
+            = QLinearGradient(rect.left(), rect.center().y(), rect.right(), rect.center().y());
 
         gradient.setColorAt(0, grooveColor.darker(110));
         gradient.setColorAt(1, grooveColor.lighter(110));
@@ -97,13 +101,14 @@ auto makeGroovePixmap(QSize const size) {
  * @param size 
  * @return auto 
  */
-auto makeActivePixmap(QSize const size) {
+auto makeActivePixmap(QSize const size)
+{
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
         return pixmap;
     } else {
         auto const rect = QRect(QPoint(), size);
-        auto gradient = QLinearGradient(rect.left(), rect.center().y(),
-                                        rect.right(), rect.center().y());
+        auto gradient
+            = QLinearGradient(rect.left(), rect.center().y(), rect.right(), rect.center().y());
 
         gradient.setColorAt(0, activeColor);
         gradient.setColorAt(1, activeColor.lighter(130));
@@ -131,16 +136,18 @@ auto makeActivePixmap(QSize const size) {
  * @param size 
  * @return auto 
  */
-auto makeHandlePixmap(QSize const size) {
+auto makeHandlePixmap(QSize const size)
+{
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
         return pixmap;
     } else {
         auto const rect = QRect(QPoint(), size);
         auto const r = rect.adjusted(1, 1, -2, -2);
         auto const gradRect = rect.adjusted(2, 2, -2, -2);
-        auto gradient =
-            QLinearGradient(gradRect.center().x(), gradRect.top(),
-                            gradRect.center().x(), gradRect.bottom());
+        auto gradient = QLinearGradient(gradRect.center().x(),
+                                        gradRect.top(),
+                                        gradRect.center().x(),
+                                        gradRect.bottom());
 
         gradient.setColorAt(0, handleStartColor);
         gradient.setColorAt(1, handleStopColor);
@@ -159,12 +166,9 @@ auto makeHandlePixmap(QSize const size) {
         p.setPen(contrastColor);
         p.drawRoundedRect(r.adjusted(1, 1, -1, -1), 2, 2);
         p.setPen(QColor(0, 0, 0, 10));
-        p.drawLine(QPoint(r.left() + 2, r.bottom() + 1),
-                   QPoint(r.right() - 2, r.bottom() + 1));
-        p.drawLine(QPoint(r.right() + 1, r.bottom() - 3),
-                   QPoint(r.right() + 1, r.top() + 4));
-        p.drawLine(QPoint(r.right() - 1, r.bottom()),
-                   QPoint(r.right() + 1, r.bottom() - 2));
+        p.drawLine(QPoint(r.left() + 2, r.bottom() + 1), QPoint(r.right() - 2, r.bottom() + 1));
+        p.drawLine(QPoint(r.right() + 1, r.bottom() - 3), QPoint(r.right() + 1, r.top() + 4));
+        p.drawLine(QPoint(r.right() - 1, r.bottom()), QPoint(r.right() + 1, r.bottom() - 2));
 
         return pixmap;
     }
@@ -189,14 +193,12 @@ using MakePixmap = QPixmap (*)(QSize);
  * @param make 
  * @return auto 
  */
-auto cachedPixmap(QSize const size, const char *const name,
-                  MakePixmap const make) {
+auto cachedPixmap(QSize const size, const char* const name, MakePixmap const make)
+{
     QPixmap pixmap;
 
-    if (auto const key = QString("attenuation_slider_%1(%2,%3)")
-                             .arg(name)
-                             .arg(size.width())
-                             .arg(size.height());
+    if (auto const key
+        = QString("attenuation_slider_%1(%2,%3)").arg(name).arg(size.width()).arg(size.height());
         !QPixmapCache::find(key, &pixmap)) {
         pixmap = make(size);
         QPixmapCache::insert(key, pixmap);
@@ -227,12 +229,14 @@ auto cachedPixmap(QSize const size, const char *const name,
  * 
  * @param 
  */
-void AttenuationSlider::paintEvent(QPaintEvent *) {
-    auto const handle = QRect(QPoint((rect().width() - handleSize.width()) / 2,
-                                     yValue(sliderPosition())),
-                              handleSize);
+void AttenuationSlider::paintEvent(QPaintEvent*)
+{
+    auto const handle
+        = QRect(QPoint((rect().width() - handleSize.width()) / 2, yValue(sliderPosition())),
+                handleSize);
     auto const groove = QRect((rect().width() - grooveWidth) / 2,
-                              rect().y() + handleSize.height() / 2, grooveWidth,
+                              rect().y() + handleSize.height() / 2,
+                              grooveWidth,
                               rect().height() - handleSize.height());
     QPainter p(this);
 
@@ -242,8 +246,7 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
 
     // Draw groove.
 
-    p.drawPixmap(groove.topLeft(),
-                 cachedPixmap(groove.size(), "groove", &makeGroovePixmap));
+    p.drawPixmap(groove.topLeft(), cachedPixmap(groove.size(), "groove", &makeGroovePixmap));
 
     // Draw groove active highlight, clipping it to the active portion;
     // we want to draw the full size and clip here so that we can take
@@ -251,13 +254,11 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
     // this above the handle, not below, but we're attenuating here, so
     // below is what makes sense for us.
 
-    auto const clipRect =
-        QRect(QPoint(groove.left(), handle.bottom()), groove.bottomRight());
+    auto const clipRect = QRect(QPoint(groove.left(), handle.bottom()), groove.bottomRight());
 
     p.save();
     p.setClipRect(clipRect.adjusted(0, 0, 1, 1), Qt::IntersectClip);
-    p.drawPixmap(groove.topLeft(),
-                 cachedPixmap(groove.size(), "active", &makeActivePixmap));
+    p.drawPixmap(groove.topLeft(), cachedPixmap(groove.size(), "active", &makeActivePixmap));
     p.restore();
 
     // Draw tick marks, if any are specified. Typically, both sides.
@@ -266,8 +267,7 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
         auto const left = position & TicksLeft;
         auto const right = position & TicksRight;
 
-        for (auto value = minimum(); value <= maximum();
-             value += tickInterval()) {
+        for (auto value = minimum(); value <= maximum(); value += tickInterval()) {
             auto const y = yValue(value) + handleSize.height() / 2;
 
             if (left)
@@ -287,8 +287,7 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
     // like inverting the pixmap, tinting it, etc., or we could use a
     // different pen color for the text.
 
-    p.drawPixmap(handle.topLeft(),
-                 cachedPixmap(handle.size(), "handle", &makeHandlePixmap));
+    p.drawPixmap(handle.topLeft(), cachedPixmap(handle.size(), "handle", &makeHandlePixmap));
     p.drawText(handle, Qt::AlignCenter, QString::number(-(value() / 10.0)));
 }
 
@@ -299,10 +298,13 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
  * @param value 
  * @return int 
  */
-int AttenuationSlider::yValue(int const value) const {
-    return QStyle::sliderPositionFromValue(
-        minimum(), maximum(), value, rect().height() - handleSize.height(),
-        !invertedAppearance());
+int AttenuationSlider::yValue(int const value) const
+{
+    return QStyle::sliderPositionFromValue(minimum(),
+                                           maximum(),
+                                           value,
+                                           rect().height() - handleSize.height(),
+                                           !invertedAppearance());
 }
 
 /******************************************************************************/

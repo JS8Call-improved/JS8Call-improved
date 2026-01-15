@@ -7,12 +7,11 @@
 #include <QObject>
 
 #include "JS8_Audio/AudioDevice.h"
+#include "JS8_Include/pimpl_h.h"
 #include "JS8_Main/IARURegions.h"
 #include "JS8_Main/Radio.h"
 #include "JS8_Main/StationList.h"
 #include "JS8_Transceiver/Transceiver.h"
-
-#include "JS8_Include/pimpl_h.h"
 
 class QSettings;
 class QWidget;
@@ -55,21 +54,28 @@ class QHostAddress;
 //  for user defined bands, default operating frequencies and, station
 //  descriptions.
 //
-class Configuration final : public QObject {
+class Configuration final : public QObject
+{
     Q_OBJECT
     Q_ENUMS(DataMode)
 
-  public:
+public:
     using MODE = Transceiver::MODE;
     using TransceiverState = Transceiver::TransceiverState;
     using Frequency = Radio::Frequency;
     using port_type = quint16;
 
-    enum DataMode { data_mode_none, data_mode_USB, data_mode_data };
+    enum DataMode
+    {
+        data_mode_none,
+        data_mode_USB,
+        data_mode_data
+    };
     Q_ENUM(DataMode)
 
-    explicit Configuration(QDir const &temp_directory, QSettings *settings,
-                           QWidget *parent = nullptr);
+    explicit Configuration(QDir const& temp_directory,
+                           QSettings* settings,
+                           QWidget* parent = nullptr);
     ~Configuration();
 
     void select_tab(int);
@@ -79,15 +85,15 @@ class Configuration final : public QObject {
     QDir temp_dir() const;
     QDir writeable_data_dir() const;
 
-    QAudioDevice const &audio_input_device() const;
+    QAudioDevice const& audio_input_device() const;
     AudioDevice::Channel audio_input_channel() const;
-    QAudioDevice const &audio_output_device() const;
+    QAudioDevice const& audio_output_device() const;
     AudioDevice::Channel audio_output_channel() const;
-    QAudioDevice const &notification_audio_output_device() const;
+    QAudioDevice const& notification_audio_output_device() const;
 
     bool notifications_enabled() const;
-    QString notification_path(const QString &key) const;
-    Q_SIGNAL void test_notify(const QString &key);
+    QString notification_path(const QString& key) const;
+    Q_SIGNAL void test_notify(const QString& key);
 
     // These query methods should be used after a call to exec() to
     // determine if either the audio input or audio output stream
@@ -101,8 +107,8 @@ class Configuration final : public QObject {
     QString my_callsign() const;
     QString my_grid() const;
     QSet<QString> my_groups() const;
-    void addGroup(QString const &group);
-    void removeGroup(QString const &group);
+    void addGroup(QString const& group);
+    void removeGroup(QString const& group);
     QSet<QString> auto_whitelist() const;
     QSet<QString> auto_blacklist() const;
     QSet<QString> hb_blacklist() const;
@@ -212,16 +218,16 @@ class Configuration final : public QObject {
      */
     QStringList wsjtx_interface_names() const;
     int tcp_max_connections() const;
-    Bands *bands();
-    Bands const *bands() const;
+    Bands* bands();
+    Bands const* bands() const;
     IARURegions::Region region() const;
-    FrequencyList_v2 *frequencies();
-    FrequencyList_v2 const *frequencies() const;
-    StationList *stations();
-    StationList const *stations() const;
+    FrequencyList_v2* frequencies();
+    FrequencyList_v2 const* frequencies() const;
+    StationList* stations();
+    StationList const* stations() const;
     bool auto_switch_bands() const;
-    QStringListModel *macros();
-    QStringListModel const *macros() const;
+    QStringListModel* macros();
+    QStringListModel const* macros() const;
     QDir save_directory() const;
     QString rig_name() const;
     QColor color_table_background() const;
@@ -241,11 +247,14 @@ class Configuration final : public QObject {
     bool pwrBandTxMemory() const;
     bool pwrBandTuneMemory() const;
 
-    struct CalibrationParams {
-        CalibrationParams() : intercept{0.}, slope_ppm{0.} {}
+    struct CalibrationParams
+    {
+        CalibrationParams() : intercept { 0. }, slope_ppm { 0. } { }
 
-        CalibrationParams(double the_intercept, double the_slope_ppm)
-            : intercept{the_intercept}, slope_ppm{the_slope_ppm} {}
+        CalibrationParams(double the_intercept, double the_slope_ppm) :
+            intercept { the_intercept }, slope_ppm { the_slope_ppm }
+        {
+        }
 
         double intercept; // Hertz
         double slope_ppm; // Hertz
@@ -259,15 +268,15 @@ class Configuration final : public QObject {
 
     // Set the dynamic grid which is only used if configuration setting is
     // enabled.
-    void set_dynamic_location(QString const &);
+    void set_dynamic_location(QString const&);
 
     // Set the dynamic station info message which is only used if configuration
     // setting is enabled.
-    void set_dynamic_station_info(QString const &info);
+    void set_dynamic_station_info(QString const& info);
 
     // Set the dynamic station status message which is only used if
     // configuration setting is enabled.
-    void set_dynamic_station_status(QString const &status);
+    void set_dynamic_station_status(QString const& status);
 
     // This method queries if a CAT and PTT connection is operational.
     bool is_transceiver_online() const;
@@ -318,8 +327,7 @@ class Configuration final : public QObject {
     // The enforce_mode_and_split parameter ensures that future
     // transceiver updates have the correct mode and split setting
     // i.e. the transceiver is ready for use.
-    Q_SLOT void sync_transceiver(bool force_signal = false,
-                                 bool enforce_mode_and_split = false);
+    Q_SLOT void sync_transceiver(bool force_signal = false, bool enforce_mode_and_split = false);
 
     Q_SLOT void invalidate_audio_input_device(QString error);
     Q_SLOT void invalidate_audio_output_device(QString error);
@@ -339,9 +347,9 @@ class Configuration final : public QObject {
     //
     // This signal is emitted when the UDP & TCP server changes
     //
-    Q_SIGNAL void udp_server_name_changed(QString const &name);
+    Q_SIGNAL void udp_server_name_changed(QString const& name);
     Q_SIGNAL void udp_server_port_changed(port_type port);
-    Q_SIGNAL void tcp_server_changed(QString const &host);
+    Q_SIGNAL void tcp_server_changed(QString const& host);
     Q_SIGNAL void tcp_server_port_changed(port_type port);
     Q_SIGNAL void tcp_max_connections_changed(int n);
     // WSJT-X Protocol signals
@@ -355,7 +363,7 @@ class Configuration final : public QObject {
      * @brief Emitted when WSJT-X server address changes
      * @param server_name New server address
      */
-    Q_SIGNAL void wsjtx_server_changed(QString const &) const;
+    Q_SIGNAL void wsjtx_server_changed(QString const&) const;
 
     /**
      * @brief Emitted when WSJT-X server port changes
@@ -373,10 +381,10 @@ class Configuration final : public QObject {
      * @brief Emitted when WSJT-X network interfaces selection changes
      * @param interfaces New list of selected interface names
      */
-    Q_SIGNAL void wsjtx_interfaces_changed(QStringList const &) const;
+    Q_SIGNAL void wsjtx_interfaces_changed(QStringList const&) const;
 
     // This signal is emitted when the band schedule changes
-    Q_SIGNAL void band_schedule_changed(StationList &stations);
+    Q_SIGNAL void band_schedule_changed(StationList& stations);
 
     // This signal is emitted when the auto switch bands choice changes
     Q_SIGNAL void auto_switch_bands_changed(bool auto_switch_bands);
@@ -389,8 +397,7 @@ class Configuration final : public QObject {
     //
 
     // signals a change in one of the TransceiverState members
-    Q_SIGNAL void
-    transceiver_update(Transceiver::TransceiverState const &) const;
+    Q_SIGNAL void transceiver_update(Transceiver::TransceiverState const&) const;
 
     // Signals a failure of a control rig CAT or PTT connection.
     //
@@ -398,7 +405,7 @@ class Configuration final : public QObject {
     // connections are closed automatically. The connections can be
     // re-established with a call to transceiver_online(true) assuming
     // the fault condition has been rectified or is transient.
-    Q_SIGNAL void transceiver_failure(QString const &reason) const;
+    Q_SIGNAL void transceiver_failure(QString const& reason) const;
 
     // signal announces audio devices are being enumerated
     //
@@ -406,7 +413,7 @@ class Configuration final : public QObject {
     // might like to notify the user.
     Q_SIGNAL void enumerating_audio_devices();
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };

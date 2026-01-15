@@ -3,7 +3,8 @@
 #include <complex>
 #include <numbers>
 
-namespace js8 {
+namespace js8
+{
 /**
  * @brief Lightweight PLL/Kalman-style tracker for residual frequency offset.
  *
@@ -11,10 +12,14 @@ namespace js8 {
  * by the tracked offset, update() nudges the estimate using pilot residuals.
  * Used inside the JS8 decode loop per candidate frame.
  */
-class FrequencyTracker {
-  public:
-    void reset(double initial_hz, double sample_rate_hz, double alpha = 0.15,
-               double max_step_hz = 0.3, double max_error_hz = 5.0);
+class FrequencyTracker
+{
+public:
+    void reset(double initial_hz,
+               double sample_rate_hz,
+               double alpha = 0.15,
+               double max_step_hz = 0.3,
+               double max_error_hz = 5.0);
 
     void disable();
 
@@ -24,11 +29,11 @@ class FrequencyTracker {
 
     [[nodiscard]] double averageStepHz() const noexcept;
 
-    void apply(std::complex<float> *data, int count) const;
+    void apply(std::complex<float>* data, int count) const;
 
     void update(double residual_hz, double weight = 1.0);
 
-  private:
+private:
     bool m_enabled = true;
     double m_est_hz = 0.0;
     double m_fs = 0.0;
@@ -39,8 +44,9 @@ class FrequencyTracker {
     int m_updates = 0;
 };
 
-class TimingTracker {
-  public:
+class TimingTracker
+{
+public:
     /**
      * @brief Tracks residual timing (sample) offset between the symbol clock
      * and the signal.
@@ -50,8 +56,10 @@ class TimingTracker {
      * in the JS8 decode loop alongside FrequencyTracker.
      */
 
-    void reset(double initial_samples, double alpha = 0.15,
-               double max_step = 0.35, double max_total_error = 2.0);
+    void reset(double initial_samples,
+               double alpha = 0.15,
+               double max_step = 0.35,
+               double max_total_error = 2.0);
 
     void disable();
 
@@ -63,7 +71,7 @@ class TimingTracker {
 
     void update(double residual_samples, double weight = 1.0);
 
-  private:
+private:
     bool m_enabled = true;
     double m_est_samples = 0.0;
     double m_alpha = 0.15;

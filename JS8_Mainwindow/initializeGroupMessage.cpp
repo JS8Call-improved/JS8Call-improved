@@ -5,7 +5,8 @@
  *  group messaging function
  */
 
-void MainWindow::initializeGroupMessage() {
+void MainWindow::initializeGroupMessage()
+{
     if (!QApplication::applicationName().contains("dummy")) {
         return;
     }

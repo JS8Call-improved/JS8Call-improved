@@ -1,18 +1,20 @@
 #ifndef JS8_SUBMODE_HPP_
 #define JS8_SUBMODE_HPP_
 
-#include "JS8_Mode/JS8.h"
 #include <QString>
 #include <stdexcept>
 
-namespace JS8::Submode {
+#include "JS8_Mode/JS8.h"
+
+namespace JS8::Submode
+{
 // Exception thrown on unexpected errors, principally, handing
 // us a submode that we don't understand, which seems like your
 // problem, not ours.
 
-struct error : public std::runtime_error {
-    explicit error(QString const &what)
-        : std::runtime_error(what.toStdString()) {}
+struct error : public std::runtime_error
+{
+    explicit error(QString const& what) : std::runtime_error(what.toStdString()) { }
 };
 
 // Functions that, when provided with a valid submode, return

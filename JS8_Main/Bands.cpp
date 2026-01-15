@@ -4,68 +4,72 @@
  */
 #include "Bands.h"
 
-#include <algorithm>
-
 #include <QString>
 #include <QVariant>
+#include <algorithm>
 
-namespace {
+namespace
+{
 // Table of ADIF band definitions as defined in the ADIF
 // specification as at ADIF v3.0.6
-struct ADIFBand {
-    char const *const name_;
+struct ADIFBand
+{
+    char const* const name_;
     Radio::Frequency lower_bound_;
     Radio::Frequency upper_bound_;
 } constexpr ADIF_bands[] = {
-    {"2190m", 136000u, 137000u},
-    {"630m", 472000u, 479000u},
-    {"560m", 501000u, 504000u},
-    {"160m", 1800000u, 2000000u},
-    {"80m", 3500000u, 4000000u},
-    {"60m", 5060000u, 5450000u},
-    {"40m", 7000000u, 7300000u},
-    {"30m", 10000000u, 10150000u},
-    {"20m", 14000000u, 14350000u},
-    {"17m", 18068000u, 18168000u},
-    {"15m", 21000000u, 21450000u},
-    {"12m", 24890000u, 24990000u},
-    {"10m", 28000000u, 29700000u},
-    {"6m", 50000000u, 54000000u},
-    {"4m", 70000000u, 71000000u},
-    {"2m", 144000000u, 148000000u},
-    {"1.25m", 222000000u, 225000000u},
-    {"70cm", 420000000u, 450000000u},
-    {"33cm", 902000000u, 928000000u},
-    {"23cm", 1240000000u, 1300000000u},
-    {"13cm", 2300000000u, 2450000000u},
-    {"9cm", 3300000000u, 3500000000u},
-    {"6cm", 5650000000u, 5925000000u},
-    {"3cm", 10000000000u, 10500000000u},
-    {"1.25cm", 24000000000u, 24250000000u},
-    {"6mm", 47000000000u, 47200000000u},
-    {"4mm", 75500000000u, 81000000000u},
-    {"2.5mm", 119980000000u, 120020000000u},
-    {"2mm", 142000000000u, 149000000000u},
-    {"1mm", 241000000000u, 250000000000u},
+    { "2190m",  136000u,          137000u          },
+    { "630m",   472000u,          479000u          },
+    { "560m",   501000u,          504000u          },
+    { "160m",   1'800'000u,       2'000'000u       },
+    { "80m",    3'500'000u,       4'000'000u       },
+    { "60m",    5'060'000u,       5'450'000u       },
+    { "40m",    7'000'000u,       7'300'000u       },
+    { "30m",    10'000'000u,      10'150'000u      },
+    { "20m",    14'000'000u,      14'350'000u      },
+    { "17m",    18'068'000u,      18'168'000u      },
+    { "15m",    21'000'000u,      21'450'000u      },
+    { "12m",    24'890'000u,      24'990'000u      },
+    { "10m",    28'000'000u,      29'700'000u      },
+    { "6m",     50'000'000u,      54'000'000u      },
+    { "4m",     70'000'000u,      71'000'000u      },
+    { "2m",     144'000'000u,     148'000'000u     },
+    { "1.25m",  222'000'000u,     225'000'000u     },
+    { "70cm",   420'000'000u,     450'000'000u     },
+    { "33cm",   902'000'000u,     928'000'000u     },
+    { "23cm",   1'240'000'000u,   1'300'000'000u   },
+    { "13cm",   2'300'000'000u,   2'450'000'000u   },
+    { "9cm",    3'300'000'000u,   3'500'000'000u   },
+    { "6cm",    5'650'000'000u,   5'925'000'000u   },
+    { "3cm",    10'000'000'000u,  10'500'000'000u  },
+    { "1.25cm", 24'000'000'000u,  24'250'000'000u  },
+    { "6mm",    47'000'000'000u,  47'200'000'000u  },
+    { "4mm",    75'500'000'000u,  81'000'000'000u  },
+    { "2.5mm",  119'980'000'000u, 120'020'000'000u },
+    { "2mm",    142'000'000'000u, 149'000'000'000u },
+    { "1mm",    241'000'000'000u, 250'000'000'000u },
 };
 
 /**
  * @brief Out Of Band name
  * 
  */
-QString const oob_name{QObject::tr("OOB")};
+QString const oob_name { QObject::tr("OOB") };
 
 /**
  * @brief Get number of rows in ADIF band table
  * 
  * @return int 
  */
-int constexpr table_rows() {
+int constexpr table_rows()
+{
     return sizeof(ADIF_bands) / sizeof(ADIF_bands[0]);
 }
 } // namespace
 
-Bands::Bands(QObject *parent) : QAbstractTableModel{parent} {}
+Bands::Bands(QObject* parent) : QAbstractTableModel { parent }
+{
+}
 
 /**
  * @brief Find the band that contains the given frequency
@@ -73,13 +77,13 @@ Bands::Bands(QObject *parent) : QAbstractTableModel{parent} {}
  * @param f 
  * @return QString 
  */
-QString Bands::find(Frequency f) const {
+QString Bands::find(Frequency f) const
+{
     QString result;
-    auto const &end_iter = ADIF_bands + table_rows();
-    auto const &row_iter =
-        std::find_if(ADIF_bands, end_iter, [f](ADIFBand const &band) {
-            return band.lower_bound_ <= f && f <= band.upper_bound_;
-        });
+    auto const& end_iter = ADIF_bands + table_rows();
+    auto const& row_iter = std::find_if(ADIF_bands, end_iter, [f](ADIFBand const& band) {
+        return band.lower_bound_ <= f && f <= band.upper_bound_;
+    });
     if (row_iter != end_iter) {
         result = row_iter->name_;
     }
@@ -92,8 +96,9 @@ QString Bands::find(Frequency f) const {
  * @param band 
  * @return int 
  */
-int Bands::find(QString const &band) const {
-    int result{-1};
+int Bands::find(QString const& band) const
+{
+    int result { -1 };
     for (auto i = 0u; i < table_rows(); ++i) {
         if (band == ADIF_bands[i].name_) {
             result = i;
@@ -110,8 +115,10 @@ int Bands::find(QString const &band) const {
  * @param pFreqHigher 
  * @return true if band found, false otherwise
  */
-bool Bands::findFreq(QString const &band, Radio::Frequency *pFreqLower,
-                     Radio::Frequency *pFreqHigher) const {
+bool Bands::findFreq(QString const& band,
+                     Radio::Frequency* pFreqLower,
+                     Radio::Frequency* pFreqHigher) const
+{
     int row = find(band);
     if (row == -1) {
         return false;
@@ -130,7 +137,10 @@ bool Bands::findFreq(QString const &band, Radio::Frequency *pFreqLower,
  * 
  * @return QString const& 
  */
-QString const &Bands::oob() { return oob_name; }
+QString const& Bands::oob()
+{
+    return oob_name;
+}
 
 /**
  * @brief Get number of rows in the model
@@ -138,7 +148,8 @@ QString const &Bands::oob() { return oob_name; }
  * @param parent 
  * @return int 
  */
-int Bands::rowCount(QModelIndex const &parent) const {
+int Bands::rowCount(QModelIndex const& parent) const
+{
     return parent.isValid() ? 0 : table_rows();
 }
 
@@ -148,7 +159,8 @@ int Bands::rowCount(QModelIndex const &parent) const {
  * @param parent 
  * @return int 
  */
-int Bands::columnCount(QModelIndex const &parent) const {
+int Bands::columnCount(QModelIndex const& parent) const
+{
     return parent.isValid() ? 0 : 3;
 }
 
@@ -158,7 +170,8 @@ int Bands::columnCount(QModelIndex const &parent) const {
  * @param index 
  * @return Qt::ItemFlags 
  */
-Qt::ItemFlags Bands::flags(QModelIndex const &index) const {
+Qt::ItemFlags Bands::flags(QModelIndex const& index) const
+{
     return QAbstractTableModel::flags(index) | Qt::ItemIsDropEnabled;
 }
 
@@ -169,7 +182,8 @@ Qt::ItemFlags Bands::flags(QModelIndex const &index) const {
  * @param role 
  * @return QVariant 
  */
-QVariant Bands::data(QModelIndex const &index, int role) const {
+QVariant Bands::data(QModelIndex const& index, int role) const
+{
     QVariant item;
 
     if (!index.isValid()) {
@@ -186,15 +200,9 @@ QVariant Bands::data(QModelIndex const &index, int role) const {
             case Qt::ToolTipRole:
             case Qt::AccessibleDescriptionRole:
                 switch (column) {
-                case 0:
-                    item = tr("Band name");
-                    break;
-                case 1:
-                    item = tr("Lower frequency limit");
-                    break;
-                case 2:
-                    item = tr("Upper frequency limit");
-                    break;
+                case 0: item = tr("Band name"); break;
+                case 1: item = tr("Lower frequency limit"); break;
+                case 2: item = tr("Upper frequency limit"); break;
                 }
                 break;
 
@@ -211,39 +219,26 @@ QVariant Bands::data(QModelIndex const &index, int role) const {
                     }
                     break;
 
-                case 1:
-                    item = ADIF_bands[row].lower_bound_;
-                    break;
-                case 2:
-                    item = ADIF_bands[row].upper_bound_;
-                    break;
+                case 1: item = ADIF_bands[row].lower_bound_; break;
+                case 2: item = ADIF_bands[row].upper_bound_; break;
                 }
                 break;
 
             case Qt::AccessibleTextRole:
                 switch (column) {
-                case 0:
-                    item = ADIF_bands[row].name_;
-                    break;
-                case 1:
-                    item = ADIF_bands[row].lower_bound_;
-                    break;
-                case 2:
-                    item = ADIF_bands[row].upper_bound_;
-                    break;
+                case 0: item = ADIF_bands[row].name_; break;
+                case 1: item = ADIF_bands[row].lower_bound_; break;
+                case 2: item = ADIF_bands[row].upper_bound_; break;
                 }
                 break;
 
             case Qt::TextAlignmentRole:
                 switch (column) {
-                case 0:
-                    item = Qt::AlignCenter;
-                    break;
+                case 0: item = Qt::AlignCenter; break;
 
                 case 1:
                 case 2:
-                    item = static_cast<Qt::Alignment::Int>(Qt::AlignRight |
-                                                           Qt::AlignVCenter);
+                    item = static_cast<Qt::Alignment::Int>(Qt::AlignRight | Qt::AlignVCenter);
                     break;
                 }
                 break;
@@ -261,21 +256,15 @@ QVariant Bands::data(QModelIndex const &index, int role) const {
  * @param role 
  * @return QVariant 
  */
-QVariant Bands::headerData(int section, Qt::Orientation orientation,
-                           int role) const {
+QVariant Bands::headerData(int section, Qt::Orientation orientation, int role) const
+{
     QVariant result;
 
     if (Qt::DisplayRole == role && Qt::Horizontal == orientation) {
         switch (section) {
-        case 0:
-            result = tr("Band");
-            break;
-        case 1:
-            result = tr("Lower Limit");
-            break;
-        case 2:
-            result = tr("Upper Limit");
-            break;
+        case 0: result = tr("Band"); break;
+        case 1: result = tr("Lower Limit"); break;
+        case 2: result = tr("Upper Limit"); break;
         }
     } else {
         result = QAbstractTableModel::headerData(section, orientation, role);
@@ -289,7 +278,10 @@ QVariant Bands::headerData(int section, Qt::Orientation orientation,
  * 
  * @return QString 
  */
-QString Bands::const_iterator::operator*() { return ADIF_bands[row_].name_; }
+QString Bands::const_iterator::operator*()
+{
+    return ADIF_bands[row_].name_;
+}
 
 /**
  * @brief Compare two iterators for inequality
@@ -297,7 +289,8 @@ QString Bands::const_iterator::operator*() { return ADIF_bands[row_].name_; }
  * @param rhs 
  * @return true if not equal, false otherwise
  */
-bool Bands::const_iterator::operator!=(const_iterator const &rhs) const {
+bool Bands::const_iterator::operator!=(const_iterator const& rhs) const
+{
     return row_ != rhs.row_;
 }
 
@@ -306,7 +299,8 @@ bool Bands::const_iterator::operator!=(const_iterator const &rhs) const {
  * 
  * @return reference to incremented iterator
  */
-auto Bands::const_iterator::operator++() -> const_iterator & {
+auto Bands::const_iterator::operator++() -> const_iterator&
+{
     ++row_;
     return *this;
 }
@@ -316,13 +310,17 @@ auto Bands::const_iterator::operator++() -> const_iterator & {
  * 
  * @return Bands::const_iterator 
  */
-auto Bands::begin() const -> Bands::const_iterator { return const_iterator(0); }
+auto Bands::begin() const -> Bands::const_iterator
+{
+    return const_iterator(0);
+}
 
 /**
  * @brief Get end iterator
  * 
  * @return Bands::const_iterator 
  */
-auto Bands::end() const -> Bands::const_iterator {
+auto Bands::end() const -> Bands::const_iterator
+{
     return const_iterator(table_rows());
 }

@@ -1,40 +1,44 @@
 #include "MessageServer.h"
+
 #include <QLoggingCategory>
 #include <stdexcept>
 Q_DECLARE_LOGGING_CATEGORY(messageserver_js8)
 
-MessageServer::MessageServer(QObject *parent) : QTcpServer(parent) {}
+MessageServer::MessageServer(QObject* parent) : QTcpServer(parent)
+{
+}
 
-MessageServer::~MessageServer() { stop(); }
+MessageServer::~MessageServer()
+{
+    stop();
+}
 
-bool MessageServer::start() {
+bool MessageServer::start()
+{
     if (isListening()) {
-        qCDebug(messageserver_js8)
-            << "MessageServer already listening:" << m_host << m_port;
+        qCDebug(messageserver_js8) << "MessageServer already listening:" << m_host << m_port;
         return false;
     }
 
     auto address = QHostAddress();
     if (m_host.isEmpty() || !address.setAddress(m_host)) {
-        qCDebug(messageserver_js8)
-            << "MessageServer address invalid:" << m_host << m_port;
+        qCDebug(messageserver_js8) << "MessageServer address invalid:" << m_host << m_port;
         return false;
     }
 
     if (m_port <= 0) {
-        qCDebug(messageserver_js8)
-            << "MessageServer port invalid:" << m_host << m_port;
+        qCDebug(messageserver_js8) << "MessageServer port invalid:" << m_host << m_port;
         return false;
     }
 
     bool listening = listen(address, m_port);
-    qCDebug(messageserver_js8)
-        << "MessageServer listening:" << listening << m_host << m_port;
+    qCDebug(messageserver_js8) << "MessageServer listening:" << listening << m_host << m_port;
 
     return listening;
 }
 
-void MessageServer::stop() {
+void MessageServer::stop()
+{
     // disconnect all clients
     foreach (auto client, m_clients) {
         client->close();
@@ -44,7 +48,8 @@ void MessageServer::stop() {
     close();
 }
 
-void MessageServer::setServer(QString host, quint16 port) {
+void MessageServer::setServer(QString host, quint16 port)
+{
     bool listening = isListening();
     if (listening && (m_host != host || m_port != port)) {
         stop();
@@ -58,7 +63,8 @@ void MessageServer::setServer(QString host, quint16 port) {
     }
 }
 
-void MessageServer::setPause(bool paused) {
+void MessageServer::setPause(bool paused)
+{
     m_paused = paused;
 
     if (paused) {
@@ -68,7 +74,8 @@ void MessageServer::setPause(bool paused) {
     }
 }
 
-void MessageServer::setMaxConnections(int n) {
+void MessageServer::setMaxConnections(int n)
+{
     // set the maximum number of connections allowed
     m_maxConnections = n;
 
@@ -76,7 +83,8 @@ void MessageServer::setMaxConnections(int n) {
     pruneConnections();
 }
 
-int MessageServer::activeConnections() {
+int MessageServer::activeConnections()
+{
     int i = 0;
     foreach (auto client, m_clients) {
         if (client->isConnected())
@@ -85,7 +93,8 @@ int MessageServer::activeConnections() {
     return i;
 }
 
-void MessageServer::pruneConnections() {
+void MessageServer::pruneConnections()
+{
     // keep only the n most recent connections (fifo)
     if (m_maxConnections && m_maxConnections < activeConnections()) {
         for (int i = m_maxConnections; i < activeConnections(); i++) {
@@ -96,7 +105,8 @@ void MessageServer::pruneConnections() {
     }
 }
 
-void MessageServer::send(const Message &message) {
+void MessageServer::send(const Message& message)
+{
     foreach (auto client, m_clients) {
         if (!client->awaitingResponse(message.id())) {
             continue;
@@ -105,7 +115,8 @@ void MessageServer::send(const Message &message) {
     }
 }
 
-void MessageServer::incomingConnection(qintptr handle) {
+void MessageServer::incomingConnection(qintptr handle)
+{
     qCDebug(messageserver_js8) << "MessageServer incomingConnection" << handle;
 
     auto client = new Client(this, this);
@@ -130,12 +141,13 @@ void MessageServer::incomingConnection(qintptr handle) {
     m_clients.append(client);
 }
 
-Client::Client(MessageServer *server, QObject *parent)
-    : QObject(parent), m_server{server} {
+Client::Client(MessageServer* server, QObject* parent) : QObject(parent), m_server { server }
+{
     setConnected(true);
 }
 
-void Client::setSocket(qintptr handle) {
+void Client::setSocket(qintptr handle)
+{
     m_socket = new QTcpSocket(this);
 
     connect(m_socket, &QTcpSocket::disconnected, this, &Client::onDisconnected);
@@ -144,9 +156,13 @@ void Client::setSocket(qintptr handle) {
     m_socket->setSocketDescriptor(handle);
 }
 
-void Client::setConnected(bool connected) { m_connected = connected; }
+void Client::setConnected(bool connected)
+{
+    m_connected = connected;
+}
 
-void Client::close() {
+void Client::close()
+{
     if (!m_socket) {
         return;
     }
@@ -155,7 +171,8 @@ void Client::close() {
     m_socket = nullptr;
 }
 
-void Client::send(const Message &message) {
+void Client::send(const Message& message)
+{
     if (!isConnected()) {
         return;
     }
@@ -180,18 +197,19 @@ void Client::send(const Message &message) {
     }
 }
 
-void Client::onDisconnected() {
+void Client::onDisconnected()
+{
     qCDebug(messageserver_js8) << "MessageServer client disconnected";
     setConnected(false);
 }
 
-void Client::readyRead() {
+void Client::readyRead()
+{
     qCDebug(messageserver_js8) << "MessageServer client readyRead";
 
     while (m_socket->canReadLine()) {
         auto const msg = m_socket->readLine().trimmed();
-        qCDebug(messageserver_js8)
-            << "-> Client" << m_socket->socketDescriptor() << msg;
+        qCDebug(messageserver_js8) << "-> Client" << m_socket->socketDescriptor() << msg;
 
         if (msg.isEmpty())
             return;
@@ -200,8 +218,8 @@ void Client::readyRead() {
             auto m = Message::fromJson(msg);
             m_requests[m.ensureId()] = m;
             emit m_server->message(m);
-        } catch (std::exception const &e) {
-            send({"API.ERROR", e.what()});
+        } catch (std::exception const& e) {
+            send({ "API.ERROR", e.what() });
             return;
         }
     }

@@ -8,8 +8,8 @@
 /**
  * Emulation of the Fortran 'flat1' subroutine.
  */
-void flat1(float const *const savg, int const iz, int const nsmo,
-           float *const slin) {
+void flat1(float const* const savg, int const iz, int const nsmo, float* const slin)
+{
     constexpr int x_size = 8192;
     constexpr int nstep = 20;
     constexpr int nh = nstep / 2;
@@ -22,8 +22,7 @@ void flat1(float const *const savg, int const iz, int const nsmo,
 
     // Smooth savg using median percentiles
 
-    auto const rank =
-        std::clamp(static_cast<int>(std::round(0.5f * nsmo)), 0, nsmo - 1);
+    auto const rank = std::clamp(static_cast<int>(std::round(0.5f * nsmo)), 0, nsmo - 1);
 
     for (int i = ia; i <= ib; i += nstep) {
         auto const data = &savg[i - nsmo / 2];
@@ -41,8 +40,7 @@ void flat1(float const *const savg, int const iz, int const nsmo,
     std::fill(x.begin() + ib + 1, x.begin() + iz, x[ib]);
 
     // Compute scaling factor
-    float x0 = 0.001f * *std::max_element(x.begin() + iz / 10,
-                                          x.begin() + (9 * iz) / 10);
+    float x0 = 0.001f * *std::max_element(x.begin() + iz / 10, x.begin() + (9 * iz) / 10);
 
     // Normalize savg to compute slin
     for (int i = 0; i < iz; ++i)
@@ -54,7 +52,8 @@ void flat1(float const *const savg, int const iz, int const nsmo,
  * call this twice, we can just swap the order of the arrays to achieve the
  * same result without the extra two copy operations.
  */
-void smo(float const *const a, float *const b, int const npts, int const nadd) {
+void smo(float const* const a, float* const b, int const npts, int const nadd)
+{
     auto const nh = nadd / 2;
 
     // Smooth the array
@@ -74,19 +73,20 @@ void smo(float const *const a, float *const b, int const npts, int const nadd) {
 }
 
 //-------------------------------------------------------------- dataSink()
-void MainWindow::dataSink(qint64 frames) {
+void MainWindow::dataSink(qint64 frames)
+{
     constexpr int NMAX = JS8_NTMAX * 12000;
     constexpr int nfft3 = 16384;
-    constexpr std::array nch = {1, 2, 4, 9, 18, 36, 72};
+    constexpr std::array nch = { 1, 2, 4, 9, 18, 36, 72 };
 
     // symspec global vars
     static int ja = 0;
-    static int k0 = 999999999;
+    static int k0 = 999'999'999;
     static WF::SPlot ssum = {};
     static WF::SPlot s = {};
 
     int k(frames);
-    if (k0 == 999999999) {
+    if (k0 == 999'999'999) {
         m_ihsym = int((float)frames / (float)JS8_NSPS) * 2;
         ja = k;
         k0 = k;
@@ -158,8 +158,8 @@ void MainWindow::dataSink(qint64 frames) {
          * instructions, which will in turn allow it to use them.
          */
 
-        fftwf_complex *fftw_complex;
-        float *fftw_real;
+        fftwf_complex* fftw_complex;
+        float* fftw_real;
         fftwf_plan fftw_plan;
         {
             std::lock_guard<std::mutex> lock(fftw_mutex);
@@ -170,9 +170,9 @@ void MainWindow::dataSink(qint64 frames) {
                 throw std::runtime_error("Failed to allocate FFT data");
             }
 
-            fftw_real = reinterpret_cast<float *>(fftw_complex);
-            fftw_plan = fftwf_plan_dft_r2c_1d(nfft3, fftw_real, fftw_complex,
-                                              FFTW_ESTIMATE_PATIENT);
+            fftw_real = reinterpret_cast<float*>(fftw_complex);
+            fftw_plan
+                = fftwf_plan_dft_r2c_1d(nfft3, fftw_real, fftw_complex, FFTW_ESTIMATE_PATIENT);
 
             if (!fftw_plan) {
                 fftwf_free(fftw_complex);
@@ -196,7 +196,7 @@ void MainWindow::dataSink(qint64 frames) {
         m_df3 = 12000.0f / nfft3;
 
         auto const iz = std::min(JS8_NSMAX, static_cast<int>(5000.0f / m_df3));
-        auto const cx = reinterpret_cast<std::complex<float> *>(fftw_complex);
+        auto const cx = reinterpret_cast<std::complex<float>*>(fftw_complex);
         auto const fac = std::pow(1.0f / nfft3, 2.0f);
 
         for (int i = 0; i < iz; ++i) {
@@ -233,18 +233,17 @@ void MainWindow::dataSink(qint64 frames) {
                 smo(tmp.data(), specData.slin, iz, mode4);
             }
 
-            std::fill(std::begin(specData.slin),
-                      std::begin(specData.slin) + 250, 0.0f);
+            std::fill(std::begin(specData.slin), std::begin(specData.slin) + 250, 0.0f);
 
             auto const ia = static_cast<int>(500.0 / m_df3);
             auto const ib = static_cast<int>(2700.0 / m_df3);
-            auto const smin = *std::min_element(std::begin(specData.slin) + ia,
-                                                std::begin(specData.slin) + ib);
-            auto const smax = *std::max_element(std::begin(specData.slin),
-                                                std::begin(specData.slin) + iz);
+            auto const smin
+                = *std::min_element(std::begin(specData.slin) + ia, std::begin(specData.slin) + ib);
+            auto const smax
+                = *std::max_element(std::begin(specData.slin), std::begin(specData.slin) + iz);
             auto const scale = (smax > smin) ? 50.0f / (smax - smin) : 0.0f;
 
-            for (auto &val : specData.slin)
+            for (auto& val : specData.slin)
                 val = std::max(0.0f, scale * (val - smin));
         }
     } else if (k < 2048)

@@ -4,10 +4,9 @@
  */
 #include "NetworkServerLookup.h"
 
-#include <stdexcept>
-
 #include <QHostInfo>
 #include <QString>
+#include <stdexcept>
 
 /**
  * @brief Looks up the network server address and port.
@@ -19,13 +18,15 @@
  * @return std::tuple<QHostAddress, quint16> 
  */
 std::tuple<QHostAddress, quint16>
-network_server_lookup(QString query, quint16 default_service_port,
-                      QHostAddress default_host_address,
-                      QAbstractSocket::NetworkLayerProtocol required_protocol) {
+    network_server_lookup(QString query,
+                          quint16 default_service_port,
+                          QHostAddress default_host_address,
+                          QAbstractSocket::NetworkLayerProtocol required_protocol)
+{
     query = query.trimmed();
 
-    QHostAddress host_address{default_host_address};
-    quint16 service_port{default_service_port};
+    QHostAddress host_address { default_host_address };
+    quint16 service_port { default_service_port };
 
     QString host_name;
     if (!query.isEmpty()) {
@@ -44,11 +45,9 @@ network_server_lookup(QString query, quint16 default_service_port,
 
         if (port_colon_index >= 0) {
             bool ok;
-            service_port =
-                query.mid(port_colon_index + 1).trimmed().toUShort(&ok);
+            service_port = query.mid(port_colon_index + 1).trimmed().toUShort(&ok);
             if (!ok) {
-                throw std::runtime_error{
-                    "network server lookup error: invalid port"};
+                throw std::runtime_error { "network server lookup error: invalid port" };
             }
         }
     }
@@ -56,12 +55,11 @@ network_server_lookup(QString query, quint16 default_service_port,
     if (!host_name.isEmpty()) {
         auto host_info = QHostInfo::fromName(host_name);
         if (host_info.addresses().isEmpty()) {
-            throw std::runtime_error{
-                "network server lookup error: host name lookup failed"};
+            throw std::runtime_error { "network server lookup error: host name lookup failed" };
         }
 
-        bool found{false};
-        for (int i{0}; i < host_info.addresses().size() && !found; ++i) {
+        bool found { false };
+        for (int i { 0 }; i < host_info.addresses().size() && !found; ++i) {
             host_address = host_info.addresses().at(i);
             switch (required_protocol) {
             case QAbstractSocket::IPv4Protocol:
@@ -70,18 +68,18 @@ network_server_lookup(QString query, quint16 default_service_port,
                     break;
                 }
                 [[fallthrough]];
-            case QAbstractSocket::AnyIPProtocol:
-                found = true;
-                break;
+            case QAbstractSocket::AnyIPProtocol: found = true; break;
 
             default:
-                throw std::runtime_error{
-                    "network server lookup error: invalid required protocol"};
+                throw std::runtime_error {
+                    "network server lookup error: invalid required protocol"
+                };
             }
         }
         if (!found) {
-            throw std::runtime_error{
-                "network server lookup error: no suitable host address found"};
+            throw std::runtime_error {
+                "network server lookup error: no suitable host address found"
+            };
         }
     }
 

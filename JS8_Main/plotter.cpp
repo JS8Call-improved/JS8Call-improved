@@ -1,8 +1,5 @@
 #include "plotter.h"
-#include "DriftingDateTime.h"
-#include "JS8_Include/commons.h"
-#include "JS8_Mode/JS8Submode.h"
-#include "moc_plotter.cpp"
+
 #include <QDebug>
 #include <QMouseEvent>
 #include <QPainter>
@@ -15,11 +12,17 @@
 #include <type_traits>
 #include <utility>
 
+#include "DriftingDateTime.h"
+#include "JS8_Include/commons.h"
+#include "JS8_Mode/JS8Submode.h"
+#include "moc_plotter.cpp"
+
 /******************************************************************************/
 // Constants
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // The Qt Raster engine seems to have terrible performance when
 // drawing large polylines; the size at which we should split
 // drawing into smaller lines.
@@ -53,21 +56,23 @@ constexpr int WSPR_RANGE = 200;
 
 // Band colors, always drawn with a 3-pixel pen.
 
-constexpr auto BAND_EDGE = QColor{149, 165, 166}; // Gray
-constexpr auto BAND_GOOD = QColor{46, 204, 113};  // Green
-constexpr auto BAND_WARN = QColor{241, 196, 15};  // Yellow
-constexpr auto BAND_WSPR = QColor{230, 126, 34};  // Orange
+constexpr auto BAND_EDGE = QColor { 149, 165, 166 }; // Gray
+constexpr auto BAND_GOOD = QColor { 46, 204, 113 };  // Green
+constexpr auto BAND_WARN = QColor { 241, 196, 15 };  // Yellow
+constexpr auto BAND_WSPR = QColor { 230, 126, 34 };  // Orange
 } // namespace
 
 /******************************************************************************/
 // Local Utilities
 /******************************************************************************/
 
-namespace {
+namespace
+{
 // Given a floating point value, return the fractional portion of the
 // value e.g., 42.7 -> 0.7.
 
-template <std::floating_point T> constexpr auto fractionalPart(T const v) {
+template <std::floating_point T> constexpr auto fractionalPart(T const v)
+{
     T integralPart;
     return std::modf(v, &integralPart);
 }
@@ -75,7 +80,8 @@ template <std::floating_point T> constexpr auto fractionalPart(T const v) {
 // Given the frequency span of the entire viewable plot region, return
 // the frequency span that each division should occupy.
 
-auto freqPerDiv(float const fSpan) {
+auto freqPerDiv(float const fSpan)
+{
     if (fSpan > 2500) {
         return 500;
     }
@@ -99,10 +105,14 @@ auto freqPerDiv(float const fSpan) {
 // Implementation
 /******************************************************************************/
 
-CPlotter::CPlotter(QWidget *parent)
-    : QWidget{parent}, m_freqPerPixel{m_binsPerPixel * FFT_BIN_WIDTH},
-      m_scaler1D{m_waterfallAvg, m_binsPerPixel}, m_scaler2D{m_h2},
-      m_replotTimer{new QTimer(this)}, m_resizeTimer{new QTimer(this)} {
+CPlotter::CPlotter(QWidget* parent) :
+    QWidget { parent },
+    m_freqPerPixel { m_binsPerPixel * FFT_BIN_WIDTH },
+    m_scaler1D { m_waterfallAvg, m_binsPerPixel },
+    m_scaler2D { m_h2 },
+    m_replotTimer { new QTimer(this) },
+    m_resizeTimer { new QTimer(this) }
+{
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
 
@@ -122,11 +132,18 @@ CPlotter::CPlotter(QWidget *parent)
 
 CPlotter::~CPlotter() = default;
 
-QSize CPlotter::minimumSizeHint() const { return QSize(50, 50); }
+QSize CPlotter::minimumSizeHint() const
+{
+    return QSize(50, 50);
+}
 
-QSize CPlotter::sizeHint() const { return QSize(180, 180); }
+QSize CPlotter::sizeHint() const
+{
+    return QSize(180, 180);
+}
 
-void CPlotter::paintEvent(QPaintEvent *) {
+void CPlotter::paintEvent(QPaintEvent*)
+{
     QPainter p(this);
 
     p.drawPixmap(0, 0, m_ScalePixmap);
@@ -141,14 +158,17 @@ void CPlotter::paintEvent(QPaintEvent *) {
 
     if (m_filterEnabled && m_filterWidth > 0) {
         p.drawPixmap(0, 0, m_FilterPixmap[0]);
-        p.drawPixmap(m_w - m_FilterPixmap[1].deviceIndependentSize().width(), 0,
-                     m_FilterPixmap[1]);
+        p.drawPixmap(m_w - m_FilterPixmap[1].deviceIndependentSize().width(), 0, m_FilterPixmap[1]);
     }
 }
 
-void CPlotter::resizeEvent(QResizeEvent *) { m_resizeTimer->start(); }
+void CPlotter::resizeEvent(QResizeEvent*)
+{
+    m_resizeTimer->start();
+}
 
-void CPlotter::drawLine(QString const &text) {
+void CPlotter::drawLine(QString const& text)
+{
     m_WaterfallPixmap.scroll(0, 1, m_WaterfallPixmap.rect());
 
     QPainter p(&m_WaterfallPixmap);
@@ -169,7 +189,8 @@ void CPlotter::drawLine(QString const &text) {
     update();
 }
 
-void CPlotter::drawData(WF::SWide swide, WF::State const state) {
+void CPlotter::drawData(WF::SWide swide, WF::State const state)
+{
     m_WaterfallPixmap.scroll(0, 1, m_WaterfallPixmap.rect());
 
     // Flattening, we just process the visible width; tends to be the best
@@ -208,21 +229,18 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
 
         // Add a point to the polyline.
 
-        auto const addPoint = [this](int const x, float const y) {
-            m_points.emplace_back(x, m_scaler2D(y));
-        };
+        auto const addPoint
+            = [this](int const x, float const y) { m_points.emplace_back(x, m_scaler2D(y)); };
 
         // Add points from one of the ranges of adjunct data instead of the
         // spectrum data.
 
-        auto const addPoints =
-            [this, &addPoint](auto const begin, auto const value)
+        auto const addPoints = [this, &addPoint](auto const begin, auto const value)
 
         {
             // Determine the starting bin offset of the adjunct data.
 
-            auto const start = begin + static_cast<std::size_t>(
-                                           m_startFreq / FFT_BIN_WIDTH + 0.5f);
+            auto const start = begin + static_cast<std::size_t>(m_startFreq / FFT_BIN_WIDTH + 0.5f);
 
             // Average the values in each range of adjunct data bins
             // and convert to points, passing the average through the
@@ -231,8 +249,7 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
             for (auto x = 0; x < m_w; ++x) {
                 auto const first = start + x * m_binsPerPixel;
 
-                addPoint(x, value(std::reduce(first, first + m_binsPerPixel) /
-                                  m_binsPerPixel));
+                addPoint(x, value(std::reduce(first, first + m_binsPerPixel) / m_binsPerPixel));
             }
         };
 
@@ -247,11 +264,11 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
             // value within the displayed spectrum, then display each point as
             // the delta above that value.
 
-        case Spectrum::Current: {
+        case Spectrum::Current:
+        {
             p.setPen(Qt::green);
 
-            auto const min =
-                *std::min_element(swide.begin(), swide.begin() + m_w);
+            auto const min = *std::min_element(swide.begin(), swide.begin() + m_w);
 
             for (auto x = 0; x < m_w; ++x)
                 addPoint(x, swide[x] - min);
@@ -260,20 +277,20 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
             // Cumulative spectrum is displayed as a cyan line; use the average
             // data, which is power scaled and must be converted to dB scale.
 
-        case Spectrum::Cumulative: {
+        case Spectrum::Cumulative:
+        {
             p.setPen(Qt::cyan);
-            addPoints(std::begin(specData.savg), [](auto const value) {
-                return 30.0f + 10.0f * std::log10(value);
-            });
+            addPoints(std::begin(specData.savg),
+                      [](auto const value) { return 30.0f + 10.0f * std::log10(value); });
         } break;
 
             // Linear Average spectrum is displayed as a yellow line; use the
             // the precomputed linear average data.
 
-        case Spectrum::LinearAvg: {
+        case Spectrum::LinearAvg:
+        {
             p.setPen(Qt::yellow);
-            addPoints(std::begin(specData.slin),
-                      [](auto const value) { return value; });
+            addPoints(std::begin(specData.slin), [](auto const value) { return value; });
         } break;
         }
 
@@ -288,8 +305,7 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
         p.setRenderHint(QPainter::Antialiasing);
 
         for (qsizetype i = 0; i < m_points.size(); i += POLYLINE_SIZE) {
-            p.drawPolyline(m_points.data() + i,
-                           qMin(POLYLINE_SIZE + 1, m_points.size() - i));
+            p.drawPolyline(m_points.data() + i, qMin(POLYLINE_SIZE + 1, m_points.size() - i));
         }
     }
 
@@ -300,7 +316,8 @@ void CPlotter::drawData(WF::SWide swide, WF::State const state) {
     update();
 }
 
-void CPlotter::drawDecodeLine(QColor const &color, int const ia, int const ib) {
+void CPlotter::drawDecodeLine(QColor const& color, int const ia, int const ib)
+{
     auto const x1 = xFromFreq(ia);
     auto const x2 = xFromFreq(ib);
 
@@ -312,15 +329,16 @@ void CPlotter::drawDecodeLine(QColor const &color, int const ia, int const ib) {
     p.drawLine(qMax(x1, x2), 0, qMax(x1, x2), 9);
 }
 
-void CPlotter::drawHorizontalLine(QColor const &color, int const x,
-                                  int const width) {
+void CPlotter::drawHorizontalLine(QColor const& color, int const x, int const width)
+{
     QPainter p(&m_WaterfallPixmap);
 
     p.setPen(color);
     p.drawLine(x, 0, width <= 0 ? m_w : x + width, 0);
 }
 
-void CPlotter::drawMetrics() {
+void CPlotter::drawMetrics()
+{
     if (m_ScalePixmap.isNull())
         return;
 
@@ -355,8 +373,7 @@ void CPlotter::drawMetrics() {
         }
 
         if (xMajor > 70) {
-            p.drawText(QRect(xMajor - static_cast<int>(ppdVL), 0,
-                             static_cast<int>(ppdV), 20),
+            p.drawText(QRect(xMajor - static_cast<int>(ppdVL), 0, static_cast<int>(ppdV), 20),
                        Qt::AlignCenter,
                        QString::number(fOffset + iMajor * fpd));
         }
@@ -371,7 +388,7 @@ void CPlotter::drawMetrics() {
 
     // Given a pair of X values, draw a band line, if visible.
 
-    auto const drawBand = [this, &p](auto const &bandX) {
+    auto const drawBand = [this, &p](auto const& bandX) {
         auto const [x1, x2] = bandX;
 
         if (x1 <= m_w && x2 > 0) {
@@ -411,7 +428,8 @@ void CPlotter::drawMetrics() {
         p.setPen(QPen(BAND_WSPR, 3));
         drawBand(wspr);
         p.drawText(QRect(wspr.first, 0, wspr.second - wspr.first, 25),
-                   Qt::AlignHCenter | Qt::AlignBottom, "WSPR");
+                   Qt::AlignHCenter | Qt::AlignBottom,
+                   "WSPR");
     }
 
     // Our spectrum might be of zero height, in which case our overlay pixmap
@@ -432,12 +450,10 @@ void CPlotter::drawMetrics() {
 
         // Draw vertical grids.
 
-        auto const x0 = static_cast<int>(
-            fractionalPart((float)m_startFreq / fpd) * ppdV + 0.5f);
+        auto const x0 = static_cast<int>(fractionalPart((float)m_startFreq / fpd) * ppdV + 0.5f);
 
         for (std::size_t i = 1; i < hdivs; i++) {
-            if (auto const x = static_cast<int>(i * ppdV) - x0;
-                x >= 0 && x <= m_w) {
+            if (auto const x = static_cast<int>(i * ppdV) - x0; x >= 0 && x <= m_w) {
                 p.drawLine(x, 0, x, m_h2);
             }
         }
@@ -458,40 +474,39 @@ void CPlotter::drawMetrics() {
 // filter is actually visible prior to painting, but what we're doing here
 // is reasonably trivial, so probably not worth the effort.
 
-void CPlotter::drawFilter() {
+void CPlotter::drawFilter()
+{
     if (m_filterEnabled && m_filterWidth > 0 && !size().isEmpty()) {
-        auto const filterPixmap =
-            [height = size().height(),
-             fill = QColor(0, 0, 0, std::clamp(m_filterOpacity, 0, 255)),
-             dpr = devicePixelRatio()](int const width, int const lineX) {
-                // Ending up with an unusable size here is expected, as in the
-                // case where the combination of the filter center and width
-                // shifts one or both ends of the filter out of the displayed
-                // range. Thus, no matter what, we're going to return a pixmap
-                // here, though it may be an empty one.
+        auto const filterPixmap = [height = size().height(),
+                                   fill = QColor(0, 0, 0, std::clamp(m_filterOpacity, 0, 255)),
+                                   dpr = devicePixelRatio()](int const width, int const lineX) {
+            // Ending up with an unusable size here is expected, as in the
+            // case where the combination of the filter center and width
+            // shifts one or both ends of the filter out of the displayed
+            // range. Thus, no matter what, we're going to return a pixmap
+            // here, though it may be an empty one.
 
-                if (auto const size = QSize(width, height); size.isEmpty()) {
-                    return QPixmap();
-                } else {
-                    QPixmap pixmap = QPixmap(size * dpr);
-                    pixmap.setDevicePixelRatio(dpr);
-                    pixmap.fill(fill);
+            if (auto const size = QSize(width, height); size.isEmpty()) {
+                return QPixmap();
+            } else {
+                QPixmap pixmap = QPixmap(size * dpr);
+                pixmap.setDevicePixelRatio(dpr);
+                pixmap.fill(fill);
 
-                    QPainter p(&pixmap);
+                QPainter p(&pixmap);
 
-                    p.setPen(Qt::yellow);
-                    p.drawLine(lineX, 1, lineX, height);
+                p.setPen(Qt::yellow);
+                p.drawLine(lineX, 1, lineX, height);
 
-                    return pixmap;
-                }
-            };
+                return pixmap;
+            }
+        };
 
         auto const width = m_filterWidth / 2.0f;
         auto const start = xFromFreq(m_filterCenter - width);
         auto const end = xFromFreq(m_filterCenter + width);
 
-        m_FilterPixmap = {filterPixmap(start, start),
-                          filterPixmap(size().width() - end, 0)};
+        m_FilterPixmap = { filterPixmap(start, start), filterPixmap(size().width() - end, 0) };
     }
 }
 
@@ -499,38 +514,38 @@ void CPlotter::drawFilter() {
 // offset and bandwith, the second prospective offset and bandwidth. These are
 // not reliant on anything but height, submode, and bins per pixel.
 
-void CPlotter::drawDials() {
+void CPlotter::drawDials()
+{
     if (auto const height = size().height() - 30; height > 0) {
-        auto const width = static_cast<int>(
-            JS8::Submode::bandwidth(m_nSubMode) / m_freqPerPixel + 0.5f);
-        auto const dialPixmap = [size = QSize(width, height),
-                                 rect = QRect(1, 1, width - 2, height - 2),
-                                 dpr = devicePixelRatio()](
-                                    QColor const &color, QBrush const &brush) {
-            QPixmap pixmap = QPixmap(size * dpr);
-            pixmap.setDevicePixelRatio(dpr);
-            pixmap.fill(Qt::transparent);
+        auto const width
+            = static_cast<int>(JS8::Submode::bandwidth(m_nSubMode) / m_freqPerPixel + 0.5f);
+        auto const dialPixmap
+            = [size = QSize(width, height),
+               rect = QRect(1, 1, width - 2, height - 2),
+               dpr = devicePixelRatio()](QColor const& color, QBrush const& brush) {
+                  QPixmap pixmap = QPixmap(size * dpr);
+                  pixmap.setDevicePixelRatio(dpr);
+                  pixmap.fill(Qt::transparent);
 
-            QPainter p(&pixmap);
+                  QPainter p(&pixmap);
 
-            p.setBrush(brush);
-            p.setPen(QPen(QBrush(color), 2, Qt::SolidLine, Qt::SquareCap,
-                          Qt::MiterJoin));
-            p.drawRect(rect);
+                  p.setBrush(brush);
+                  p.setPen(QPen(QBrush(color), 2, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin));
+                  p.drawRect(rect);
 
-            return pixmap;
-        };
+                  return pixmap;
+              };
 
-        m_DialPixmap = {dialPixmap(Qt::red, QBrush(QColor(255, 255, 255, 75),
-                                                   Qt::Dense4Pattern)),
-                        dialPixmap(Qt::white, Qt::transparent)};
+        m_DialPixmap = { dialPixmap(Qt::red, QBrush(QColor(255, 255, 255, 75), Qt::Dense4Pattern)),
+                         dialPixmap(Qt::white, Qt::transparent) };
     }
 }
 
 // Replot the waterfall display, using the data present in the replot
 // buffer, if any.
 
-void CPlotter::replot() {
+void CPlotter::replot()
+{
     if (m_WaterfallPixmap.isNull())
         return;
 
@@ -554,13 +569,15 @@ void CPlotter::replot() {
 
     auto y = 0;
 
-    for (auto &&v : m_replot) {
+    for (auto&& v : m_replot) {
         std::visit(
             [ratio = m_WaterfallPixmap.devicePixelRatio(),
              width = m_WaterfallPixmap.size().width(),
-             extra = p.fontMetrics().descent(), &y = std::as_const(y),
+             extra = p.fontMetrics().descent(),
+             &y = std::as_const(y),
              &colors = std::as_const(m_colors),
-             &scaler = std::as_const(m_scaler1D), &p](auto const &v) {
+             &scaler = std::as_const(m_scaler1D),
+             &p](auto const& v) {
                 // Note that a monostate is constructed as the default when we
                 // resize but have no backing data. There is nothing to in that
                 // case; just data that we didn't have when we were resized.
@@ -585,8 +602,7 @@ void CPlotter::replot() {
                 // appropriately.
 
                 else if constexpr (std::is_same_v<T, WF::SWide>) {
-                    auto const end =
-                        std::min(width, static_cast<int>(v.size()));
+                    auto const end = std::min(width, static_cast<int>(v.size()));
 
                     for (auto x = 0; x < end; ++x) {
                         p.setPen(colors[scaler(v[x])]);
@@ -608,10 +624,10 @@ void CPlotter::replot() {
 // Called (indirectly, debounced) from our resize event handler and from
 // setPercent2DScreen() after a change to the 2D screen percentage.
 
-void CPlotter::resize() {
+void CPlotter::resize()
+{
     if (size().isValid()) {
-        auto const makePixmap = [dpr = devicePixelRatio()](QSize const &size,
-                                                           QColor const &fill) {
+        auto const makePixmap = [dpr = devicePixelRatio()](QSize const& size, QColor const& fill) {
             auto pixmap = QPixmap(size * dpr);
 
             pixmap.setDevicePixelRatio(dpr);
@@ -630,9 +646,9 @@ void CPlotter::resize() {
         // is a high-DPI display, scale the pixmaps to avoid text looking
         // pixelated.
 
-        m_ScalePixmap = makePixmap({m_w, 30}, Qt::white);
-        m_WaterfallPixmap = makePixmap({m_w, m_h1}, Qt::black);
-        m_OverlayPixmap = makePixmap({m_w, m_h2}, Qt::black);
+        m_ScalePixmap = makePixmap({ m_w, 30 }, Qt::white);
+        m_WaterfallPixmap = makePixmap({ m_w, m_h1 }, Qt::black);
+        m_OverlayPixmap = makePixmap({ m_w, m_h2 }, Qt::black);
 
         // The replot circular buffer should have capacity to hold the full
         // height of the waterfall pixmap, in device, not logical, pixels.
@@ -667,56 +683,61 @@ void CPlotter::resize() {
 // draw the spectrum. If it's non-null, then our need to draw depends
 // on what the spectrum is displaying and the state.
 
-bool CPlotter::shouldDrawSpectrum(WF::State const state) const {
+bool CPlotter::shouldDrawSpectrum(WF::State const state) const
+{
     if (m_OverlayPixmap.isNull())
         return false;
 
-    return m_spectrum == Spectrum::Current ? state.testFlag(WF::Sink::Current)
-                                           : state.testFlag(WF::Sink::Summary);
+    return m_spectrum == Spectrum::Current ? state.testFlag(WF::Sink::Current) :
+                                             state.testFlag(WF::Sink::Summary);
 }
 
-bool CPlotter::in30MBand() const {
+bool CPlotter::in30MBand() const
+{
     return (m_dialFreq >= BAND_30M_START && m_dialFreq <= BAND_30M_END);
 }
 
-int CPlotter::xFromFreq(float const f) const {
-    return std::clamp(
-        static_cast<int>((f - m_startFreq) / m_freqPerPixel + 0.5f), 0, m_w);
+int CPlotter::xFromFreq(float const f) const
+{
+    return std::clamp(static_cast<int>((f - m_startFreq) / m_freqPerPixel + 0.5f), 0, m_w);
 }
 
-float CPlotter::freqFromX(int const x) const {
+float CPlotter::freqFromX(int const x) const
+{
     return m_startFreq + x * m_freqPerPixel;
 }
 
-void CPlotter::leaveEvent(QEvent *event) {
+void CPlotter::leaveEvent(QEvent* event)
+{
     m_lastMouseX = -1;
     event->ignore();
 }
 
-void CPlotter::wheelEvent(QWheelEvent *event) {
+void CPlotter::wheelEvent(QWheelEvent* event)
+{
     auto const y = event->angleDelta().y();
 
     if (auto const d = ((y > 0) - (y < 0))) {
-        Q_EMIT changeFreq(event->modifiers() & Qt::ControlModifier
-                              ? freq() + d
-                              : freq() / 10 * 10 + d * 10);
+        Q_EMIT changeFreq(event->modifiers() & Qt::ControlModifier ? freq() + d :
+                                                                     freq() / 10 * 10 + d * 10);
     } else {
         event->ignore();
     }
 }
 
-void CPlotter::mouseMoveEvent(QMouseEvent *event) {
+void CPlotter::mouseMoveEvent(QMouseEvent* event)
+{
     m_lastMouseX = std::clamp(static_cast<int>(event->position().x()), 0, m_w);
 
     update();
     event->ignore();
 
-    QToolTip::showText(
-        event->globalPosition().toPoint(),
-        QString::number(static_cast<int>(freqFromX(m_lastMouseX))));
+    QToolTip::showText(event->globalPosition().toPoint(),
+                       QString::number(static_cast<int>(freqFromX(m_lastMouseX))));
 }
 
-void CPlotter::mouseReleaseEvent(QMouseEvent *event) {
+void CPlotter::mouseReleaseEvent(QMouseEvent* event)
+{
     if (Qt::LeftButton == event->button()) {
         Q_EMIT changeFreq(static_cast<int>(freqFromX(m_lastMouseX)));
     } else {
@@ -724,7 +745,8 @@ void CPlotter::mouseReleaseEvent(QMouseEvent *event) {
     }
 }
 
-void CPlotter::setBinsPerPixel(int const binsPerPixel) {
+void CPlotter::setBinsPerPixel(int const binsPerPixel)
+{
     if (m_binsPerPixel != binsPerPixel) {
         m_binsPerPixel = std::max(1, binsPerPixel);
         m_freqPerPixel = m_binsPerPixel * FFT_BIN_WIDTH;
@@ -736,14 +758,16 @@ void CPlotter::setBinsPerPixel(int const binsPerPixel) {
     }
 }
 
-void CPlotter::setColors(Colors const &colors) {
+void CPlotter::setColors(Colors const& colors)
+{
     if (m_colors != colors) {
         m_colors = colors;
         replot();
     }
 }
 
-void CPlotter::setDialFreq(float const dialFreq) {
+void CPlotter::setDialFreq(float const dialFreq)
+{
     if (m_dialFreq != dialFreq) {
         m_dialFreq = dialFreq;
         drawMetrics();
@@ -751,7 +775,8 @@ void CPlotter::setDialFreq(float const dialFreq) {
     }
 }
 
-void CPlotter::setFilter(int const filterCenter, int const filterWidth) {
+void CPlotter::setFilter(int const filterCenter, int const filterWidth)
+{
     if (m_filterCenter != filterCenter || m_filterWidth != filterWidth) {
         m_filterCenter = filterCenter;
         m_filterWidth = filterWidth;
@@ -760,7 +785,8 @@ void CPlotter::setFilter(int const filterCenter, int const filterWidth) {
     }
 }
 
-void CPlotter::setFilterEnabled(bool const filterEnabled) {
+void CPlotter::setFilterEnabled(bool const filterEnabled)
+{
     if (m_filterEnabled != filterEnabled) {
         m_filterEnabled = filterEnabled;
         drawFilter();
@@ -768,7 +794,8 @@ void CPlotter::setFilterEnabled(bool const filterEnabled) {
     }
 }
 
-void CPlotter::setFilterOpacity(int const filterOpacity) {
+void CPlotter::setFilterOpacity(int const filterOpacity)
+{
     if (m_filterOpacity != filterOpacity) {
         m_filterOpacity = filterOpacity;
         drawFilter();
@@ -776,7 +803,8 @@ void CPlotter::setFilterOpacity(int const filterOpacity) {
     }
 }
 
-void CPlotter::setFreq(int const freq) {
+void CPlotter::setFreq(int const freq)
+{
     if (m_freq != freq) {
         m_freq = freq;
         drawMetrics();
@@ -784,7 +812,8 @@ void CPlotter::setFreq(int const freq) {
     }
 }
 
-void CPlotter::setPercent2D(int percent2D) {
+void CPlotter::setPercent2D(int percent2D)
+{
     if (m_percent2D != percent2D) {
         m_percent2D = percent2D;
         resize();
@@ -792,21 +821,24 @@ void CPlotter::setPercent2D(int percent2D) {
     }
 }
 
-void CPlotter::setPlotGain(int const plotGain) {
+void CPlotter::setPlotGain(int const plotGain)
+{
     if (m_scaler1D.gain() != plotGain) {
         m_scaler1D.setGain(plotGain);
         m_replotTimer->start();
     }
 }
 
-void CPlotter::setPlotZero(int const plotZero) {
+void CPlotter::setPlotZero(int const plotZero)
+{
     if (m_scaler1D.zero() != plotZero) {
         m_scaler1D.setZero(plotZero);
         m_replotTimer->start();
     }
 }
 
-void CPlotter::setStartFreq(int const startFreq) {
+void CPlotter::setStartFreq(int const startFreq)
+{
     if (m_startFreq != startFreq) {
         m_startFreq = startFreq;
         drawMetrics();
@@ -815,7 +847,8 @@ void CPlotter::setStartFreq(int const startFreq) {
     }
 }
 
-void CPlotter::setSubMode(int const nSubMode) {
+void CPlotter::setSubMode(int const nSubMode)
+{
     if (m_nSubMode != nSubMode) {
         m_nSubMode = nSubMode;
         drawDials();
@@ -823,7 +856,8 @@ void CPlotter::setSubMode(int const nSubMode) {
     }
 }
 
-void CPlotter::setWaterfallAvg(int const waterfallAvg) {
+void CPlotter::setWaterfallAvg(int const waterfallAvg)
+{
     if (m_waterfallAvg != waterfallAvg) {
         m_waterfallAvg = waterfallAvg;
         m_scaler1D.rescale();

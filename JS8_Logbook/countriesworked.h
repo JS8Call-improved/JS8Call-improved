@@ -6,24 +6,22 @@
 #ifndef __COUNTRIESWORKDED_H
 #define __COUNTRIESWORKDED_H
 
+#include <QHash>
 #include <QList>
 #include <QString>
 #include <QStringList>
-#include <QHash>
-
 
 class CountriesWorked
 {
- public:
-	void init(const QStringList countryNames);
-	void setAsWorked(const QString countryName);
-	bool getHasWorked(const QString countryName) const;
-	qsizetype getWorkedCount() const;
-	qsizetype getSize() const;
+public:
+    void init(const QStringList countryNames);
+    void setAsWorked(const QString countryName);
+    bool getHasWorked(const QString countryName) const;
+    qsizetype getWorkedCount() const;
+    qsizetype getSize() const;
 
- private:
-	QHash<QString, bool> _data;
+private:
+    QHash<QString, bool> _data;
 };
 
 #endif
-

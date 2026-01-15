@@ -13,10 +13,10 @@ class JSCChecker : public QObject
 {
     Q_OBJECT
 public:
-    explicit JSCChecker(QObject *parent = nullptr);
+    explicit JSCChecker(QObject* parent = nullptr);
 
-    static void checkRange(QTextEdit * edit, int start, int end);
-    static QStringList suggestions(QString word, int n, bool *pFound);
+    static void checkRange(QTextEdit* edit, int start, int end);
+    static QStringList suggestions(QString word, int n, bool* pFound);
 
 signals:
 

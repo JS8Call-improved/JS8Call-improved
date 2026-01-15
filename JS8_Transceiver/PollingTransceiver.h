@@ -29,16 +29,16 @@ class QTimer;
 //  requires a  VFO switch  and polls while  switched will  return the
 //  wrong current frequency.
 //
-class PollingTransceiver : public TransceiverBase {
+class PollingTransceiver : public TransceiverBase
+{
     Q_OBJECT; // for translation context
 
-  protected:
+protected:
     explicit PollingTransceiver(int poll_interval, // in seconds
-                                QObject *parent);
+                                QObject* parent);
 
-  protected:
-    void do_sync(bool force_signal = false,
-                 bool no_poll = false) override final;
+protected:
+    void do_sync(bool force_signal = false, bool no_poll = false) override final;
 
     // Sub-classes implement this and fetch what they can from the rig
     // in a non-intrusive manner.
@@ -52,14 +52,14 @@ class PollingTransceiver : public TransceiverBase {
     void do_post_ptt(bool = true) override final;
     bool do_pre_update() override final;
 
-  private:
+private:
     void start_timer();
     void stop_timer();
 
     Q_SLOT void handle_timeout();
 
     int interval_; // polling interval in milliseconds
-    QTimer *poll_timer_;
+    QTimer* poll_timer_;
 
     // keep a record of the last state signalled so we can elide
     // duplicate updates

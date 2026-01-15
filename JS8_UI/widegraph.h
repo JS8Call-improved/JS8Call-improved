@@ -2,8 +2,6 @@
 #ifndef WIDEGRAPH_H
 #define WIDEGRAPH_H
 
-#include "JS8_Include/commons.h"
-#include "JS8_Main/WF.h"
 #include <QColor>
 #include <QDir>
 #include <QEvent>
@@ -16,7 +14,11 @@
 #include <QWidget>
 #include <array>
 
-namespace Ui {
+#include "JS8_Include/commons.h"
+#include "JS8_Main/WF.h"
+
+namespace Ui
+{
 class WideGraph;
 }
 
@@ -24,11 +26,12 @@ class Configuration;
 class QSettings;
 class QTimer;
 
-class WideGraph : public QWidget {
+class WideGraph : public QWidget
+{
     Q_OBJECT
 
-  public:
-    explicit WideGraph(QSettings *, QWidget * = nullptr);
+public:
+    explicit WideGraph(QSettings*, QWidget* = nullptr);
     ~WideGraph();
 
     // Accessors
@@ -46,11 +49,11 @@ class WideGraph : public QWidget {
 
     // Manipulators
 
-    void dataSink(WF::SPlot const &, float);
-    void drawDecodeLine(QColor const &, int, int);
-    void drawHorizontalLine(QColor const &, int, int);
+    void dataSink(WF::SPlot const&, float);
+    void drawDecodeLine(QColor const&, int, int);
+    void drawHorizontalLine(QColor const&, int, int);
     void saveSettings();
-    void setBand(QString const &);
+    void setBand(QString const&);
     void setFilterCenter(int);
     void setFilterWidth(int);
     void setFilterMinimumBandwidth(int);
@@ -60,28 +63,30 @@ class WideGraph : public QWidget {
     void setPeriod(int);
     void setSubMode(int);
 
-  signals:
+signals:
     void changeFreq(int);
     void f11f12(int n);
     void setXIT(int n);
     void qsy(int);
     void want_new_drift(qint64);
 
-  public slots:
+public slots:
     void setDialFreq(float);
     void setTimeControlsVisible(bool);
     bool timeControlsVisible() const;
     void setControlsVisible(bool, bool = true);
     bool controlsVisible() const;
     void onDriftChanged(qint64 drift_ms);
+
     void setPaused(bool paused) { m_paused = paused; }
+
     void notifyDriftedSignalsDecoded(int);
 
-  protected:
-    void keyPressEvent(QKeyEvent *e) override;
-    void closeEvent(QCloseEvent *) override;
+protected:
+    void keyPressEvent(QKeyEvent* e) override;
+    void closeEvent(QCloseEvent*) override;
 
-  private slots:
+private slots:
 
     void on_qsyPushButton_clicked();
     void on_offsetSpinBox_valueChanged(int n);
@@ -113,7 +118,7 @@ class WideGraph : public QWidget {
     void on_driftSyncMinuteButton_clicked();
     void on_driftSyncResetButton_clicked();
 
-  private:
+private:
     void readPalette();
 
     QScopedPointer<Ui::WideGraph> ui;
@@ -132,9 +137,9 @@ class WideGraph : public QWidget {
     bool m_filterEnabled = false;
     bool m_autoSyncConnected = false;
 
-    QSettings *m_settings;
-    QTimer *m_drawTimer;
-    QTimer *m_autoSyncTimer;
+    QSettings* m_settings;
+    QTimer* m_drawTimer;
+    QTimer* m_autoSyncTimer;
     QDir m_palettes_path;
     WF::Palette m_userPalette;
     WF::SWide m_swide = {};

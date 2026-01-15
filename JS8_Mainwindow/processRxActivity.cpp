@@ -5,44 +5,45 @@
  *  process Rx queue activity
  */
 
-void MainWindow::processRxActivity() {
+void MainWindow::processRxActivity()
+{
     if (m_rxActivityQueue.isEmpty()) {
         return;
     }
 
     int freqOffset = freq();
 
-    qCDebug(mainwindow_js8)
-        << m_messageBuffer.count() << "message buffers open";
+    qCDebug(mainwindow_js8) << m_messageBuffer.count() << "message buffers open";
 
     while (!m_rxActivityQueue.isEmpty()) {
         ActivityDetail d = m_rxActivityQueue.dequeue();
 
         if (canSendNetworkMessage()) {
-            sendNetworkMessage(
-                "RX.ACTIVITY", d.text,
-                {{"_ID", QVariant(-1)},
-                 {"FREQ", QVariant(d.dial + d.offset)},
-                 {"DIAL", QVariant(d.dial)},
-                 {"OFFSET", QVariant(d.offset)},
-                 {"SNR", QVariant(d.snr)},
-                 {"SPEED", QVariant(d.submode)},
-                 {"TDRIFT", QVariant(d.tdrift)},
-                 {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
+            sendNetworkMessage("RX.ACTIVITY",
+                               d.text,
+                               {
+                                   { "_ID",    QVariant(-1)                                 },
+                                   { "FREQ",   QVariant(d.dial + d.offset)                  },
+                                   { "DIAL",   QVariant(d.dial)                             },
+                                   { "OFFSET", QVariant(d.offset)                           },
+                                   { "SNR",    QVariant(d.snr)                              },
+                                   { "SPEED",  QVariant(d.submode)                          },
+                                   { "TDRIFT", QVariant(d.tdrift)                           },
+                                   { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
+            });
         }
 
         // use the actual frequency and check its delta from our current
         // frequency meaning, if our current offset is 1502 and the d.freq is
         // 1492, the delta is <= 10;
-        bool shouldDisplay =
-            abs(d.offset - freqOffset) <= JS8::Submode::rxThreshold(d.submode);
+        bool shouldDisplay = abs(d.offset - freqOffset) <= JS8::Submode::rxThreshold(d.submode);
 
         int prevOffset = d.offset;
-        if (hasExistingMessageBuffer(d.submode, d.offset, false, &prevOffset) &&
-            ((m_messageBuffer[prevOffset].cmd.to == m_config.my_callsign()) ||
-             // (isAllCallIncluded(m_messageBuffer[prevOffset].cmd.to))     ||
-             // // uncomment this if we want to incrementally print allcalls
-             (isGroupCallIncluded(m_messageBuffer[prevOffset].cmd.to)))) {
+        if (hasExistingMessageBuffer(d.submode, d.offset, false, &prevOffset)
+            && ((m_messageBuffer[prevOffset].cmd.to == m_config.my_callsign()) ||
+                // (isAllCallIncluded(m_messageBuffer[prevOffset].cmd.to))     ||
+                // // uncomment this if we want to incrementally print allcalls
+                (isGroupCallIncluded(m_messageBuffer[prevOffset].cmd.to)))) {
             d.isBuffered = true;
             shouldDisplay = true;
 
@@ -55,8 +56,7 @@ void MainWindow::processRxActivity() {
 
                 // fixup compound call incremental text
                 d.text = QString("%1: %2").arg(lastCompound.call).arg(d.text);
-                d.utcTimestamp =
-                    qMin(d.utcTimestamp, lastCompound.utcTimestamp);
+                d.utcTimestamp = qMin(d.utcTimestamp, lastCompound.utcTimestamp);
             }
 
         } else if (hasClosedExistingMessageBuffer(d.offset)) {
@@ -69,22 +69,21 @@ void MainWindow::processRxActivity() {
             // call comes through.
             continue;
 
-        } else if (d.isDirected &&
-                   (d.text.contains(": HB ") ||
-                    d.text.contains(": @ALLCALL HB"))) { // TODO: HEARTBEAT
+        } else if (d.isDirected
+                   && (d.text.contains(": HB ")
+                       || d.text.contains(": @ALLCALL HB"))) { // TODO: HEARTBEAT
             // if this is a heartbeat, process elsewhere...
             continue;
         }
 
         // if this is the first data frame of a standard message, parse the
         // first word callsigns and spot them :)
-        if ((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst &&
-            !d.isDirected && !d.isCompound) {
+        if ((d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst && !d.isDirected
+            && !d.isCompound) {
             auto calls = Varicode::parseCallsigns(d.text);
             if (!calls.isEmpty()) {
                 auto theirCall = calls.first();
-                if (d.text.startsWith(theirCall) &&
-                    d.text.mid(theirCall.length(), 1) == ":") {
+                if (d.text.startsWith(theirCall) && d.text.mid(theirCall.length(), 1) == ":") {
                     CallDetail cd = {};
                     cd.call = theirCall;
                     cd.dial = d.dial;
@@ -109,26 +108,21 @@ void MainWindow::processRxActivity() {
             continue;
         }
 
-        bool isFirst =
-            (d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst;
+        bool isFirst = (d.bits & Varicode::JS8CallFirst) == Varicode::JS8CallFirst;
         bool isLast = (d.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast;
 
         // if we're the last message, let's display our EOT character
         if (isLast) {
-            d.text = QString("%1 %2 ")
-                         .arg(Varicode::rstrip(d.text))
-                         .arg(m_config.eot());
+            d.text = QString("%1 %2 ").arg(Varicode::rstrip(d.text)).arg(m_config.eot());
         }
 
         // log it to the display!
-        displayTextForFreq(d.text, d.offset, d.utcTimestamp, false, isFirst,
-                           isLast);
+        displayTextForFreq(d.text, d.offset, d.utcTimestamp, false, isFirst, isLast);
 
         // If we've received a message to be displayed, we should no longer call
         // CQ.
         if (m_cq_loop->isActive()) {
-            qCDebug(mainwindow_js8)
-                << "Canceling calling CQ loop to priorize incoming messages.";
+            qCDebug(mainwindow_js8) << "Canceling calling CQ loop to priorize incoming messages.";
             m_cq_loop->onLoopCancel();
         }
 

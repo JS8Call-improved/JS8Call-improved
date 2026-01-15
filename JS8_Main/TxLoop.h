@@ -15,10 +15,11 @@
  *
  * This class knows no other time than what DriftingDateTime tells it.
  **/
-class TxLoop : public TwoPhaseSignal {
+class TxLoop : public TwoPhaseSignal
+{
     Q_OBJECT
 
-  private:
+private:
     // Name, only used for logging:
     const QString m_name;
     // When do we need to start transmitting the next time?
@@ -35,9 +36,9 @@ class TxLoop : public TwoPhaseSignal {
     // The loop's period: After how many milliseconds to repeat sending.
     qint64 m_loop_period_ms;
 
-  public:
+public:
     // Provide a "name" argument that can be used for logging.
-    TxLoop(const QString &name);
+    TxLoop(const QString& name);
 
     ~TxLoop();
 
@@ -54,7 +55,7 @@ class TxLoop : public TwoPhaseSignal {
      * The value this returns is undetermined (arbitrary) when called while
      * isActive() returns false.
      */
-    inline const QDateTime &nextActivity() const { return m_next_activity; }
+    inline const QDateTime& nextActivity() const { return m_next_activity; }
 
     /**
      * Return the present period of the loop, in milliseconds, if isActive()
@@ -66,7 +67,7 @@ class TxLoop : public TwoPhaseSignal {
      */
     inline qint64 period_ms() const { return m_loop_period_ms; }
 
-  signals:
+signals:
     /** Tells whoever wants to know that now is the time to push the PTT for TX
      * delay: */
     void triggerTxNow() const;
@@ -83,12 +84,12 @@ class TxLoop : public TwoPhaseSignal {
      * In addition, it gets fired when some other incoming onXXX signal caused
      * our next activity to change.
      */
-    void nextActivityChanged(const QDateTime &) const;
+    void nextActivityChanged(const QDateTime&) const;
 
     /** Tells whoever wants to know that we have become inactive. */
     void canceled() const;
 
-  public slots:
+public slots:
     /** Asks us to emit initial signals, either nextActivityChanged or, more
      * likely, canceled. */
     void onPlumbingCompleted() const;
@@ -127,7 +128,7 @@ class TxLoop : public TwoPhaseSignal {
      */
     void onLoopCancel();
 
-  private slots:
+private slots:
     void onTimer();
 };
 

@@ -19,54 +19,64 @@
  **/
 
 #include "Inbox.h"
-#include "DriftingDateTime.h"
 
 #include <QLoggingCategory>
+
+#include "DriftingDateTime.h"
 Q_DECLARE_LOGGING_CATEGORY(inbox_js8)
 
-namespace {
-constexpr char SCHEMA[] =
-    "CREATE TABLE IF NOT EXISTS inbox_v1 ("
-    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "  blob TEXT"
-    ");"
-    "CREATE INDEX IF NOT EXISTS idx_inbox_v1__type ON"
-    "  inbox_v1(json_extract(blob, '$.type'));"
-    "CREATE INDEX IF NOT EXISTS idx_inbox_v1__params_from ON"
-    "  inbox_v1(json_extract(blob, '$.params.FROM'));"
-    "CREATE INDEX IF NOT EXISTS idx_inbox_v1__params_to ON"
-    "  inbox_v1(json_extract(blob, '$.params.TO'));"
-    "CREATE TABLE IF NOT EXISTS inbox_group_recip_v1 ("
-    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
-    "  msg_id INTEGER, "
-    "  callsign VARCHAR(255), "
-    "  FOREIGN KEY(msg_id) REFERENCES inbox_v1(id) ON DELETE CASCADE"
-    ");"
-    "CREATE INDEX IF NOT EXISTS idx_inbox_group_recip_v1__callsign ON"
-    "  inbox_group_recip_v1(callsign);";
+namespace
+{
+constexpr char SCHEMA[] = "CREATE TABLE IF NOT EXISTS inbox_v1 ("
+                          "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                          "  blob TEXT"
+                          ");"
+                          "CREATE INDEX IF NOT EXISTS idx_inbox_v1__type ON"
+                          "  inbox_v1(json_extract(blob, '$.type'));"
+                          "CREATE INDEX IF NOT EXISTS idx_inbox_v1__params_from ON"
+                          "  inbox_v1(json_extract(blob, '$.params.FROM'));"
+                          "CREATE INDEX IF NOT EXISTS idx_inbox_v1__params_to ON"
+                          "  inbox_v1(json_extract(blob, '$.params.TO'));"
+                          "CREATE TABLE IF NOT EXISTS inbox_group_recip_v1 ("
+                          "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                          "  msg_id INTEGER, "
+                          "  callsign VARCHAR(255), "
+                          "  FOREIGN KEY(msg_id) REFERENCES inbox_v1(id) ON DELETE CASCADE"
+                          ");"
+                          "CREATE INDEX IF NOT EXISTS idx_inbox_group_recip_v1__callsign ON"
+                          "  inbox_group_recip_v1(callsign);";
 
 // Attempt to retrieve a Message object previously serialized as a
 // JSON object to the specified column; will throw on failure to
 // deserialize the object.
 
-auto get_column_message(sqlite3_stmt *const stmt, int const iCol) {
+auto get_column_message(sqlite3_stmt* const stmt, int const iCol)
+{
     return Message::fromJson(
-        QByteArray((const char *)sqlite3_column_text(stmt, iCol),
-                   sqlite3_column_bytes(stmt, iCol)));
+        QByteArray((const char*)sqlite3_column_text(stmt, iCol), sqlite3_column_bytes(stmt, iCol)));
 }
 } // namespace
 
-Inbox::Inbox(QString path) : path_{path}, db_{nullptr} {}
+Inbox::Inbox(QString path) : path_ { path }, db_ { nullptr }
+{
+}
 
-Inbox::~Inbox() { close(); }
+Inbox::~Inbox()
+{
+    close();
+}
 
 /**
  * Low-Level Interface
  **/
 
-bool Inbox::isOpen() { return db_ != nullptr; }
+bool Inbox::isOpen()
+{
+    return db_ != nullptr;
+}
 
-bool Inbox::open() {
+bool Inbox::open()
+{
     int rc = sqlite3_open(path_.toLocal8Bit().data(), &db_);
     if (rc != SQLITE_OK) {
         close();
@@ -81,30 +91,33 @@ bool Inbox::open() {
     return true;
 }
 
-void Inbox::close() {
+void Inbox::close()
+{
     if (db_) {
         sqlite3_close(db_);
         db_ = nullptr;
     }
 }
 
-QString Inbox::error() {
+QString Inbox::error()
+{
     if (db_) {
         return QString::fromLocal8Bit(sqlite3_errmsg(db_));
     }
     return "";
 }
 
-int Inbox::count(QString type, QString query, QString match) {
+int Inbox::count(QString type, QString query, QString match)
+{
     if (!isOpen()) {
         return -1;
     }
 
-    const char *sql = "SELECT COUNT(*) FROM inbox_v1 "
+    const char* sql = "SELECT COUNT(*) FROM inbox_v1 "
                       "WHERE json_extract(blob, '$.type') = ? "
                       "AND json_extract(blob, ?) LIKE ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return -1;
@@ -131,19 +144,20 @@ int Inbox::count(QString type, QString query, QString match) {
     return count;
 }
 
-QList<QPair<int, Message>> Inbox::values(QString type, QString query,
-                                         QString match, int offset, int limit) {
+QList<QPair<int, Message>>
+    Inbox::values(QString type, QString query, QString match, int offset, int limit)
+{
     if (!isOpen()) {
         return {};
     }
 
-    const char *sql = "SELECT id, blob FROM inbox_v1 "
+    const char* sql = "SELECT id, blob FROM inbox_v1 "
                       "WHERE json_extract(blob, '$.type') = ? "
                       "AND json_extract(blob, ?) LIKE ? "
                       "ORDER BY id ASC "
                       "LIMIT ? OFFSET ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return {};
@@ -164,8 +178,7 @@ QList<QPair<int, Message>> Inbox::values(QString type, QString query,
 
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
         try {
-            v.append(
-                {sqlite3_column_int(stmt, 0), get_column_message(stmt, 1)});
+            v.append({ sqlite3_column_int(stmt, 0), get_column_message(stmt, 1) });
         } catch (...) {
             continue;
         }
@@ -179,14 +192,15 @@ QList<QPair<int, Message>> Inbox::values(QString type, QString query,
     return v;
 }
 
-Message Inbox::value(int key) {
+Message Inbox::value(int key)
+{
     if (!isOpen()) {
         return {};
     }
 
-    const char *sql = "SELECT blob FROM inbox_v1 WHERE id = ? LIMIT 1;";
+    const char* sql = "SELECT blob FROM inbox_v1 WHERE id = ? LIMIT 1;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return {};
@@ -211,14 +225,15 @@ Message Inbox::value(int key) {
     return m;
 }
 
-int Inbox::append(Message value) {
+int Inbox::append(Message value)
+{
     if (!isOpen()) {
         return -1;
     }
 
-    const char *sql = "INSERT INTO inbox_v1 (blob) VALUES (?);";
+    const char* sql = "INSERT INTO inbox_v1 (blob) VALUES (?);";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return -2;
@@ -236,14 +251,15 @@ int Inbox::append(Message value) {
     return sqlite3_last_insert_rowid(db_);
 }
 
-bool Inbox::set(int key, Message value) {
+bool Inbox::set(int key, Message value)
+{
     if (!isOpen()) {
         return false;
     }
 
-    const char *sql = "UPDATE inbox_v1 SET blob = ? WHERE id = ?;";
+    const char* sql = "UPDATE inbox_v1 SET blob = ? WHERE id = ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return false;
@@ -263,14 +279,15 @@ bool Inbox::set(int key, Message value) {
     return true;
 }
 
-bool Inbox::del(int key) {
+bool Inbox::del(int key)
+{
     if (!isOpen()) {
         return false;
     }
 
-    const char *sql = "DELETE FROM inbox_v1 WHERE id = ?;";
+    const char* sql = "DELETE FROM inbox_v1 WHERE id = ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return false;
@@ -287,20 +304,20 @@ bool Inbox::del(int key) {
     return true;
 }
 
-int Inbox::getLookaheadMessageIdForCallsign(const QString &callsign,
-                                            int afterMsgId) {
+int Inbox::getLookaheadMessageIdForCallsign(const QString& callsign, int afterMsgId)
+{
     if (!isOpen()) {
         return -1;
     }
 
-    const char *sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
+    const char* sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
                       "WHERE inbox_v1.id > ? "
                       "AND json_extract(blob, '$.type') = 'STORE' "
                       "AND json_extract(blob, '$.params.TO') LIKE ? "
                       "ORDER BY inbox_v1.id ASC "
                       "LIMIT ? OFFSET ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return -1;
@@ -321,8 +338,8 @@ int Inbox::getLookaheadMessageIdForCallsign(const QString &callsign,
 
         int i = sqlite3_column_int(stmt, 0);
 
-        auto msg = QByteArray((const char *)sqlite3_column_text(stmt, 1),
-                              sqlite3_column_bytes(stmt, 1));
+        auto msg
+            = QByteArray((const char*)sqlite3_column_text(stmt, 1), sqlite3_column_bytes(stmt, 1));
 
         m = Message::fromJson(msg);
 
@@ -346,11 +363,13 @@ int Inbox::getLookaheadMessageIdForCallsign(const QString &callsign,
  * High-Level Interface
  **/
 
-int Inbox::countUnreadFrom(QString from) {
+int Inbox::countUnreadFrom(QString from)
+{
     return count("UNREAD", "$.params.FROM", from);
 }
 
-QPair<int, Message> Inbox::firstUnreadFrom(QString from) {
+QPair<int, Message> Inbox::firstUnreadFrom(QString from)
+{
     auto v = values("UNREAD", "$.params.FROM", from, 0, 1);
     if (v.isEmpty()) {
         return {};
@@ -358,21 +377,22 @@ QPair<int, Message> Inbox::firstUnreadFrom(QString from) {
     return v.first();
 }
 
-QMap<QString, int> Inbox::getGroupMessageCounts() {
+QMap<QString, int> Inbox::getGroupMessageCounts()
+{
     if (!isOpen()) {
         return {};
     }
 
     QMap<QString, int> messageCounts;
 
-    const char *sql = "SELECT count(id) as msg_count, json_extract(blob, "
+    const char* sql = "SELECT count(id) as msg_count, json_extract(blob, "
                       "'$.params.TO') as group_name FROM inbox_v1 "
                       "WHERE json_extract(blob, '$.type') = 'STORE' "
                       "AND group_name LIKE '@%' "
                       "AND json_extract(blob, '$.params.UTC') > ? "
                       "GROUP BY group_name";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return messageCounts;
@@ -397,9 +417,7 @@ QMap<QString, int> Inbox::getGroupMessageCounts() {
         int count = sqlite3_column_int(stmt, 0);
         auto group = sqlite3_column_text(stmt, 1);
 
-        messageCounts.insert(
-            QString::fromLocal8Bit(reinterpret_cast<const char *>(group)),
-            count);
+        messageCounts.insert(QString::fromLocal8Bit(reinterpret_cast<const char*>(group)), count);
     }
 
     rc = sqlite3_finalize(stmt);
@@ -407,15 +425,16 @@ QMap<QString, int> Inbox::getGroupMessageCounts() {
     return messageCounts;
 }
 
-bool Inbox::markGroupMsgDeliveredForCallsign(int msgId, QString callsign) {
+bool Inbox::markGroupMsgDeliveredForCallsign(int msgId, QString callsign)
+{
     if (!isOpen()) {
         return false;
     }
 
-    const char *sql = "SELECT count(id) as msg_count FROM inbox_group_recip_v1 "
+    const char* sql = "SELECT count(id) as msg_count FROM inbox_group_recip_v1 "
                       "WHERE msg_id = ? AND callsign = ? LIMIT 1;";
 
-    sqlite3_stmt *exists_stmt;
+    sqlite3_stmt* exists_stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &exists_stmt, nullptr);
     if (rc != SQLITE_OK) {
         return false;
@@ -434,10 +453,9 @@ bool Inbox::markGroupMsgDeliveredForCallsign(int msgId, QString callsign) {
     rc = sqlite3_finalize(exists_stmt);
 
     if (!recordExists) {
-        sql =
-            "INSERT INTO inbox_group_recip_v1 (msg_id, callsign) VALUES (?,?);";
+        sql = "INSERT INTO inbox_group_recip_v1 (msg_id, callsign) VALUES (?,?);";
 
-        sqlite3_stmt *insert_stmt;
+        sqlite3_stmt* insert_stmt;
         rc = sqlite3_prepare_v2(db_, sql, -1, &insert_stmt, nullptr);
         if (rc != SQLITE_OK) {
             return false;
@@ -457,13 +475,13 @@ bool Inbox::markGroupMsgDeliveredForCallsign(int msgId, QString callsign) {
     return true;
 }
 
-int Inbox::getNextGroupMessageIdForCallsign(const QString &group_name,
-                                            const QString &callsign) {
+int Inbox::getNextGroupMessageIdForCallsign(const QString& group_name, const QString& callsign)
+{
     if (!isOpen()) {
         return -1;
     }
 
-    const char *sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
+    const char* sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
                       "LEFT JOIN inbox_group_recip_v1 ON "
                       "(inbox_group_recip_v1.msg_id=inbox_v1.id AND "
                       "inbox_group_recip_v1.callsign = ?) "
@@ -474,7 +492,7 @@ int Inbox::getNextGroupMessageIdForCallsign(const QString &group_name,
                       "ORDER BY inbox_v1.id ASC "
                       "LIMIT ? OFFSET ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return -1;
@@ -506,8 +524,8 @@ int Inbox::getNextGroupMessageIdForCallsign(const QString &group_name,
 
         int i = sqlite3_column_int(stmt, 0);
 
-        auto msg = QByteArray((const char *)sqlite3_column_text(stmt, 1),
-                              sqlite3_column_bytes(stmt, 1));
+        auto msg
+            = QByteArray((const char*)sqlite3_column_text(stmt, 1), sqlite3_column_bytes(stmt, 1));
 
         m = Message::fromJson(msg);
 
@@ -527,14 +545,15 @@ int Inbox::getNextGroupMessageIdForCallsign(const QString &group_name,
     return next_id;
 }
 
-int Inbox::getLookaheadGroupMessageIdForCallsign(const QString &group_name,
-                                                 const QString &callsign,
-                                                 int afterMsgId) {
+int Inbox::getLookaheadGroupMessageIdForCallsign(const QString& group_name,
+                                                 const QString& callsign,
+                                                 int afterMsgId)
+{
     if (!isOpen()) {
         return -1;
     }
 
-    const char *sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
+    const char* sql = "SELECT inbox_v1.id, inbox_v1.blob FROM inbox_v1 "
                       "LEFT JOIN inbox_group_recip_v1 ON "
                       "(inbox_group_recip_v1.msg_id=inbox_v1.id AND "
                       "inbox_group_recip_v1.callsign = ?) "
@@ -546,7 +565,7 @@ int Inbox::getLookaheadGroupMessageIdForCallsign(const QString &group_name,
                       "ORDER BY inbox_v1.id ASC "
                       "LIMIT ? OFFSET ?;";
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         return -1;
@@ -579,8 +598,8 @@ int Inbox::getLookaheadGroupMessageIdForCallsign(const QString &group_name,
 
         int i = sqlite3_column_int(stmt, 0);
 
-        auto msg = QByteArray((const char *)sqlite3_column_text(stmt, 1),
-                              sqlite3_column_bytes(stmt, 1));
+        auto msg
+            = QByteArray((const char*)sqlite3_column_text(stmt, 1), sqlite3_column_bytes(stmt, 1));
 
         m = Message::fromJson(msg);
 

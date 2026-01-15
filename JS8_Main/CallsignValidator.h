@@ -7,14 +7,15 @@
 //
 // CallsignValidator - QValidator implementation for callsigns
 //
-class CallsignValidator final : public QValidator {
-  public:
-    CallsignValidator(QObject *parent = nullptr, bool allow_compound = true);
+class CallsignValidator final : public QValidator
+{
+public:
+    CallsignValidator(QObject* parent = nullptr, bool allow_compound = true);
 
     // QValidator implementation
-    State validate(QString &input, int &pos) const override;
+    State validate(QString& input, int& pos) const override;
 
-  private:
+private:
     QRegularExpression re_;
 };
 

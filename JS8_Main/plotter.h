@@ -8,9 +8,6 @@
 #ifndef PLOTTER_H
 #define PLOTTER_H
 
-#include "JS8_Main/Flatten.h"
-#include "RDP.h"
-#include "WF.h"
 #include <QColor>
 #include <QPixmap>
 #include <QPolygonF>
@@ -26,86 +23,100 @@
 #include <limits>
 #include <variant>
 
-class CPlotter final : public QWidget {
+#include "JS8_Main/Flatten.h"
+#include "RDP.h"
+#include "WF.h"
+
+class CPlotter final : public QWidget
+{
     Q_OBJECT
 
     // Scaler for the waterfall portion of the display; given a
     // y value, returns an index [0, 255) into the colors array.
 
-    class Scaler1D {
-        int const &m_avg;
-        int const &m_bpp;
+    class Scaler1D
+    {
+        int const& m_avg;
+        int const& m_bpp;
         int m_gain = 0;
         int m_zero = 0;
         float m_scale;
 
-      public:
-        Scaler1D(int const &avg, int const &bpp) : m_avg(avg), m_bpp(bpp) {
-            rescale();
-        }
+    public:
+        Scaler1D(int const& avg, int const& bpp) : m_avg(avg), m_bpp(bpp) { rescale(); }
 
-        void rescale() {
-            m_scale = 10.0f * std::sqrt(m_bpp * m_avg / 15.0f) *
-                      std::pow(10.0f, 0.015f * m_gain);
+        void rescale()
+        {
+            m_scale = 10.0f * std::sqrt(m_bpp * m_avg / 15.0f) * std::pow(10.0f, 0.015f * m_gain);
         }
 
         int gain() const { return m_gain; }
+
         int zero() const { return m_zero; }
 
-        void setGain(int const gain) {
+        void setGain(int const gain)
+        {
             m_gain = gain;
             rescale();
         }
+
         void setZero(int const zero) { m_zero = zero; }
 
-        inline auto operator()(float const value) const {
-            return std::isnan(value)
-                       ? 0
-                       : std::clamp(m_zero + static_cast<int>(m_scale * value),
-                                    0, 254);
+        inline auto operator()(float const value) const
+        {
+            return std::isnan(value) ?
+                0 :
+                std::clamp(m_zero + static_cast<int>(m_scale * value), 0, 254);
         }
     };
 
     // Scaler for the spectrum portion of the display; given a
     // y value, returns a pixel offset into the spectrum view.
 
-    class Scaler2D {
-        int const &m_h2;
+    class Scaler2D
+    {
+        int const& m_h2;
         int m_gain = 0;
         int m_zero = 0;
         float m_scaledGain;
         float m_scaledZero;
 
-      public:
-        Scaler2D(int const &h2) : m_h2(h2) { rescale(); }
+    public:
+        Scaler2D(int const& h2) : m_h2(h2) { rescale(); }
 
-        void rescale() {
+        void rescale()
+        {
             m_scaledGain = m_h2 / 70.0f * std::pow(10.0f, 0.02f * m_gain);
             m_scaledZero = m_h2 * 0.9f - m_h2 / 70.0f * m_zero;
         }
 
         int gain() const { return m_gain; }
+
         int zero() const { return m_zero; }
 
-        void setGain(int const gain) {
+        void setGain(int const gain)
+        {
             m_gain = gain;
             rescale();
         }
-        void setZero(int const zero) {
+
+        void setZero(int const zero)
+        {
             m_zero = zero;
             rescale();
         }
 
-        inline auto operator()(float const value) const {
+        inline auto operator()(float const value) const
+        {
             return m_scaledZero - m_scaledGain * value;
         }
     };
 
-  public:
+public:
     using Colors = QVector<QColor>;
     using Spectrum = WF::Spectrum;
 
-    explicit CPlotter(QWidget *parent = nullptr);
+    explicit CPlotter(QWidget* parent = nullptr);
 
     ~CPlotter();
 
@@ -117,35 +128,45 @@ class CPlotter final : public QWidget {
     // Inline accessors
 
     int binsPerPixel() const { return m_binsPerPixel; }
+
     int flatten() const { return m_flatten.live(); }
+
     int freq() const { return m_freq; }
+
     int percent2D() const { return m_percent2D; }
+
     int plot2dGain() const { return m_scaler2D.gain(); }
+
     int plot2dZero() const { return m_scaler2D.zero(); }
+
     int plotGain() const { return m_scaler1D.gain(); }
+
     int plotZero() const { return m_scaler1D.zero(); }
+
     Spectrum spectrum() const { return m_spectrum; }
+
     int startFreq() const { return m_startFreq; }
 
-    int frequencyAt(int const x) const {
-        return static_cast<int>(freqFromX(x));
-    }
+    int frequencyAt(int const x) const { return static_cast<int>(freqFromX(x)); }
 
     // Inline manipulators
 
     void setFlatten(bool const flatten) { m_flatten(flatten); }
+
     void setPlot2dGain(int const plot2dGain) { m_scaler2D.setGain(plot2dGain); }
+
     void setPlot2dZero(int const plot2dZero) { m_scaler2D.setZero(plot2dZero); }
+
     void setSpectrum(Spectrum const spectrum) { m_spectrum = spectrum; }
 
     // Manipulators
 
-    void drawLine(QString const &);
+    void drawLine(QString const&);
     void drawData(WF::SWide, WF::State);
-    void drawDecodeLine(const QColor &, int, int);
-    void drawHorizontalLine(const QColor &, int, int);
+    void drawDecodeLine(const QColor&, int, int);
+    void drawHorizontalLine(const QColor&, int, int);
     void setBinsPerPixel(int);
-    void setColors(Colors const &);
+    void setColors(Colors const&);
     void setDialFreq(float);
     void setFilter(int, int);
     void setFilterEnabled(bool);
@@ -158,28 +179,27 @@ class CPlotter final : public QWidget {
     void setSubMode(int);
     void setWaterfallAvg(int);
 
-  signals:
+signals:
 
     void changeFreq(int);
 
-  protected:
+protected:
     // Event Handlers
 
-    void paintEvent(QPaintEvent *) override;
-    void resizeEvent(QResizeEvent *) override;
-    void leaveEvent(QEvent *) override;
-    void wheelEvent(QWheelEvent *) override;
-    void mouseMoveEvent(QMouseEvent *) override;
-    void mouseReleaseEvent(QMouseEvent *) override;
+    void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void leaveEvent(QEvent*) override;
+    void wheelEvent(QWheelEvent*) override;
+    void mouseMoveEvent(QMouseEvent*) override;
+    void mouseReleaseEvent(QMouseEvent*) override;
 
-  private:
+private:
     // Replot data storage; alternatives of nothing at all, a
     // string denoting the label of a transmit period interval
     // start, and waterfall display data, flattened. Important
     // that the monostate alternative is first in the list.
 
-    using Replot = boost::circular_buffer<
-        std::variant<std::monostate, QString, WF::SWide>>;
+    using Replot = boost::circular_buffer<std::variant<std::monostate, QString, WF::SWide>>;
 
     // Accessors
 
@@ -224,8 +244,8 @@ class CPlotter final : public QWidget {
     QPolygonF m_points;
     Flatten m_flatten;
     Spectrum m_spectrum = Spectrum::Current;
-    QTimer *m_replotTimer;
-    QTimer *m_resizeTimer;
+    QTimer* m_replotTimer;
+    QTimer* m_resizeTimer;
 
     QPixmap m_ScalePixmap;
     QPixmap m_WaterfallPixmap;

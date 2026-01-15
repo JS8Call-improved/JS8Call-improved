@@ -1,4 +1,5 @@
 #include "RDP.h"
+
 #include <cmath>
 #include <utility>
 
@@ -24,7 +25,8 @@
 // be a problem, and it allows us to reuse allocated memory in a serial
 // manner, rather than requesting it and freeing it constantly.
 
-QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
+QPolygonF::iterator RDP::operator()(QPolygonF& polygon, qreal const epsilon)
+{
     // There's no point in proceeding with less than 3 points.
 
     if (polygon.size() < 3)
@@ -38,7 +40,7 @@ QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
     array.resize(polygon.size());
     array.setBit(0);
     array.setBit(polygon.size() - 1);
-    stack.push({0, polygon.size() - 1});
+    stack.push({ 0, polygon.size() - 1 });
 
     while (!stack.isEmpty()) {
         auto const [index1, index2] = stack.pop();
@@ -47,8 +49,8 @@ QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
         // in the span we're presently considering; compute the vector
         // components and the line length.
 
-        auto const &p1 = polygon[index1];
-        auto const &p2 = polygon[index2];
+        auto const& p1 = polygon[index1];
+        auto const& p2 = polygon[index2];
         auto const dx = p2.x() - p1.x();
         auto const dy = p2.y() - p1.y();
         auto const ll = std::hypot(dx, dy);
@@ -60,9 +62,8 @@ QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
         qsizetype index = 0;
 
         for (auto i = index1 + 1; i < index2; ++i) {
-            auto const &pi = polygon[i];
-            auto const pd =
-                std::abs(dy * (pi.x() - p1.x()) - dx * (pi.y() - p1.y())) / ll;
+            auto const& pi = polygon[i];
+            auto const pd = std::abs(dy * (pi.x() - p1.x()) - dx * (pi.y() - p1.y())) / ll;
             if (pd > limit) {
                 limit = pd;
                 index = i;
@@ -74,8 +75,8 @@ QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
 
         if (index) {
             array.setBit(index);
-            stack.push({index1, index});
-            stack.push({index, index2});
+            stack.push({ index1, index });
+            stack.push({ index, index2 });
         }
     }
 

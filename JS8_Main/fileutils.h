@@ -9,6 +9,6 @@
 #include <unistd.h>
 #endif
 
-void flushFileBuffer(const QFile &f);
+void flushFileBuffer(const QFile& f);
 
 #endif // FILEUTILS_H

@@ -1,12 +1,11 @@
 #ifndef FREQUENCY_LIST_HPP__
 #define FREQUENCY_LIST_HPP__
 
-#include "JS8_Include/pimpl_h.h"
-
 #include <QList>
 #include <QSortFilterProxyModel>
 
 #include "IARURegions.h"
+#include "JS8_Include/pimpl_h.h"
 #include "Modes.h"
 #include "Radio.h"
 
@@ -37,23 +36,27 @@ class Bands;
 //  Implements the QSortFilterProxyModel interface  for a list of spot
 //  frequencies.
 //
-class FrequencyList_v2 final : public QSortFilterProxyModel {
+class FrequencyList_v2 final : public QSortFilterProxyModel
+{
     Q_OBJECT;
 
-  public:
+public:
     using Region = IARURegions::Region;
     using Frequency = Radio::Frequency;
     using Mode = Modes::Mode;
 
-    struct Item {
+    struct Item
+    {
         Frequency frequency_;
         Mode mode_;
         Region region_;
     };
+
     using FrequencyItems = QList<Item>;
     using BandSet = QSet<QString>;
 
-    enum Column {
+    enum Column
+    {
         region_column,
         mode_column,
         frequency_column,
@@ -62,30 +65,32 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
     };
 
     // an iterator that meets the requirements of the C++ for range statement
-    class const_iterator {
-      public:
-        const_iterator(FrequencyList_v2 const *parent, int row)
-            : parent_{parent}, row_{row} {}
+    class const_iterator
+    {
+    public:
+        const_iterator(FrequencyList_v2 const* parent, int row) : parent_ { parent }, row_ { row }
+        {
+        }
 
-        Item const &operator*() const;
-        Item const *operator->() const;
-        bool operator!=(const_iterator const &) const;
-        bool operator==(const_iterator const &) const;
-        const_iterator &operator++();
+        Item const& operator*() const;
+        Item const* operator->() const;
+        bool operator!=(const_iterator const&) const;
+        bool operator==(const_iterator const&) const;
+        const_iterator& operator++();
 
-      private:
-        FrequencyList_v2 const *parent_;
+    private:
+        FrequencyList_v2 const* parent_;
         int row_;
     };
 
-    explicit FrequencyList_v2(Bands const *, QObject *parent = nullptr);
+    explicit FrequencyList_v2(Bands const*, QObject* parent = nullptr);
     ~FrequencyList_v2();
 
     // Load and store underlying items
     FrequencyItems frequency_list(FrequencyItems);
-    FrequencyItems const &frequency_list() const;
-    FrequencyItems frequency_list(QModelIndexList const &) const;
-    void frequency_list_merge(FrequencyItems const &);
+    FrequencyItems const& frequency_list() const;
+    FrequencyItems frequency_list(QModelIndexList const&) const;
+    void frequency_list_merge(FrequencyItems const&);
 
     // Iterators for the sorted and filtered items
     //
@@ -111,7 +116,7 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
     // Find the row  of the nearest best working frequency  given a band
     // name. Returns -1 if no suitable working frequency is found in the
     // list.
-    int best_working_frequency(QString const &band) const;
+    int best_working_frequency(QString const& band) const;
 
     // Set filter
     Q_SLOT void filter(Region, Mode);
@@ -125,28 +130,26 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
     bool removeDisjointRows(QModelIndexList);
 
     // Proxy API
-    bool filterAcceptsRow(int source_row,
-                          QModelIndex const &parent) const override;
+    bool filterAcceptsRow(int source_row, QModelIndex const& parent) const override;
 
     // Custom roles.
     static int constexpr SortRole = Qt::UserRole;
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };
 
-inline bool operator==(FrequencyList_v2::Item const &lhs,
-                       FrequencyList_v2::Item const &rhs) {
-    return lhs.frequency_ == rhs.frequency_ && lhs.region_ == rhs.region_ &&
-           lhs.mode_ == rhs.mode_;
+inline bool operator==(FrequencyList_v2::Item const& lhs, FrequencyList_v2::Item const& rhs)
+{
+    return lhs.frequency_ == rhs.frequency_ && lhs.region_ == rhs.region_ && lhs.mode_ == rhs.mode_;
 }
 
-QDataStream &operator<<(QDataStream &, FrequencyList_v2::Item const &);
-QDataStream &operator>>(QDataStream &, FrequencyList_v2::Item &);
+QDataStream& operator<<(QDataStream&, FrequencyList_v2::Item const&);
+QDataStream& operator>>(QDataStream&, FrequencyList_v2::Item&);
 
 #if !defined(QT_NO_DEBUG_STREAM)
-QDebug operator<<(QDebug, FrequencyList_v2::Item const &);
+QDebug operator<<(QDebug, FrequencyList_v2::Item const&);
 #endif
 
 Q_DECLARE_METATYPE(FrequencyList_v2::Item);
@@ -156,23 +159,26 @@ Q_DECLARE_METATYPE(FrequencyList_v2::FrequencyItems);
 // Obsolete version of FrequencyList no longer used but needed to
 // allow loading and saving of old settings contents without damage
 //
-class FrequencyList final {
-  public:
+class FrequencyList final
+{
+public:
     using Frequency = Radio::Frequency;
     using Mode = Modes::Mode;
 
-    struct Item {
+    struct Item
+    {
         Frequency frequency_;
         Mode mode_;
     };
+
     using FrequencyItems = QList<Item>;
 
-  private:
+private:
     FrequencyItems frequency_list_;
 };
 
-QDataStream &operator<<(QDataStream &, FrequencyList::Item const &);
-QDataStream &operator>>(QDataStream &, FrequencyList::Item &);
+QDataStream& operator<<(QDataStream&, FrequencyList::Item const&);
+QDataStream& operator>>(QDataStream&, FrequencyList::Item&);
 
 Q_DECLARE_METATYPE(FrequencyList::Item);
 Q_DECLARE_METATYPE(FrequencyList::FrequencyItems);

@@ -9,13 +9,14 @@
  * been completed, signals are to be sent in a volley so that an required
  * initial values are being set.
  */
-class TwoPhaseSignal : public QObject {
+class TwoPhaseSignal : public QObject
+{
     Q_OBJECT
-  public:
+public:
     TwoPhaseSignal();
     ~TwoPhaseSignal();
 
-  public slots:
+public slots:
     /**
      * Called when the plumbing has been completed.
      * The object should react by fireing its signals.

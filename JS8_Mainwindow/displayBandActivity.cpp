@@ -5,7 +5,8 @@
  *  displays the current band activity in the left pane of the UI
  */
 
-void MainWindow::displayBandActivity() {
+void MainWindow::displayBandActivity()
+{
     auto now = DriftingDateTime::currentDateTimeUtc();
 
     // Reset the header label text to accommodate minimal label setting
@@ -27,8 +28,7 @@ void MainWindow::displayBandActivity() {
     ui->tableWidgetRXAll->setUpdatesEnabled(false);
     {
         // Scroll Position
-        auto const currentScrollPos =
-            ui->tableWidgetRXAll->verticalScrollBar()->value();
+        auto const currentScrollPos = ui->tableWidgetRXAll->verticalScrollBar()->value();
 
         // Clear the table
         ui->tableWidgetRXAll->setRowCount(0);
@@ -42,10 +42,9 @@ void MainWindow::displayBandActivity() {
         // the lists is empty. If both are non-empty, delegate to the detail
         // comparison, providing it with the last list elements.
 
-        auto const compare = [this](int const lhsKey, int const rhsKey,
-                                    auto &&detail) {
-            auto const &lhs = m_bandActivity[lhsKey];
-            auto const &rhs = m_bandActivity[rhsKey];
+        auto const compare = [this](int const lhsKey, int const rhsKey, auto&& detail) {
+            auto const& lhs = m_bandActivity[lhsKey];
+            auto const& rhs = m_bandActivity[rhsKey];
 
             if (lhs.isEmpty())
                 return false;
@@ -58,9 +57,8 @@ void MainWindow::displayBandActivity() {
         // Time stamp comparison, easy stuff, just a total ordering on the
         // UTC time stamp field.
 
-        auto const compareTimestamp = [compare](int const lhsKey,
-                                                int const rhsKey) {
-            return compare(lhsKey, rhsKey, [](auto &&lhs, auto &&rhs) {
+        auto const compareTimestamp = [compare](int const lhsKey, int const rhsKey) {
+            return compare(lhsKey, rhsKey, [](auto&& lhs, auto&& rhs) {
                 return lhs.utcTimestamp < rhs.utcTimestamp;
             });
         };
@@ -72,30 +70,29 @@ void MainWindow::displayBandActivity() {
         // standard case. Reverse takes care of itself; we just need to sort
         // out standard.
 
-        auto const compareSNR = [compare, reverse = sort.reverse](
-                                    int const lhsKey, int const rhsKey) {
-            return compare(lhsKey, rhsKey, [reverse](auto &&lhs, auto &&rhs) {
-                auto lhsSNR = lhs.snr;
-                auto rhsSNR = rhs.snr;
+        auto const compareSNR
+            = [compare, reverse = sort.reverse](int const lhsKey, int const rhsKey) {
+                  return compare(lhsKey, rhsKey, [reverse](auto&& lhs, auto&& rhs) {
+                      auto lhsSNR = lhs.snr;
+                      auto rhsSNR = rhs.snr;
 
-                if (!reverse) {
-                    if (lhsSNR < -60 || lhsSNR > 60)
-                        lhsSNR = -lhsSNR;
-                    if (rhsSNR < -60 || rhsSNR > 60)
-                        rhsSNR = -rhsSNR;
-                }
+                      if (!reverse) {
+                          if (lhsSNR < -60 || lhsSNR > 60)
+                              lhsSNR = -lhsSNR;
+                          if (rhsSNR < -60 || rhsSNR > 60)
+                              rhsSNR = -rhsSNR;
+                      }
 
-                return lhsSNR < rhsSNR;
-            });
-        };
+                      return lhsSNR < rhsSNR;
+                  });
+              };
 
         // Submode comparison; slow mode isn't at the start of the enumeration;
         // it's in the middle of it. All the other modes are in the expected
         // order.
 
-        auto const compareSubmode = [compare](int const lhsKey,
-                                              int const rhsKey) {
-            return compare(lhsKey, rhsKey, [](auto &&lhs, auto &&rhs) {
+        auto const compareSubmode = [compare](int const lhsKey, int const rhsKey) {
+            return compare(lhsKey, rhsKey, [](auto&& lhs, auto&& rhs) {
                 auto lhsSubmode = lhs.submode;
                 auto rhsSubmode = rhs.submode;
 
@@ -151,8 +148,8 @@ void MainWindow::displayBandActivity() {
                     bool shouldDisplay = true;
 
                     // hide aged items
-                    if (!isOffsetSelected && activityAging &&
-                        item.utcTimestamp.secsTo(now) / 60 >= activityAging) {
+                    if (!isOffsetSelected && activityAging
+                        && item.utcTimestamp.secsTo(now) / 60 >= activityAging) {
                         shouldDisplay = false;
                     }
 
@@ -160,14 +157,13 @@ void MainWindow::displayBandActivity() {
                     if (!ui->actionShow_Band_Heartbeats_and_ACKs->isChecked()) {
                         // hide heartbeats and acks if we have heartbeating
                         // hidden
-                        if (item.text.contains(" @HB ") ||
-                            item.text.contains(" HEARTBEAT ")) {
+                        if (item.text.contains(" @HB ") || item.text.contains(" HEARTBEAT ")) {
                             shouldDisplay = false;
 
                             // hide the previous item if this it shouldn't be
                             // displayed either...
-                            if (i > 0 && items[i - 1].shouldDisplay &&
-                                items[i - 1].text.endsWith(": ")) {
+                            if (i > 0 && items[i - 1].shouldDisplay
+                                && items[i - 1].text.endsWith(": ")) {
                                 items[i - 1].shouldDisplay = false;
                             }
                         }
@@ -175,9 +171,8 @@ void MainWindow::displayBandActivity() {
                         // if our previous item should not be displayed (or this
                         // is the first frame) and we have a MSG ID, then don't
                         // display it either.
-                        if ((i == 0 ||
-                             (i > 0 && !items[i - 1].shouldDisplay)) &&
-                            (item.text.contains(" MSG ID "))) {
+                        if ((i == 0 || (i > 0 && !items[i - 1].shouldDisplay))
+                            && (item.text.contains(" MSG ID "))) {
                             shouldDisplay = false;
                         }
                     }
@@ -201,8 +196,7 @@ void MainWindow::displayBandActivity() {
                         item.text = QString("[%1]").arg(item.text);
                     }
 
-                    if ((item.bits & Varicode::JS8CallLast) ==
-                        Varicode::JS8CallLast) {
+                    if ((item.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast) {
                         // append the eot character to the text
                         item.text = QString("%1 %2 ")
                                         .arg(Varicode::rstrip(item.text))
@@ -221,13 +215,11 @@ void MainWindow::displayBandActivity() {
                     continue;
                 }
 
-                ui->tableWidgetRXAll->insertRow(
-                    ui->tableWidgetRXAll->rowCount());
+                ui->tableWidgetRXAll->insertRow(ui->tableWidgetRXAll->rowCount());
                 int row = ui->tableWidgetRXAll->rowCount() - 1;
                 int col = 0;
 
-                auto offsetItem = new QTableWidgetItem(
-                    QString(columnLabel("%1 Hz")).arg(offset));
+                auto offsetItem = new QTableWidgetItem(QString(columnLabel("%1 Hz")).arg(offset));
                 offsetItem->setData(Qt::UserRole, QVariant(offset));
                 offsetItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetRXAll->setItem(row, col++, offsetItem);
@@ -239,21 +231,18 @@ void MainWindow::displayBandActivity() {
 
                 auto snrText = Varicode::formatSNR(snr);
                 auto snrItem = new QTableWidgetItem(
-                    snrText.isEmpty()
-                        ? ""
-                        : QString(columnLabel("%1 dB")).arg(snrText));
+                    snrText.isEmpty() ? "" : QString(columnLabel("%1 dB")).arg(snrText));
                 snrItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetRXAll->setItem(row, col++, snrItem);
 
-                auto tdriftItem = new QTableWidgetItem(
-                    QString(columnLabel("%1 ms")).arg((int)(1000 * tdrift)));
+                auto tdriftItem
+                    = new QTableWidgetItem(QString(columnLabel("%1 ms")).arg((int)(1000 * tdrift)));
                 tdriftItem->setData(Qt::UserRole, QVariant(tdrift));
                 tdriftItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 ui->tableWidgetRXAll->setItem(row, col++, tdriftItem);
 
                 auto name = JS8::Submode::name(submode);
-                auto submodeItem =
-                    new QTableWidgetItem(name.left(1).replace("H", "N"));
+                auto submodeItem = new QTableWidgetItem(name.left(1).replace("H", "N"));
                 submodeItem->setToolTip(name);
                 submodeItem->setData(Qt::UserRole, QVariant(name));
                 submodeItem->setTextAlignment(Qt::AlignCenter);
@@ -263,14 +252,12 @@ void MainWindow::displayBandActivity() {
                 int colWidth = ui->tableWidgetRXAll->columnWidth(3);
                 auto textItem = new QTableWidgetItem(joined);
                 auto html = QString("<qt/>%1").arg(joined.toHtmlEscaped());
-                html =
-                    html.replace(m_config.eot(), m_config.eot() + "<br/><br/>");
+                html = html.replace(m_config.eot(), m_config.eot() + "<br/><br/>");
                 html = html.replace(QRegularExpression("([<]br[/][>])+$"), "");
                 textItem->setToolTip(html);
 
                 QFontMetrics fm(textItem->font());
-                auto elidedText =
-                    fm.elidedText(joined, Qt::ElideLeft, colWidth);
+                auto elidedText = fm.elidedText(joined, Qt::ElideLeft, colWidth);
                 auto flag = Qt::AlignLeft | Qt::AlignVCenter;
                 if (elidedText != joined) {
                     flag = Qt::AlignRight | Qt::AlignVCenter;
@@ -281,51 +268,42 @@ void MainWindow::displayBandActivity() {
                 ui->tableWidgetRXAll->setItem(row, col++, textItem);
 
                 if (isOffsetSelected) {
-                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount();
-                         i++) {
+                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                         ui->tableWidgetRXAll->item(row, i)->setSelected(true);
                     }
                 }
 
                 bool isDirectedAllCall = false;
-                if ((isDirectedOffset(offset, &isDirectedAllCall) &&
-                     !isDirectedAllCall) ||
-                    isMyCallIncluded(text.last())) {
-                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount();
-                         i++) {
+                if ((isDirectedOffset(offset, &isDirectedAllCall) && !isDirectedAllCall)
+                    || isMyCallIncluded(text.last())) {
+                    for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                         ui->tableWidgetRXAll->item(row, i)->setBackground(
                             QBrush(m_config.color_MyCall()));
                     }
                 }
 
                 if (!text.isEmpty()) {
-                    auto const list = joined.split(QRegularExpression("[:> ]"),
-                                                   Qt::SkipEmptyParts);
+                    auto const list = joined.split(QRegularExpression("[:> ]"), Qt::SkipEmptyParts);
                     QSet<QString> words(list.begin(), list.end());
 
                     if (words.contains("CQ")) {
-                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount();
-                             i++) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                             ui->tableWidgetRXAll->item(row, i)->setBackground(
                                 QBrush(m_config.color_CQ()));
                         }
                     }
 
-                    auto matchingSecondaryWords =
-                        m_config.secondary_highlight_words() & words;
+                    auto matchingSecondaryWords = m_config.secondary_highlight_words() & words;
                     if (!matchingSecondaryWords.isEmpty()) {
-                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount();
-                             i++) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                             ui->tableWidgetRXAll->item(row, i)->setBackground(
                                 QBrush(m_config.color_secondary_highlight()));
                         }
                     }
 
-                    auto matchingPrimaryWords =
-                        m_config.primary_highlight_words() & words;
+                    auto matchingPrimaryWords = m_config.primary_highlight_words() & words;
                     if (!matchingPrimaryWords.isEmpty()) {
-                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount();
-                             i++) {
+                        for (int i = 0; i < ui->tableWidgetRXAll->columnCount(); i++) {
                             ui->tableWidgetRXAll->item(row, i)->setBackground(
                                 QBrush(m_config.color_primary_highlight()));
                         }
@@ -335,10 +313,9 @@ void MainWindow::displayBandActivity() {
         }
 
         // Set table color
-        auto style = QString(
-            "QTableWidget { background:%1; selection-background-color:%2; "
-            "alternate-background-color:%1; color:%3; } "
-            "QTableWidget::item:selected { background-color: %2; color: %3; }");
+        auto style = QString("QTableWidget { background:%1; selection-background-color:%2; "
+                             "alternate-background-color:%1; color:%3; } "
+                             "QTableWidget::item:selected { background-color: %2; color: %3; }");
         style = style.arg(m_config.color_table_background().name());
         style = style.arg(m_config.color_table_highlight().name());
         style = style.arg(m_config.color_table_foreground().name());
@@ -348,16 +325,15 @@ void MainWindow::displayBandActivity() {
         auto p = ui->tableWidgetRXAll->palette();
 
         p.setColor(QPalette::Highlight, m_config.color_table_highlight());
-        p.setColor(QPalette::HighlightedText,
-                   m_config.color_table_foreground());
-        p.setColor(QPalette::Inactive, QPalette::Highlight,
+        p.setColor(QPalette::HighlightedText, m_config.color_table_foreground());
+        p.setColor(QPalette::Inactive,
+                   QPalette::Highlight,
                    p.color(QPalette::Active, QPalette::Highlight));
         ui->tableWidgetRXAll->setPalette(p);
 
         // Set item fonts
         for (int row = 0; row < ui->tableWidgetRXAll->rowCount(); row++) {
-            for (int col = 0; col < ui->tableWidgetRXAll->columnCount();
-                 col++) {
+            for (int col = 0; col < ui->tableWidgetRXAll->columnCount(); col++) {
                 auto item = ui->tableWidgetRXAll->item(row, col);
                 if (item) {
                     item->setFont(m_config.table_font());
@@ -366,18 +342,14 @@ void MainWindow::displayBandActivity() {
         }
 
         // Column labels
-        ui->tableWidgetRXAll->horizontalHeader()->setVisible(
-            showColumn("band", "labels"));
+        ui->tableWidgetRXAll->horizontalHeader()->setVisible(showColumn("band", "labels"));
 
         // Hide columns
         ui->tableWidgetRXAll->setColumnHidden(0, !showColumn("band", "offset"));
-        ui->tableWidgetRXAll->setColumnHidden(1,
-                                              !showColumn("band", "timestamp"));
+        ui->tableWidgetRXAll->setColumnHidden(1, !showColumn("band", "timestamp"));
         ui->tableWidgetRXAll->setColumnHidden(2, !showColumn("band", "snr"));
-        ui->tableWidgetRXAll->setColumnHidden(
-            3, !showColumn("band", "tdrift", false));
-        ui->tableWidgetRXAll->setColumnHidden(
-            4, !showColumn("band", "submode", false));
+        ui->tableWidgetRXAll->setColumnHidden(3, !showColumn("band", "tdrift", false));
+        ui->tableWidgetRXAll->setColumnHidden(4, !showColumn("band", "submode", false));
 
         // Resize the table columns
         ui->tableWidgetRXAll->resizeColumnToContents(0);

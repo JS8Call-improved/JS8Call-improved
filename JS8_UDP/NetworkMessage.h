@@ -538,9 +538,11 @@ class QIODevice;
 class QByteArray;
 class QString;
 
-namespace NetworkMessage {
+namespace NetworkMessage
+{
 // NEVER DELETE MESSAGE TYPES
-enum Type {
+enum Type
+{
     Heartbeat,
     Status,
     Decode,
@@ -562,33 +564,34 @@ enum Type {
                           // immediately before here
 };
 
-quint32 constexpr pulse{15}; // seconds
+quint32 constexpr pulse { 15 }; // seconds
 
 //
 // NetworkMessage::Builder - build a message containing serialized Qt types
 //
-class Builder : public QDataStream {
-  public:
-    static quint32 constexpr magic{0xadbccbda}; // never change this
+class Builder : public QDataStream
+{
+public:
+    static quint32 constexpr magic { 0xadbccbda }; // never change this
 
     // increment this if a newer Qt schema is required and add decode
     // logic to the Builder and Reader class implementations
 #if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
-    static quint32 constexpr schema_number{3};
+    static quint32 constexpr schema_number { 3 };
 #elif QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
-    static quint32 constexpr schema_number{2};
+    static quint32 constexpr schema_number { 2 };
 #else
     // Schema 1 (Qt_5_0) is broken
 #error "Qt version 5.2 or greater required"
 #endif
 
-    explicit Builder(QIODevice *, Type, QString const &id, quint32 schema);
-    explicit Builder(QByteArray *, Type, QString const &id, quint32 schema);
-    Builder(Builder const &) = delete;
-    Builder &operator=(Builder const &) = delete;
+    explicit Builder(QIODevice*, Type, QString const& id, quint32 schema);
+    explicit Builder(QByteArray*, Type, QString const& id, quint32 schema);
+    Builder(Builder const&) = delete;
+    Builder& operator=(Builder const&) = delete;
 
-  private:
-    void common_initialization(Type type, QString const &id, quint32 schema);
+private:
+    void common_initialization(Type type, QString const& id, quint32 schema);
 };
 
 //
@@ -598,19 +601,20 @@ class Builder : public QDataStream {
 // member  may be  used  to  determine the  schema  of the  original
 // message.
 //
-class Reader : public QDataStream {
-  public:
-    explicit Reader(QIODevice *);
-    explicit Reader(QByteArray const &);
-    Reader(Reader const &) = delete;
-    Reader &operator=(Reader const &) = delete;
+class Reader : public QDataStream
+{
+public:
+    explicit Reader(QIODevice*);
+    explicit Reader(QByteArray const&);
+    Reader(Reader const&) = delete;
+    Reader& operator=(Reader const&) = delete;
     ~Reader();
 
     quint32 schema() const;
     Type type() const;
     QString id() const;
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };

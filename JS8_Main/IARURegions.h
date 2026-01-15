@@ -25,17 +25,19 @@ class QModelIndex;
 //
 // 	Implements a concrete sub-class of the QAbstractListModel class.
 //
-class IARURegions final : public QAbstractListModel {
+class IARURegions final : public QAbstractListModel
+{
     Q_OBJECT
     Q_ENUMS(Region)
 
-  public:
+public:
     //
     // This enumeration  contains the  supported regions,  to complement
     // this an  array of  human readable  strings in  the implementation
     // (IARURegions.cpp) must be maintained in parallel.
     //
-    enum Region {
+    enum Region
+    {
         ALL, // matches with all regions
         R1,
         R2,
@@ -44,22 +46,20 @@ class IARURegions final : public QAbstractListModel {
     };
     Q_ENUM(Region)
 
-    explicit IARURegions(QObject *parent = nullptr);
+    explicit IARURegions(QObject* parent = nullptr);
 
     // translate between enumeration and human readable strings
-    static char const *name(Region);
-    static Region value(QString const &);
+    static char const* name(Region);
+    static Region value(QString const&);
 
     // Implement the QAbstractListModel interface
-    int rowCount(QModelIndex const &parent = QModelIndex{}) const override {
-        return parent.isValid()
-                   ? 0
-                   : SENTINAL; // Number of regionss in Region enumeration class
+    int rowCount(QModelIndex const& parent = QModelIndex {}) const override
+    {
+        return parent.isValid() ? 0 : SENTINAL; // Number of regionss in Region enumeration class
     }
-    QVariant data(QModelIndex const &,
-                  int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation,
-                        int = Qt::DisplayRole) const override;
+
+    QVariant data(QModelIndex const&, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation, int = Qt::DisplayRole) const override;
 };
 
 // Qt boilerplate  to make the IARURegions::region  enumeration a type

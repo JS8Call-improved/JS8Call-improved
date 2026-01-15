@@ -9,28 +9,28 @@
 #define __COUNTRYDAT_H
 
 
+#include <QHash>
 #include <QString>
 #include <QStringList>
-#include <QHash>
-
 
 class CountryDat
 {
 public:
-  void init(const QString filename);
-  void load();
-  QString find(QString prefix) const; // return country name or ""
-  QStringList  getCountryNames() const { return _countryNames; };
+    void init(const QString filename);
+    void load();
+    QString find(QString prefix) const; // return country name or ""
+
+    QStringList getCountryNames() const { return _countryNames; };
 
 private:
-  QString _extractName(const QString line) const;
-  void _removeBrackets(QString &line, const QString a, const QString b) const;
-  QStringList _extractPrefix(QString &line, bool &more) const;
-  QString fixup (QString country, QString const& call) const;
+    QString _extractName(const QString line) const;
+    void _removeBrackets(QString& line, const QString a, const QString b) const;
+    QStringList _extractPrefix(QString& line, bool& more) const;
+    QString fixup(QString country, QString const& call) const;
 
-  QString _filename;
-  QStringList _countryNames;
-  QHash<QString, QString> _data;
+    QString _filename;
+    QStringList _countryNames;
+    QHash<QString, QString> _data;
 };
 
 #endif

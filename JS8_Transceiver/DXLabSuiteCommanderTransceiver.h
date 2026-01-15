@@ -18,19 +18,21 @@ class QString;
 // which can  be enabled by wrapping  a HamlibTransceiver instantiated
 // as a "Hamlib Dummy" transceiver in the Transceiver factory method.
 //
-class DXLabSuiteCommanderTransceiver final : public PollingTransceiver {
+class DXLabSuiteCommanderTransceiver final : public PollingTransceiver
+{
     Q_OBJECT; // for translation context
 
-  public:
-    static void register_transceivers(TransceiverFactory::Transceivers *,
-                                      int id);
+public:
+    static void register_transceivers(TransceiverFactory::Transceivers*, int id);
 
     // takes ownership of wrapped Transceiver
-    explicit DXLabSuiteCommanderTransceiver(
-        std::unique_ptr<TransceiverBase> wrapped, QString const &address,
-        bool use_for_ptt, int poll_interval, QObject *parent = nullptr);
+    explicit DXLabSuiteCommanderTransceiver(std::unique_ptr<TransceiverBase> wrapped,
+                                            QString const& address,
+                                            bool use_for_ptt,
+                                            int poll_interval,
+                                            QObject* parent = nullptr);
 
-  protected:
+protected:
     int do_start() override;
     void do_stop() override;
     void do_frequency(Frequency, MODE, bool no_ignore) override;
@@ -40,18 +42,18 @@ class DXLabSuiteCommanderTransceiver final : public PollingTransceiver {
 
     void poll() override;
 
-  private:
+private:
     MODE get_mode(bool no_debug = false);
-    void simple_command(QString const &, bool no_debug = false);
-    QString command_with_reply(QString const &, bool no_debug = false);
-    bool write_to_port(QString const &);
+    void simple_command(QString const&, bool no_debug = false);
+    QString command_with_reply(QString const&, bool no_debug = false);
+    bool write_to_port(QString const&);
     QString frequency_to_string(Frequency) const;
     Frequency string_to_frequency(QString) const;
 
     std::unique_ptr<TransceiverBase> wrapped_; // may be null
     bool use_for_ptt_;
     QString server_;
-    QTcpSocket *commander_;
+    QTcpSocket* commander_;
     QLocale locale_;
 };
 

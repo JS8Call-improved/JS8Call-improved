@@ -8,7 +8,6 @@
 #include <QTcpSocket>
 
 #include "JS8_Include/pimpl_impl.h"
-
 #include "moc_TCPClient.cpp"
 
 /**
@@ -16,17 +15,19 @@
  * @brief Private implementation of the TCPClient class.
  * 
  */
-class TCPClient::impl : public QTcpSocket {
+class TCPClient::impl : public QTcpSocket
+{
     Q_OBJECT
 
-  public:
+public:
     using port_type = quint16;
 
-    impl(TCPClient *self) : self_{self} {}
+    impl(TCPClient* self) : self_ { self } { }
 
-    ~impl() {}
+    ~impl() { }
 
-    bool isConnected(QString host, port_type port) {
+    bool isConnected(QString host, port_type port)
+    {
         if (host_ != host || port_ != port) {
             disconnectFromHost();
             return false;
@@ -34,18 +35,20 @@ class TCPClient::impl : public QTcpSocket {
         return state() == QTcpSocket::ConnectedState;
     }
 
-    void connectToHostPort(QString host, port_type port) {
+    void connectToHostPort(QString host, port_type port)
+    {
         host_ = host;
         port_ = port;
 
         QTcpSocket::connectToHost(host_, port_);
     }
 
-    qint64 send(QByteArray const &message, bool crlf) {
+    qint64 send(QByteArray const& message, bool crlf)
+    {
         return write(message + (crlf ? "\r\f" : ""));
     }
 
-    TCPClient *self_;
+    TCPClient* self_;
     QString host_;
     port_type port_;
 };
@@ -57,7 +60,9 @@ class TCPClient::impl : public QTcpSocket {
  * 
  * @param parent 
  */
-TCPClient::TCPClient(QObject *parent) : QObject(parent), m_{this} {}
+TCPClient::TCPClient(QObject* parent) : QObject(parent), m_ { this }
+{
+}
 
 /**
  * @brief Ensures that the TCP client is connected to the specified host and port.
@@ -67,7 +72,8 @@ TCPClient::TCPClient(QObject *parent) : QObject(parent), m_{this} {}
  * @param msecs The timeout in milliseconds to wait for the connection.
  * @return true if connected successfully, false otherwise.
  */
-bool TCPClient::ensureConnected(QString host, port_type port, int msecs) {
+bool TCPClient::ensureConnected(QString host, port_type port, int msecs)
+{
     if (!m_->isConnected(host, port)) {
         m_->connectToHostPort(host, port);
     }
@@ -85,9 +91,12 @@ bool TCPClient::ensureConnected(QString host, port_type port, int msecs) {
  * @param msecs The timeout in milliseconds to wait for the connection.
  * @return true if the message was sent successfully, false otherwise.
  */
-bool TCPClient::sendNetworkMessage(QString host, port_type port,
-                                   QByteArray const &message, bool crlf,
-                                   int msecs) {
+bool TCPClient::sendNetworkMessage(QString host,
+                                   port_type port,
+                                   QByteArray const& message,
+                                   bool crlf,
+                                   int msecs)
+{
     if (!ensureConnected(host, port, msecs)) {
         return false;
     }

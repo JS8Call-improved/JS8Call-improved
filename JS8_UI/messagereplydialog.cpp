@@ -1,14 +1,17 @@
 #include "messagereplydialog.h"
+
+#include <QSet>
+
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Main/varicode.h"
 #include "ui_messagereplydialog.h"
-#include <QSet>
 
-MessageReplyDialog::MessageReplyDialog(QWidget *parent)
-    : QDialog(parent), ui(new Ui::MessageReplyDialog) {
+MessageReplyDialog::MessageReplyDialog(QWidget* parent) :
+    QDialog(parent), ui(new Ui::MessageReplyDialog)
+{
     ui->setupUi(this);
     ui->textEdit->installEventFilter(new EventFilter::EnterKeyPress(
-        [this](QKeyEvent *const event) {
+        [this](QKeyEvent* const event) {
             if (event->modifiers() & Qt::ShiftModifier)
                 return false;
             this->accept();
@@ -17,19 +20,28 @@ MessageReplyDialog::MessageReplyDialog(QWidget *parent)
         this));
 }
 
-MessageReplyDialog::~MessageReplyDialog() { delete ui; }
+MessageReplyDialog::~MessageReplyDialog()
+{
+    delete ui;
+}
 
-void MessageReplyDialog::setLabel(QString value) { ui->label->setText(value); }
+void MessageReplyDialog::setLabel(QString value)
+{
+    ui->label->setText(value);
+}
 
-void MessageReplyDialog::setTextValue(QString text) {
+void MessageReplyDialog::setTextValue(QString text)
+{
     ui->textEdit->setPlainText(text);
 }
 
-QString MessageReplyDialog::textValue() const {
+QString MessageReplyDialog::textValue() const
+{
     return ui->textEdit->toPlainText();
 }
 
-void MessageReplyDialog::on_textEdit_textChanged() {
+void MessageReplyDialog::on_textEdit_textChanged()
+{
     auto text = ui->textEdit->toPlainText();
 
     QString x;

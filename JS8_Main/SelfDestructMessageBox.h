@@ -7,29 +7,32 @@
 #include <QTimer>
 #include <QWidget>
 
-class SelfDestructMessageBox : public QMessageBox {
+class SelfDestructMessageBox : public QMessageBox
+{
     Q_OBJECT
 
-  public:
-    SelfDestructMessageBox(
-        int timeout, const QString &title, const QString &text,
-        QMessageBox::Icon icon,
-        QMessageBox::StandardButtons buttons = QMessageBox::Ok |
-                                               QMessageBox::Cancel,
-        QMessageBox::StandardButton defaultButton = QMessageBox::Ok,
-        bool show_countdown = false, QWidget *parent = nullptr,
-        Qt::WindowFlags flags = Qt::WindowFlags());
+public:
+    SelfDestructMessageBox(int timeout,
+                           const QString& title,
+                           const QString& text,
+                           QMessageBox::Icon icon,
+                           QMessageBox::StandardButtons buttons
+                           = QMessageBox::Ok | QMessageBox::Cancel,
+                           QMessageBox::StandardButton defaultButton = QMessageBox::Ok,
+                           bool show_countdown = false,
+                           QWidget* parent = nullptr,
+                           Qt::WindowFlags flags = Qt::WindowFlags());
 
-    void showEvent(QShowEvent *event) override;
+    void showEvent(QShowEvent* event) override;
 
     void setShowCountdown(bool countdown) { m_show_countdown = countdown; }
 
     void stopTimer();
 
-  private slots:
+private slots:
     void tick();
 
-  private:
+private:
     bool m_show_countdown;
     int m_timeout;
     QString m_text;

@@ -1,22 +1,25 @@
 #ifndef DETECTOR_HPP__
 #define DETECTOR_HPP__
-#include "JS8_Audio/AudioDevice.h"
 #include <QMutex>
 #include <array>
 #include <vendor/Eigen/Dense>
+
+#include "JS8_Audio/AudioDevice.h"
 
 // Output device that distributes data in predefined chunks via a signal;
 // underlying device for this abstraction is just the buffer that stores
 // samples throughout a receiving period.
 
-class Detector : public AudioDevice {
+class Detector : public AudioDevice
+{
     Q_OBJECT;
 
     // We downsample the input data from 48kHz to 12kHz through this
     // lowpass FIR filter.
 
-    class Filter final {
-      public:
+    class Filter final
+    {
+    public:
         // Amount we're going to downsample; a factor of 4, i.e., 48kHz to
         // 12kHz, and number of taps in the FIR lowpass filter we're going
         // to use for the downsample process. These together result in the
@@ -37,20 +40,23 @@ class Detector : public AudioDevice {
         // Constructor; we require an array of lowpass FIR coefficients,
         // equal in size to the number of taps.
 
-        explicit Filter(std::array<Vector::value_type, NTAPS> const &lowpass)
-            : m_w(lowpass.data()), m_t(Vector::Zero()) {}
+        explicit Filter(std::array<Vector::value_type, NTAPS> const& lowpass) :
+            m_w(lowpass.data()), m_t(Vector::Zero())
+        {
+        }
 
         // Shift existing data in the lowpass FIR to make room for a new
         // sample and load it in; downsample through the filter.
 
-        auto downSample(Sample::value_type const *const data) {
+        auto downSample(Sample::value_type const* const data)
+        {
             m_t.head(SHIFT) = m_t.segment(NDOWN, SHIFT);
             m_t.tail(NDOWN) = Sample(data).cast<Vector::value_type>();
 
             return static_cast<Sample::value_type>(std::round(m_w.dot(m_t)));
         }
 
-      private:
+    private:
         // Data members
 
         Eigen::Map<Vector const> m_w;
@@ -67,11 +73,10 @@ class Detector : public AudioDevice {
 
     using Buffer = std::array<short, MaxBufferSize * Filter::NDOWN>;
 
-  public:
+public:
     // Constructor
 
-    Detector(unsigned frameRate, unsigned periodLengthInSeconds,
-             QObject *parent = nullptr);
+    Detector(unsigned frameRate, unsigned periodLengthInSeconds, QObject* parent = nullptr);
 
     // Inline accessors
 
@@ -79,7 +84,8 @@ class Detector : public AudioDevice {
 
     // Inline manipulators
 
-    QMutex *getMutex() { return &m_lock; }
+    QMutex* getMutex() { return &m_lock; }
+
     void setTRPeriod(unsigned p) { m_period = p; }
 
     // Accessors
@@ -98,13 +104,14 @@ class Detector : public AudioDevice {
     Q_SIGNAL void framesWritten(qint64) const;
     Q_SLOT void setBlockSize(unsigned);
 
-  protected:
+protected:
     // We don't produce data; we're a sink for it.
 
-    qint64 readData(char *, qint64) override { return -1; }
-    qint64 writeData(char const *, qint64) override;
+    qint64 readData(char*, qint64) override { return -1; }
 
-  private:
+    qint64 writeData(char const*, qint64) override;
+
+private:
     // Data members
 
     unsigned m_frameRate;

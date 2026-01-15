@@ -3,13 +3,15 @@
 #include <cmath>
 #include <utility>
 
-namespace Geodesic {
+namespace Geodesic
+{
 // Azimuth class, describes an azimuth in degrees. Created via
 // interpolation of Maidenhead grid coordinates, and as such
 // will be invalid if interpolation failed, typically due to
 // bad coordinates.
 
-class Azimuth {
+class Azimuth
+{
     // Data members
 
     float m_value = NAN;
@@ -17,19 +19,20 @@ class Azimuth {
     // Constructors
 
     Azimuth() = default;
-    Azimuth(float const value) : m_value{value} {}
+
+    Azimuth(float const value) : m_value { value } { }
 
     // Allow construction only by Vector.
 
     friend class Vector;
 
-  public:
+public:
     // Allow copying, moving, and assignment by anyone.
 
-    Azimuth(Azimuth const &) = default;
-    Azimuth &operator=(Azimuth const &) = default;
-    Azimuth(Azimuth &&) noexcept = default;
-    Azimuth &operator=(Azimuth &&) noexcept = default;
+    Azimuth(Azimuth const&) = default;
+    Azimuth& operator=(Azimuth const&) = default;
+    Azimuth(Azimuth&&) noexcept = default;
+    Azimuth& operator=(Azimuth&&) noexcept = default;
 
     // Inline Accessors
 
@@ -40,6 +43,7 @@ class Azimuth {
     // we do so elsewhere.
 
     explicit operator bool() const noexcept { return isValid(); }
+
     operator float() const noexcept { return m_value; }
 
     // Return as a directional arrow and cardinal direction, if
@@ -67,7 +71,8 @@ class Azimuth {
 // While distances are stored internally only in kilometers, caller may
 // request string conversion in terms of statute miles.
 
-class Distance {
+class Distance
+{
     // Value, in kilometers, that we consider to be the close limit, so
     // if we're informed that we should consider the value for closeness,
     // i.e., one of the grids that gave rise to use is of at best square
@@ -83,24 +88,28 @@ class Distance {
     // Constructors
 
     Distance() = default;
-    Distance(float const value, bool const close)
-        : m_value{close && CLOSE > value ? INFINITY : value} {}
+
+    Distance(float const value, bool const close) :
+        m_value { close && CLOSE > value ? INFINITY : value }
+    {
+    }
 
     // Allow construction only by Vector.
 
     friend class Vector;
 
-  public:
+public:
     // Allow copying, moving, and assignment by anyone.
 
-    Distance(Distance const &) = default;
-    Distance &operator=(Distance const &) = default;
-    Distance(Distance &&) noexcept = default;
-    Distance &operator=(Distance &&) noexcept = default;
+    Distance(Distance const&) = default;
+    Distance& operator=(Distance const&) = default;
+    Distance(Distance&&) noexcept = default;
+    Distance& operator=(Distance&&) noexcept = default;
 
     // Inline Accessors
 
     auto isValid() const { return !std::isnan(m_value); }
+
     auto isClose() const { return std::isinf(m_value); }
 
     // Conversion operators; return validity and value. These
@@ -108,6 +117,7 @@ class Distance {
     // we do so elsewhere.
 
     explicit operator bool() const noexcept { return isValid(); }
+
     operator float() const noexcept { return isClose() ? CLOSE : m_value; }
 
     // String conversion, to the nearest whole kilometer or mile,
@@ -120,7 +130,8 @@ class Distance {
 // Vector class, aggregate of azimuth and distance from an
 // origin grid to a remote grid.
 
-class Vector {
+class Vector
+{
     // Data members
 
     Azimuth m_azimuth;
@@ -130,23 +141,27 @@ class Vector {
     // the vector() function.
 
     Vector() = default;
-    Vector(std::pair<float, float> const &azdist, bool const square)
-        : m_azimuth{azdist.first}, m_distance{azdist.second, square} {}
+
+    Vector(std::pair<float, float> const& azdist, bool const square) :
+        m_azimuth { azdist.first }, m_distance { azdist.second, square }
+    {
+    }
 
     friend Vector vector(QStringView, QStringView);
 
-  public:
+public:
     // Allow copying, moving, and assignment by anyone.
 
-    Vector(Vector const &) = default;
-    Vector &operator=(Vector const &) = default;
-    Vector(Vector &&) noexcept = default;
-    Vector &operator=(Vector &&) noexcept = default;
+    Vector(Vector const&) = default;
+    Vector& operator=(Vector const&) = default;
+    Vector(Vector&&) noexcept = default;
+    Vector& operator=(Vector&&) noexcept = default;
 
     // Inline accessors
 
-    Azimuth const &azimuth() const { return m_azimuth; }
-    Distance const &distance() const { return m_distance; }
+    Azimuth const& azimuth() const { return m_azimuth; }
+
+    Distance const& distance() const { return m_distance; }
 };
 
 // Creation method; manages a cache, returning cached data

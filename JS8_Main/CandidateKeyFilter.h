@@ -8,17 +8,18 @@
 
 class QAbstractItemModel;
 
-class CandidateKeyFilter final : public QSortFilterProxyModel {
-  public:
-    explicit CandidateKeyFilter(QAbstractItemModel *referenced_model,
+class CandidateKeyFilter final : public QSortFilterProxyModel
+{
+public:
+    explicit CandidateKeyFilter(QAbstractItemModel* referenced_model,
                                 int referenced_key_column,
-                                QObject *parent = nullptr,
+                                QObject* parent = nullptr,
                                 int referenced_key_role = Qt::EditRole);
-    explicit CandidateKeyFilter(QAbstractItemModel *referenced_model,
-                                QAbstractItemModel const *referencing_model,
+    explicit CandidateKeyFilter(QAbstractItemModel* referenced_model,
+                                QAbstractItemModel const* referencing_model,
                                 int referenced_key_column,
                                 int referencing_key_column,
-                                QObject *parent = nullptr,
+                                QObject* parent = nullptr,
                                 int referenced_key_role = Qt::EditRole,
                                 int referencing_key_role = Qt::EditRole);
     ~CandidateKeyFilter();
@@ -26,13 +27,12 @@ class CandidateKeyFilter final : public QSortFilterProxyModel {
     // this key is not to be filtered, usually because we want to allow
     // it since we are editing the row that contains it this it is valid
     // even though it is in use
-    void set_active_key(QModelIndex const &index = QModelIndex{});
+    void set_active_key(QModelIndex const& index = QModelIndex {});
 
-  protected:
-    bool filterAcceptsRow(int candidate_row,
-                          QModelIndex const &candidate_parent) const override;
+protected:
+    bool filterAcceptsRow(int candidate_row, QModelIndex const& candidate_parent) const override;
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };

@@ -1,13 +1,14 @@
 #include "TransmitTextEdit.h"
 
-#include "JS8_Include/commons.h"
-#include "varicode.h"
-
 #include <QLoggingCategory>
 #include <iterator>
+
+#include "JS8_Include/commons.h"
+#include "varicode.h"
 Q_DECLARE_LOGGING_CATEGORY(transmittextedit_js8)
 
-void setTextEditFont(QTextEdit *edit, QFont font) {
+void setTextEditFont(QTextEdit* edit, QFont font)
+{
     // all uppercase
     font.setCapitalization(QFont::AllUppercase);
 
@@ -32,7 +33,8 @@ void setTextEditFont(QTextEdit *edit, QFont font) {
     edit->updateGeometry();
 }
 
-void setTextEditStyle(QTextEdit *edit, QColor fg, QColor bg, QFont font) {
+void setTextEditStyle(QTextEdit* edit, QColor fg, QColor bg, QFont font)
+{
     edit->setStyleSheet(QString("QTextEdit { color:%1; background: %2; %3; }")
                             .arg(fg.name())
                             .arg(bg.name())
@@ -59,8 +61,8 @@ void setTextEditStyle(QTextEdit *edit, QColor fg, QColor bg, QFont font) {
     //});
 }
 
-void highlightBlock(QTextBlock block, QFont font, QColor foreground,
-                    QColor background) {
+void highlightBlock(QTextBlock block, QFont font, QColor foreground, QColor background)
+{
     QTextCursor cursor(block);
 
     // Set background color
@@ -91,18 +93,20 @@ void highlightBlock(QTextBlock block, QFont font, QColor foreground,
     cursor.setCharFormat(charFormat);
 }
 
-TransmitTextEdit::TransmitTextEdit(QWidget *parent)
-    : QTextEdit(parent), m_sent{0}, m_protected{false} {
-    connect(this, &QTextEdit::selectionChanged, this,
-            &TransmitTextEdit::on_selectionChanged);
-    connect(this, &QTextEdit::cursorPositionChanged, this,
-            &TransmitTextEdit::on_selectionChanged);
-    connect(this->document(), &QTextDocument::contentsChange, this,
+TransmitTextEdit::TransmitTextEdit(QWidget* parent) :
+    QTextEdit(parent), m_sent { 0 }, m_protected { false }
+{
+    connect(this, &QTextEdit::selectionChanged, this, &TransmitTextEdit::on_selectionChanged);
+    connect(this, &QTextEdit::cursorPositionChanged, this, &TransmitTextEdit::on_selectionChanged);
+    connect(this->document(),
+            &QTextDocument::contentsChange,
+            this,
             &TransmitTextEdit::on_textContentsChanged);
     installEventFilter(this);
 }
 
-void TransmitTextEdit::setCharsSent(int n) {
+void TransmitTextEdit::setCharsSent(int n)
+{
     // Never can send more than the document length.
     // From the QTextDocument::characterCount() documentation:
     // As a QTextDocument always contains at least one
@@ -124,12 +128,14 @@ void TransmitTextEdit::setCharsSent(int n) {
 }
 
 // override
-QString TransmitTextEdit::toPlainText() const {
+QString TransmitTextEdit::toPlainText() const
+{
     return QTextEdit::toPlainText().toUpper();
 }
 
 // override
-void TransmitTextEdit::setPlainText(const QString &text) {
+void TransmitTextEdit::setPlainText(const QString& text)
+{
     m_textSent.clear();
     m_sent = 0;
     // Do this last, as it may trigger events that, during processing, like to
@@ -138,7 +144,8 @@ void TransmitTextEdit::setPlainText(const QString &text) {
 }
 
 //
-void TransmitTextEdit::replaceUnsentText(const QString &text, bool keepCursor) {
+void TransmitTextEdit::replaceUnsentText(const QString& text, bool keepCursor)
+{
     auto rel = relativeTextCursorPosition(textCursor());
     auto c = textCursor();
     c.movePosition(QTextCursor::Start);
@@ -150,16 +157,15 @@ void TransmitTextEdit::replaceUnsentText(const QString &text, bool keepCursor) {
     // keep cursor
     if (keepCursor) {
         c.movePosition(QTextCursor::End);
-        c.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor,
-                       rel.first);
-        c.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor,
-                       rel.second - rel.first);
+        c.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor, rel.first);
+        c.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, rel.second - rel.first);
         setTextCursor(c);
     }
 }
 
 //
-void TransmitTextEdit::replacePlainText(const QString &text, bool keepCursor) {
+void TransmitTextEdit::replacePlainText(const QString& text, bool keepCursor)
+{
     auto rel = relativeTextCursorPosition(textCursor());
     auto c = textCursor();
     c.movePosition(QTextCursor::Start);
@@ -170,16 +176,15 @@ void TransmitTextEdit::replacePlainText(const QString &text, bool keepCursor) {
     // keep cursor
     if (keepCursor) {
         c.movePosition(QTextCursor::End);
-        c.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor,
-                       rel.first);
-        c.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor,
-                       rel.second - rel.first);
+        c.movePosition(QTextCursor::PreviousCharacter, QTextCursor::MoveAnchor, rel.first);
+        c.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor, rel.second - rel.first);
         setTextCursor(c);
     }
 }
 
 //
-void TransmitTextEdit::setFont(QFont f) {
+void TransmitTextEdit::setFont(QFont f)
+{
     m_font = f;
 
     // then rehighlight
@@ -187,7 +192,8 @@ void TransmitTextEdit::setFont(QFont f) {
 }
 
 //
-void TransmitTextEdit::setFont(QFont f, QColor fg, QColor bg) {
+void TransmitTextEdit::setFont(QFont f, QColor fg, QColor bg)
+{
     m_font = f;
     m_fg = fg;
     m_bg = bg;
@@ -197,7 +203,8 @@ void TransmitTextEdit::setFont(QFont f, QColor fg, QColor bg) {
 }
 
 // override
-void TransmitTextEdit::clear() {
+void TransmitTextEdit::clear()
+{
     m_textSent.clear();
     m_sent = 0;
     // Do this last, as it may trigger events that, during processing, like to
@@ -205,9 +212,13 @@ void TransmitTextEdit::clear() {
     QTextEdit::clear();
 }
 
-void TransmitTextEdit::setProtected(bool protect) { m_protected = protect; }
+void TransmitTextEdit::setProtected(bool protect)
+{
+    m_protected = protect;
+}
 
-bool TransmitTextEdit::cursorShouldBeProtected(QTextCursor c) {
+bool TransmitTextEdit::cursorShouldBeProtected(QTextCursor c)
+{
     int start = c.selectionStart();
     int end = c.selectionEnd();
     if (end < start) {
@@ -219,8 +230,7 @@ bool TransmitTextEdit::cursorShouldBeProtected(QTextCursor c) {
     // qCDebug(transmittextedit_js8) << "selection" << start << end << m_sent;
 
     if (m_sent && start <= m_sent) {
-        qCDebug(transmittextedit_js8)
-            << "cursor in protected zone" << start << "<=" << m_sent;
+        qCDebug(transmittextedit_js8) << "cursor in protected zone" << start << "<=" << m_sent;
         return true;
     } else {
         return false;
@@ -228,7 +238,8 @@ bool TransmitTextEdit::cursorShouldBeProtected(QTextCursor c) {
 }
 
 // slot
-void TransmitTextEdit::on_selectionChanged() {
+void TransmitTextEdit::on_selectionChanged()
+{
     auto c = textCursor();
 
     auto shouldProtect = cursorShouldBeProtected(c);
@@ -238,9 +249,9 @@ void TransmitTextEdit::on_selectionChanged() {
         {
             int end = c.selectionEnd();
             c.movePosition(QTextCursor::Start);
-            c.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor,
-                           m_sent);
-            c.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor,
+            c.movePosition(QTextCursor::NextCharacter, QTextCursor::MoveAnchor, m_sent);
+            c.movePosition(QTextCursor::NextCharacter,
+                           QTextCursor::KeepAnchor,
                            qMax(0, end - m_sent));
             setTextCursor(c);
         }
@@ -251,7 +262,8 @@ void TransmitTextEdit::on_selectionChanged() {
 }
 
 // slot
-void TransmitTextEdit::on_textContentsChanged(int /*pos*/, int rem, int add) {
+void TransmitTextEdit::on_textContentsChanged(int /*pos*/, int rem, int add)
+{
     if (rem == 0 && add == 0) {
         return;
     }
@@ -268,13 +280,14 @@ void TransmitTextEdit::on_textContentsChanged(int /*pos*/, int rem, int add) {
 #endif
 
     QString result;
-    std::copy_if(normalized.begin(), normalized.end(),
-                 std::back_inserter(result), [](auto const c) {
+    std::copy_if(normalized.begin(),
+                 normalized.end(),
+                 std::back_inserter(result),
+                 [](auto const c) {
                      auto const lc = c.toLatin1();
-                     return (lc && (lc == 0x10 || lc == 0x1A ||
-                                    ((lc >= 32) && (lc <= 127))))
+                     return (lc && (lc == 0x10 || lc == 0x1A || ((lc >= 32) && (lc <= 127))))
 #if JS8_ALLOW_UNICODE
-                            || c.isPrint();
+                         || c.isPrint();
 #elif JS8_ALLOW_EXTENDED
         || Varicode::extendedChars().contains(c.toUpper())
 #endif
@@ -297,7 +310,8 @@ void TransmitTextEdit::on_textContentsChanged(int /*pos*/, int rem, int add) {
     m_lastText = text;
 }
 
-void TransmitTextEdit::highlightBase() {
+void TransmitTextEdit::highlightBase()
+{
     auto d = document();
     if (!d) {
         return;
@@ -310,7 +324,8 @@ void TransmitTextEdit::highlightBase() {
     }
 }
 
-void TransmitTextEdit::highlightCharsSent() {
+void TransmitTextEdit::highlightCharsSent()
+{
     if (!m_sent) {
         return;
     }
@@ -333,12 +348,14 @@ void TransmitTextEdit::highlightCharsSent() {
     c.mergeCharFormat(ch);
 }
 
-void TransmitTextEdit::highlight() {
+void TransmitTextEdit::highlight()
+{
     highlightBase();
     highlightCharsSent();
 }
 
-QTextCursor::MoveOperation deleteKeyEventToMoveOperation(QKeyEvent *e) {
+QTextCursor::MoveOperation deleteKeyEventToMoveOperation(QKeyEvent* e)
+{
     QTextCursor::MoveOperation op = QTextCursor::NoMove;
 
 #if 0
@@ -360,11 +377,13 @@ QTextCursor::MoveOperation deleteKeyEventToMoveOperation(QKeyEvent *e) {
     return op;
 }
 
-bool isDeleteKeyEvent(QKeyEvent *e) {
+bool isDeleteKeyEvent(QKeyEvent* e)
+{
     return deleteKeyEventToMoveOperation(e) != QTextCursor::NoMove;
 }
 
-QTextCursor::MoveOperation movementKeyEventToMoveOperation(QKeyEvent *e) {
+QTextCursor::MoveOperation movementKeyEventToMoveOperation(QKeyEvent* e)
+{
     QTextCursor::MoveOperation op = QTextCursor::NoMove;
 
     if (e == QKeySequence::Delete) {
@@ -432,17 +451,19 @@ QTextCursor::MoveOperation movementKeyEventToMoveOperation(QKeyEvent *e) {
     return op;
 }
 
-bool isMovementKeyEvent(QKeyEvent *k) {
+bool isMovementKeyEvent(QKeyEvent* k)
+{
     return movementKeyEventToMoveOperation(k) != QTextCursor::NoMove;
 }
 
-bool TransmitTextEdit::eventFilter(QObject * /*o*/, QEvent *e) {
+bool TransmitTextEdit::eventFilter(QObject* /*o*/, QEvent* e)
+{
     if (e->type() != QEvent::KeyPress) {
         return false;
     }
 
     // -1. don't filter the escape key, return key, or enter key here
-    QKeyEvent *k = static_cast<QKeyEvent *>(e);
+    QKeyEvent* k = static_cast<QKeyEvent*>(e);
     if (k->key() == Qt::Key_Escape) {
         return false;
     }
@@ -470,9 +491,7 @@ bool TransmitTextEdit::eventFilter(QObject * /*o*/, QEvent *e) {
         if (!shouldBeProtected) {
             auto c3 = QTextCursor(c);
             c3.movePosition(QTextCursor::PreviousCharacter);
-            if (c.document()
-                    ->characterAt(qMin(c3.selectionStart(), c3.selectionEnd()))
-                    .isSpace()) {
+            if (c.document()->characterAt(qMin(c3.selectionStart(), c3.selectionEnd())).isSpace()) {
                 c3.movePosition(op);
                 shouldBeProtected = cursorShouldBeProtected(c3);
             }

@@ -5,7 +5,8 @@
  *  processes JS8 commands
  */
 
-void MainWindow::processCommandActivity() {
+void MainWindow::processCommandActivity()
+{
 #if 0
     if (!m_txFrameQueue.isEmpty()) {
         return;
@@ -31,9 +32,8 @@ void MainWindow::processCommandActivity() {
         bool isAllCall = isAllCallIncluded(d.to);
         bool isGroupCall = isGroupCallIncluded(d.to);
 
-        qCDebug(mainwindow_js8)
-            << "try processing command" << d.from << d.to << d.cmd << d.dial
-            << d.offset << d.grid << d.extra << isAllCall << isGroupCall;
+        qCDebug(mainwindow_js8) << "try processing command" << d.from << d.to << d.cmd << d.dial
+                                << d.offset << d.grid << d.extra << isAllCall << isGroupCall;
 
         // if we need a compound callsign but never got one...skip
         if (d.from == "<....>" || d.to == "<....>") {
@@ -46,9 +46,8 @@ void MainWindow::processCommandActivity() {
         }
 
         // is this to me?
-        bool toMe =
-            d.to == m_config.my_callsign().trimmed() ||
-            d.to == Radio::base_callsign(m_config.my_callsign()).trimmed();
+        bool toMe = d.to == m_config.my_callsign().trimmed()
+            || d.to == Radio::base_callsign(m_config.my_callsign()).trimmed();
 
         // log call activity...
         CallDetail cd = {};
@@ -58,8 +57,7 @@ void MainWindow::processCommandActivity() {
         cd.dial = d.dial;
         cd.offset = d.offset;
         cd.bits = d.bits;
-        cd.ackTimestamp =
-            d.text.contains(": ACK") || toMe ? d.utcTimestamp : QDateTime{};
+        cd.ackTimestamp = d.text.contains(": ACK") || toMe ? d.utcTimestamp : QDateTime {};
         cd.utcTimestamp = d.utcTimestamp;
         cd.tdrift = d.tdrift;
         cd.submode = d.submode;
@@ -117,8 +115,7 @@ void MainWindow::processCommandActivity() {
         }
 
         // PREPARE CMD TEXT STRING
-        QStringList textList = {
-            QString("%1: %2%3").arg(d.from).arg(d.to).arg(d.cmd)};
+        QStringList textList = { QString("%1: %2%3").arg(d.from).arg(d.to).arg(d.cmd) };
 
         if (!d.extra.isEmpty()) {
             textList.append(d.extra);
@@ -132,9 +129,7 @@ void MainWindow::processCommandActivity() {
         bool isLast = (d.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast;
         if (isLast) {
             // append the eot character to the text
-            text = QString("%1 %2 ")
-                       .arg(Varicode::rstrip(text))
-                       .arg(m_config.eot());
+            text = QString("%1 %2 ").arg(Varicode::rstrip(text)).arg(m_config.eot());
         }
 
         // log the text to directed txt log
@@ -142,29 +137,31 @@ void MainWindow::processCommandActivity() {
 
         // write all directed messages to api
         if (canSendNetworkMessage()) {
-            sendNetworkMessage(
-                "RX.DIRECTED", text,
-                {{"_ID", QVariant(-1)},
-                 {"FROM", QVariant(d.from)},
-                 {"TO", QVariant(d.to)},
-                 {"CMD", QVariant(d.cmd)},
-                 {"GRID", QVariant(d.grid)},
-                 {"EXTRA", QVariant(d.extra)},
-                 {"TEXT", QVariant(d.text)},
-                 {"FREQ", QVariant(d.dial + d.offset)},
-                 {"DIAL", QVariant(d.dial)},
-                 {"OFFSET", QVariant(d.offset)},
-                 {"SNR", QVariant(d.snr)},
-                 {"SPEED", QVariant(d.submode)},
-                 {"TDRIFT", QVariant(d.tdrift)},
-                 {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
+            sendNetworkMessage("RX.DIRECTED",
+                               text,
+                               {
+                                   { "_ID",    QVariant(-1)                                 },
+                                   { "FROM",   QVariant(d.from)                             },
+                                   { "TO",     QVariant(d.to)                               },
+                                   { "CMD",    QVariant(d.cmd)                              },
+                                   { "GRID",   QVariant(d.grid)                             },
+                                   { "EXTRA",  QVariant(d.extra)                            },
+                                   { "TEXT",   QVariant(d.text)                             },
+                                   { "FREQ",   QVariant(d.dial + d.offset)                  },
+                                   { "DIAL",   QVariant(d.dial)                             },
+                                   { "OFFSET", QVariant(d.offset)                           },
+                                   { "SNR",    QVariant(d.snr)                              },
+                                   { "SPEED",  QVariant(d.submode)                          },
+                                   { "TDRIFT", QVariant(d.tdrift)                           },
+                                   { "UTC",    QVariant(d.utcTimestamp.toMSecsSinceEpoch()) }
+            });
         }
 
         // we're only responding to allcalls if we are participating in the
         // allcall group but, don't avoid for heartbeats...those are technically
         // allcalls but are processed differently
-        if (isAllCall && m_config.avoid_allcall() && d.cmd != " CQ" &&
-            d.cmd != " HB" && d.cmd != " HEARTBEAT") {
+        if (isAllCall && m_config.avoid_allcall() && d.cmd != " CQ" && d.cmd != " HB"
+            && d.cmd != " HEARTBEAT") {
             continue;
         }
 
@@ -201,19 +198,17 @@ void MainWindow::processCommandActivity() {
             // ACKs and SNRs are the most likely source of items to be
             // overwritten (multiple responses at once)... so don't overwrite
             // those (i.e., print each on a new line)
-            bool shouldOverwrite =
-                (!d.cmd.contains(" ACK") &&
-                 !d.cmd.contains(" SNR")); /* && isRecentOffset(d.freq);*/
+            bool shouldOverwrite = (!d.cmd.contains(" ACK")
+                                    && !d.cmd.contains(" SNR")); /* && isRecentOffset(d.freq);*/
 
-            if (shouldOverwrite &&
-                ui->textEditRX->find(d.utcTimestamp.time().toString(),
-                                     QTextDocument::FindBackward)) {
+            if (shouldOverwrite
+                && ui->textEditRX->find(d.utcTimestamp.time().toString(),
+                                        QTextDocument::FindBackward)) {
                 // ... maybe we could delete the last line that had this message
                 // on this frequency...
                 c = ui->textEditRX->textCursor();
                 c.movePosition(QTextCursor::StartOfBlock);
-                c.movePosition(QTextCursor::EndOfBlock,
-                               QTextCursor::KeepAnchor);
+                c.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
                 qCDebug(mainwindow_js8) << "should display directed message, "
                                            "erasing last rx activity line..."
                                         << c.selectedText().toUpper();
@@ -227,8 +222,7 @@ void MainWindow::processCommandActivity() {
             }
 
             // log it to the display!
-            displayTextForFreq(ad.text, ad.offset, ad.utcTimestamp, false, true,
-                               false);
+            displayTextForFreq(ad.text, ad.offset, ad.utcTimestamp, false, true, false);
 
             /*
             // and send it to the network in case we want to interact with it
@@ -256,9 +250,8 @@ void MainWindow::processCommandActivity() {
                 // If we've received a message to be displayed,
                 // we should no longer call CQ
                 if (m_cq_loop->isActive()) {
-                    qCDebug(mainwindow_js8)
-                        << "Canceling CQ loop to prioritize incoming messages, "
-                           "case II";
+                    qCDebug(mainwindow_js8) << "Canceling CQ loop to prioritize incoming messages, "
+                                               "case II";
                     m_cq_loop->onLoopCancel();
                 }
 
@@ -271,45 +264,39 @@ void MainWindow::processCommandActivity() {
         // defined... make sure the whitelist is empty (no restrictions) or the
         // from callsign or its base callsign is on it
         auto whitelist = m_config.auto_whitelist();
-        if (!whitelist.isEmpty() &&
-            !(whitelist.contains(d.from) ||
-              whitelist.contains(Radio::base_callsign(d.from)))) {
-            qCDebug(mainwindow_js8)
-                << "skipping command for whitelist" << d.from;
+        if (!whitelist.isEmpty()
+            && !(whitelist.contains(d.from) || whitelist.contains(Radio::base_callsign(d.from)))) {
+            qCDebug(mainwindow_js8) << "skipping command for whitelist" << d.from;
             continue;
         }
 
         // we'll never reply to a blacklisted callsign or base callsign
         auto blacklist = m_config.auto_blacklist();
-        if (!blacklist.isEmpty() &&
-            (blacklist.contains(d.from) ||
-             blacklist.contains(Radio::base_callsign(d.from)))) {
-            qCDebug(mainwindow_js8)
-                << "skipping command for blacklist" << d.from;
+        if (!blacklist.isEmpty()
+            && (blacklist.contains(d.from) || blacklist.contains(Radio::base_callsign(d.from)))) {
+            qCDebug(mainwindow_js8) << "skipping command for blacklist" << d.from;
             continue;
         }
 
         // if this is an allcall, check to make sure we haven't replied to their
         // allcall recently (in the past ten minutes) that way we never get
         // spammed by allcalls at too high of a frequency
-        if (isAllCall && m_txAllcallCommandCache.contains(d.from) &&
-            m_txAllcallCommandCache[d.from]->secsTo(now) / 60 < 15) {
-            qCDebug(mainwindow_js8)
-                << "skipping command for allcall timeout" << d.from;
+        if (isAllCall && m_txAllcallCommandCache.contains(d.from)
+            && m_txAllcallCommandCache[d.from]->secsTo(now) / 60 < 15) {
+            qCDebug(mainwindow_js8) << "skipping command for allcall timeout" << d.from;
             continue;
         }
 
         // don't actually process any automatic message replies while in idle
         if (m_tx_watchdog) {
-            qCDebug(mainwindow_js8)
-                << "skipping command for idle timeout" << d.from;
+            qCDebug(mainwindow_js8) << "skipping command for idle timeout" << d.from;
             continue;
         }
 
         // HACK: if this is an autoreply cmd and relay path is populated and cmd
         // is not MSG or MSG TO:, then swap out the relay path
-        if (Varicode::isCommandAutoreply(d.cmd) && !d.relayPath.isEmpty() &&
-            !d.cmd.startsWith(" MSG") && !d.cmd.startsWith(" QUERY")) {
+        if (Varicode::isCommandAutoreply(d.cmd) && !d.relayPath.isEmpty()
+            && !d.cmd.startsWith(" MSG") && !d.cmd.startsWith(" QUERY")) {
             d.from = d.relayPath;
         }
 
@@ -322,9 +309,7 @@ void MainWindow::processCommandActivity() {
         // Only reply to a SNR request if there is no incoming MSG's and is not
         // directed to AllCall
         if (d.cmd == " SNR?" && !isAllCall && m_messageBuffer.isEmpty()) {
-            reply = QString("%1 SNR %2")
-                        .arg(d.from)
-                        .arg(Varicode::formatSNR(d.snr));
+            reply = QString("%1 SNR %2").arg(d.from).arg(Varicode::formatSNR(d.snr));
         }
 
         // QUERIED INFO
@@ -344,8 +329,7 @@ void MainWindow::processCommandActivity() {
         // QUERIED ACTIVE
         // Only reply to a STATUS request if there is no incoming MSG's and is
         // not directed to AllCall
-        else if (d.cmd == " STATUS?" && !isAllCall &&
-                 m_messageBuffer.isEmpty()) {
+        else if (d.cmd == " STATUS?" && !isAllCall && m_messageBuffer.isEmpty()) {
             QString status = m_config.my_status();
             if (status.isEmpty()) {
                 continue;
@@ -371,14 +355,14 @@ void MainWindow::processCommandActivity() {
         // QUERIED STATIONS HEARD
         // Only reply to a HEARING request if there is no incoming MSG's and is
         // not directed to AllCall
-        else if (d.cmd == " HEARING?" && !isAllCall &&
-                 m_messageBuffer.isEmpty()) {
+        else if (d.cmd == " HEARING?" && !isAllCall && m_messageBuffer.isEmpty()) {
             auto calls = m_callActivity.keys();
 
-            std::stable_sort(calls.begin(), calls.end(),
-                             [this](QString const &lhs, QString const &rhs) {
-                                 return m_callActivity[rhs].utcTimestamp <
-                                        m_callActivity[lhs].utcTimestamp;
+            std::stable_sort(calls.begin(),
+                             calls.end(),
+                             [this](QString const& lhs, QString const& rhs) {
+                                 return m_callActivity[rhs].utcTimestamp
+                                     < m_callActivity[lhs].utcTimestamp;
                              });
 
             auto const callsignAging = m_config.callsign_aging();
@@ -386,16 +370,15 @@ void MainWindow::processCommandActivity() {
             auto i = 0;
             QStringList lines;
 
-            for (auto const &call : calls) {
+            for (auto const& call : calls) {
                 if (i >= maxStations)
                     break;
                 if (call == d.from)
                     continue;
 
-                auto const &cd = m_callActivity[call];
+                auto const& cd = m_callActivity[call];
 
-                if (callsignAging &&
-                    cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+                if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                     continue;
                 }
 
@@ -415,7 +398,8 @@ void MainWindow::processCommandActivity() {
             // 3. otherwise, display alert & reply dialog
 
             QString callToPattern = {
-                R"(^(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?(?<type>[> ]))\b)"};
+                R"(^(?<callsign>\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?(?<type>[> ]))\b)"
+            };
             QRegularExpression re(callToPattern);
             auto text = d.text;
             auto match = re.match(text);
@@ -426,7 +410,8 @@ void MainWindow::processCommandActivity() {
                 // replace freetext with relayed free text
                 if (match.captured("type") != ">") {
                     text = text.replace(match.capturedStart("type"),
-                                        match.capturedLength("type"), ">");
+                                        match.capturedLength("type"),
+                                        ">");
                 }
                 reply = QString("%1 *DE* %2").arg(text).arg(d.from);
 
@@ -494,16 +479,14 @@ void MainWindow::processCommandActivity() {
                         }
                     }
 
-                    if (Varicode::isCommandAllowed(first) &&
-                        Varicode::isCommandAutoreply(first)) {
+                    if (Varicode::isCommandAllowed(first) && Varicode::isCommandAutoreply(first)) {
                         CommandDetail rd = {};
                         rd.bits = d.bits;
                         rd.cmd = first;
                         rd.dial = d.dial;
                         rd.offset = d.offset;
-                        rd.from =
-                            d.from; // note, MSG and QUERY commands are not set
-                                    // with from as the relay path.
+                        rd.from = d.from; // note, MSG and QUERY commands are not set
+                                          // with from as the relay path.
                         rd.relayPath = d.relayPath;
                         rd.text = relayedCmds.join(" "); // d.text;
                         rd.to = d.to;
@@ -554,20 +537,17 @@ void MainWindow::processCommandActivity() {
             cd.utcTimestamp = d.utcTimestamp;
             cd.submode = d.submode;
 
-            qCDebug(mainwindow_js8)
-                << "storing message to" << to << ":" << text;
+            qCDebug(mainwindow_js8) << "storing message to" << to << ":" << text;
 
             addCommandToStorage("STORE", cd);
 
             // we haven't replaced the from with the relay path, so we have to
             // use it for the ack if there is one
-            reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath
-                                                             : d.from);
+            reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath : d.from);
         }
 
         // PROCESS AGN
-        else if (d.cmd == " AGN?" && !isAllCall && !isGroupCall &&
-                 !m_lastTxMessage.isEmpty()) {
+        else if (d.cmd == " AGN?" && !isAllCall && !isGroupCall && !m_lastTxMessage.isEmpty()) {
             reply = Varicode::rstrip(m_lastTxMessage);
         }
 
@@ -575,11 +555,9 @@ void MainWindow::processCommandActivity() {
         // if we have hb mode enabled and auto reply enabled <del>and auto ack
         // enabled and no callsign is selected</del> update: if we're in HB
         // mode, doesn't matter if a callsign is selected.
-        else if ((d.cmd == " HB" || d.cmd == " HEARTBEAT") &&
-                 canCurrentModeSendHeartbeat() &&
-                 ui->actionModeJS8HB->isChecked() &&
-                 ui->actionModeAutoreply->isChecked() &&
-                 ui->actionHeartbeatAcknowledgements->isChecked()) {
+        else if ((d.cmd == " HB" || d.cmd == " HEARTBEAT") && canCurrentModeSendHeartbeat()
+                 && ui->actionModeJS8HB->isChecked() && ui->actionModeAutoreply->isChecked()
+                 && ui->actionHeartbeatAcknowledgements->isChecked()) {
             // do not process HB activity if buffer is not empty, this prevents
             // broken incoming MSG's
             if (!m_messageBuffer.isEmpty()) {
@@ -595,9 +573,8 @@ void MainWindow::processCommandActivity() {
             }
 
             // check to make sure this callsign isn't blacklisted
-            if (m_config.hb_blacklist().contains(d.from) ||
-                m_config.hb_blacklist().contains(
-                    Radio::base_callsign(d.from))) {
+            if (m_config.hb_blacklist().contains(d.from)
+                || m_config.hb_blacklist().contains(Radio::base_callsign(d.from))) {
                 qCDebug(mainwindow_js8) << "hb blacklist blocking" << d.from;
                 continue;
             }
@@ -666,18 +643,21 @@ void MainWindow::processCommandActivity() {
 
             // we haven't replaced the from with the relay path, so we have to
             // use it for the ack if there is one
-            reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath
-                                                             : d.from);
+            reply = QString("%1 ACK").arg(calls.length() > 1 ? d.relayPath : d.from);
 
 #define SHOW_ALERT_FOR_MSG 1
 #if SHOW_ALERT_FOR_MSG
-            SelfDestructMessageBox *m = new SelfDestructMessageBox(
-                300, "New Message Received",
-                QString("A new message was received at %1 UTC from %2")
-                    .arg(d.utcTimestamp.time().toString())
-                    .arg(d.from),
-                QMessageBox::Information, QMessageBox::Ok, QMessageBox::Ok,
-                false, this);
+            SelfDestructMessageBox* m
+                = new SelfDestructMessageBox(300,
+                                             "New Message Received",
+                                             QString("A new message was received at %1 UTC from %2")
+                                                 .arg(d.utcTimestamp.time().toString())
+                                                 .arg(d.from),
+                                             QMessageBox::Information,
+                                             QMessageBox::Ok,
+                                             QMessageBox::Ok,
+                                             false,
+                                             this);
 
             m->show();
 #endif
@@ -748,8 +728,7 @@ void MainWindow::processCommandActivity() {
                 // retrieved by anybody
                 bool isGroupMsg = to.startsWith("@");
 
-                if (!isGroupMsg && to != who &&
-                    to != Radio::base_callsign(who)) {
+                if (!isGroupMsg && to != who && to != Radio::base_callsign(who)) {
                     continue;
                 }
 
@@ -767,19 +746,15 @@ void MainWindow::processCommandActivity() {
                  * and the message has been processed in the transaction queue.
                  */
                 if (!isGroupMsg) {
-                    callback = [this, mid, msg]() {
-                        this->markMsgDelivered(mid, msg);
-                    };
+                    callback = [this, mid, msg]() { this->markMsgDelivered(mid, msg); };
                 } else {
-                    callback = [this, mid, who]() {
-                        this->markGroupMsgDeliveredForCallsign(mid, who);
-                    };
+                    callback
+                        = [this, mid, who]() { this->markGroupMsgDeliveredForCallsign(mid, who); };
                 }
 
                 auto lookaheadMid = getLookaheadMessageIdForCallsign(who, mid);
                 if (lookaheadMid == -1 && isGroupMsg) {
-                    lookaheadMid =
-                        getLookaheadGroupMessageIdForCallsign(d.to, who, mid);
+                    lookaheadMid = getLookaheadGroupMessageIdForCallsign(d.to, who, mid);
                 }
 
                 // and reply
@@ -801,9 +776,8 @@ void MainWindow::processCommandActivity() {
         // PROCESS BUFFERED QUERY MSGS
         // Do not process this request if there is incoming MSG as it breaks the
         // incoming
-        else if (d.cmd == " QUERY MSGS" &&
-                 ui->actionModeAutoreply->isChecked() &&
-                 m_messageBuffer.isEmpty()) {
+        else if (d.cmd == " QUERY MSGS" && ui->actionModeAutoreply->isChecked()
+                 && m_messageBuffer.isEmpty()) {
             auto who = d.from; // keep in mind, this is the sender, not the
                                // original requestor if relayed
             auto replyPath = d.from;
@@ -843,9 +817,8 @@ void MainWindow::processCommandActivity() {
         // PROCESS BUFFERED QUERY CALL
         // Do not process this request if there is incoming MSG as it breaks the
         // incoming
-        else if (d.cmd == " QUERY CALL" &&
-                 ui->actionModeAutoreply->isChecked() &&
-                 m_messageBuffer.isEmpty()) {
+        else if (d.cmd == " QUERY CALL" && ui->actionModeAutoreply->isChecked()
+                 && m_messageBuffer.isEmpty()) {
             auto replyPath = d.from;
             if (d.relayPath.contains(">")) {
                 replyPath = d.relayPath;
@@ -865,13 +838,11 @@ void MainWindow::processCommandActivity() {
             int callsignAging = m_config.callsign_aging();
             auto baseCall = callsigns.first();
             foreach (auto cd, m_callActivity.values()) {
-                if (callsignAging &&
-                    cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+                if (callsignAging && cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
                     continue;
                 }
 
-                if (baseCall == cd.call ||
-                    baseCall == Radio::base_callsign(cd.call)) {
+                if (baseCall == cd.call || baseCall == Radio::base_callsign(cd.call)) {
                     auto r = QString("%1 (%2)")
                                  .arg(Varicode::formatSNR(cd.snr))
                                  .arg(since(cd.utcTimestamp))
@@ -889,8 +860,7 @@ void MainWindow::processCommandActivity() {
 
             if (!reply.isEmpty()) {
                 if (isAllCall) {
-                    m_txAllcallCommandCache.insert(d.from, new QDateTime(now),
-                                                   25);
+                    m_txAllcallCommandCache.insert(d.from, new QDateTime(now), 25);
                 }
             }
         }
@@ -933,8 +903,8 @@ void MainWindow::processCommandActivity() {
         // do not queue for reply if there's a buffer open to us
         int bufferOffset = 0;
         if (hasExistingMessageBufferToMe(&bufferOffset)) {
-            qCDebug(mainwindow_js8) << "skipping reply due to open buffer"
-                                    << bufferOffset << m_messageBuffer.count();
+            qCDebug(mainwindow_js8)
+                << "skipping reply due to open buffer" << bufferOffset << m_messageBuffer.count();
             continue;
         }
 

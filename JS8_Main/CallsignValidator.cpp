@@ -10,9 +10,10 @@
  * @param parent 
  * @param allow_compound 
  */
-CallsignValidator::CallsignValidator(QObject *parent, bool allow_compound)
-    : QValidator{parent},
-      re_{allow_compound ? R"(^[A-Za-z0-9/]+$)" : R"(^[A-Za-z0-9]+$)"} {}
+CallsignValidator::CallsignValidator(QObject* parent, bool allow_compound) :
+    QValidator { parent }, re_ { allow_compound ? R"(^[A-Za-z0-9/]+$)" : R"(^[A-Za-z0-9]+$)" }
+{
+}
 
 /**
  * @brief Validate the callsign input
@@ -21,9 +22,9 @@ CallsignValidator::CallsignValidator(QObject *parent, bool allow_compound)
  * @param pos 
  * @return State 
  */
-auto CallsignValidator::validate(QString &input, int &pos) const -> State {
-    auto match =
-        re_.match(input, 0, QRegularExpression::PartialPreferCompleteMatch);
+auto CallsignValidator::validate(QString& input, int& pos) const -> State
+{
+    auto match = re_.match(input, 0, QRegularExpression::PartialPreferCompleteMatch);
     input = input.toUpper();
     if (input.count(QLatin1Char('/')) > 2)
         return Invalid;

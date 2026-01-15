@@ -1,7 +1,9 @@
 #include "WSJTXMessageMapper.h"
-#include "JS8_UI/mainwindow.h"
+
 #include <QLoggingCategory>
 #include <limits>
+
+#include "JS8_UI/mainwindow.h"
 
 Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
 
@@ -15,17 +17,15 @@ Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
  * @param main_window Main window instance for accessing JS8Call state
  * @param parent Parent QObject
  */
-WSJTXMessageMapper::WSJTXMessageMapper(WSJTXMessageClient *client,
-                                       MainWindow *main_window, QObject *parent)
-    : QObject{parent}, client_{client}, main_window_{main_window} {
-    connect(client_, &WSJTXMessageClient::reply, this,
-            &WSJTXMessageMapper::handleReply);
-    connect(client_, &WSJTXMessageClient::free_text, this,
-            &WSJTXMessageMapper::handleFreeText);
-    connect(client_, &WSJTXMessageClient::halt_tx, this,
-            &WSJTXMessageMapper::handleHaltTx);
-    connect(client_, &WSJTXMessageClient::location, this,
-            &WSJTXMessageMapper::handleLocation);
+WSJTXMessageMapper::WSJTXMessageMapper(WSJTXMessageClient* client,
+                                       MainWindow* main_window,
+                                       QObject* parent) :
+    QObject { parent }, client_ { client }, main_window_ { main_window }
+{
+    connect(client_, &WSJTXMessageClient::reply, this, &WSJTXMessageMapper::handleReply);
+    connect(client_, &WSJTXMessageClient::free_text, this, &WSJTXMessageMapper::handleFreeText);
+    connect(client_, &WSJTXMessageClient::halt_tx, this, &WSJTXMessageMapper::handleHaltTx);
+    connect(client_, &WSJTXMessageClient::location, this, &WSJTXMessageMapper::handleLocation);
 }
 
 /**
@@ -46,18 +46,24 @@ WSJTXMessageMapper::WSJTXMessageMapper(WSJTXMessageClient *client,
  * @param decoding Whether currently decoding
  * @param tx_message Current TX message text
  */
-void WSJTXMessageMapper::sendStatusUpdate(
-    Radio::Frequency dial_freq, Radio::Frequency offset, QString const &mode,
-    QString const &dx_call, QString const &de_call, QString const &de_grid,
-    QString const &dx_grid, bool tx_enabled, bool transmitting, bool decoding,
-    QString const &tx_message) {
-    qCDebug(wsjtx_mapper_js8)
-        << "WSJTXMessageMapper: sendStatusUpdate called"
-        << "dial_freq:" << dial_freq << "offset:" << offset << "mode:" << mode
-        << "dx_call:" << dx_call << "de_call:" << de_call
-        << "de_grid:" << de_grid << "dx_grid:" << dx_grid
-        << "tx_enabled:" << tx_enabled << "transmitting:" << transmitting
-        << "decoding:" << decoding;
+void WSJTXMessageMapper::sendStatusUpdate(Radio::Frequency dial_freq,
+                                          Radio::Frequency offset,
+                                          QString const& mode,
+                                          QString const& dx_call,
+                                          QString const& de_call,
+                                          QString const& de_grid,
+                                          QString const& dx_grid,
+                                          bool tx_enabled,
+                                          bool transmitting,
+                                          bool decoding,
+                                          QString const& tx_message)
+{
+    qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendStatusUpdate called"
+                              << "dial_freq:" << dial_freq << "offset:" << offset << "mode:" << mode
+                              << "dx_call:" << dx_call << "de_call:" << de_call
+                              << "de_grid:" << de_grid << "dx_grid:" << dx_grid
+                              << "tx_enabled:" << tx_enabled << "transmitting:" << transmitting
+                              << "decoding:" << decoding;
     Radio::Frequency freq = dial_freq + offset;
     QString submode = mode;     // JS8Call submode
     bool fast_mode = false;     // Map from JS8Call speed
@@ -66,11 +72,27 @@ void WSJTXMessageMapper::sendStatusUpdate(
     quint32 tr_period = std::numeric_limits<quint32>::max();
     QString configuration_name = "";
 
-    client_->status_update(
-        freq, mode, dx_call, "", mode, tx_enabled, transmitting, decoding,
-        static_cast<quint32>(offset), static_cast<quint32>(offset), de_call,
-        de_grid, dx_grid, false, submode, fast_mode, special_op_mode,
-        frequency_tolerance, tr_period, configuration_name, tx_message);
+    client_->status_update(freq,
+                           mode,
+                           dx_call,
+                           "",
+                           mode,
+                           tx_enabled,
+                           transmitting,
+                           decoding,
+                           static_cast<quint32>(offset),
+                           static_cast<quint32>(offset),
+                           de_call,
+                           de_grid,
+                           dx_grid,
+                           false,
+                           submode,
+                           fast_mode,
+                           special_op_mode,
+                           frequency_tolerance,
+                           tr_period,
+                           configuration_name,
+                           tx_message);
 }
 
 /**
@@ -88,18 +110,29 @@ void WSJTXMessageMapper::sendStatusUpdate(
  * @param message Decoded message text
  * @param low_confidence Whether decode confidence is low
  */
-void WSJTXMessageMapper::sendDecode(bool is_new, QTime time, qint32 snr,
-                                    float delta_time, quint32 delta_frequency,
-                                    QString const &mode, QString const &message,
-                                    bool low_confidence) {
-    qCDebug(wsjtx_mapper_js8)
-        << "WSJTXMessageMapper: sendDecode called"
-        << "is_new:" << is_new << "time:" << time.toString("hh:mm:ss")
-        << "snr:" << snr << "delta_time:" << delta_time
-        << "delta_frequency:" << delta_frequency << "mode:" << mode
-        << "message:" << message << "low_confidence:" << low_confidence;
-    client_->decode(is_new, time, snr, delta_time, delta_frequency, mode,
-                    message, low_confidence, false);
+void WSJTXMessageMapper::sendDecode(bool is_new,
+                                    QTime time,
+                                    qint32 snr,
+                                    float delta_time,
+                                    quint32 delta_frequency,
+                                    QString const& mode,
+                                    QString const& message,
+                                    bool low_confidence)
+{
+    qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendDecode called" << "is_new:" << is_new
+                              << "time:" << time.toString("hh:mm:ss") << "snr:" << snr
+                              << "delta_time:" << delta_time
+                              << "delta_frequency:" << delta_frequency << "mode:" << mode
+                              << "message:" << message << "low_confidence:" << low_confidence;
+    client_->decode(is_new,
+                    time,
+                    snr,
+                    delta_time,
+                    delta_frequency,
+                    mode,
+                    message,
+                    low_confidence,
+                    false);
 }
 
 /**
@@ -118,29 +151,46 @@ void WSJTXMessageMapper::sendDecode(bool is_new, QTime time, qint32 snr,
  * @param my_call My callsign
  * @param my_grid My grid square
  */
-void WSJTXMessageMapper::sendQSOLogged(
-    QDateTime time_off, QString const &dx_call, QString const &dx_grid,
-    Radio::Frequency dial_frequency, QString const &mode,
-    QString const &report_sent, QString const &report_received,
-    QString const &my_call, QString const &my_grid) {
-    qCDebug(wsjtx_mapper_js8)
-        << "WSJTXMessageMapper: sendQSOLogged called"
-        << "time_off:" << time_off.toString(Qt::ISODate)
-        << "dx_call:" << dx_call << "dx_grid:" << dx_grid
-        << "dial_frequency:" << dial_frequency << "mode:" << mode
-        << "report_sent:" << report_sent
-        << "report_received:" << report_received << "my_call:" << my_call
-        << "my_grid:" << my_grid;
+void WSJTXMessageMapper::sendQSOLogged(QDateTime time_off,
+                                       QString const& dx_call,
+                                       QString const& dx_grid,
+                                       Radio::Frequency dial_frequency,
+                                       QString const& mode,
+                                       QString const& report_sent,
+                                       QString const& report_received,
+                                       QString const& my_call,
+                                       QString const& my_grid)
+{
+    qCDebug(wsjtx_mapper_js8) << "WSJTXMessageMapper: sendQSOLogged called"
+                              << "time_off:" << time_off.toString(Qt::ISODate)
+                              << "dx_call:" << dx_call << "dx_grid:" << dx_grid
+                              << "dial_frequency:" << dial_frequency << "mode:" << mode
+                              << "report_sent:" << report_sent
+                              << "report_received:" << report_received << "my_call:" << my_call
+                              << "my_grid:" << my_grid;
     QDateTime time_on = time_off; // JS8Call doesn't track time_on separately
     QString operator_call = "";
     QString exchange_sent = "";
     QString exchange_rcvd = "";
     QString propmode = "";
 
-    client_->qso_logged(time_off, dx_call, dx_grid, dial_frequency, mode,
-                        report_sent, report_received, "", "", "", time_on,
-                        operator_call, my_call, my_grid, exchange_sent,
-                        exchange_rcvd, propmode);
+    client_->qso_logged(time_off,
+                        dx_call,
+                        dx_grid,
+                        dial_frequency,
+                        mode,
+                        report_sent,
+                        report_received,
+                        "",
+                        "",
+                        "",
+                        time_on,
+                        operator_call,
+                        my_call,
+                        my_grid,
+                        exchange_sent,
+                        exchange_rcvd,
+                        propmode);
 }
 
 /**
@@ -158,13 +208,15 @@ void WSJTXMessageMapper::sendQSOLogged(
  * @param low_confidence Whether decode confidence is low (unused)
  * @param modifiers Message modifiers (unused)
  */
-void WSJTXMessageMapper::handleReply(QTime /*time*/, qint32 /*snr*/,
+void WSJTXMessageMapper::handleReply(QTime /*time*/,
+                                     qint32 /*snr*/,
                                      float /*delta_time*/,
                                      quint32 /*delta_frequency*/,
-                                     QString const & /*mode*/,
-                                     QString const & /*message_text*/,
+                                     QString const& /*mode*/,
+                                     QString const& /*message_text*/,
                                      bool /*low_confidence*/,
-                                     quint8 /*modifiers*/) {
+                                     quint8 /*modifiers*/)
+{
     // Map WSJT-X Reply to JS8Call action
     // This would trigger a reply in JS8Call similar to double-clicking a decode
     // Implementation depends on MainWindow API - for now, just send as network
@@ -184,7 +236,8 @@ void WSJTXMessageMapper::handleReply(QTime /*time*/, qint32 /*snr*/,
  * @param text Free text to send
  * @param send Whether to send immediately
  */
-void WSJTXMessageMapper::handleFreeText(QString const &text, bool send) {
+void WSJTXMessageMapper::handleFreeText(QString const& text, bool send)
+{
     // Map to JS8Call TX.SET_TEXT message
     if (main_window_) {
         main_window_->sendNetworkMessage("TX.SET_TEXT", text);
@@ -201,7 +254,8 @@ void WSJTXMessageMapper::handleFreeText(QString const &text, bool send) {
  *
  * @param auto_only If true, only halt auto sequences
  */
-void WSJTXMessageMapper::handleHaltTx(bool auto_only) {
+void WSJTXMessageMapper::handleHaltTx(bool auto_only)
+{
     // Stop transmission
     if (main_window_ && !auto_only) {
         // TODO: Stop TX immediately
@@ -216,7 +270,8 @@ void WSJTXMessageMapper::handleHaltTx(bool auto_only) {
  *
  * @param location Grid square or location string
  */
-void WSJTXMessageMapper::handleLocation(QString const &location) {
+void WSJTXMessageMapper::handleLocation(QString const& location)
+{
     // Map to JS8Call STATION.SET_GRID
     if (main_window_) {
         main_window_->sendNetworkMessage("STATION.SET_GRID", location);

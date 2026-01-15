@@ -25,14 +25,15 @@
 
 #include "jsc_checker.h"
 
-#include <QTextEdit>
+#include <QLoggingCategory>
 #include <QTextBlock>
 #include <QTextCursor>
 #include <QTextDocument>
+#include <QTextEdit>
 #include <QTextLayout>
-#include <QLoggingCategory>
-#include "jsc.h"
+
 #include "JS8_Main/varicode.h"
+#include "jsc.h"
 
 Q_DECLARE_LOGGING_CATEGORY(jsc_checker_js8)
 
@@ -44,8 +45,7 @@ const QString ALPHABET = { "ABCDEFGHIJKLMNOPQRSTUVWXYZ" };
  * 
  * @param parent 
  */
-JSCChecker::JSCChecker(QObject *parent) :
-    QObject(parent)
+JSCChecker::JSCChecker(QObject* parent) : QObject(parent)
 {
 }
 
@@ -57,17 +57,19 @@ JSCChecker::JSCChecker(QObject *parent) :
  * @return true 
  * @return false 
  */
-bool cursorHasProperty(const QTextCursor &cursor, int property){
-    if(property < QTextFormat::UserProperty) {
+bool cursorHasProperty(const QTextCursor& cursor, int property)
+{
+    if (property < QTextFormat::UserProperty) {
         return false;
     }
-    if(cursor.charFormat().intProperty(property) == 1) {
+    if (cursor.charFormat().intProperty(property) == 1) {
         return true;
     }
-    auto const & formats = cursor.block().layout()->formats();
+    auto const& formats = cursor.block().layout()->formats();
     int pos = cursor.positionInBlock();
-    foreach(auto const & range, formats) {
-        if(pos > range.start && pos <= range.start + range.length && range.format.intProperty(property) == 1) {
+    foreach (auto const& range, formats) {
+        if (pos > range.start && pos <= range.start + range.length
+            && range.format.intProperty(property) == 1) {
             return true;
         }
     }
@@ -80,7 +82,8 @@ bool cursorHasProperty(const QTextCursor &cursor, int property){
  * @param c 
  * @return QString 
  */
-QString nextChar(QTextCursor c){
+QString nextChar(QTextCursor c)
+{
     QTextCursor cur(c);
     cur.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
     return cur.selectedText().toUpper();
@@ -93,7 +96,8 @@ QString nextChar(QTextCursor c){
  * @return true 
  * @return false 
  */
-bool isNumeric(QString s){
+bool isNumeric(QString s)
+{
     return s.indexOf(QRegularExpression("^\\d+$")) == 0;
 }
 
@@ -104,7 +108,8 @@ bool isNumeric(QString s){
  * @return true 
  * @return false 
  */
-bool isWordChar(QString ch){
+bool isWordChar(QString ch)
+{
     return ch.contains(QRegularExpression("^\\w$"));
 }
 
@@ -117,7 +122,7 @@ bool isWordChar(QString ch){
  */
 void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
 {
-    if(end == -1){
+    if (end == -1) {
         QTextCursor tmpCursor(edit->textCursor());
         tmpCursor.movePosition(QTextCursor::End);
         end = tmpCursor.position();
@@ -139,31 +144,31 @@ void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
     cursor.beginEditBlock();
     {
         cursor.setPosition(start);
-        while(cursor.position() < end) {
+        while (cursor.position() < end) {
             bool correct = false;
 
             cursor.movePosition(QTextCursor::EndOfWord, QTextCursor::KeepAnchor);
-            if(cursor.selectedText()/*.toUpper()*/ == "@"){
+            if (cursor.selectedText() /*.toUpper()*/ == "@") {
                 cursor.movePosition(QTextCursor::NextCharacter, QTextCursor::KeepAnchor);
                 cursor.movePosition(QTextCursor::EndOfWord, QTextCursor::KeepAnchor);
             }
 
-            if(cursorHasProperty(cursor, CORRECT)){
+            if (cursorHasProperty(cursor, CORRECT)) {
                 correct = true;
             } else {
                 QString word = cursor.selectedText().toUpper();
 
                 // three or less is always "correct"
-                if(word.length() < 4 || isNumeric(word)){
+                if (word.length() < 4 || isNumeric(word)) {
                     correct = true;
                 } else {
                     bool found = false;
                     quint32 index = JSC::lookup(word, &found);
-                    if(found){
+                    if (found) {
                         correct = JSC::map[index].size == word.length();
                     }
 
-                    if(!correct){
+                    if (!correct) {
                         correct = Varicode::isValidCallsign(word, nullptr);
                     }
                 }
@@ -171,7 +176,7 @@ void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
                 //qCDebug(jsc_checker_js8) << "word" << word << "correct" << correct;
             }
 
-            if(correct){
+            if (correct) {
                 QTextCharFormat fmt = cursor.charFormat();
                 fmt.setFontUnderline(defaultFormat.fontUnderline());
                 fmt.setUnderlineColor(defaultFormat.underlineColor());
@@ -201,12 +206,13 @@ void JSCChecker::checkRange(QTextEdit* edit, int start, int end)
  * @param includeDeletions 
  * @return QSet<QString> 
  */
-QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions){
+QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions)
+{
     QSet<QString> all;
 
     // 1-edit distance words (i.e., prefixed/suffixed/edited characters)
-    for(int i = 0; i < 26; i++){
-        if(includeAdditions){
+    for (int i = 0; i < 26; i++) {
+        if (includeAdditions) {
             auto prefixed = ALPHABET.mid(i, 1) + word;
             all.insert(prefixed);
 
@@ -214,15 +220,15 @@ QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions
             all.insert(suffixed);
         }
 
-        for(int j = 0; j < word.length(); j++){
+        for (int j = 0; j < word.length(); j++) {
             auto edited = word.mid(0, j) + ALPHABET.mid(i, 1) + word.mid(j + 1, word.length() - j);
             all.insert(edited);
         }
     }
 
     // 1-edit distance words (i.e., removed characters)
-    if(includeDeletions){
-        for(int j = 0; j < word.length(); j++){
+    if (includeDeletions) {
+        for (int j = 0; j < word.length(); j++) {
             auto deleted = word.mid(0, j) + word.mid(j + 1, word.length() - j);
             all.insert(deleted);
         }
@@ -238,14 +244,15 @@ QSet<QString> oneEdit(QString word, bool includeAdditions, bool includeDeletions
  * @param includeTwoEdits 
  * @return QMultiMap<quint32, QString> 
  */
-QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits){
+QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits)
+{
     // one edit
     QSet<QString> one = oneEdit(word, true, true);
 
     // two edits
     QSet<QString> two;
-    if(includeTwoEdits){
-        foreach(auto w, one){
+    if (includeTwoEdits) {
+        foreach (auto w, one) {
             two |= oneEdit(w, false, false);
         }
     }
@@ -254,8 +261,8 @@ QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits){
     QMultiMap<quint32, QString> m;
 
     quint32 index;
-    foreach(auto w, one | two){
-        if(JSC::exists(w, &index)){
+    foreach (auto w, one | two) {
+        if (JSC::exists(w, &index)) {
             m.insert(index, w);
         }
     }
@@ -271,7 +278,8 @@ QMultiMap<quint32, QString> candidates(QString word, bool includeTwoEdits){
  * @param pFound 
  * @return QStringList 
  */
-QStringList JSCChecker::suggestions(QString word, int n, bool *pFound){
+QStringList JSCChecker::suggestions(QString word, int n, bool* pFound)
+{
     QStringList s;
 
     // qCDebug(jsc_checker_js8) << "computing suggestions for word" << word;
@@ -282,9 +290,9 @@ QStringList JSCChecker::suggestions(QString word, int n, bool *pFound){
 
     // lookup actual word prefix that is not a single character
     quint32 index = JSC::lookup(word, &prefixFound);
-    if(prefixFound){
+    if (prefixFound) {
         auto t = JSC::map[index];
-        if(t.size > 1){
+        if (t.size > 1) {
             m.insert(index, QString::fromLatin1(t.str, t.size));
         }
     }
@@ -294,8 +302,8 @@ QStringList JSCChecker::suggestions(QString word, int n, bool *pFound){
 
     // return in order of probability (i.e., index rank)
     int i = 0;
-    foreach(auto key, m.uniqueKeys()){
-        if(i >= n){
+    foreach (auto key, m.uniqueKeys()) {
+        if (i >= n) {
             break;
         }
         //qCDebug(jsc_checker_js8) << "suggest" << m[key] << key;
@@ -303,7 +311,8 @@ QStringList JSCChecker::suggestions(QString word, int n, bool *pFound){
         i++;
     }
 
-    if(pFound) *pFound = prefixFound;
+    if (pFound)
+        *pFound = prefixFound;
 
     return s;
 }

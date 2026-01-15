@@ -1,9 +1,10 @@
 #ifndef MODULATOR_HPP__
 #define MODULATOR_HPP__
 
-#include "JS8_Audio/AudioDevice.h"
 #include <QAudio>
 #include <QPointer>
+
+#include "JS8_Audio/AudioDevice.h"
 
 class SoundOutput;
 
@@ -16,15 +17,21 @@ class SoundOutput;
  * This is intended to run in a thread different from the GUI thread.
  * It is **not** generally thread-safe, see remarks below.
  */
-class Modulator final : public AudioDevice {
+class Modulator final : public AudioDevice
+{
     Q_OBJECT;
 
-  public:
-    enum class State { Synchronizing, Active, Idle };
+public:
+    enum class State
+    {
+        Synchronizing,
+        Active,
+        Idle
+    };
 
     // Constructor
 
-    explicit Modulator(QObject *parent = nullptr) : AudioDevice{parent} {}
+    explicit Modulator(QObject* parent = nullptr) : AudioDevice { parent } { }
 
     // Inline accessors
 
@@ -45,22 +52,28 @@ class Modulator final : public AudioDevice {
      * This is **not** by itself thread-safe, but ok if fed
      * via the Qt signalling mechanism.
      */
-    Q_SLOT void setAudioFrequency(double const audioFrequency) {
+    Q_SLOT void setAudioFrequency(double const audioFrequency)
+    {
         m_audioFrequency = audioFrequency;
     }
 
     // Slots
 
-    Q_SLOT void start(double audioFrequency, int submode, double tx_delay,
-                      SoundOutput *stream, Channel channel);
+    Q_SLOT void start(double audioFrequency,
+                      int submode,
+                      double tx_delay,
+                      SoundOutput* stream,
+                      Channel channel);
     Q_SLOT void stop(bool quick = false);
     Q_SLOT void tune(bool state = true);
 
-  protected:
+protected:
     // QIODevice protocol
 
-    qint64 readData(char *, qint64) override;
-    qint64 writeData(char const *, qint64) override {
+    qint64 readData(char*, qint64) override;
+
+    qint64 writeData(char const*, qint64) override
+    {
         return -1; // we don't consume data
     }
 
@@ -74,7 +87,7 @@ class Modulator final : public AudioDevice {
 
     qint64 bytesAvailable() const override { return 8000; }
 
-  private:
+private:
     // Data members
 
     QPointer<SoundOutput> m_stream;

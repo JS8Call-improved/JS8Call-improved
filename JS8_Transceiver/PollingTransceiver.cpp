@@ -1,30 +1,34 @@
 #include "PollingTransceiver.h"
 
-#include <exception>
-
 #include <QObject>
 #include <QString>
 #include <QTimer>
+#include <exception>
 
 #include "moc_PollingTransceiver.cpp"
 
-namespace {
-unsigned const polls_to_stabilize{3};
+namespace
+{
+unsigned const polls_to_stabilize { 3 };
 }
 
-PollingTransceiver::PollingTransceiver(int poll_interval, QObject *parent)
-    : TransceiverBase{parent}, interval_{poll_interval * 1000},
-      poll_timer_{nullptr}, retries_{0} {}
+PollingTransceiver::PollingTransceiver(int poll_interval, QObject* parent) :
+    TransceiverBase { parent },
+    interval_ { poll_interval * 1000 },
+    poll_timer_ { nullptr },
+    retries_ { 0 }
+{
+}
 
-void PollingTransceiver::start_timer() {
+void PollingTransceiver::start_timer()
+{
     if (interval_) {
         if (!poll_timer_) {
-            poll_timer_ = new QTimer{this}; // pass ownership to
-                                            // QObject which handles
-                                            // destruction for us
+            poll_timer_ = new QTimer { this }; // pass ownership to
+                                               // QObject which handles
+                                               // destruction for us
 
-            connect(poll_timer_, &QTimer::timeout, this,
-                    &PollingTransceiver::handle_timeout);
+            connect(poll_timer_, &QTimer::timeout, this, &PollingTransceiver::handle_timeout);
         }
         poll_timer_->start(interval_);
     } else {
@@ -32,13 +36,15 @@ void PollingTransceiver::start_timer() {
     }
 }
 
-void PollingTransceiver::stop_timer() {
+void PollingTransceiver::stop_timer()
+{
     if (poll_timer_) {
         poll_timer_->stop();
     }
 }
 
-void PollingTransceiver::do_post_start() {
+void PollingTransceiver::do_post_start()
+{
     start_timer();
     if (!next_state_.online()) {
         // remember that we are expecting to go online
@@ -47,13 +53,15 @@ void PollingTransceiver::do_post_start() {
     }
 }
 
-void PollingTransceiver::do_post_stop() {
+void PollingTransceiver::do_post_stop()
+{
     // not much point waiting for rig to go offline since we are ceasing
     // polls
     stop_timer();
 }
 
-void PollingTransceiver::do_post_frequency(Frequency f, MODE m) {
+void PollingTransceiver::do_post_frequency(Frequency f, MODE m)
+{
     // take care not to set the expected next mode to unknown since some
     // callers use mode == unknown to signify that they do not know the
     // mode and don't care
@@ -67,7 +75,8 @@ void PollingTransceiver::do_post_frequency(Frequency f, MODE m) {
     }
 }
 
-void PollingTransceiver::do_post_tx_frequency(Frequency f, MODE) {
+void PollingTransceiver::do_post_tx_frequency(Frequency f, MODE)
+{
     if (next_state_.tx_frequency() != f) {
         // update expected state with new TX frequency and set poll
         // count
@@ -77,7 +86,8 @@ void PollingTransceiver::do_post_tx_frequency(Frequency f, MODE) {
     }
 }
 
-void PollingTransceiver::do_post_mode(MODE m) {
+void PollingTransceiver::do_post_mode(MODE m)
+{
     // we don't ever expect mode to goto to unknown
     if (m != UNK && next_state_.mode() != m) {
         // update expected state with new mode and set poll count
@@ -86,7 +96,8 @@ void PollingTransceiver::do_post_mode(MODE m) {
     }
 }
 
-void PollingTransceiver::do_post_ptt(bool p) {
+void PollingTransceiver::do_post_ptt(bool p)
+{
     if (next_state_.ptt() != p) {
         // update expected state with new PTT and set poll count
         next_state_.ptt(p);
@@ -95,7 +106,8 @@ void PollingTransceiver::do_post_ptt(bool p) {
     }
 }
 
-bool PollingTransceiver::do_pre_update() {
+bool PollingTransceiver::do_pre_update()
+{
     // if we are holding off a change then withhold the signal
     if (retries_ && state() != next_state_) {
         return false;
@@ -103,7 +115,8 @@ bool PollingTransceiver::do_pre_update() {
     return true;
 }
 
-void PollingTransceiver::do_sync(bool force_signal, bool no_poll) {
+void PollingTransceiver::do_sync(bool force_signal, bool no_poll)
+{
     if (!no_poll)
         poll(); // tell sub-classes to update our state
 
@@ -135,14 +148,15 @@ void PollingTransceiver::do_sync(bool force_signal, bool no_poll) {
     }
 }
 
-void PollingTransceiver::handle_timeout() {
+void PollingTransceiver::handle_timeout()
+{
     QString message;
 
     // we must catch all exceptions here since we are called by Qt and
     // inform our parent of the failure via the offline() message
     try {
         do_sync();
-    } catch (std::exception const &e) {
+    } catch (std::exception const& e) {
         message = e.what();
     } catch (...) {
         message = tr("Unexpected rig error");

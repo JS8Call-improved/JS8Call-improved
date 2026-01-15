@@ -7,7 +7,6 @@
 #include <QString>
 
 #include "JS8_Include/pimpl_h.h"
-
 #include "Radio.h"
 
 class Bands;
@@ -38,8 +37,9 @@ class Bands;
 //
 //  Uses the Bands model to lookup band information.
 //
-class StationList final : public QSortFilterProxyModel {
-  public:
+class StationList final : public QSortFilterProxyModel
+{
+public:
     using Frequency = Radio::Frequency;
     using FrequencyDelta = Radio::FrequencyDelta;
 
@@ -48,7 +48,8 @@ class StationList final : public QSortFilterProxyModel {
     //
     //  Aggregation of fields that describe a radio station on a band.
     //
-    struct Station {
+    struct Station
+    {
         QString band_name_;
         Frequency frequency_;
         QDateTime switch_at_;
@@ -58,7 +59,8 @@ class StationList final : public QSortFilterProxyModel {
 
     using Stations = QList<Station>;
 
-    enum Column {
+    enum Column
+    {
         band_column,
         frequency_column,
         switch_at_column,
@@ -66,14 +68,13 @@ class StationList final : public QSortFilterProxyModel {
         description_column
     };
 
-    explicit StationList(Bands const *bands, QObject *parent = nullptr);
-    explicit StationList(Bands const *bands, Stations,
-                         QObject *parent = nullptr);
+    explicit StationList(Bands const* bands, QObject* parent = nullptr);
+    explicit StationList(Bands const* bands, Stations, QObject* parent = nullptr);
     ~StationList();
 
     // Load and query contents.
     Stations station_list(Stations);
-    Stations const &station_list() const;
+    Stations const& station_list() const;
 
     //
     // Model API
@@ -85,26 +86,24 @@ class StationList final : public QSortFilterProxyModel {
     // Custom sort role.
     static int constexpr SortRole = Qt::UserRole;
 
-  private:
+private:
     class impl;
     pimpl<impl> m_;
 };
 
 // Station equivalence
-inline bool operator==(StationList::Station const &lhs,
-                       StationList::Station const &rhs) {
-    return lhs.band_name_ == rhs.band_name_ &&
-           lhs.description_ == rhs.description_ &&
-           lhs.frequency_ == rhs.frequency_ &&
-           lhs.switch_at_ == rhs.switch_at_ &&
-           lhs.switch_until_ == rhs.switch_until_;
+inline bool operator==(StationList::Station const& lhs, StationList::Station const& rhs)
+{
+    return lhs.band_name_ == rhs.band_name_ && lhs.description_ == rhs.description_
+        && lhs.frequency_ == rhs.frequency_ && lhs.switch_at_ == rhs.switch_at_
+        && lhs.switch_until_ == rhs.switch_until_;
 }
 
-QDataStream &operator<<(QDataStream &, StationList::Station const &);
-QDataStream &operator>>(QDataStream &, StationList::Station &);
+QDataStream& operator<<(QDataStream&, StationList::Station const&);
+QDataStream& operator>>(QDataStream&, StationList::Station&);
 
 #if !defined(QT_NO_DEBUG_STREAM)
-QDebug operator<<(QDebug debug, StationList::Station const &);
+QDebug operator<<(QDebug debug, StationList::Station const&);
 #endif
 
 Q_DECLARE_METATYPE(StationList::Station);

@@ -6,8 +6,9 @@
 // Functor by which to flatten (or not, by default) a spectrum; not
 // reentrant, but serially reusable.
 
-class Flatten {
-  public:
+class Flatten
+{
+public:
     // Constructor
     explicit Flatten(bool = false);
 
@@ -18,13 +19,14 @@ class Flatten {
     void operator()(bool value);
 
     // Process (or not) the supplied spectrum data
-    void operator()(float *data, std::size_t size);
+    void operator()(float* data, std::size_t size);
 
     // Return active / inactive flattening status
     explicit operator bool() const noexcept { return !!m_impl; }
+
     bool live() const noexcept { return !!m_impl; }
 
-  private:
+private:
     class Impl;
     std::unique_ptr<Impl> m_impl;
 };

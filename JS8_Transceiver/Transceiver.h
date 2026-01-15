@@ -47,20 +47,22 @@ class QString;
 //  expect Qt  slot calls  after emitting  finished, it  is up  to the
 //  implementation whether these slot invocations are ignored.
 //
-class Transceiver : public QObject {
+class Transceiver : public QObject
+{
     Q_OBJECT
     Q_ENUMS(MODE)
 
-  public:
+public:
     using Frequency = Radio::Frequency;
 
-  protected:
-    Transceiver(QObject *parent) : QObject{parent} {}
+protected:
+    Transceiver(QObject* parent) : QObject { parent } { }
 
-  public:
-    virtual ~Transceiver() {}
+public:
+    virtual ~Transceiver() { }
 
-    enum MODE {
+    enum MODE
+    {
         UNK,
         CW,
         CW_R,
@@ -80,39 +82,60 @@ class Transceiver : public QObject {
     // Aggregation of all of the rig and PTT state accessible via this
     // interface.
     //
-    class TransceiverState {
-      public:
-        TransceiverState()
-            : online_{false}, rx_frequency_{0}, tx_frequency_{0}, mode_{UNK},
-              split_{Split::unknown}, ptt_{false} {}
+    class TransceiverState
+    {
+    public:
+        TransceiverState() :
+            online_ { false },
+            rx_frequency_ { 0 },
+            tx_frequency_ { 0 },
+            mode_ { UNK },
+            split_ { Split::unknown },
+            ptt_ { false }
+        {
+        }
 
         bool online() const { return online_; }
+
         Frequency frequency() const { return rx_frequency_; }
+
         Frequency tx_frequency() const { return tx_frequency_; }
+
         bool split() const { return Split::on == split_; }
+
         MODE mode() const { return mode_; }
+
         bool ptt() const { return ptt_; }
 
         void online(bool state) { online_ = state; }
+
         void frequency(Frequency f) { rx_frequency_ = f; }
+
         void tx_frequency(Frequency f) { tx_frequency_ = f; }
+
         void split(bool state) { split_ = state ? Split::on : Split::off; }
+
         void mode(MODE m) { mode_ = m; }
+
         void ptt(bool state) { ptt_ = state; }
 
-      private:
+    private:
         bool online_;
         Frequency rx_frequency_;
         Frequency tx_frequency_; // 0 means use Rx
         MODE mode_;
-        enum class Split { unknown, off, on } split_;
+        enum class Split
+        {
+            unknown,
+            off,
+            on
+        } split_;
         bool ptt_;
         // Don't forget to update the debug print and != operator if you
         // add more members here
 
-        friend QDebug operator<<(QDebug, TransceiverState const &);
-        friend bool operator!=(TransceiverState const &,
-                               TransceiverState const &);
+        friend QDebug operator<<(QDebug, TransceiverState const&);
+        friend bool operator!=(TransceiverState const&, TransceiverState const&);
     };
 
     //
@@ -128,8 +151,8 @@ class Transceiver : public QObject {
     // ignore any status  updates until the results  of this transaction
     // have been processed thus avoiding any unwanted "ping-pong" due to
     // signals crossing in transit.
-    Q_SLOT virtual void set(Transceiver::TransceiverState const &,
-                            unsigned sequence_number) noexcept = 0;
+    Q_SLOT virtual void set(Transceiver::TransceiverState const&, unsigned sequence_number) noexcept
+        = 0;
 
     // Connect and disconnect.
     Q_SLOT virtual void start(unsigned sequence_number) noexcept = 0;
@@ -147,11 +170,10 @@ class Transceiver : public QObject {
     Q_SIGNAL void resolution(int);
 
     // rig state changed
-    Q_SIGNAL void update(Transceiver::TransceiverState const &,
-                         unsigned sequence_number) const;
+    Q_SIGNAL void update(Transceiver::TransceiverState const&, unsigned sequence_number) const;
 
     // something went wrong - not recoverable, start new instance
-    Q_SIGNAL void failure(QString const &reason) const;
+    Q_SIGNAL void failure(QString const& reason) const;
 
     // Ready to be destroyed.
     Q_SIGNAL void finished() const;
@@ -165,15 +187,13 @@ Q_DECLARE_METATYPE(Transceiver::MODE);
 #if !defined(QT_NO_DEBUG_STREAM)
 ENUM_QDEBUG_OPS_DECL(Transceiver, MODE);
 
-QDebug operator<<(QDebug, Transceiver::TransceiverState const &);
+QDebug operator<<(QDebug, Transceiver::TransceiverState const&);
 #endif
 
 ENUM_QDATASTREAM_OPS_DECL(Transceiver, MODE);
 ENUM_CONVERSION_OPS_DECL(Transceiver, MODE);
 
-bool operator!=(Transceiver::TransceiverState const &,
-                Transceiver::TransceiverState const &);
-bool operator==(Transceiver::TransceiverState const &,
-                Transceiver::TransceiverState const &);
+bool operator!=(Transceiver::TransceiverState const&, Transceiver::TransceiverState const&);
+bool operator==(Transceiver::TransceiverState const&, Transceiver::TransceiverState const&);
 
 #endif

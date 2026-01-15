@@ -1,30 +1,34 @@
 #include "revision_utils.h"
+
 #include <QCoreApplication>
 
-QString version() {
+QString version()
+{
 #if defined(CMAKE_BUILD)
-    QString v{WSJTX_STRINGIZE(WSJTX_VERSION_MAJOR) "." WSJTX_STRINGIZE(
-        WSJTX_VERSION_MINOR) "." WSJTX_STRINGIZE(WSJTX_VERSION_PATCH)};
+    QString v { WSJTX_STRINGIZE(WSJTX_VERSION_MAJOR) "." WSJTX_STRINGIZE(
+        WSJTX_VERSION_MINOR) "." WSJTX_STRINGIZE(WSJTX_VERSION_PATCH) };
 #if 0
 #if defined(WSJTX_RC)
     v += "-rc" WSJTX_STRINGIZE (WSJTX_RC)
 #endif
 #endif
 #else
-    QString v{"Not for Release"};
+    QString v { "Not for Release" };
 #endif
 
     return v;
 }
 
-QString program_title() {
-    return QString{"%1(v%2) de KN4CRD"}
+QString program_title()
+{
+    return QString { "%1(v%2) de KN4CRD" }
         .arg(QCoreApplication::applicationName())
         .arg(QCoreApplication::applicationVersion());
 }
 
-QString program_version() {
-    return QString{"%1 v%2"}
+QString program_version()
+{
+    return QString { "%1 v%2" }
         .arg(QCoreApplication::applicationName())
         .arg(QCoreApplication::applicationVersion());
 }
