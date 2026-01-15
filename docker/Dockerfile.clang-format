@@ -1,0 +1,29 @@
+# Base image with the clang-format tool for JS8Call.
+#
+# Build by running, in this directory:
+#
+#     docker build --file Dockerfile.clang-format --tag js8call-clang-format .
+#
+# Check format by running, in the main directory:
+#
+#     docker run --rm -ti --volume=$(pwd):/workspace js8call-clang-format
+#
+# Windows users may need some slight variation of the --volume part,
+# to mount the current directory as /workspace.
+#
+#
+# To repair the format, a little more caution is needed, lest the docker container
+# writes changed files with a different user, causing problems later.
+# This is not usually a concern under Mac and Windows.
+# Linux users can use --user=$(id -u) to force the container to run under the same user.
+#
+#     docker run --rm -ti --user=$(id -u) --volume=$(pwd):/workspace --entrypoint=/usr/bin/bash js8call-clang-format -c 'test -f .clang-format && clang-format-18 --Werror --style=file -i JS8*/*.h JS8*/*.cpp'
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninterfactive
+
+RUN apt-get update && apt-get install -y clang-format
+
+WORKDIR /workspace
+ENTRYPOINT test -f .clang-format && clang-format-18 --Werror --dry-run --style=file -i JS8*/*.h JS8*/*.cpp
