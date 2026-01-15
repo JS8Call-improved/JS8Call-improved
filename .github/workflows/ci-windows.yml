@@ -1,5 +1,5 @@
 name: CI Build for Windows 10+ x64
-run-name: Deploy to ${{ github.event.inputs.environment || 'CI' }} Environment
+run-name: ${{ github.event.inputs.environment || 'CI' }} Build for Windows 10+ x64
 
 on: 
   workflow_dispatch: 
