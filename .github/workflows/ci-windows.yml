@@ -99,7 +99,7 @@ jobs:
         cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
 
     - name: Build JS8Call (CI build)
-      if: ${{ inputs.environment == 'CI' }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       shell: msys2 {0}
       run: |
         cd ./build
@@ -128,7 +128,7 @@ jobs:
         cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libwinpthread-1.dll' JS8Call/
 
     - name: Get secrets (CI)
-      if: ${{ inputs.environment == 'CI' }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       shell: pwsh
       run: |
         echo "${{ secrets.CI_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
@@ -144,7 +144,7 @@ jobs:
       continue-on-error: false
 
     - name: Sign JS8Call (CI)
-      if: ${{ inputs.environment == 'CI' }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       shell: pwsh
       env: 
         PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
@@ -178,13 +178,13 @@ jobs:
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-${{ inputs.release-ver }}_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: INNO Setup (CI build)
-      if: ${{ inputs.environment == 'CI' }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       run: |
         cd ./build/
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: Installer signtool run (CI build)
-      if: ${{ inputs.environment == 'CI' }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       env:
         PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
       run: |
@@ -216,7 +216,7 @@ jobs:
           ./build/JS8Call/JS8Call-installer*
 
     - name: Upload Artifact (CI build)
-      if: ${{ !inputs.release-ver }}
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       uses: actions/upload-artifact@v5
       with:
         name: "JS8call-improved_devel_${{ runner.arch }}_win64"
