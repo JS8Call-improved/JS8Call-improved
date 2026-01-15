@@ -99,14 +99,14 @@ jobs:
         cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
 
     - name: Build JS8Call (CI build)
-      if: inputs.environment == 'CI'
+      if: ${{ inputs.environment == 'CI' }}
       shell: msys2 {0}
       run: |
         cd ./build
         cmake --build . --config Debug
 
     - name: Build JS8Call (Release build)
-      if: inputs.environment == 'Release'
+      if: ${{ inputs.environment == 'Release' }}
       shell: msys2 {0}
       run: |
         cd ./build
