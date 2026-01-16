@@ -39,10 +39,10 @@ APRSISClient::APRSISClient(QString const host, quint16 const port,
 }
 
 /**
- * @brief Set the server host and port
- * 
- * @param host 
- * @param port 
+ * @brief Compute APRS-IS passcode for a callsign.
+ *
+ * @param callsign
+ * @return quint32
  */
 quint32 APRSISClient::hashCallsign(QString callsign) {
     // based on: https://github.com/hessu/aprsc/blob/master/src/passcode.c
@@ -63,10 +63,11 @@ quint32 APRSISClient::hashCallsign(QString callsign) {
 }
 
 /**
- * @brief Create a login frame for APRS-IS
- * 
- * @param callsign 
- * @return QString 
+ * @brief Create a login frame for APRS-IS.
+ *
+ * @param callsign
+ * @param filter
+ * @return QString
  */
 QString APRSISClient::loginFrame(QString callsign, QString filter) {
     auto loginFrame = QString("user %1 pass %2 ver %3 %4\n");
@@ -277,6 +278,15 @@ QString APRSISClient::replaceCallsignSuffixWithSSID(QString call,
     return call;
 }
 
+/**
+ * @brief Enable or disable persistent inbound relay connections.
+ *
+ * When enabled, the client keeps an active connection so inbound APRS
+ * messages can be received and relayed. When disabled, connections are
+ * closed once the outbound queue drains.
+ *
+ * @param enabled
+ */
 void APRSISClient::setIncomingRelayEnabled(bool enabled) {
     qCDebug(aprsisclient_js8) << "APRSISClient::setIncomingRelayEnabled(" << enabled << ")";
     if (m_incomingRelayEnabled == enabled)
@@ -430,6 +440,9 @@ void APRSISClient::processQueue(bool disconnect) {
     }
 }
 
+/**
+ * @brief Handle APRS-IS socket connection and login handshake.
+ */
 void APRSISClient::onSocketConnected() {
     qCDebug(aprsisclient_js8) << "APRSISClient Connected";
 
@@ -457,6 +470,9 @@ void APRSISClient::onSocketConnected() {
     processQueue(!m_incomingRelayEnabled);
 }
 
+/**
+ * @brief Process incoming APRS-IS data and emit parsed messages.
+ */
 void APRSISClient::onSocketReadyRead() {
     while (canReadLine()) {
         auto line = QString::fromUtf8(readLine()).trimmed();
@@ -494,6 +510,9 @@ void APRSISClient::onSocketReadyRead() {
     }
 }
 
+/**
+ * @brief Handle APRS-IS socket disconnects and reconnect as needed.
+ */
 void APRSISClient::onSocketDisconnected() {
     qCDebug(aprsisclient_js8) << "APRSISClient Disconnected";
     m_isLoggedIn = false;
@@ -508,6 +527,10 @@ void APRSISClient::onSocketDisconnected() {
     }
 }
 
+/**
+ * @brief Log APRS-IS socket errors.
+ * @param socketError Underlying socket error.
+ */
 void APRSISClient::onSocketError(QAbstractSocket::SocketError) {
     qCDebug(aprsisclient_js8) << "APRSISClient Error:" << errorString();
 }

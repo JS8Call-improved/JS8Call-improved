@@ -148,6 +148,7 @@ class SoundOutput;
 class Modulator;
 class SoundInput;
 class Detector;
+class AprsInboundRelay;
 class MultiSettings;
 class DecodedText;
 class JSCChecker;
@@ -421,8 +422,6 @@ class MainWindow : public QMainWindow {
     void on_monitorTxButton_toggled(bool checked);
     void on_tuneButton_toggled(bool checked);
     void on_spotButton_toggled(bool checked);
-
-    void onAPRSMessageReceived(QString from, QString to, QString message);
 
     void emitPTT(bool on);
     void emitTones();
@@ -914,6 +913,7 @@ class MainWindow : public QMainWindow {
     PSKReporter *m_pskReporter;
     SpotClient *m_spotClient;
     APRSISClient *m_aprsClient;
+    AprsInboundRelay *m_aprsInboundRelay;
     DisplayManual m_manual;
     QVariantHash m_pwrBandTxMemory; // Remembers power level by band
     QVariantHash

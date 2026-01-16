@@ -296,6 +296,7 @@ target_sources(
   JS8_UDP/NetworkMessage.cpp
   JS8_UDP/WSJTXMessageClient.cpp
   JS8_UDP/WSJTXMessageMapper.cpp
+  JS8_UI/aprsinboundrelay.cpp
   JS8_UI/Configuration.cpp
   JS8_UI/about.cpp
   JS8_UI/logqso.cpp

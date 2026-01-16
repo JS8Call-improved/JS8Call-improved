@@ -1,3 +1,7 @@
+/**
+ * @file APRSISClient.h
+ * @brief APRS-IS client interface for JS8Call.
+ */
 #ifndef APRSISCLIENT_H
 #define APRSISCLIENT_H
 
@@ -11,13 +15,33 @@
 
 Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
+/**
+ * @brief APRS-IS client responsible for sending and receiving APRS frames.
+ */
 class APRSISClient : public QTcpSocket {
     Q_OBJECT
 
   public:
+    /**
+     * @brief Construct a new APRSISClient object.
+     * @param host APRS-IS server host.
+     * @param port APRS-IS server port.
+     * @param parent QObject parent.
+     */
     APRSISClient(QString host, quint16 port, QObject *parent = nullptr);
 
+    /**
+     * @brief Compute APRS-IS passcode for a callsign.
+     * @param callsign Callsign to hash.
+     * @return APRS-IS passcode.
+     */
     static quint32 hashCallsign(QString callsign);
+    /**
+     * @brief Build an APRS-IS login frame.
+     * @param callsign Local station callsign.
+     * @param filter Optional APRS-IS filter string.
+     * @return Login frame string.
+     */
     static QString loginFrame(QString callsign, QString filter = QString());
     static QPair<float, float> grid2deg(QString grid);
     static QPair<QString, QString> grid2aprs(QString grid);
@@ -32,6 +56,10 @@ class APRSISClient : public QTcpSocket {
     void processQueue(bool disconnect = true);
 
   public slots:
+    /**
+     * @brief Enable or disable persistent inbound message relay.
+     * @param enabled True to keep a connected session for inbound relay.
+     */
     void setIncomingRelayEnabled(bool enabled);
 
     void setSkipPercent(float skipPercent) { m_skipPercent = skipPercent; }
@@ -67,6 +95,12 @@ class APRSISClient : public QTcpSocket {
     }
 
   signals:
+    /**
+     * @brief Emitted when a parsed APRS-IS message is received.
+     * @param from APRS sender callsign.
+     * @param to APRS destination callsign.
+     * @param message APRS message payload.
+     */
     void messageReceived(QString from, QString to, QString message);
 
   private slots:

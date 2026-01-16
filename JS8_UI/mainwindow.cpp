@@ -1,6 +1,7 @@
 //---------------------------------------------------------- MainWindow
 #include "mainwindow.h"
 
+#include "aprsinboundrelay.h"
 #include "moc_mainwindow.cpp"
 
 // TODO: Move to member:
@@ -162,6 +163,7 @@ MainWindow::MainWindow(QString const &program_info, QDir const &temp_directory,
       m_pskReporter{new PSKReporter{&m_config, program_info}}, // UR
       m_spotClient{new SpotClient{"spot.js8call.com", 50000, program_info}},
       m_aprsClient{new APRSISClient{"rotate.aprs2.net", 14580}},
+      m_aprsInboundRelay{nullptr},
       m_manual{&m_network_manager} {
     ui->setupUi(this);
 
@@ -218,6 +220,26 @@ MainWindow::MainWindow(QString const &program_info, QDir const &temp_directory,
     connect(&m_networkThread, &QThread::finished, m_messageServer,
             &QObject::deleteLater);
 
+    m_aprsInboundRelay = new AprsInboundRelay(
+        &m_config,
+        [this](QString const &call) {
+            AprsInboundRelay::CallActivityInfo info;
+            auto const it = m_callActivity.constFind(call);
+            if (it == m_callActivity.constEnd()) {
+                return info;
+            }
+            info.heard = true;
+            info.lastHeardUtc = it->utcTimestamp;
+            return info;
+        },
+        [this](QDateTime const &utc, QString const &text) {
+            writeNoticeTextToUI(utc, text);
+        },
+        [this](QString const &relayMsg) {
+            enqueueMessage(PriorityHigh, relayMsg, -1, nullptr);
+        },
+        this);
+
     // hook up the aprs client slots and signals and disposal
     connect(this, &MainWindow::aprsClientEnqueueSpot, m_aprsClient,
             &APRSISClient::enqueueSpot);
@@ -237,8 +259,8 @@ MainWindow::MainWindow(QString const &program_info, QDir const &temp_directory,
             &APRSISClient::setIncomingRelayEnabled);
     connect(&m_config, &Configuration::spot_to_aprs_relay_changed, m_aprsClient,
             &APRSISClient::setIncomingRelayEnabled);
-    connect(m_aprsClient, &APRSISClient::messageReceived, this,
-            &MainWindow::onAPRSMessageReceived);
+    connect(m_aprsClient, &APRSISClient::messageReceived, m_aprsInboundRelay,
+            &AprsInboundRelay::onMessageReceived);
     connect(&m_networkThread, &QThread::finished, m_aprsClient,
             &QObject::deleteLater);
 
@@ -7928,61 +7950,6 @@ void displayBandActivity(); // JS8_Mainwindow/displayBandActivity.cpp
 
 // updateCallActivity
 void displayCallActivity(); // JS8_Mainwindow/displayCallActivity.cpp
-
-void MainWindow::onAPRSMessageReceived(QString from, QString to, QString message) {
-    qCDebug(mainwindow_js8) << "APRS Message Received from" << from << "to"
-                            << to << ":" << message;
-    
-    // Explicitly log to ensure we see it
-    qDebug() << "DEBUG: APRS Message Received from" << from << "to" << to << ":" << message;
-
-    if (!m_config.spot_to_aprs_relay()) {
-        qDebug() << "DEBUG: APRS relay disabled";
-        return;
-    }
-
-    // Check if we have heard the destination station
-    if (!m_callActivity.contains(to)) {
-        qDebug() << "DEBUG: Destination not in heard list:" << to;
-        return;
-    }
-
-    // Check if the station is "active" if aging is enabled
-    if (m_config.callsign_aging() > 0) {
-        auto lastHeard = m_callActivity[to].utcTimestamp;
-        if (lastHeard.secsTo(DriftingDateTime::currentDateTimeUtc()) >
-            m_config.callsign_aging() * 60) {
-            qDebug() << "DEBUG: Destination aged out:" << to;
-            return;
-        }
-    }
-
-    // Strip APRS message checksum (format: {number})
-    // Handles cases with or without closing brace, and optional whitespace
-    QRegularExpression aprsChecksumRe("\\{\\d+\\}?\\s*$");
-    message.remove(aprsChecksumRe);
-    message = message.trimmed();
-
-    qDebug() << "DEBUG: APRS Message after checksum strip:" << message;
-
-    // Construct the relay message
-    // @APRSIS MSG to:<DESTCALL> <MESSAGE> DE <SENDER>
-    QString relayMsg = QString("@APRSIS MSG to:%1 %2 DE %3")
-                           .arg(to)
-                           .arg(message)
-                           .arg(from);
-
-    qCDebug(mainwindow_js8)
-        << "Relaying APRS message from" << from << "to" << to << ":" << message;
-
-    // Show a notice in the UI
-    writeNoticeTextToUI(
-        DriftingDateTime::currentDateTimeUtc(),
-        QString("APRS-IS Relay: %1 -> %2: %3").arg(from).arg(to).arg(message));
-
-    // Enqueue message with high priority
-    enqueueMessage(PriorityHigh, relayMsg, -1, nullptr);
-}
 
 void MainWindow::emitPTT(bool on) {
     qCDebug(mainwindow_js8) << "Setting PTT to" << (on ? "on" : "off");
