@@ -7,11 +7,8 @@
 #include <QThread>
 
 #include "DriftingDateTime.h"
-#include "qDateTimeExperiment.h"
 
 Q_DECLARE_LOGGING_CATEGORY(driftingdatetime_js8)
-
-static QPointer<QDateTimeRoundingExperiment> experiment;
 
 /**
  * @brief Get the singleton instance
@@ -21,9 +18,6 @@ static QPointer<QDateTimeRoundingExperiment> experiment;
 DriftingDateTimeSingleton &DriftingDateTimeSingleton::getSingleton() {
     if (singleton.isNull()) {
         singleton = QPointer{new DriftingDateTimeSingleton{}};
-        if (experiment.isNull()) {
-            experiment = QPointer{new QDateTimeRoundingExperiment};
-        }
     }
     return *(singleton.data());
 }

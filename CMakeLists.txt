@@ -253,7 +253,6 @@ target_sources(
   JS8_Main/Modes.cpp
   JS8_Main/plotter.cpp
   JS8_Main/ProcessThread.cpp
-  JS8_Main/qDateTimeExperiment.cpp
   JS8_Main/qt_helpers.cpp
   JS8_Main/Radio.cpp
   JS8_Main/RadioMetaType.cpp
