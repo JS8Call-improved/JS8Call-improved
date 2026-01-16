@@ -1,7 +1,6 @@
 //---------------------------------------------------------- MainWindow
 #include "mainwindow.h"
 
-#include "aprsinboundrelay.h"
 #include "moc_mainwindow.cpp"
 
 // TODO: Move to member:

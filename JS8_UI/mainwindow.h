@@ -122,6 +122,7 @@
 #include "messagereplydialog.h"
 #include "messagewindow.h"
 #include "ui_mainwindow.h"
+#include "JS8_Main/aprsinboundrelay.h"
 #include <functional>
 #include <unordered_map>
 

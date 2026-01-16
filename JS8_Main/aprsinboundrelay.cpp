@@ -13,7 +13,7 @@
  */
 #include "aprsinboundrelay.h"
 
-#include "Configuration.h"
+#include "JS8_UI/Configuration.h"
 #include "JS8_Main/DriftingDateTime.h"
 
 #include <QDebug>
