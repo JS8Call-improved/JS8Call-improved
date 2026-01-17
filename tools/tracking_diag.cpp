@@ -3,7 +3,7 @@
 // runs the decoder twice (tracking disabled vs enabled), and prints outcomes.
 //
 // Build example (adjust Qt/FFTW include/library paths as needed):
-//   g++ -std=c++17 -O2 -I.. tools/tracking_diag.cpp kalman.cpp -lQt5Core -lfftw3f -lpthread
+//   g++ -std=c++17 -O2 -I.. tools/tracking_diag.cpp FrequencyTracker.cpp -lQt5Core -lfftw3f -lpthread
 //
 // Notes:
 // - This is a standalone diagnostic; it defines the globals (dec_data, specData,

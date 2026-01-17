@@ -275,12 +275,12 @@ target_sources(
   JS8_Mainwindow/processCommandActivity.cpp
   JS8_Mainwindow/processDecodeEvent.cpp
   JS8_Mainwindow/processRxActivity.cpp
+  JS8_Mode/DecodedText.cpp
   JS8_Mode/Detector.cpp
+  JS8_Mode/FrequencyTracker.cpp
   JS8_Mode/JS8.cpp
   JS8_Mode/JS8Submode.cpp
   JS8_Mode/Modulator.cpp
-  JS8_Mode/decodedtext.cpp
-  JS8_Mode/kalman.cpp
   JS8_Network/NetworkServerLookup.cpp
   JS8_Network/PSKReporter.cpp
   JS8_Network/SpotClient.cpp

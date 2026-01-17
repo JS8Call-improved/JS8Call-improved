@@ -8,7 +8,7 @@
 
 #include "JS8.h"
 #include "JS8_Include/commons.h"
-#include "JS8_Mode/kalman.h"
+#include "JS8_Mode/FrequencyTracker.h"
 #include "JS8_Mode/whitening_processor.h"
 #include "ldpc_feedback.h"
 #include "soft_combiner.h"

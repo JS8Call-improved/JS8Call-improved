@@ -1,8 +1,8 @@
 /**
- * @file kalman.cpp
+ * @file FrequencyTracker.cpp
  * @brief Implementation of Kalman filter-based trackers
  */
-#include "kalman.h"
+#include "FrequencyTracker.h"
 
 #include <algorithm>
 #include <cmath>

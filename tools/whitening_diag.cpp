@@ -3,7 +3,7 @@
 // runs the decoder twice (whitening OFF vs ON), and prints a concise summary.
 //
 // Build example (adjust Qt/FFTW paths as needed):
-//   g++ -std=c++17 -O2 -I.. tools/whitening_diag.cpp kalman.cpp -lQt5Core -lfftw3f -lpthread
+//   g++ -std=c++17 -O2 -I.. tools/whitening_diag.cpp FrequencyTracker.cpp -lQt5Core -lfftw3f -lpthread
 //
 // Note: this links only the pieces needed for decoding; it defines the
 // globals (dec_data, specData, fftw_mutex) that JS8 expects.

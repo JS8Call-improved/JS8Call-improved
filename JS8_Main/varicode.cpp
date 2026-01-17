@@ -30,7 +30,7 @@
 #define CRCPP_USE_CPP11
 #include <vendor/CRCpp/CRC.h>
 
-#include "JS8_Mode/decodedtext.h"
+#include "JS8_Mode/DecodedText.h"
 #include "JS8_jsc/jsc.h"
 #include "varicode.h"
 
@@ -2348,7 +2348,7 @@ void BuildMessageFramesThread::run() {
         Varicode::buildMessageFrames(m_mycall, m_mygrid, m_selectedCall, m_text,
                                      m_forceIdentify, m_forceData, m_submode);
 
-    // TODO: jsherer - we wouldn't normally use decodedtext.h here... but it's
+    // TODO: jsherer - we wouldn't normally use DecodedText.h here... but it's
     // useful for computing the actual frames transmitted.
     QStringList textList;
     qCDebug(varicode_js8) << "frames:";

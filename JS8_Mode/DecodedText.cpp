@@ -1,8 +1,8 @@
 /**
- * @file decodedtext.cpp
+ * @file DecodedText.cpp
  * @brief Implementation of DecodedText class
  */
-#include "decodedtext.h"
+#include "DecodedText.h"
 #include "JS8_Include/commons.h"
 #include <JS8_Main/varicode.h>
 #include <QStringBuilder>
@@ -68,15 +68,15 @@ QString buildCompound(QStringList const &parts) {
 /**
  * @private
  * @brief Construct a new Decoded Text:: Decoded Text object (private)
- * 
- * @param frame 
- * @param bits 
- * @param submode 
- * @param isLowConfidence 
- * @param time 
- * @param frequencyOffset 
- * @param snr 
- * @param dt 
+ *
+ * @param frame
+ * @param bits
+ * @param submode
+ * @param isLowConfidence
+ * @param time
+ * @param frequencyOffset
+ * @param snr
+ * @param dt
  */
 DecodedText::DecodedText(QString const &frame, int bits, int submode,
                          bool isLowConfidence, int time, int frequencyOffset,
@@ -99,10 +99,10 @@ DecodedText::DecodedText(QString const &frame, int bits, int submode,
 /**
  * @private
  * @brief Try to unpack fast data message (private)
- * 
- * @param m 
- * @return true 
- * @return false 
+ *
+ * @param m
+ * @return true
+ * @return false
  */
 bool DecodedText::tryUnpackFastData(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) != Varicode::JS8CallData)
@@ -121,10 +121,10 @@ bool DecodedText::tryUnpackFastData(QString const &m) {
 /**
  * @private
  * @brief Try to unpack data message (private)
- * 
- * @param m 
- * @return true 
- * @return false 
+ *
+ * @param m
+ * @return true
+ * @return false
  */
 bool DecodedText::tryUnpackData(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
@@ -143,10 +143,10 @@ bool DecodedText::tryUnpackData(QString const &m) {
 /**
  * @private
  * @brief Try to unpack heartbeat message (private)
- * 
- * @param m 
- * @return true 
- * @return false 
+ *
+ * @param m
+ * @return true
+ * @return false
  */
 bool DecodedText::tryUnpackHeartbeat(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
@@ -188,10 +188,10 @@ bool DecodedText::tryUnpackHeartbeat(QString const &m) {
 /**
  * @private
  * @brief Try to unpack compound message (private)
- * 
- * @param m 
- * @return true 
- * @return false 
+ *
+ * @param m
+ * @return true
+ * @return false
  */
 bool DecodedText::tryUnpackCompound(QString const &m) {
     quint8 type = Varicode::FrameUnknown;
@@ -222,10 +222,10 @@ bool DecodedText::tryUnpackCompound(QString const &m) {
 /**
  * @private
  * @brief Try to unpack directed message (private)
- * 
- * @param m 
- * @return true 
- * @return false 
+ *
+ * @param m
+ * @return true
+ * @return false
  */
 bool DecodedText::tryUnpackDirected(QString const &m) {
     if ((bits_ & Varicode::JS8CallData) == Varicode::JS8CallData)
@@ -268,8 +268,8 @@ bool DecodedText::tryUnpackDirected(QString const &m) {
 
 /**
  * @brief Construct a new Decoded Text:: Decoded Text object
- * 
- * @param decoded 
+ *
+ * @param decoded
  */
 DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
     : DecodedText(QString::fromStdString(decoded.data), decoded.type,
@@ -282,10 +282,10 @@ DecodedText::DecodedText(JS8::Event::Decoded const &decoded)
 
 /**
  * @brief Construct a new Decoded Text:: Decoded Text object
- * 
- * @param frame 
- * @param bits 
- * @param submode 
+ *
+ * @param frame
+ * @param bits
+ * @param submode
  */
 DecodedText::DecodedText(QString const &frame, int const bits,
                          int const submode)
@@ -297,8 +297,8 @@ DecodedText::DecodedText(QString const &frame, int const bits,
 
 /**
  * @brief Get the message words
- * 
- * @return QStringList 
+ *
+ * @return QStringList
  */
 QStringList DecodedText::messageWords() const {
     QStringList words;
@@ -315,8 +315,8 @@ QStringList DecodedText::messageWords() const {
 
 /**
  * @brief Get the string representation suitable for ALL.TXT
- * 
- * @return QString 
+ *
+ * @return QString
  */
 QString DecodedText::string() const {
     struct hour_minute_second hms = decode_time(time_);
