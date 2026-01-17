@@ -9,20 +9,19 @@
 
 class QTextEdit;
 
-class JSCChecker : public QObject
-{
+class JSCChecker : public QObject {
     Q_OBJECT
-public:
+  public:
     explicit JSCChecker(QObject *parent = nullptr);
 
-    static void checkRange(QTextEdit * edit, int start, int end);
+    static void checkRange(QTextEdit *edit, int start, int end);
     static QStringList suggestions(QString word, int n, bool *pFound);
 
-signals:
+  signals:
 
-public slots:
+  public slots:
 
-private:
+  private:
 };
 
 #endif // JSC_CHECKER_H

@@ -4,7 +4,7 @@
  */
 #include "JS8Submode.h"
 #include "JS8_Include/commons.h"
-#include "JS8_Main/varicode.h"
+#include "JS8_Main/Varicode.h"
 #include <QLoggingCategory>
 #include <concepts>
 
@@ -223,9 +223,9 @@ namespace JS8::Submode {
 
 /**
  * @brief Get the name of the submode
- * 
- * @param submode 
- * @return QString 
+ *
+ * @param submode
+ * @return QString
  */
 QString name(int const submode) { return QObject::tr(data(submode).name()); }
 
@@ -234,103 +234,103 @@ QString name(int const submode) { return QObject::tr(data(submode).name()); }
 
 /**
  * @brief Get the bandwidth of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int bandwidth(int const submode) { return data(submode).bandwidth(); }
 /**
  * @brief Get the Costas array type of the submode
- * 
- * @param submode 
- * @return Costas::Type 
+ *
+ * @param submode
+ * @return Costas::Type
  */
 Costas::Type costas(int const submode) { return data(submode).costas(); }
 /**
  * @brief Get the number of samples per period of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int samplesPerPeriod(int const submode) {
     return data(submode).samplesPerPeriod();
 }
 /**
  * @brief Get the number of samples for symbols of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int samplesForSymbols(int const submode) {
     return data(submode).samplesForSymbols();
 }
 /**
  * @brief Get the number of samples needed for the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int samplesNeeded(int const submode) {
     return data(submode).samplesNeeded();
 }
 /**
  * @brief Get the period of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int period(int const submode) { return data(submode).period(); }
 /**
  * @brief Get the receive SNR threshold of the submode
- * 
- * @param submode 
- * @return int 
+ *
+ * @param submode
+ * @return int
  */
 int rxSNRThreshold(int const submode) { return data(submode).rxSNRThreshold(); }
 /**
  * @brief Get the receive threshold of the submode
- * 
- * @param submode 
- * @return int 
+ *
+ * @param submode
+ * @return int
  */
 int rxThreshold(int const submode) { return data(submode).rxThreshold(); }
 /**
  * @brief Get the start delay in milliseconds of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int startDelayMS(int const submode) {
     return data(submode).startDelayMS();
 }
 /**
  * @brief Get the number of samples for one symbol of the submode
- * 
- * @param submode 
- * @return unsigned int 
+ *
+ * @param submode
+ * @return unsigned int
  */
 unsigned int samplesForOneSymbol(int const submode) {
     return data(submode).samplesForOneSymbol();
 }
 /**
  * @brief Get the tone spacing of the submode
- * 
- * @param submode 
- * @return double 
+ *
+ * @param submode
+ * @return double
  */
 double toneSpacing(int const submode) { return data(submode).toneSpacing(); }
 /**
  * @brief Get the data duration of the submode
- * 
- * @param submode 
- * @return double 
+ *
+ * @param submode
+ * @return double
  */
 double dataDuration(int const submode) { return data(submode).dataDuration(); }
 /**
  * @brief Get the transmit duration of the submode
- * 
- * @param submode 
- * @return double 
+ *
+ * @param submode
+ * @return double
  */
 double txDuration(int const submode) { return data(submode).txDuration(); }
 
@@ -339,10 +339,10 @@ double txDuration(int const submode) { return data(submode).txDuration(); }
 
 /**
  * @brief Compute the cycle for decode
- * 
- * @param submode 
- * @param k 
- * @return int 
+ *
+ * @param submode
+ * @param k
+ * @return int
  */
 int computeCycleForDecode(int const submode, int const k) {
     int const maxFrames = JS8_RX_SAMPLE_SIZE;
@@ -358,11 +358,11 @@ int computeCycleForDecode(int const submode, int const k) {
 
 /**
  * @brief Compute the alternate cycle for decode
- * 
- * @param submode 
- * @param k 
- * @param offsetFrames 
- * @return int 
+ *
+ * @param submode
+ * @param k
+ * @param offsetFrames
+ * @return int
  */
 int computeAltCycleForDecode(int const submode, int const k,
                              int const offsetFrames) {
@@ -374,10 +374,10 @@ int computeAltCycleForDecode(int const submode, int const k,
 
 /**
  * @brief Compute the ratio of data duration to period
- * 
- * @param submode 
- * @param period 
- * @return double 
+ *
+ * @param submode
+ * @param period
+ * @return double
  */
 double computeRatio(int const submode, double const period) {
     return (period - data(submode).dataDuration()) / period;

@@ -1,7 +1,7 @@
 #include "JS8_UI/mainwindow.h"
 
 /** \file
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  creates the waterfall spectrum
  */
 
@@ -74,7 +74,7 @@ void smo(float const *const a, float *const b, int const npts, int const nadd) {
 }
 
 //-------------------------------------------------------------- dataSink()
-void MainWindow::dataSink(qint64 frames) {
+void UI_Constructor::dataSink(qint64 frames) {
     constexpr int NMAX = JS8_NTMAX * 12000;
     constexpr int nfft3 = 16384;
     constexpr std::array nch = {1, 2, 4, 9, 18, 36, 72};

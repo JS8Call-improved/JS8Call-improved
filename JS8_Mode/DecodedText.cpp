@@ -4,7 +4,7 @@
  */
 #include "DecodedText.h"
 #include "JS8_Include/commons.h"
-#include <JS8_Main/varicode.h>
+#include <JS8_Main/Varicode.h>
 #include <QStringBuilder>
 
 /******************************************************************************/

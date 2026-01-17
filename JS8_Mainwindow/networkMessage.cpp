@@ -1,6 +1,6 @@
 /** 
  * @file networkMessage.cpp
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  sends data to external clients via the Network Message API
  */
  /**
@@ -19,7 +19,7 @@
  *  
  * @param message The network message to process
 */
-void MainWindow::networkMessage(Message const &message) {
+void UI_Constructor::networkMessage(Message const &message) {
     auto type = message.type();
 
     if (type == "PING") {

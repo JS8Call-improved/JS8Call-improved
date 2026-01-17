@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
 #endif
 
             // run the application UI
-            MainWindow w(program_version(), temp_dir, multiple,
+            UI_Constructor w(program_version(), temp_dir, multiple,
                          &multi_settings);
             w.show();
             result = a.exec();

@@ -9,7 +9,7 @@
 #include <cmath>
 
 #include "DriftingDateTime.h"
-#include "varicode.h"
+#include "Varicode.h"
 
 Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
@@ -17,10 +17,10 @@ const int PACKET_TIMEOUT_SECONDS = 300;
 
 /**
  * @brief Construct a new APRSISClient::APRSISClient object
- * 
- * @param host 
- * @param port 
- * @param parent 
+ *
+ * @param host
+ * @param port
+ * @param parent
  */
 APRSISClient::APRSISClient(QString const host, quint16 const port,
                            QObject *parent)
@@ -31,11 +31,14 @@ APRSISClient::APRSISClient(QString const host, quint16 const port,
     connect(&m_timer, &QTimer::timeout, this, &APRSISClient::sendReports);
     m_timer.start(std::chrono::minutes(1));
 
-    connect(this, &QTcpSocket::connected, this, &APRSISClient::onSocketConnected);
-    connect(this, &QTcpSocket::readyRead, this, &APRSISClient::onSocketReadyRead);
+    connect(this, &QTcpSocket::connected, this,
+            &APRSISClient::onSocketConnected);
+    connect(this, &QTcpSocket::readyRead, this,
+            &APRSISClient::onSocketReadyRead);
     connect(this, &QTcpSocket::disconnected, this,
             &APRSISClient::onSocketDisconnected);
-    connect(this, &QTcpSocket::errorOccurred, this, &APRSISClient::onSocketError);
+    connect(this, &QTcpSocket::errorOccurred, this,
+            &APRSISClient::onSocketError);
 }
 
 /**
@@ -84,10 +87,10 @@ QString APRSISClient::loginFrame(QString callsign, QString filter) {
 
 /**
  * @brief Find all matches of a regular expression in a string
- * 
- * @param re 
- * @param content 
- * @return QList<QStringList> 
+ *
+ * @param re
+ * @param content
+ * @return QList<QStringList>
  */
 QList<QStringList> findall(QRegularExpression re, QString content) {
     qsizetype pos = 0;
@@ -108,10 +111,10 @@ QList<QStringList> findall(QRegularExpression re, QString content) {
 
 /**
  * @brief Floor division for long integers
- * 
- * @param num 
- * @param den 
- * @return long 
+ *
+ * @param num
+ * @param den
+ * @return long
  */
 inline long floordiv(long num, long den) {
     if (0 < (num ^ den))
@@ -125,9 +128,9 @@ inline long floordiv(long num, long den) {
 // convert an arbitrary length grid locator to a high precision lat/lon
 /**
  * @brief Convert grid locator to degrees
- * 
- * @param locator 
- * @return QPair<float, float> 
+ *
+ * @param locator
+ * @return QPair<float, float>
  */
 QPair<float, float> APRSISClient::grid2deg(QString locator) {
     QString grid = locator.toUpper();
@@ -186,9 +189,9 @@ QPair<float, float> APRSISClient::grid2deg(QString locator) {
 // format
 /**
  * @brief Convert grid locator to APRS format
- * 
- * @param grid 
- * @return QPair<QString, QString> 
+ *
+ * @param grid
+ * @return QPair<QString, QString>
  */
 QPair<QString, QString> APRSISClient::grid2aprs(QString grid) {
     auto geo = APRSISClient::grid2deg(grid);
@@ -247,9 +250,9 @@ QPair<QString, QString> APRSISClient::grid2aprs(QString grid) {
 
 /**
  * @brief Strip SSID from callsign
- * 
- * @param call 
- * @return QString 
+ *
+ * @param call
+ * @return QString
  */
 QString APRSISClient::stripSSID(QString call) {
     return QString(call.split("-").first().toUpper());
@@ -257,10 +260,10 @@ QString APRSISClient::stripSSID(QString call) {
 
 /**
  * @brief Replace callsign suffix with SSID
- * 
- * @param call 
- * @param base 
- * @return QString 
+ *
+ * @param call
+ * @param base
+ * @return QString
  */
 QString APRSISClient::replaceCallsignSuffixWithSSID(QString call,
                                                     QString base) {
@@ -288,7 +291,8 @@ QString APRSISClient::replaceCallsignSuffixWithSSID(QString call,
  * @param enabled
  */
 void APRSISClient::setIncomingRelayEnabled(bool enabled) {
-    qCDebug(aprsisclient_js8) << "APRSISClient::setIncomingRelayEnabled(" << enabled << ")";
+    qCDebug(aprsisclient_js8)
+        << "APRSISClient::setIncomingRelayEnabled(" << enabled << ")";
     if (m_incomingRelayEnabled == enabled)
         return;
 
@@ -307,11 +311,11 @@ void APRSISClient::setIncomingRelayEnabled(bool enabled) {
 
 /**
  * @brief Enqueue a spot frame for APRS-IS
- * 
- * @param by_call 
- * @param from_call 
- * @param grid 
- * @param comment 
+ *
+ * @param by_call
+ * @param from_call
+ * @param grid
+ * @param comment
  */
 void APRSISClient::enqueueSpot(QString by_call, QString from_call, QString grid,
                                QString comment) {
@@ -331,10 +335,10 @@ void APRSISClient::enqueueSpot(QString by_call, QString from_call, QString grid,
 
 /**
  * @brief Enqueue a third-party message frame for APRS-IS
- * 
- * @param by_call 
- * @param from_call 
- * @param text 
+ *
+ * @param by_call
+ * @param from_call
+ * @param text
  */
 void APRSISClient::enqueueThirdParty(QString by_call, QString from_call,
                                      QString text) {
@@ -352,8 +356,8 @@ void APRSISClient::enqueueThirdParty(QString by_call, QString from_call,
 
 /**
  * @brief Enqueue a raw APRS frame for APRS-IS
- * 
- * @param aprsFrame 
+ *
+ * @param aprsFrame
  */
 void APRSISClient::enqueueRaw(QString aprsFrame) {
     m_frameQueue.enqueue({aprsFrame, DriftingDateTime::currentDateTimeUtc()});
@@ -361,13 +365,14 @@ void APRSISClient::enqueueRaw(QString aprsFrame) {
 
 /**
  * @brief Process the APRS-IS frame queue
- * 
- * @param disconnect 
+ *
+ * @param disconnect
  */
 void APRSISClient::processQueue(bool disconnect) {
     // don't process queue if we haven't set our local callsign
     if (m_localCall.isEmpty()) {
-        qCDebug(aprsisclient_js8) << "APRSISClient Abort ProcessQueue: No Local Call";
+        qCDebug(aprsisclient_js8)
+            << "APRSISClient Abort ProcessQueue: No Local Call";
         return;
     }
 
@@ -490,22 +495,21 @@ void APRSISClient::onSocketReadyRead() {
         // Parse message for relay
         // Format: SOURCE>PATH::DEST     :MESSAGE
         // Regex: ^([^>]+)>[^:]+::([A-Z0-9 ]{9}):(.*)$
-        static QRegularExpression msgRe(
-            "^([^>]+)>[^:]+::([A-Z0-9 ]{9}):(.*)$");
+        static QRegularExpression msgRe("^([^>]+)>[^:]+::([A-Z0-9 ]{9}):(.*)$");
         auto match = msgRe.match(line);
         if (match.hasMatch()) {
             auto from = match.captured(1);
             auto to = match.captured(2).trimmed();
             auto msg = match.captured(3);
 
-            qCDebug(aprsisclient_js8) << "APRSISClient Parsed Message:"
-                                      << "From:" << from
-                                      << "To:" << to
-                                      << "Msg:" << msg;
+            qCDebug(aprsisclient_js8)
+                << "APRSISClient Parsed Message:"
+                << "From:" << from << "To:" << to << "Msg:" << msg;
 
             emit messageReceived(from, to, msg);
         } else {
-             qCDebug(aprsisclient_js8) << "APRSISClient: No Regex Match for:" << line;
+            qCDebug(aprsisclient_js8)
+                << "APRSISClient: No Regex Match for:" << line;
         }
     }
 }
@@ -520,7 +524,8 @@ void APRSISClient::onSocketDisconnected() {
     if (m_incomingRelayEnabled) {
         // retry connection if we're supposed to be persistent
         QTimer::singleShot(5000, this, [this]() {
-            if (m_incomingRelayEnabled && state() != QTcpSocket::ConnectedState) {
+            if (m_incomingRelayEnabled &&
+                state() != QTcpSocket::ConnectedState) {
                 processQueue(false);
             }
         });

@@ -72,13 +72,14 @@
 
 #include "JS8_Audio/AudioDevice.h"
 #include "JS8_Audio/NotificationAudio.h"
-#include "JS8_Audio/soundin.h"
-#include "JS8_Audio/soundout.h"
+#include "JS8_Audio/SoundInput.h"
+#include "JS8_Audio/SoundOutput.h"
 #include "JS8_Deprecated/DisplayManual.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Include/qpriorityqueue.h"
-#include "JS8_Logbook/logbook.h"
+#include "JS8_JSC/JSC_checker.h"
+#include "JS8_Logbook/LogBook.h"
 #include "JS8_Main/APRSISClient.h"
 #include "JS8_Main/AprsInboundRelay.h"
 #include "JS8_Main/Bands.h"
@@ -98,9 +99,9 @@
 #include "JS8_Main/SignalMeter.h"
 #include "JS8_Main/StationList.h"
 #include "JS8_Main/TxLoop.h"
+#include "JS8_Main/Varicode.h"
 #include "JS8_Main/qt_helpers.h"
 #include "JS8_Main/revision_utils.h"
-#include "JS8_Main/varicode.h"
 #include "JS8_Mode/DecodedText.h"
 #include "JS8_Mode/Decoder.h"
 #include "JS8_Mode/Detector.h"
@@ -118,7 +119,6 @@
 #include "JS8_UI/Configuration.h"
 #include "JS8_UI/about.h"
 #include "JS8_UI/widegraph.h"
-#include "JS8_jsc/jsc_checker.h"
 #include "logqso.h"
 #include "messagereplydialog.h"
 #include "messagewindow.h"
@@ -130,9 +130,26 @@ Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 
 extern int volatile itone[JS8_NUM_SYMBOLS]; // Audio tones for all Tx symbols
 
-//--------------------------------------------------------------- MainWindow
+//--------------------------------------------------------------- mainwindow
+// How often to poll the UI, in MS.
+// Some things may depend on this being a divisor of 1000.
+constexpr quint32 UI_POLL_INTERVAL_MS = 100;
+
+namespace {
+namespace Default {
+constexpr Radio::Frequency DIAL_FREQUENCY = 14078000;
+constexpr auto FREQUENCY = 1500;
+constexpr auto SUBMODE = Varicode::JS8CallNormal;
+} // namespace Default
+
+namespace State {
+constexpr auto RX = 1;
+constexpr auto TX = 2;
+} // namespace State
+} // namespace
+
 namespace Ui {
-class MainWindow;
+class UI_Constructor;
 }
 
 class QSettings;
@@ -159,7 +176,7 @@ typedef std::function<void()> Callback;
 
 class WSJTXMessageMapper; // Forward declaration
 
-class MainWindow : public QMainWindow {
+class UI_Constructor : public QMainWindow {
     Q_OBJECT;
     friend class WSJTXMessageMapper; // Allow WSJTXMessageMapper to access
                                      // private members
@@ -172,10 +189,10 @@ class MainWindow : public QMainWindow {
     using FrequencyDelta = Radio::FrequencyDelta;
     using Mode = Modes::Mode;
 
-    explicit MainWindow(QString const &program_info, QDir const &temp_directory,
-                        bool multiple, MultiSettings *settings,
-                        QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit UI_Constructor(QString const &program_info,
+                            QDir const &temp_directory, bool multiple,
+                            MultiSettings *settings, QWidget *parent = nullptr);
+    ~UI_Constructor();
 
   private:
     struct SortByReverse {
@@ -530,7 +547,7 @@ class MainWindow : public QMainWindow {
     QPushButton *m_configurations_button;
     QSettings *m_settings;
     bool m_settings_read;
-    QScopedPointer<Ui::MainWindow> ui;
+    QScopedPointer<Ui::UI_Constructor> ui;
 
     // other windows
     Configuration m_config;

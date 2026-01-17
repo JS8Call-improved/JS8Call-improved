@@ -187,7 +187,7 @@
 #include "JS8_Transceiver/TransceiverFactory.h"
 #include "JS8_Widgets/LazyFillComboBox.h"
 
-#include "JS8_Main/varicode.h"
+#include "JS8_Main/Varicode.h"
 
 #include "JS8_Widgets/CheckableItemComboBox.h"
 #include "moc_Configuration.cpp"
@@ -394,7 +394,8 @@ class Configuration::impl final : public QDialog {
     void update_audio_channels(QComboBox const *, QComboBox const *, int, bool);
     void load_network_interfaces(CheckableItemComboBox *, QStringList current);
 
-    static QAction *attachRequiredIndicator(QLineEdit *edit, const QString &toolTip = QStringLiteral("Required"));
+    static QAction *attachRequiredIndicator(
+        QLineEdit *edit, const QString &toolTip = QStringLiteral("Required"));
 
     QStringList get_selected_network_interfaces(CheckableItemComboBox *);
 
@@ -4377,9 +4378,8 @@ void Configuration::impl::load_network_interfaces(
 
 // Attaches a trailing warning icon that shows when `isInvalid()` returns true.
 // Returns the QAction* in case you want to tweak tooltip/icon later.
-QAction* Configuration::impl::attachRequiredIndicator(QLineEdit *edit,
-                                                      const QString &toolTip)
-{
+QAction *Configuration::impl::attachRequiredIndicator(QLineEdit *edit,
+                                                      const QString &toolTip) {
     Q_ASSERT(edit);
 
     QAction *warn = edit->addAction(
@@ -4395,7 +4395,7 @@ QAction* Configuration::impl::attachRequiredIndicator(QLineEdit *edit,
     };
 
     connect(edit, &QLineEdit::textChanged, edit,
-                     [update](const QString&) { update(); });
+            [update](const QString &) { update(); });
     connect(edit, &QLineEdit::editingFinished, edit, update);
 
     update();

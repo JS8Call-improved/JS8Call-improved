@@ -1,11 +1,11 @@
 #include "JS8_UI/mainwindow.h"
 
 /** \file
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  process decoded text
  */
 
-void MainWindow::processDecodeEvent(JS8::Event::Variant const &event) {
+void UI_Constructor::processDecodeEvent(JS8::Event::Variant const &event) {
     static QList<qint32> driftQueue;
     static qint32 syncStart = -1;
 

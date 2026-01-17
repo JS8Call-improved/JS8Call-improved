@@ -1,7 +1,7 @@
 #include "TransmitTextEdit.h"
 
 #include "JS8_Include/commons.h"
-#include "varicode.h"
+#include "Varicode.h"
 
 #include <QLoggingCategory>
 #include <iterator>

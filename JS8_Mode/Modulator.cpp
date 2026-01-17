@@ -4,7 +4,7 @@
  */
 #include "Modulator.h"
 #include "JS8Submode.h"
-#include "JS8_Audio/soundout.h"
+#include "JS8_Audio/SoundOutput.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_UI/mainwindow.h"
@@ -26,12 +26,12 @@ constexpr auto MS_PER_SEC = 1000;
 
 /**
  * @brief Start the modulation process
- * 
- * @param frequency 
- * @param submode 
- * @param txDelay 
- * @param stream 
- * @param channel 
+ *
+ * @param frequency
+ * @param submode
+ * @param txDelay
+ * @param stream
+ * @param channel
  */
 void Modulator::start(double const frequency, int const submode,
                       double const txDelay, SoundOutput *const stream,
@@ -131,8 +131,8 @@ void Modulator::start(double const frequency, int const submode,
 
 /**
  * @brief Set tuning mode
- * 
- * @param tuning 
+ *
+ * @param tuning
  */
 void Modulator::tune(bool const tuning) {
     m_tuning = tuning;
@@ -142,8 +142,8 @@ void Modulator::tune(bool const tuning) {
 
 /**
  * @brief Stop the modulation process
- * 
- * @param quickClose 
+ *
+ * @param quickClose
  */
 void Modulator::stop(bool const quickClose) {
     m_quickClose = quickClose;
@@ -152,7 +152,7 @@ void Modulator::stop(bool const quickClose) {
 
 /**
  * @brief Close the modulator
- * 
+ *
  */
 void Modulator::close() {
     if (m_stream) {
@@ -168,10 +168,10 @@ void Modulator::close() {
 
 /**
  * @brief Read data from the modulator
- * 
- * @param data 
- * @param maxSize 
- * @return qint64 
+ *
+ * @param data
+ * @param maxSize
+ * @return qint64
  */
 qint64 Modulator::readData(char *const data, qint64 const maxSize) {
     if (maxSize == 0)

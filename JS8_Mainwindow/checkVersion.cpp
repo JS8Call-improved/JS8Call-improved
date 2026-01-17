@@ -1,12 +1,12 @@
 #include "JS8_UI/mainwindow.h"
 
 /** \file
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  queries the GitHub release assets, trigged from the help menu to determine
  *  if the software version is the latest
  */
 
-void MainWindow::checkVersion(bool const alertOnUpToDate) {
+void UI_Constructor::checkVersion(bool const alertOnUpToDate) {
     auto m = new QNetworkAccessManager(this);
     connect(m, &QNetworkAccessManager::finished, this,
             [this, alertOnUpToDate](QNetworkReply *reply) {

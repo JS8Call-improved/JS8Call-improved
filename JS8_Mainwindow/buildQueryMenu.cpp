@@ -1,11 +1,11 @@
 #include "JS8_UI/mainwindow.h"
 
 /** \file
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  builds the callsign query menu
  */
 
-void MainWindow::buildQueryMenu(QMenu *menu, QString call) {
+void UI_Constructor::buildQueryMenu(QMenu *menu, QString call) {
     bool isAllCall = isAllCallIncluded(call);
 
     // for now, we're going to omit displaying the call...delete this if we want

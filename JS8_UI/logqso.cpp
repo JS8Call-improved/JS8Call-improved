@@ -11,7 +11,7 @@
 
 #include "Configuration.h"
 #include "JS8_Include/Maidenhead.h"
-#include "JS8_Logbook/adif.h"
+#include "JS8_Logbook/ADIF.h"
 #include "JS8_Main/Bands.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/JS8MessageBox.h"

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>717</width>
-    <height>600</height>
+    <width>1002</width>
+    <height>642</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -39,7 +39,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget_2">
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="stationTab">
           <attribute name="title">
@@ -65,8 +65,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>601</width>
-                <height>438</height>
+                <width>886</width>
+                <height>480</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -315,7 +315,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>601</width>
+                <width>871</width>
                 <height>489</height>
                </rect>
               </property>
@@ -704,8 +704,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>601</width>
-                <height>438</height>
+                <width>886</width>
+                <height>480</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -753,6 +753,12 @@
                   </item>
                   <item>
                    <layout class="QFormLayout" name="formLayout_16">
+                    <property name="fieldGrowthPolicy">
+                     <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+                    </property>
+                    <property name="formAlignment">
+                     <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+                    </property>
                     <property name="bottomMargin">
                      <number>0</number>
                     </property>
@@ -777,6 +783,12 @@
                   <string>Autoreply</string>
                  </property>
                  <layout class="QFormLayout" name="formLayout">
+                  <property name="fieldGrowthPolicy">
+                   <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
+                  </property>
+                  <property name="formAlignment">
+                   <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
+                  </property>
                   <item row="0" column="0">
                    <widget class="QCheckBox" name="autoreply_on_check_box">
                     <property name="text">
@@ -1024,7 +1036,7 @@ radio interface behave as expected.</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>585</width>
+                <width>296</width>
                 <height>414</height>
                </rect>
               </property>
@@ -1849,8 +1861,8 @@ this setting allows you to select which audio input will be used
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>647</width>
-            <height>493</height>
+            <width>271</width>
+            <height>352</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2180,8 +2192,8 @@ transmitting periods.</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>647</width>
-            <height>722</height>
+            <width>672</width>
+            <height>874</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -2267,7 +2279,7 @@ transmitting periods.</string>
                  <string>Enable spotting @APRSIS messages to the APRS-IS network</string>
                 </property>
                 <property name="checked">
-                 <bool>true</bool>
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -2278,6 +2290,9 @@ transmitting periods.</string>
                 </property>
                 <property name="text">
                  <string>Enable relaying inbound APRS messages to Heard List stations</string>
+                </property>
+                <property name="checked">
+                 <bool>false</bool>
                 </property>
                </widget>
               </item>
@@ -2834,8 +2849,8 @@ transmitting periods.</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>647</width>
-            <height>493</height>
+            <width>431</width>
+            <height>335</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_31">
@@ -3150,8 +3165,8 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>647</width>
-            <height>493</height>
+            <width>145</width>
+            <height>97</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_35">
@@ -3293,8 +3308,8 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>601</width>
-                <height>485</height>
+                <width>283</width>
+                <height>709</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -4265,12 +4280,12 @@ soundcard changes</string>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="CAT_stop_bits_button_group"/>
   <buttongroup name="TX_mode_button_group"/>
-  <buttongroup name="TX_audio_source_button_group"/>
-  <buttongroup name="PTT_method_button_group"/>
   <buttongroup name="CAT_handshake_button_group"/>
   <buttongroup name="split_mode_button_group"/>
+  <buttongroup name="TX_audio_source_button_group"/>
   <buttongroup name="CAT_data_bits_button_group"/>
+  <buttongroup name="PTT_method_button_group"/>
+  <buttongroup name="CAT_stop_bits_button_group"/>
  </buttongroups>
 </ui>

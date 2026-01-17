@@ -2,22 +2,22 @@
  * @file soundin.cpp
  * @brief Implementation of SoundInput class
  */
-#include "soundin.h"
+#include "SoundInput.h"
 
 #include "JS8_Main/DriftingDateTime.h"
 #include <QAudioFormat>
 #include <QLoggingCategory>
 #include <QSysInfo>
 
-#include "moc_soundin.cpp"
+#include "moc_SoundInput.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(soundin_js8)
 
 /**
  * @brief Checks for audio errors and emits appropriate error messages.
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool SoundInput::audioError() const {
     bool result(true);
@@ -55,7 +55,7 @@ bool SoundInput::audioError() const {
 
 /**
  * @brief Starts audio input from the specified device.
- * 
+ *
  * @param device The QAudioDevice to use for input.
  * @param framesPerBuffer The number of frames per buffer.
  * @param sink The AudioDevice sink to write audio data to.

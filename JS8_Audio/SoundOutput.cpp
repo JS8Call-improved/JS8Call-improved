@@ -1,10 +1,10 @@
 /**
- * @file soundout.cpp
+ * @file SoundOutput.cpp
  * @brief Implementation of SoundOutput class
  */
-#include "soundout.h"
+#include "SoundOutput.h"
 
-#include "moc_soundout.cpp"
+#include "moc_SoundOutput.cpp"
 #include <QAudioOutput>
 #include <QDateTime>
 #include <QLoggingCategory>
@@ -15,7 +15,7 @@ Q_DECLARE_LOGGING_CATEGORY(soundout_js8)
 
 /**
  * @brief Checks for audio errors and emits appropriate error messages.
- * 
+ *
  * @return true if no error, false otherwise
  */
 bool SoundOutput::checkStream() const {

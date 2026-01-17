@@ -5,7 +5,7 @@
 #include <QTimer>
 
 #include "TwoPhaseSignal.h"
-#include "varicode.h"
+#include "Varicode.h"
 
 /**
  * Class to organize transmit loops, i.e., regular schedule of repeated

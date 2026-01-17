@@ -1,11 +1,11 @@
 #include "JS8_UI/mainwindow.h"
 
 /** \file
- * @brief member function of the MainWindow class
+ * @brief member function of the UI_Constructor class
  *  process Rx queue activity
  */
 
-void MainWindow::processRxActivity() {
+void UI_Constructor::processRxActivity() {
     if (m_rxActivityQueue.isEmpty()) {
         return;
     }

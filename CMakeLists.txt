@@ -212,23 +212,24 @@ target_sources(
   JS8_Audio/AudioDevice.cpp
   JS8_Audio/BWFFile.cpp
   JS8_Audio/NotificationAudio.cpp
-  JS8_Audio/soundin.cpp
-  JS8_Audio/soundout.cpp
+  JS8_Audio/SoundInput.cpp
+  JS8_Audio/SoundOutput.cpp
   JS8_Deprecated/DisplayManual.cpp
-  JS8_jsc/jsc.cpp
-  JS8_jsc/jsc_checker.cpp
-  JS8_jsc/jsc_list.cpp
-  JS8_jsc/jsc_map.cpp
-  JS8_Logbook/adif.cpp
-  JS8_Logbook/countrydat.cpp
-  JS8_Logbook/countriesworked.cpp
-  JS8_Logbook/logbook.cpp
+  JS8_JSC/JSC.cpp
+  JS8_JSC/JSC_checker.cpp
+  JS8_JSC/JSC_list.cpp
+  JS8_JSC/JSC_map.cpp
+  JS8_Logbook/ADIF.cpp
+  JS8_Logbook/CountryDat.cpp
+  JS8_Logbook/CountriesWorked.cpp
+  JS8_Logbook/LogBook.cpp
   JS8_Main/AprsInboundRelay.cpp
   JS8_Main/APRSISClient.cpp
   JS8_Main/AttenuationSlider.cpp
   JS8_Main/Bands.cpp
   JS8_Main/CallsignValidator.cpp
   JS8_Main/CandidateKeyFilter.cpp
+  JS8_Main/CPlotter.cpp
   JS8_Main/DriftingDateTime.cpp
   JS8_Main/Flatten.cpp
   JS8_Main/ForeignKeyDelegate.cpp
@@ -252,7 +253,6 @@ target_sources(
   JS8_Main/fileutils.cpp
   JS8_Main/main.cpp
   JS8_Main/Modes.cpp
-  JS8_Main/plotter.cpp
   JS8_Main/ProcessThread.cpp
   JS8_Main/qt_helpers.cpp
   JS8_Main/Radio.cpp
@@ -263,7 +263,7 @@ target_sources(
   JS8_Main/TraceFile.cpp
   JS8_Main/TransmitTextEdit.cpp
   JS8_Main/TwoPhaseSignal.cpp
-  JS8_Main/varicode.cpp
+  JS8_Main/Varicode.cpp
   JS8_Mainwindow/buildQueryMenu.cpp
   JS8_Mainwindow/checkVersion.cpp
   JS8_Mainwindow/dataSink.cpp
@@ -272,9 +272,11 @@ target_sources(
   JS8_Mainwindow/initializeDummyData.cpp
   JS8_Mainwindow/initializeGroupMessage.cpp
   JS8_Mainwindow/networkMessage.cpp
+  JS8_Mainwindow/processBufferedActivity.cpp
   JS8_Mainwindow/processCommandActivity.cpp
   JS8_Mainwindow/processDecodeEvent.cpp
   JS8_Mainwindow/processRxActivity.cpp
+  JS8_Mainwindow/UI_Constructor.cpp
   JS8_Mode/DecodedText.cpp
   JS8_Mode/Detector.cpp
   JS8_Mode/FrequencyTracker.cpp

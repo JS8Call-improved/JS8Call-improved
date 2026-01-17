@@ -1100,7 +1100,7 @@
   <customwidget>
    <class>CPlotter</class>
    <extends>QWidget</extends>
-   <header>JS8_Main/plotter.h</header>
+   <header>JS8_Main/CPlotter.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

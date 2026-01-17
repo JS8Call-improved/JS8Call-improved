@@ -1720,5 +1720,5 @@ future with the foundation laid, including:
 ### (s,c)-Dense Code:
 
 A whitepaper article is being written on this topic. In the meantime,
-see jsc.h, jsc.cpp, & jsc_map.cpp in the source repository for the
+see JSC.h, JSC.cpp, & JSC_map.cpp in the source repository for the
 complete dense code table.

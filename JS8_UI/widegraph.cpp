@@ -4,7 +4,7 @@
 #include "JS8_Include/SettingsGroup.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/JS8MessageBox.h"
-#include "JS8_Main/varicode.h"
+#include "JS8_Main/Varicode.h"
 #include "ui_widegraph.h"
 #include <QElapsedTimer>
 #include <QLoggingCategory>

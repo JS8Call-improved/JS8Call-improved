@@ -9,7 +9,7 @@
 #include "JS8_Main/Radio.h"
 #include "WSJTXMessageClient.h"
 
-class MainWindow;
+class UI_Constructor;
 
 /**
  * @brief Maps JS8Call events to WSJT-X protocol messages
@@ -30,7 +30,7 @@ class WSJTXMessageMapper : public QObject {
      * @param parent Parent QObject
      */
     explicit WSJTXMessageMapper(WSJTXMessageClient *client,
-                                MainWindow *main_window,
+                                UI_Constructor *main_window,
                                 QObject *parent = nullptr);
 
     /**
@@ -107,7 +107,7 @@ class WSJTXMessageMapper : public QObject {
 
   private:
     WSJTXMessageClient *client_;
-    MainWindow *main_window_;
+    UI_Constructor *main_window_;
 };
 
 #endif

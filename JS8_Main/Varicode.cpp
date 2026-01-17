@@ -30,9 +30,9 @@
 #define CRCPP_USE_CPP11
 #include <vendor/CRCpp/CRC.h>
 
+#include "JS8_JSC/JSC.h"
 #include "JS8_Mode/DecodedText.h"
-#include "JS8_jsc/jsc.h"
-#include "varicode.h"
+#include "Varicode.h"
 
 #include <cmath>
 
@@ -2289,9 +2289,10 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
 #if 1
                     bool skipAprsChecksum =
                         (dirTo.compare("@APRSIS", Qt::CaseInsensitive) == 0);
-                    int checksumSize = skipAprsChecksum
-                                           ? 0
-                                           : Varicode::isCommandChecksumed(dirCmd);
+                    int checksumSize =
+                        skipAprsChecksum
+                            ? 0
+                            : Varicode::isCommandChecksumed(dirCmd);
 #else
                     int checksumSize = 0;
 #endif

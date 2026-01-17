@@ -1,8 +1,8 @@
 /**
- * @file logbook.cpp
+ * @file LogBook.cpp
  * @brief Implementation of LogBook class
  */
-#include "logbook.h"
+#include "LogBook.h"
 #include <QDebug>
 #include <QFontMetrics>
 #include <QStandardPaths>

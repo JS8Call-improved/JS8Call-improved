@@ -1,6 +1,6 @@
 #include "messagereplydialog.h"
 #include "JS8_Include/EventFilter.h"
-#include "JS8_Main/varicode.h"
+#include "JS8_Main/Varicode.h"
 #include "ui_messagereplydialog.h"
 #include <QSet>
 

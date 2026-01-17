@@ -1,8 +1,8 @@
-#include "plotter.h"
+#include "CPlotter.h"
 #include "DriftingDateTime.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Mode/JS8Submode.h"
-#include "moc_plotter.cpp"
+#include "moc_CPlotter.cpp"
 #include <QDebug>
 #include <QMouseEvent>
 #include <QPainter>
