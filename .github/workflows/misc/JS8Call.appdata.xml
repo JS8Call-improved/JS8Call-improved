@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+	<id>io.github.JS8Call_improved.JS8Call</id>
+	<name>JS8Call</name>
+	<metadata_license>CC0-1.0</metadata_license>
+	<project_license>GPL-3.0</project_license>
+	<summary>Amateur Radio Weak Signal Operating</summary>
+	<description>
+		<p>JS8Call is an experiment in combining the robustness of FT8 (a weak-signal mode by K1JT) with a messaging and network protocol layer for weak signal communication. The open source software is designed for connecting amateur radio operators who are operating under weak signal conditions and offers real-time keyboard-to-keyboard messaging, store-and-forward messaging, and automatic station announcements.</p>
+	</description>
+	<launchable type="desktop-id">JS8Call.desktop</launchable>
+	<url type="homepage">https://js8call-improved.com/</url>
+	<screenshots>
+		<screenshot type="default">
+			<image>https://js8call-improved.com/img/js8call-app-2025-12.png</image>
+		</screenshot>
+	</screenshots>
+	<provides>
+		<id>JS8Call.desktop</id>
+	</provides>
+	<content_rating type="oars-1.0" />
+	<developer id="io.github.js8call-improved">
+		<name>JS8Call</name>
+	</developer>
+</component>
