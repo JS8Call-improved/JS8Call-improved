@@ -4,11 +4,10 @@ permissions:
   id-token: write
 
 name: CI Build for Linux Ubuntu
+run-name: ${{ (github.event.inputs.environment) || (github.event.pull_request.title) || 'CI' }} Build for Linux Ubuntu
 
 on:
-  workflow_dispatch:
-  pull_request:
-  workflow_call:
+  workflow_dispatch: 
     inputs:
       build-type:
         description: 'Build type (Debug/Release)'
@@ -16,10 +15,28 @@ on:
         type: string
         default: 'Release'
       release-ver:
-        description: 'Release Version (v2.5.0)'
+        description: 'Release Version (v2.5.1)'
         required: false
         type: string
-        default: 'v2.5.0'
+        default: 'v2.5.1'
+      environment:
+        description: 'Environment to run in'
+        type: environment
+        default: CI
+        required: false
+  pull_request:
+  workflow_call:
+    inputs:
+      build-type:
+        description: 'Build type (Debug/Release)'
+        required: false
+        type: string
+        default: 'Debug'
+      release-ver:
+        description: 'Release Version (v2.5.1)'
+        required: false
+        type: string      
+        default: 'v2.5.1'        
 
 # The package arrays below are mainly for building the libs, one could add fedora_build_package to include the
 # packages fedora requires, for instance.
@@ -39,12 +56,13 @@ jobs:
   ci_ubuntu_linux:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    environment: ${{ inputs.environment }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
-          - {os: ubuntu-22.04-arm, arch: ARM64, packages: build-essential autoconf curl git cmake libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
+          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
+          - {os: ubuntu-22.04-arm, arch: ARM64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
 
     steps:
     - uses: actions/checkout@v5
@@ -136,15 +154,21 @@ jobs:
     - name: AppImage tools (x86_64)
       if: (runner.arch == 'X64')
       run: |
-        curl --location --output /tmp/linuxdeployqt-continuous-x86_64.AppImage https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
-        chmod a+x /tmp/linuxdeployqt-continuous-x86_64.AppImage
+        curl --location --output /tmp/linuxdeploy-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        chmod +x /tmp/linuxdeploy-x86_64.AppImage
+        curl --location --output /tmp/linuxdeploy-plugin-qt-x86_64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x /tmp/linuxdeploy-plugin-qt-x86_64.AppImage
+        curl --location --output /tmp/appimagelint-x86_64.AppImage https://github.com/TheAssassin/appimagelint/releases/download/continuous/appimagelint-x86_64.AppImage
+        chmod +x /tmp/appimagelint-x86_64.AppImage
         sudo apt-get install -y ${{ env.ffmpeg_build }} ${{ env.opengl_package1 }} ${{ env.opengl_package2 }} ${{ env.opengl_package3 }}
-
+        
     - name: AppImage tools (arm64)
       if: (runner.arch == 'ARM64')
       run: |
-        curl --location --output /tmp/linuxdeployqt-continuous-aarch64.AppImage https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-aarch64.AppImage
-        chmod a+x /tmp/linuxdeployqt-continuous-aarch64.AppImage
+        curl --location --output /tmp/linuxdeploy-aarch64.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-aarch64.AppImage
+        chmod a+x /tmp/linuxdeploy-aarch64.AppImage
+        curl --location --output /tmp/linuxdeploy-plugin-qt-aarch64.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-aarch64.AppImage
+        chmod a+x /tmp/linuxdeploy-plugin-qt-aarch64.AppImage
         sudo apt-get install -y ${{ env.ffmpeg_build }} ${{ env.opengl_package1 }} ${{ env.opengl_package2 }} ${{ env.opengl_package3 }}
 
 ## libusb
@@ -291,92 +315,131 @@ jobs:
     - name: AppImage Directory Setup and File Copy
       run: |
         mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/128x128/apps/
-        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/
-        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
-        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
-        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/
-
-        cp build/JS8Call ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/bin/
+        mkdir -p ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/metainfo/
         cp icons/Unix/js8call_icon.png ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/icons/hicolor/128x128/apps/
-        cp ${GITHUB_WORKSPACE}/local/qt693-install/plugins/platforms/*.so ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/platforms/
-        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-decoration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
-        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-graphics-integration-client ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
-        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/wayland-shell-integration ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
-        cp -R ${GITHUB_WORKSPACE}/local/qt693-install/plugins/xcbglintegrations ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/plugins/
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavcodec.so.61.19.101 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavcodec.so.61
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavdevice.so.61.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavdevice.so.61
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavfilter.so.10.4.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavfilter.so.10
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavformat.so.61.7.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavformat.so.61
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libavutil.so.59.39.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libavutil.so.59
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libswresample.so.5.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libswresample.so.5
-        cp -R ${GITHUB_WORKSPACE}/local/ffmpeg/lib/libswscale.so.8.3.100 ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/lib/libswscale.so.8
+        cp .github/workflows/misc/JS8Call.appdata.xml ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/metainfo/io.github.JS8Call_improved.JS8Call.appdata.xml
 
-    - name: AppImage Copy Files
+# Secrets
+    - name: Get secrets (CI)
+      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       run: |
-        cp .github/workflows/misc/JS8Call.desktop ${GITHUB_WORKSPACE}/AppImage/AppDir/usr/share/applications/JS8Call.desktop
+        echo "${{ secrets.CI_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
+        ls -l /tmp/js8call.key.asc
+        gpg --batch --import /tmp/js8call.key.asc
+        echo "${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+      continue-on-error: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Get secrets (Release)
+      if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
+      run: |
+        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
+        ls -l /tmp/js8call.key.asc
+        gpg --batch --import /tmp/js8call.key.asc
+        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+      continue-on-error: true
 
-    - name: AppImage deploy (x86_64 Release Build)
-      if: (runner.arch == 'X64' && inputs.release-ver)
+    - name: List keys
+      run: gpg --list-secret-keys --keyid-format LONG
+      continue-on-error: true
+
+    - name: AppImage linuxdeploy Sign and Package (x86_64 Release Build)
+      if: ${{ (runner.arch == 'X64') && (inputs.release-ver) && (inputs.environment == 'Release') }}
       run: |
-        export VERSION=${{ inputs.release-ver }}
+        export LINUXDEPLOY_OUTPUT_VERSION=${{ inputs.release-ver }}
+        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_QT_MODULES="waylandcompositor"
+        export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
+
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
-          -executable=AppDir/usr/bin/JS8Call \
-          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
-          -appimage -verbose=1 -no-translations
-        chmod a+x *.AppImage
+        APPIMAGETOOL_SIGN_PASSPHRASE="${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
+          LDAI_SIGN=1 QMAKE=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          /tmp/linuxdeploy-x86_64.AppImage \
+          --appdir=AppDir \
+          --desktop-file=${GITHUB_WORKSPACE}/.github/workflows/misc/JS8Call.desktop \
+          --executable=${GITHUB_WORKSPACE}/build/JS8Call \
+          --plugin=qt \
+          --output appimage \
+          --verbosity=1
+      continue-on-error: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: AppImage linuxdeploy Sign and Package (x86_64 CI Build)
+      if: ((runner.arch == 'X64') && !(inputs.release-ver) && (!(inputs.environment) || (inputs.environment == 'CI')))
+      run: |
+        export LINUXDEPLOY_OUTPUT_VERSION=devel
+        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_QT_MODULES="waylandcompositor"
+        export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
+
+        cd ${GITHUB_WORKSPACE}/AppImage/
+        APPIMAGETOOL_SIGN_PASSPHRASE="${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
+          LDAI_SIGN=1 QMAKE=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          /tmp/linuxdeploy-x86_64.AppImage \
+          --appdir=AppDir \
+          --desktop-file=${GITHUB_WORKSPACE}/.github/workflows/misc/JS8Call.desktop \
+          --executable=${GITHUB_WORKSPACE}/build/JS8Call \
+          --plugin=qt \
+          --output appimage \
+          --verbosity=1
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: AppImage deploy (x86_64 CI Build)
-      if: (runner.arch == 'X64' && !inputs.release-ver )
+    - name: AppImage linuxdeploy Sign and Package (ARM64 CI Build)
+      if: ((runner.arch == 'ARM64') && !(inputs.release-ver) && (!(inputs.environment) || (inputs.environment == 'CI')))
       run: |
-        export VERSION=devel
+        export LINUXDEPLOY_OUTPUT_VERSION=devel
+        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_QT_MODULES="waylandcompositor"
+        export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
+
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-x86_64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
-          -executable=AppDir/usr/bin/JS8Call \
-          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
-          -appimage -verbose=2 -no-translations
-        chmod a+x *.AppImage
+        APPIMAGETOOL_SIGN_PASSPHRASE="${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
+          LDAI_SIGN=1 QMAKE=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          /tmp/linuxdeploy-aarch64.AppImage \
+          --appdir=AppDir \
+          --desktop-file=${GITHUB_WORKSPACE}/.github/workflows/misc/JS8Call.desktop \
+          --executable=${GITHUB_WORKSPACE}/build/JS8Call \
+          --plugin=qt \
+          --output appimage \
+          --verbosity=1
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: AppImage deploy (arm64 Release Build)
-      if: (runner.arch == 'ARM64' && inputs.release-ver )
+    - name: AppImage linuxdeploy Sign and Package (arm64 Release Build)
+      if: ${{ (runner.arch == 'ARM64') && (inputs.release-ver) && (inputs.environment == 'Release') }}
       run: |
-        export VERSION=${{ inputs.release-ver }}
-        cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
-          -executable=AppDir/usr/bin/JS8Call \
-          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
-          -appimage -verbose=1 -no-translations
-        chmod a+x *.AppImage
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        export LINUXDEPLOY_OUTPUT_VERSION=${{ inputs.release-ver }}
+        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_QT_MODULES="waylandcompositor"
+        export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
 
-    - name: AppImage deploy (arm64 CI Build)
-      if: (runner.arch == 'ARM64' && !inputs.release-ver )
-      run: |
-        export VERSION=devel
         cd ${GITHUB_WORKSPACE}/AppImage/
-        /tmp/linuxdeployqt-continuous-aarch64.AppImage AppDir/usr/share/applications/JS8Call.desktop \
-          -executable=AppDir/usr/bin/JS8Call \
-          -qmake=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
-          -appimage -verbose=2 -no-translations
-        chmod a+x *.AppImage
+        APPIMAGETOOL_SIGN_PASSPHRASE="${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
+          LDAI_SIGN=1 QMAKE=/home/runner/work/JS8Call-improved/JS8Call-improved/local/qt693-install/bin/qmake \
+          /tmp/linuxdeploy-aarch64.AppImage \
+          --appdir=AppDir \
+          --desktop-file=${GITHUB_WORKSPACE}/.github/workflows/misc/JS8Call.desktop \
+          --executable=${GITHUB_WORKSPACE}/build/JS8Call \
+          --plugin=qt \
+          --output appimage \
+          --verbosity=1
+      continue-on-error: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Attestation (Release Only)
-      if: ${{ inputs.release-ver }}
+      if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: '${{ github.workspace }}/AppImage/*.AppImage*'
 
     - name: Upload Artifact (Release build)
-      if: ${{ inputs.release-ver }}
+      if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       uses: actions/upload-artifact@v5
       with:
         name: js8call-improved-${{ matrix.os }}
