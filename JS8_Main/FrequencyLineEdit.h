@@ -1,9 +1,9 @@
 #ifndef FREQUENCY_LINE_EDIT_HPP_
 #define FREQUENCY_LINE_EDIT_HPP_
 
-#include <QLineEdit>
-
 #include "Radio.h"
+
+#include <QLineEdit>
 
 class QWidget;
 

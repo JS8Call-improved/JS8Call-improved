@@ -5,6 +5,7 @@
 #include "NotificationAudio.h"
 #include "BWFFile.h"
 #include "SoundOutput.h"
+
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(notificationaudio_js8)

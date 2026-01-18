@@ -1,10 +1,14 @@
+/**
+ * @file JS8MessageBox.cpp
+ * @brief Implementation of the Qt dialogs and buttons
+ */
+
 #include "JS8MessageBox.h"
+#include "revision_utils.h"
 
 #include <QCoreApplication>
 #include <QDialogButtonBox>
 #include <QPushButton>
-
-#include "revision_utils.h"
 
 JS8MessageBox::JS8MessageBox(QWidget *parent) : QMessageBox{parent} {
     setWindowTitle(program_title());

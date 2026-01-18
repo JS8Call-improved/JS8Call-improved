@@ -1,4 +1,10 @@
+/**
+ * @file revision_utils.cpp
+ * @brief application versioning utility
+ */
+
 #include "revision_utils.h"
+
 #include <QCoreApplication>
 
 QString version() {

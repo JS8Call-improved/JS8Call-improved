@@ -2,18 +2,19 @@
  * @file DriftingDateTime.cpp
  * @brief Implementation of DriftingDateTimeSingleton
  */
+
+#include "DriftingDateTime.h"
+
 #include <QLoggingCategory>
 #include <QMutexLocker>
 #include <QThread>
-
-#include "DriftingDateTime.h"
 
 Q_DECLARE_LOGGING_CATEGORY(driftingdatetime_js8)
 
 /**
  * @brief Get the singleton instance
- * 
- * @return DriftingDateTimeSingleton& 
+ *
+ * @return DriftingDateTimeSingleton&
  */
 DriftingDateTimeSingleton &DriftingDateTimeSingleton::getSingleton() {
     if (singleton.isNull()) {
@@ -23,8 +24,9 @@ DriftingDateTimeSingleton &DriftingDateTimeSingleton::getSingleton() {
 }
 
 /**
- * @brief Construct a new Drifting Date Time Singleton:: Drifting Date Time Singleton object
- * 
+ * @brief Construct a new Drifting Date Time Singleton:: Drifting Date Time
+ * Singleton object
+ *
  */
 DriftingDateTimeSingleton::DriftingDateTimeSingleton() : driftMS(0) {}
 
@@ -33,8 +35,8 @@ DriftingDateTimeSingleton::DriftingDateTimeSingleton() : driftMS(0) {}
  *
  * Positive values indicate the drifted clock is behind the system clock,
  * negative, it is early.
- * 
- * @return qint64 
+ *
+ * @return qint64
  */
 qint64 DriftingDateTimeSingleton::drift() const {
     QMutexLocker locker(&mutex);
@@ -43,8 +45,8 @@ qint64 DriftingDateTimeSingleton::drift() const {
 
 /**
  * @brief Set the drift inner
- * 
- * @param ms 
+ *
+ * @param ms
  */
 void DriftingDateTimeSingleton::setDriftInner(qint64 ms) {
     QMutexLocker locker(&mutex);
@@ -53,8 +55,8 @@ void DriftingDateTimeSingleton::setDriftInner(qint64 ms) {
 
 /**
  * @brief Set the drift
- * 
- * @param ms 
+ *
+ * @param ms
  */
 void DriftingDateTimeSingleton::setDrift(qint64 ms) {
     qint64 old_drift = drift();
@@ -72,7 +74,7 @@ void DriftingDateTimeSingleton::setDrift(qint64 ms) {
 
 /**
  * @brief Emits to the driftChanged signal (as per TwoPhaseSignal contract).
- * 
+ *
  */
 void DriftingDateTimeSingleton::onPlumbingCompleted() const {
     emit driftChanged(drift());
@@ -80,7 +82,7 @@ void DriftingDateTimeSingleton::onPlumbingCompleted() const {
 
 /**
  * @brief Static member initialization
- * 
+ *
  */
 QPointer<DriftingDateTimeSingleton> DriftingDateTimeSingleton::singleton =
     QPointer<DriftingDateTimeSingleton>{};

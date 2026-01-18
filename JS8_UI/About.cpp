@@ -1,6 +1,12 @@
-#include "about.h"
+/**
+ * @file About.cpp
+ * @brief implementation of the About dialog for the UI
+ */
+
+#include "About.h"
 #include "JS8_Main/revision_utils.h"
-#include "ui_about.h"
+#include "ui_About.h"
+
 #include <QString>
 
 CAboutDlg::CAboutDlg(QWidget *parent) : QDialog(parent), ui(new Ui::CAboutDlg) {

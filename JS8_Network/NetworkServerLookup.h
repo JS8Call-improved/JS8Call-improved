@@ -1,10 +1,10 @@
 #ifndef NETWORK_SERVER_LOOKUP_HPP__
 #define NETWORK_SERVER_LOOKUP_HPP__
 
-#include <tuple>
-
 #include <QAbstractSocket>
 #include <QHostAddress>
+
+#include <tuple>
 
 class QString;
 

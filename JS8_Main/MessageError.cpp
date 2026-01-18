@@ -1,3 +1,8 @@
+/**
+ * @file MessageError.cpp
+ * @brief Implementation of the message error for external servers/clients
+ */
+
 #include "MessageError.h"
 
 /******************************************************************************/

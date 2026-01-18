@@ -1,11 +1,18 @@
-#include "TransceiverBase.h"
+/**
+ * @file TransceiverBase.cpp
+ * @brief Implementation of the TransceiverBase class
+ * Implements the Transceiver abstract  interface as template methods and
+ * provides  a new abstract interface  with similar functionality
+ */
 
-#include <exception>
+#include "TransceiverBase.h"
 
 #include <QDebug>
 #include <QString>
 #include <QThread>
 #include <QTimer>
+
+#include <exception>
 
 #include "moc_TransceiverBase.cpp"
 

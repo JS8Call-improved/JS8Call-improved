@@ -2,19 +2,14 @@
 #ifndef LogQSO_H
 #define LogQSO_H
 
-#ifdef QT5
-#include <QtWidgets>
-#else
-#include <QtGui>
-#endif
+#include "JS8_Main/Radio.h"
 
 #include <QDateTime>
 #include <QDialog>
 #include <QLineEdit>
 #include <QScopedPointer>
 #include <QString>
-
-#include "JS8_Main/Radio.h"
+#include <QtGui>
 
 namespace Ui {
 class LogQSO;

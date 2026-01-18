@@ -2,6 +2,7 @@
 #define JS8SPOTCLIENT_H
 
 #include "JS8_Include/pimpl_h.h"
+
 #include <QObject>
 #include <QString>
 

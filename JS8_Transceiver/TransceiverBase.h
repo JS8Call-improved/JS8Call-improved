@@ -1,11 +1,12 @@
 #ifndef TRANSCEIVER_BASE_HPP__
 #define TRANSCEIVER_BASE_HPP__
 
-#include <stdexcept>
-
 #include "Transceiver.h"
+
 #include <QLoggingCategory>
 #include <QString>
+
+#include <stdexcept>
 
 //
 // Base Transceiver Implementation

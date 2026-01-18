@@ -1,4 +1,12 @@
+/**
+ * @file DXLabSuiteCommanderTransceiver.cpp
+ * @brief Implementation of the DXLabSuiteCommanderTransceiver class
+ * Helper decorator class that encapsulates  the emulation of split TX
+ * operation.
+ */
+
 #include "EmulateSplitTransceiver.h"
+
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(emulatesplittransceiver_js8)

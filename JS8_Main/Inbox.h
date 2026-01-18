@@ -5,14 +5,13 @@
  * (C) 2018 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
  **/
 
+#include "Message.h"
+#include "vendor/sqlite3/sqlite3.h"
+
 #include <QObject>
 #include <QPair>
 #include <QString>
 #include <QVariant>
-
-#include "vendor/sqlite3/sqlite3.h"
-
-#include "Message.h"
 
 class Inbox {
   public:

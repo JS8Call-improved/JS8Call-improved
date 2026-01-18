@@ -1,28 +1,29 @@
+/**
+ * @file RDP.cpp
+ * @brief Implementation
+ * We'll typically end up with a ton of points to draw for the spectrum,
+ * and some simplification is worthwhile; use the Ramer–Douglas–Peucker
+ * algorithm to reduce to a smaller number of points.
+ *
+ *We'll modify the inbound polygon in place, such that anything we want
+ *to keep is at the start of the polygon and anything we want to omit
+ *is at the end, returning an iterator to the new end, i.e., the point
+ *one past the last point we want to keep.
+ *
+ *Our goal here is to avoid reallocations. Since we're at worst going to
+ *be leaving this the same size, we should be able to work with what we
+ *have already.
+ *
+ *Note that this is a functor; it's serially reusable, but not reentrant.
+ *Call it from one thread only. In practical use, that's not expected to
+ *be a problem, and it allows us to reuse allocated memory in a serial
+ *manner, rather than requesting it and freeing it constantly.
+ */
+
 #include "RDP.h"
+
 #include <cmath>
 #include <utility>
-
-/******************************************************************************/
-// Implementation
-/******************************************************************************/
-
-// We'll typically end up with a ton of points to draw for the spectrum,
-// and some simplification is worthwhile; use the Ramer–Douglas–Peucker
-// algorithm to reduce to a smaller number of points.
-//
-// We'll modify the inbound polygon in place, such that anything we want
-// to keep is at the start of the polygon and anything we want to omit
-// is at the end, returning an iterator to the new end, i.e., the point
-// one past the last point we want to keep.
-//
-// Our goal here is to avoid reallocations. Since we're at worst going to
-// be leaving this the same size, we should be able to work with what we
-// have already.
-//
-// Note that this is a functor; it's serially reusable, but not reentrant.
-// Call it from one thread only. In practical use, that's not expected to
-// be a problem, and it allows us to reuse allocated memory in a serial
-// manner, rather than requesting it and freeing it constantly.
 
 QPolygonF::iterator RDP::operator()(QPolygonF &polygon, qreal const epsilon) {
     // There's no point in proceeding with less than 3 points.

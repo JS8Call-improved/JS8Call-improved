@@ -1,11 +1,11 @@
 #ifndef MULTISETTINGS_HPP__
 #define MULTISETTINGS_HPP__
 
+#include "JS8_Include/pimpl_h.h"
+
 #include <QObject>
 #include <QString>
 #include <QVariant>
-
-#include "JS8_Include/pimpl_h.h"
 
 class QSettings;
 class QMainWindow;

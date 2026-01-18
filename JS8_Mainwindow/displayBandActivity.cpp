@@ -1,9 +1,11 @@
-#include "JS8_UI/mainwindow.h"
+
 
 /** \file
  * @brief member function of the UI_Constructor class
  *  displays the current band activity in the left pane of the UI
  */
+
+#include "JS8_UI/mainwindow.h"
 
 void UI_Constructor::displayBandActivity() {
     auto now = DriftingDateTime::currentDateTimeUtc();

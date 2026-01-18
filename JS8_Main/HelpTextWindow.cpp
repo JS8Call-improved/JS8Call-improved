@@ -3,6 +3,8 @@
  * @brief Implementation of HelpTextWindow for displaying help text files
  */
 #include "HelpTextWindow.h"
+#include "JS8MessageBox.h"
+#include "qt_helpers.h"
 
 #include <QApplication>
 #include <QFile>
@@ -10,12 +12,9 @@
 #include <QString>
 #include <QTextStream>
 
-#include "JS8MessageBox.h"
-#include "qt_helpers.h"
-
 /**
  * @brief Construct a new HelpTextWindow object
- * 
+ *
  * @param title Title of the help window
  * @param file_name Path to the help text file
  * @param font Font to use for displaying the help text

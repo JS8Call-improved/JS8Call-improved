@@ -1,3 +1,8 @@
+/**
+ * @file qt_helpers.cpp
+ * @brief Qt style sheets and widgets
+ */
+
 #include "qt_helpers.h"
 
 #include <QFont>

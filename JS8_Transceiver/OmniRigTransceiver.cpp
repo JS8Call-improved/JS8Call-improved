@@ -1,11 +1,16 @@
+/**
+ * @file OmniRig.cpp
+ * @brief Implementation of the OmniRig class
+ * Implements interface with OmniRig
+ */
+
 #include "OmniRigTransceiver.h"
+#include "JS8_Main/qt_helpers.h"
 
 #include <QDebug>
 #include <QThread>
 #include <QTimer>
 #include <objbase.h>
-
-#include "JS8_Main/qt_helpers.h"
 
 #include "moc_OmniRigTransceiver.cpp"
 

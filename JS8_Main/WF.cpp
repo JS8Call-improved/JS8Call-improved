@@ -1,5 +1,12 @@
+/**
+ * @file WF.cpp
+ * @brief implementation of waterfall spectrum display
+ */
+
 #include "WF.h"
 #include "qt_helpers.h"
+#include "ui_wf_palette_design_dialog.h"
+
 #include <QAction>
 #include <QBrush>
 #include <QColor>
@@ -18,9 +25,8 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextStream>
-#include <memory>
 
-#include "ui_wf_palette_design_dialog.h"
+#include <memory>
 
 /******************************************************************************/
 // Private Implementation

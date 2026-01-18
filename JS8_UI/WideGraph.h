@@ -4,6 +4,7 @@
 
 #include "JS8_Include/commons.h"
 #include "JS8_Main/WF.h"
+
 #include <QColor>
 #include <QDir>
 #include <QEvent>
@@ -14,6 +15,7 @@
 #include <QStringView>
 #include <QVector>
 #include <QWidget>
+
 #include <array>
 
 namespace Ui {

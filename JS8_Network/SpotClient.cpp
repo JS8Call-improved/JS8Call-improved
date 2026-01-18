@@ -5,13 +5,15 @@
 #include "SpotClient.h"
 #include "JS8_Include/pimpl_impl.h"
 #include "JS8_Main/Message.h"
-#include "moc_SpotClient.cpp"
+
 #include <QHostInfo>
 #include <QLoggingCategory>
 #include <QNetworkDatagram>
 #include <QQueue>
 #include <QTimer>
 #include <QUdpSocket>
+
+#include "moc_SpotClient.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(spotclient_js8)
 
@@ -43,7 +45,7 @@ template <typename T> bool changeValue(T &stored, T const &update) {
 /**
  * @private
  * @brief Private implementation of the SpotClient class.
- * 
+ *
  */
 class SpotClient::impl final : public QUdpSocket {
     Q_OBJECT
@@ -144,7 +146,7 @@ class SpotClient::impl final : public QUdpSocket {
 
 /**
  * @brief Constructs a SpotClient object.
- * 
+ *
  * @param name The hostname of the spot server.
  * @param port The port number of the spot server.
  * @param version The version string of the client.
@@ -163,7 +165,7 @@ void SpotClient::start() {
 
 /**
  * @brief Sets the local station information.
- * 
+ *
  * @param callsign The callsign of the local station.
  * @param grid The grid locator of the local station.
  * @param info Additional info about the local station.
@@ -191,7 +193,7 @@ void SpotClient::setLocalStation(QString const &callsign, QString const &grid,
 
 /**
  * @brief Enqueues a command to be sent to the spot server.
- * 
+ *
  * @param cmd The command string.
  * @param from The sender callsign.
  * @param to The recipient callsign.
@@ -230,7 +232,7 @@ void SpotClient::enqueueCmd(QString const &cmd, QString const &from,
 
 /**
  * @brief Enqueues a spot to be sent to the spot server.
- * 
+ *
  * @param callsign The callsign of the spotted station.
  * @param grid The grid locator of the spotted station.
  * @param submode The submode identifier.

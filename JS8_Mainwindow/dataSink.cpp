@@ -1,9 +1,11 @@
-#include "JS8_UI/mainwindow.h"
+
 
 /** \file
  * @brief member function of the UI_Constructor class
  *  creates the waterfall spectrum
  */
+
+#include "JS8_UI/mainwindow.h"
 
 /**
  * Emulation of the Fortran 'flat1' subroutine.

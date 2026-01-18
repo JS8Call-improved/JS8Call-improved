@@ -1,3 +1,8 @@
+/**
+ * @file RadioMetaType.cpp
+ * @brief extension of the Radio namespace
+ */
+
 #include "Radio.h"
 
 #include <QDataStream>

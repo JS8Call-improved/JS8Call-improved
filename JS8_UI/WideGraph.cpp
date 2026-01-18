@@ -1,11 +1,17 @@
-#include "widegraph.h"
+/**
+ * \file WideGraph.cpp
+ * @brief implementation of the UI WideGraph class
+ */
+
+#include "WideGraph.h"
 #include "Configuration.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Include/SettingsGroup.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/JS8MessageBox.h"
 #include "JS8_Main/Varicode.h"
-#include "ui_widegraph.h"
+#include "ui_WideGraph.h"
+
 #include <QElapsedTimer>
 #include <QLoggingCategory>
 #include <QMenu>
@@ -13,10 +19,11 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QTimer>
+
 #include <algorithm>
 #include <cmath>
 
-#include "moc_widegraph.cpp"
+#include "moc_WideGraph.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(widegraph_js8)
 

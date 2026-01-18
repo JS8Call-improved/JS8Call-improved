@@ -3,6 +3,7 @@
 #define SOUNDIN_H__
 
 #include "JS8_Audio/AudioDevice.h"
+
 #include <QAudioDevice>
 #include <QAudioSource>
 #include <QDateTime>

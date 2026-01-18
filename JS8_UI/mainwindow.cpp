@@ -4,6 +4,7 @@
  *   executes member functions of the UI_Constructor class that provide
  *   all functionality of the JS8call main window
  */
+
 #include "mainwindow.h"
 
 #include "moc_mainwindow.cpp"

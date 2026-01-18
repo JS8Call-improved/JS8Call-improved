@@ -1,11 +1,19 @@
-#include "messagewindow.h"
+/**
+ * \file MessageWindow.cpp
+ * @brief implementation of the message window dialog for the UI
+ */
+
+#include "MessageWindow.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Main/Radio.h"
-#include "moc_messagewindow.cpp"
-#include "ui_messagewindow.h"
+#include "ui_MessageWindow.h"
+
 #include <QDateTime>
 #include <QMenu>
+
 #include <algorithm>
+
+#include "moc_MessageWindow.cpp"
 
 namespace {
 auto pathSegs(QString const &path) {

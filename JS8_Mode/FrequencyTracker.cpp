@@ -9,12 +9,12 @@
 
 /**
  * @brief JS8 namespace for Kalman filter-based trackers
- * 
+ *
  */
 namespace js8 {
 /**
  * @brief Reset the FrequencyTracker with initial parameters
- * 
+ *
  * @param initial_hz Initial frequency estimate in Hz
  * @param sample_rate_hz Sample rate in Hz
  * @param alpha Smoothing factor
@@ -36,29 +36,29 @@ void FrequencyTracker::reset(double initial_hz, double sample_rate_hz,
 
 /**
  * @brief Disable the FrequencyTracker
- * 
+ *
  */
 void FrequencyTracker::disable() { m_enabled = false; }
 
 /**
  * @brief Check if the FrequencyTracker is enabled
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool FrequencyTracker::enabled() const noexcept { return m_enabled; }
 
 /**
  * @brief Get the current frequency estimate in Hz
- * 
- * @return double 
+ *
+ * @return double
  */
 double FrequencyTracker::currentHz() const noexcept { return m_est_hz; }
 
 /**
  * @brief Get the average step size in Hz
- * 
- * @return double 
+ *
+ * @return double
  */
 double FrequencyTracker::averageStepHz() const noexcept {
     return m_updates > 0 ? m_sum_abs / static_cast<double>(m_updates) : 0.0;
@@ -66,7 +66,7 @@ double FrequencyTracker::averageStepHz() const noexcept {
 
 /**
  * @brief Apply frequency correction to the provided data
- * 
+ *
  * @param data Pointer to complex float data
  * @param count Number of samples
  */
@@ -86,7 +86,7 @@ void FrequencyTracker::apply(std::complex<float> *data, int count) const {
 
 /**
  * @brief Update the FrequencyTracker with a new residual frequency measurement
- * 
+ *
  * @param residual_hz Residual frequency in Hz
  * @param weight Weighting factor
  */
@@ -109,7 +109,7 @@ void FrequencyTracker::update(double residual_hz, double weight) {
 
 /**
  * @brief Reset the TimingTracker with initial parameters
- * 
+ *
  * @param initial_samples Initial timing estimate in samples
  * @param alpha Smoothing factor
  * @param max_step Maximum step size in samples
@@ -128,29 +128,29 @@ void TimingTracker::reset(double initial_samples, double alpha, double max_step,
 
 /**
  * @brief Disable the TimingTracker
- * 
+ *
  */
 void TimingTracker::disable() { m_enabled = false; }
 
 /**
  * @brief Check if the TimingTracker is enabled
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool TimingTracker::enabled() const noexcept { return m_enabled; }
 
 /**
  * @brief Get the current timing estimate in samples
- * 
- * @return double 
+ *
+ * @return double
  */
 double TimingTracker::currentSamples() const noexcept { return m_est_samples; }
 
 /**
  * @brief Get the average step size in samples
- * 
- * @return double 
+ *
+ * @return double
  */
 double TimingTracker::averageStepSamples() const noexcept {
     return m_updates > 0 ? m_sum_abs / static_cast<double>(m_updates) : 0.0;
@@ -158,7 +158,7 @@ double TimingTracker::averageStepSamples() const noexcept {
 
 /**
  * @brief Update the TimingTracker with a new residual timing measurement
- * 
+ *
  * @param residual_samples Residual timing in samples
  * @param weight Weighting factor
  */

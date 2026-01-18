@@ -2,9 +2,11 @@
  * @file DecodedText.cpp
  * @brief Implementation of DecodedText class
  */
+
 #include "DecodedText.h"
 #include "JS8_Include/commons.h"
 #include <JS8_Main/Varicode.h>
+
 #include <QStringBuilder>
 
 /******************************************************************************/

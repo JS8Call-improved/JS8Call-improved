@@ -1,9 +1,21 @@
+/**
+ * @file TxLoop.cpp
+ * Class to organize transmit loops, i.e., regular schedule of repeated
+ *transmissions. Intended use cases are either repeated CQ or HB transmissions.
+ *
+ * One object of this class organizes one such transmit loop.
+ *
+ * This class knows no other time than what DriftingDateTime tells it.
+ */
+
 #include "TxLoop.h"
 #include "DriftingDateTime.h"
 #include "JS8_Mode/JS8Submode.h"
+
 #include <QLoggingCategory>
 #include <QTimeZone>
 #include <boost/format.hpp>
+
 #include <stdexcept>
 
 Q_DECLARE_LOGGING_CATEGORY(txloop_js8)

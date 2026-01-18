@@ -1,6 +1,13 @@
-#include "MultiSettings.h"
+/**
+ * @file MultiSettings.cpp
+ * @brief Implementation of multi-settings dialog
+ */
 
-#include <stdexcept>
+#include "MultiSettings.h"
+#include "JS8MessageBox.h"
+#include "JS8_Include/SettingsGroup.h"
+#include "JS8_Include/pimpl_impl.h"
+#include "qt_helpers.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -27,11 +34,7 @@
 #include <QStringList>
 #include <QVBoxLayout>
 
-#include "JS8MessageBox.h"
-#include "JS8_Include/SettingsGroup.h"
-#include "qt_helpers.h"
-
-#include "JS8_Include/pimpl_impl.h"
+#include <stdexcept>
 
 namespace {
 char const *default_string = QT_TRANSLATE_NOOP("MultiSettings", "Default");

@@ -1,8 +1,12 @@
-#include "FrequencyList.h"
+/**
+ * @file FrequencyList.cpp
+ * @brief Implementation of the JS8 standard operating frequencies
+ */
 
-#include <cstdlib>
-#include <limits>
-#include <utility>
+#include "FrequencyList.h"
+#include "JS8_Include/pimpl_impl.h"
+#include "JS8_Main/Bands.h"
+#include "Radio.h"
 
 #include <QAbstractTableModel>
 #include <QByteArray>
@@ -16,9 +20,9 @@
 #include <QStringList>
 #include <QVector>
 
-#include "JS8_Include/pimpl_impl.h"
-#include "JS8_Main/Bands.h"
-#include "Radio.h"
+#include <cstdlib>
+#include <limits>
+#include <utility>
 
 #include "moc_FrequencyList.cpp"
 

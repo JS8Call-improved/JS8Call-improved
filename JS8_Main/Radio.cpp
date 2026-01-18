@@ -1,11 +1,16 @@
-#include "Radio.h"
+/**
+ * @file Radio.cpp
+ * @brief callsign validation
+ */
 
-#include <cmath>
-#include <limits>
+#include "Radio.h"
 
 #include <QChar>
 #include <QRegularExpression>
 #include <QString>
+
+#include <cmath>
+#include <limits>
 
 namespace Radio {
 namespace {

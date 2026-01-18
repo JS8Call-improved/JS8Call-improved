@@ -1,3 +1,8 @@
+/**
+ * @file SelfDestructMessageBox.cpp
+ * @brief implementation of the timed self-destruct message dialogs
+ */
+
 #include "SelfDestructMessageBox.h"
 
 SelfDestructMessageBox::SelfDestructMessageBox(

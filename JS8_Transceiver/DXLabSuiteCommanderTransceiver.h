@@ -1,10 +1,10 @@
 #ifndef DX_LAB_SUITE_COMMANDER_TRANSCEIVER_HPP__
 #define DX_LAB_SUITE_COMMANDER_TRANSCEIVER_HPP__
 
-#include <memory>
-
 #include "PollingTransceiver.h"
 #include "TransceiverFactory.h"
+
+#include <memory>
 
 class QTcpSocket;
 class QByteArray;

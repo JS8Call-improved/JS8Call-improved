@@ -3,18 +3,16 @@
  * @brief Implementation of TCPClient class
  */
 #include "TCPClient.h"
+#include "JS8_Include/pimpl_impl.h"
 
 #include <QDebug>
 #include <QTcpSocket>
-
-#include "JS8_Include/pimpl_impl.h"
 
 #include "moc_TCPClient.cpp"
 
 /**
  * @private
  * @brief Private implementation of the TCPClient class.
- * 
  */
 class TCPClient::impl : public QTcpSocket {
     Q_OBJECT
@@ -54,14 +52,15 @@ class TCPClient::impl : public QTcpSocket {
 
 /**
  * @brief Construct a new TCPClient::TCPClient object
- * 
- * @param parent 
+ *
+ * @param parent
  */
 TCPClient::TCPClient(QObject *parent) : QObject(parent), m_{this} {}
 
 /**
- * @brief Ensures that the TCP client is connected to the specified host and port.
- * 
+ * @brief Ensures that the TCP client is connected to the specified host and
+ * port.
+ *
  * @param host The hostname or IP address to connect to.
  * @param port The port number to connect to.
  * @param msecs The timeout in milliseconds to wait for the connection.
@@ -77,7 +76,7 @@ bool TCPClient::ensureConnected(QString host, port_type port, int msecs) {
 
 /**
  * @brief Sends a network message to the specified host and port.
- * 
+ *
  * @param host The hostname or IP address to send the message to.
  * @param port The port number to send the message to.
  * @param message The message data to send.

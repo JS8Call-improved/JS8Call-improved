@@ -1,9 +1,12 @@
 #ifndef DETECTOR_HPP__
 #define DETECTOR_HPP__
+
 #include "JS8_Audio/AudioDevice.h"
+
 #include <QMutex>
-#include <array>
 #include <vendor/Eigen/Dense>
+
+#include <array>
 
 // Output device that distributes data in predefined chunks via a signal;
 // underlying device for this abstraction is just the buffer that stores

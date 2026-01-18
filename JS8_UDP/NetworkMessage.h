@@ -530,9 +530,9 @@
  * purposes in the hound display.
  */
 
-#include <QDataStream>
-
 #include "JS8_Include/pimpl_h.h"
+
+#include <QDataStream>
 
 class QIODevice;
 class QByteArray;

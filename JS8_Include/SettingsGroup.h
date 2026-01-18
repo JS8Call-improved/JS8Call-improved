@@ -10,25 +10,20 @@
 //	Simple RAII type class to apply a QSettings group witin a
 //	scope.
 //
-class SettingsGroup
-{
-public:
-  SettingsGroup (QSettings * settings, QString const& group)
-    : settings_ {settings}
-  {
-    settings_->beginGroup (group);
-  }
+class SettingsGroup {
+  public:
+    SettingsGroup(QSettings *settings, QString const &group)
+        : settings_{settings} {
+        settings_->beginGroup(group);
+    }
 
-  SettingsGroup (SettingsGroup const&) = delete;
-  SettingsGroup& operator = (SettingsGroup const&) = delete;
+    SettingsGroup(SettingsGroup const &) = delete;
+    SettingsGroup &operator=(SettingsGroup const &) = delete;
 
-  ~SettingsGroup ()
-  {
-    settings_->endGroup ();
-  }
+    ~SettingsGroup() { settings_->endGroup(); }
 
-private:
-  QSettings * settings_;
+  private:
+    QSettings *settings_;
 };
 
 #endif

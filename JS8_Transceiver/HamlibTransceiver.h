@@ -1,14 +1,13 @@
 #ifndef HAMLIB_TRANSCEIVER_HPP_
 #define HAMLIB_TRANSCEIVER_HPP_
 
-#include <tuple>
+#include "PollingTransceiver.h"
+#include "TransceiverFactory.h"
+#include <hamlib/rig.h>
 
 #include <QString>
 
-#include <hamlib/rig.h>
-
-#include "PollingTransceiver.h"
-#include "TransceiverFactory.h"
+#include <tuple>
 
 extern "C" {
 #ifdef JS8_USE_HAMLIB_THREE

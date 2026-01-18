@@ -1,20 +1,12 @@
 #ifndef TXLOOP_H
 #define TXLOOP_H
 
-#include <QDateTime>
-#include <QTimer>
-
 #include "TwoPhaseSignal.h"
 #include "Varicode.h"
 
-/**
- * Class to organize transmit loops, i.e., regular schedule of repeated
- *transmissions. Intended use cases are either repeated CQ or HB transmissions.
- *
- * One object of this class organizes one such transmit loop.
- *
- * This class knows no other time than what DriftingDateTime tells it.
- **/
+#include <QDateTime>
+#include <QTimer>
+
 class TxLoop : public TwoPhaseSignal {
     Q_OBJECT
 

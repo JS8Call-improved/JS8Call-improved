@@ -1,13 +1,13 @@
 #ifndef WSJTX_MESSAGE_MAPPER_HPP__
 #define WSJTX_MESSAGE_MAPPER_HPP__
 
+#include "JS8_Main/Radio.h"
+#include "WSJTXMessageClient.h"
+
 #include <QDateTime>
 #include <QObject>
 #include <QString>
 #include <QTime>
-
-#include "JS8_Main/Radio.h"
-#include "WSJTXMessageClient.h"
 
 class UI_Constructor;
 

@@ -1,17 +1,13 @@
 #ifndef CHECKABLE_ITEM_COMBO_BOX_HPP__
 #define CHECKABLE_ITEM_COMBO_BOX_HPP__
 
-#include <QScopedPointer>
-
 #include "LazyFillComboBox.h"
+
+#include <QScopedPointer>
 
 class QStandardItemModel;
 class QStandardItem;
 
-/**
- * @brief QComboBox with support of checkboxes
- * http://stackoverflow.com/questions/8422760/combobox-of-checkboxes
- */
 class CheckableItemComboBox : public LazyFillComboBox {
     Q_OBJECT
 

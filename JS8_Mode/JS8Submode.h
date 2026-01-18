@@ -2,7 +2,9 @@
 #define JS8_SUBMODE_HPP_
 
 #include "JS8_Mode/JS8.h"
+
 #include <QString>
+
 #include <stdexcept>
 
 namespace JS8::Submode {

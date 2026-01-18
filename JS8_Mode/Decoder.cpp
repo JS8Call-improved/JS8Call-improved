@@ -1,25 +1,10 @@
 /**
- * This file is part of JS8Call.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
+ * @file Decoder.cpp
+ * @brief Implementation of the JS8 decoder and worker classes
  * (C) 2019 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
- *
- **/
+ */
 
 #include "Decoder.h"
-
 #include "JS8_Include/commons.h"
 
 #include <QLoggingCategory>

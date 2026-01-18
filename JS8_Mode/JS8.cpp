@@ -1,10 +1,9 @@
 /**
  * @file JS8.cpp
  * @brief Implementation of JS8 encoding and decoding functions
- */
-/**
+ *
  * (C) 2025 Allan Bazinet <w6baz@arrl.net> - All Rights Reserved
- **/
+ */
 
 #include "JS8.h"
 #include "JS8_Include/commons.h"
@@ -12,9 +11,11 @@
 #include "JS8_Mode/whitening_processor.h"
 #include "ldpc_feedback.h"
 #include "soft_combiner.h"
+
 #include <QDebug>
 #include <QLoggingCategory>
 #include <QtGlobal>
+
 #include <algorithm>
 #include <atomic>
 #include <boost/crc.hpp>

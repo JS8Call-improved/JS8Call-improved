@@ -3,6 +3,7 @@
  * @brief Implementation of AttenuationSlider custom QSlider
  */
 #include "AttenuationSlider.h"
+
 #include <QApplication>
 #include <QPainter>
 #include <QPixmapCache>
@@ -40,9 +41,9 @@ constexpr auto contrastColor = QColor(255, 255, 255, 30);
 /**
  * @private
  * @brief Make a pixmap of the given size
- * 
- * @param size 
- * @return auto 
+ *
+ * @param size
+ * @return auto
  */
 auto makePixmap(QSize const size) {
     if (size.isEmpty())
@@ -61,9 +62,9 @@ auto makePixmap(QSize const size) {
 /**
  * @private
  * @brief Make a groove pixmap of the given size
- * 
- * @param size 
- * @return auto 
+ *
+ * @param size
+ * @return auto
  */
 auto makeGroovePixmap(QSize const size) {
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
@@ -93,9 +94,9 @@ auto makeGroovePixmap(QSize const size) {
 /**
  * @private
  * @brief Make an active groove pixmap of the given size
- * 
- * @param size 
- * @return auto 
+ *
+ * @param size
+ * @return auto
  */
 auto makeActivePixmap(QSize const size) {
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
@@ -127,9 +128,9 @@ auto makeActivePixmap(QSize const size) {
 /**
  * @private
  * @brief Make a handle pixmap of the given size
- * 
- * @param size 
- * @return auto 
+ *
+ * @param size
+ * @return auto
  */
 auto makeHandlePixmap(QSize const size) {
     if (auto pixmap = makePixmap(size); pixmap.isNull()) {
@@ -183,11 +184,11 @@ using MakePixmap = QPixmap (*)(QSize);
 /**
  * @private
  * @brief Get a cached pixmap, or create and cache it if not present
- * 
- * @param size 
- * @param name 
- * @param make 
- * @return auto 
+ *
+ * @param size
+ * @param name
+ * @param make
+ * @return auto
  */
 auto cachedPixmap(QSize const size, const char *const name,
                   MakePixmap const make) {
@@ -224,8 +225,8 @@ auto cachedPixmap(QSize const size, const char *const name,
 // orientation here; a fader control is always vertical in orientation.
 /**
  * @brief Paint the attenuation slider
- * 
- * @param 
+ *
+ * @param
  */
 void AttenuationSlider::paintEvent(QPaintEvent *) {
     auto const handle = QRect(QPoint((rect().width() - handleSize.width()) / 2,
@@ -294,10 +295,11 @@ void AttenuationSlider::paintEvent(QPaintEvent *) {
 
 // Given an attenuation value, compute and return the corresponding Y value.
 /**
- * @brief Given an attenuation value, compute and return the corresponding Y value
- * 
- * @param value 
- * @return int 
+ * @brief Given an attenuation value, compute and return the corresponding Y
+ * value
+ *
+ * @param value
+ * @return int
  */
 int AttenuationSlider::yValue(int const value) const {
     return QStyle::sliderPositionFromValue(

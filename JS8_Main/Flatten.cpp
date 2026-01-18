@@ -1,4 +1,24 @@
+/**
+ * @file Flatten.cpp
+ * @brief This is an emulation, in spirit at least, of the effect of of the
+ * Fortran flat4() subroutine. While our implementation differs from
+ * that of the original, the results should be as good or better.
+ *
+ * One key difference other than what's obvious below is that this
+ * isn't responsible for converting a power-scaled spectrum to dB.
+ * If you need to do that before sending data here, that's on you;
+ * std::transform and std::log10 are going to be your friends. We
+ * do flattening, and only flattening.
+ *
+ * Note that this is a functor; it's serially reusable, but it's not
+ * reentrant. Call it from one thread only. In practical use, that's
+ * not expected to be a problem, and it allows us to reuse allocated
+ * memory in a serial manner, rather than requesting it and freeing
+ * it constantly.
+ */
+
 #include "Flatten.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -7,22 +27,6 @@
 #include <utility>
 #include <vector>
 #include <vendor/Eigen/Dense>
-
-// This is an emulation, in spirit at least, of the effect of of the
-// Fortran flat4() subroutine. While our implementation differs from
-// that of the original, the results should be as good or better.
-//
-// One key difference other than what's obvious below is that this
-// isn't responsible for converting a power-scaled spectrum to dB.
-// If you need to do that before sending data here, that's on you;
-// std::transform and std::log10 are going to be your friends. We
-// do flattening, and only flattening.
-//
-// Note that this is a functor; it's serially reusable, but it's not
-// reentrant. Call it from one thread only. In practical use, that's
-// not expected to be a problem, and it allows us to reuse allocated
-// memory in a serial manner, rather than requesting it and freeing
-// it constantly.
 
 /******************************************************************************/
 // Flatten Constants

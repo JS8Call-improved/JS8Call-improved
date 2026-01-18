@@ -1,14 +1,13 @@
 #ifndef STATION_LIST_HPP__
 #define STATION_LIST_HPP__
 
+#include "JS8_Include/pimpl_h.h"
+#include "Radio.h"
+
 #include <QDateTime>
 #include <QList>
 #include <QSortFilterProxyModel>
 #include <QString>
-
-#include "JS8_Include/pimpl_h.h"
-
-#include "Radio.h"
 
 class Bands;
 

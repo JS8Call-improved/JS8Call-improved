@@ -1,9 +1,9 @@
 #ifndef IARU_REGIONS_HPP__
 #define IARU_REGIONS_HPP__
 
-#include <QAbstractListModel>
-
 #include "qt_helpers.h"
+
+#include <QAbstractListModel>
 
 class QString;
 class QVariant;

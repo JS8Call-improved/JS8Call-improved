@@ -1,4 +1,11 @@
+/**
+ * @file DXLabSuiteCommanderTransceiver.cpp
+ * @brief Implementation of the DXLabSuiteCommanderTransceiver class
+ */
+
 #include "DXLabSuiteCommanderTransceiver.h"
+#include "JS8_Main/DriftingDateTime.h"
+#include "JS8_Network/NetworkServerLookup.h"
 
 #include <QDateTime>
 #include <QLocale>
@@ -6,10 +13,6 @@
 #include <QRegularExpression>
 #include <QTcpSocket>
 #include <QThread>
-
-#include "JS8_Main/DriftingDateTime.h"
-
-#include "JS8_Network/NetworkServerLookup.h"
 
 #include "moc_DXLabSuiteCommanderTransceiver.cpp"
 

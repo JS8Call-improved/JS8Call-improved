@@ -1,13 +1,13 @@
 #ifndef NETWORK_ACCESS_MANAGER_HPP__
 #define NETWORK_ACCESS_MANAGER_HPP__
 
+#include "JS8_Main/JS8MessageBox.h"
+
 #include <QList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QSslError>
 #include <QString>
-
-#include "JS8_Main/JS8MessageBox.h"
 
 class QNetworkRequest;
 class QIODevice;

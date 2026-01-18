@@ -1,4 +1,7 @@
-#include "Configuration.h"
+/**
+ * @file Configuration.cpp
+ * @brief implementation of the Configuration dialog for the UI
+ */
 
 //
 // Read me!
@@ -127,11 +130,29 @@
 // settings database.
 //
 
-#include <algorithm>
-#include <cmath>
-#include <iterator>
-#include <limits>
-#include <stdexcept>
+#include "Configuration.h"
+#include "JS8_Include/Maidenhead.h"
+#include "JS8_Include/SettingsGroup.h"
+#include "JS8_Include/pimpl_impl.h"
+#include "JS8_Main/Bands.h"
+#include "JS8_Main/CallsignValidator.h"
+#include "JS8_Main/CandidateKeyFilter.h"
+#include "JS8_Main/ForeignKeyDelegate.h"
+#include "JS8_Main/FrequencyLineEdit.h"
+#include "JS8_Main/FrequencyList.h"
+#include "JS8_Main/IARURegions.h"
+#include "JS8_Main/JS8MessageBox.h"
+#include "JS8_Main/MetaDataRegistry.h"
+#include "JS8_Main/Modes.h"
+#include "JS8_Main/StationList.h"
+#include "JS8_Main/Varicode.h"
+#include "JS8_Main/qt_helpers.h"
+#include "JS8_Network/NetworkServerLookup.h"
+#include "JS8_Transceiver/Transceiver.h"
+#include "JS8_Transceiver/TransceiverFactory.h"
+#include "JS8_Widgets/CheckableItemComboBox.h"
+#include "JS8_Widgets/LazyFillComboBox.h"
+#include "ui_Configuration.h"
 
 #include <QAction>
 #include <QApplication>
@@ -151,6 +172,7 @@
 #include <QLoggingCategory>
 #include <QMediaDevices>
 #include <QMetaType>
+#include <QNetworkInterface>
 #include <QProcess>
 #include <QRegularExpressionValidator>
 #include <QScopedPointer>
@@ -167,33 +189,13 @@
 #include <QTimeZone>
 #include <QTimer>
 
-#include "JS8_Include/Maidenhead.h"
-#include "JS8_Include/SettingsGroup.h"
-#include "JS8_Include/pimpl_impl.h"
-#include "JS8_Main/Bands.h"
-#include "JS8_Main/CallsignValidator.h"
-#include "JS8_Main/CandidateKeyFilter.h"
-#include "JS8_Main/ForeignKeyDelegate.h"
-#include "JS8_Main/FrequencyLineEdit.h"
-#include "JS8_Main/FrequencyList.h"
-#include "JS8_Main/IARURegions.h"
-#include "JS8_Main/JS8MessageBox.h"
-#include "JS8_Main/MetaDataRegistry.h"
-#include "JS8_Main/Modes.h"
-#include "JS8_Main/StationList.h"
-#include "JS8_Main/qt_helpers.h"
-#include "JS8_Network/NetworkServerLookup.h"
-#include "JS8_Transceiver/Transceiver.h"
-#include "JS8_Transceiver/TransceiverFactory.h"
-#include "JS8_Widgets/LazyFillComboBox.h"
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include <limits>
+#include <stdexcept>
 
-#include "JS8_Main/Varicode.h"
-
-#include "JS8_Widgets/CheckableItemComboBox.h"
 #include "moc_Configuration.cpp"
-#include "ui_Configuration.h"
-#include <QNetworkInterface>
-#include <QStandardItemModel>
 
 namespace {
 const QRegularExpression message_alphabet{"[^\\x00-\\x1F]*"};

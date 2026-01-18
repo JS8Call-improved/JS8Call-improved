@@ -1,5 +1,8 @@
 #pragma once
 
+#include <QDebug>
+#include <QLoggingCategory>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -8,9 +11,6 @@
 #include <optional>
 #include <sstream>
 #include <vector>
-
-#include <QDebug>
-#include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 

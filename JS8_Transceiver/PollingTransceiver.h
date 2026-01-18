@@ -1,9 +1,9 @@
 #ifndef POLLING_TRANSCEIVER_HPP__
 #define POLLING_TRANSCEIVER_HPP__
 
-#include <QObject>
-
 #include "TransceiverBase.h"
+
+#include <QObject>
 
 class QTimer;
 

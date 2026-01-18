@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QObject>
 #include <QString>
+
 #include <functional>
 
 class Configuration;
@@ -18,7 +19,7 @@ class Configuration;
 class AprsInboundRelay : public QObject {
     Q_OBJECT
 
-public:
+  public:
     /**
      * @brief Lightweight lookup info for the heard list.
      */
@@ -41,11 +42,11 @@ public:
      * @param enqueueFn Callback to enqueue relay messages for transmit.
      * @param parent QObject parent.
      */
-    AprsInboundRelay(Configuration const *config,
-                     CallActivityLookup callLookup, NoticeFn noticeFn,
-                     EnqueueFn enqueueFn, QObject *parent = nullptr);
+    AprsInboundRelay(Configuration const *config, CallActivityLookup callLookup,
+                     NoticeFn noticeFn, EnqueueFn enqueueFn,
+                     QObject *parent = nullptr);
 
-public slots:
+  public slots:
     /**
      * @brief Process an APRS-IS message for relay.
      * @param from APRS sender callsign.
@@ -54,7 +55,7 @@ public slots:
      */
     void onMessageReceived(QString from, QString to, QString message);
 
-private:
+  private:
     Configuration const *m_config;
     CallActivityLookup m_callLookup;
     NoticeFn m_notice;

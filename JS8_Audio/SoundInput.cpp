@@ -3,8 +3,8 @@
  * @brief Implementation of SoundInput class
  */
 #include "SoundInput.h"
-
 #include "JS8_Main/DriftingDateTime.h"
+
 #include <QAudioFormat>
 #include <QLoggingCategory>
 #include <QSysInfo>

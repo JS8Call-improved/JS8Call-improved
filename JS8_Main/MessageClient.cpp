@@ -1,4 +1,13 @@
+/**
+ * @file MessageClient.cpp
+ * @brief Implementation of the MessageClient class that connects to external
+ * servers
+ */
+
 #include "MessageClient.h"
+#include "DriftingDateTime.h"
+#include "JS8_Include/pimpl_impl.h"
+
 #include <QApplication>
 #include <QHostInfo>
 #include <QLoggingCategory>
@@ -7,10 +16,9 @@
 #include <QSet>
 #include <QTimer>
 #include <QUdpSocket>
+
 #include <stdexcept>
 
-#include "DriftingDateTime.h"
-#include "JS8_Include/pimpl_impl.h"
 #include "moc_MessageClient.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(messageclient_js8)

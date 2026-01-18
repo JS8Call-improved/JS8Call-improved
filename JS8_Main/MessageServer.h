@@ -1,13 +1,13 @@
 #ifndef MESSAGESERVER_H
 #define MESSAGESERVER_H
 
+#include "Message.h"
+
 #include <QAbstractSocket>
 #include <QList>
 #include <QScopedPointer>
 #include <QTcpServer>
 #include <QTcpSocket>
-
-#include "Message.h"
 
 class Client;
 

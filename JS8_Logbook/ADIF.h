@@ -7,17 +7,9 @@
 #ifndef __ADIF_H
 #define __ADIF_H
 
-#if defined(QT5)
-#include <QList>
-#include <QMultiHash>
-#include <QString>
-#include <QStringList>
-#include <QVariant>
-#else
-#include <QtGui>
-#endif
-
 #include "JS8_Main/fileutils.h"
+
+#include <QtGui>
 
 class QDateTime;
 

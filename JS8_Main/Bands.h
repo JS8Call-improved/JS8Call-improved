@@ -1,9 +1,9 @@
 #ifndef BANDS_HPP__
 #define BANDS_HPP__
 
-#include <QAbstractTableModel>
-
 #include "Radio.h"
+
+#include <QAbstractTableModel>
 
 //
 // Class Bands
@@ -26,6 +26,7 @@
 //  where rows  are bands and  columns are band name,  lower frequency
 //  limit and, upper ferquency limit respectively.
 //
+
 class Bands final : public QAbstractTableModel {
   public:
     using Frequency = Radio::Frequency;

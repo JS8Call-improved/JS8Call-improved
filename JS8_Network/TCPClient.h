@@ -1,10 +1,10 @@
 #ifndef TCPCLIENT_H
 #define TCPCLIENT_H
 
+#include "JS8_Include/pimpl_h.h"
+
 #include <QObject>
 #include <QTcpSocket>
-
-#include "JS8_Include/pimpl_h.h"
 
 class TCPClient : public QObject {
     Q_OBJECT

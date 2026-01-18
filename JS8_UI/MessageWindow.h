@@ -1,11 +1,11 @@
 #ifndef MESSAGEWINDOW_H
 #define MESSAGEWINDOW_H
 
+#include "JS8_Main/Message.h"
+
 #include <QDialog>
 #include <QItemSelection>
 #include <QPair>
-
-#include "JS8_Main/Message.h"
 
 namespace Ui {
 class MessageWindow;

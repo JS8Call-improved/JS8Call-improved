@@ -1,10 +1,19 @@
-#include <exception>
-#include <iostream>
-#include <stdexcept>
-#include <string>
+/**
+ * @file main.cpp
+ * @brief Implementation of the MessageTimeStamper class
+ */
 
-#include <fftw3.h>
-#include <locale.h>
+#include "DriftingDateTime.h"
+#include "FrequencyList.h"
+#include "JS8MessageBox.h"
+#include "JS8_Include/SettingsGroup.h"
+#include "JS8_Include/commons.h"
+#include "JS8_UI/mainwindow.h"
+#include "MetaDataRegistry.h"
+#include "MultiSettings.h"
+#include "Radio.h"
+#include "TraceFile.h"
+#include "revision_utils.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -19,24 +28,18 @@
 #include <QStandardPaths>
 #include <QStringList>
 #include <QSysInfo>
+#include <fftw3.h>
+#include <locale.h>
+
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
 #if QT_VERSION >= 0x050200
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #endif
-
-#include "FrequencyList.h"
-#include "JS8MessageBox.h"
-#include "JS8_Include/SettingsGroup.h"
-#include "JS8_Include/commons.h"
-#include "JS8_UI/mainwindow.h"
-#include "MetaDataRegistry.h"
-#include "MultiSettings.h"
-#include "Radio.h"
-#include "TraceFile.h"
-#include "revision_utils.h"
-
-#include "DriftingDateTime.h"
 
 Q_DECLARE_LOGGING_CATEGORY(main_js8)
 
@@ -266,7 +269,7 @@ int main(int argc, char *argv[]) {
 
             // run the application UI
             UI_Constructor w(program_version(), temp_dir, multiple,
-                         &multi_settings);
+                             &multi_settings);
             w.show();
             result = a.exec();
         } while (!result && !multi_settings.exit());

@@ -2,6 +2,7 @@
 #define W_F_HPP__
 
 #include "JS8_Include/commons.h"
+
 #include <QColor>
 #include <QFlags>
 #include <QList>

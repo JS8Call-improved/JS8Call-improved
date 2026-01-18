@@ -6,13 +6,13 @@
 #ifndef LOGBOOK_H
 #define LOGBOOK_H
 
-#include <QFont>
-#include <QString>
-
 #include "ADIF.h"
 #include "CountriesWorked.h"
 #include "CountryDat.h"
 #include "n3fjp.h"
+
+#include <QFont>
+#include <QString>
 
 class QDir;
 

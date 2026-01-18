@@ -1,4 +1,11 @@
+/**
+ * @file HRD.cpp
+ * @brief Implementation of the HRD class
+ * Implements interface with Ham Radio Deluxe
+ */
+
 #include "HRDTransceiver.h"
+#include "JS8_Network/NetworkServerLookup.h"
 
 #include <QByteArray>
 #include <QDir>
@@ -8,8 +15,6 @@
 #include <QStandardPaths>
 #include <QTcpSocket>
 #include <QThread>
-
-#include "JS8_Network/NetworkServerLookup.h"
 
 Q_DECLARE_LOGGING_CATEGORY(hrdtransceiver_js8)
 

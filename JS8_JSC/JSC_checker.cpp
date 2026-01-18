@@ -2,8 +2,6 @@
  * @file JSC_checker.cpp
  * @brief JSCChecker class implementation
  *
- */
-/**
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,13 +18,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * (C) 2018 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
- *
- **/
+ */
 
 #include "JSC_checker.h"
-
 #include "JS8_Main/Varicode.h"
 #include "JSC.h"
+
 #include <QLoggingCategory>
 #include <QTextBlock>
 #include <QTextCursor>

@@ -2,6 +2,7 @@
 #define DRIFTINGDATETIME_H
 
 #include "TwoPhaseSignal.h"
+
 #include <QDateTime>
 #include <QMutex>
 #include <QPointer>

@@ -1,9 +1,10 @@
+/**
+ * @file MetaDataRegistry.cpp
+ * @brief Implementation of meta data registers
+ */
+
 #include "MetaDataRegistry.h"
-
-#include <QItemEditorFactory>
-#include <QMetaType>
-#include <QStandardItemEditorCreator>
-
+#include "FrequencyLineEdit.h"
 #include "FrequencyList.h"
 #include "IARURegions.h"
 #include "JS8_Audio/AudioDevice.h"
@@ -14,7 +15,9 @@
 #include "StationList.h"
 #include "WF.h"
 
-#include "FrequencyLineEdit.h"
+#include <QItemEditorFactory>
+#include <QMetaType>
+#include <QStandardItemEditorCreator>
 
 QItemEditorFactory *item_editor_factory() {
     static QItemEditorFactory *our_item_editor_factory = new QItemEditorFactory;

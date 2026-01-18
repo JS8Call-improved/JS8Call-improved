@@ -9,6 +9,7 @@
 #define DECODEDTEXT_H
 
 #include "JS8.h"
+
 #include <QString>
 #include <QStringList>
 

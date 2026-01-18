@@ -1,10 +1,10 @@
 #ifndef CANDIDATE_KEY_FILTER_HPP_
 #define CANDIDATE_KEY_FILTER_HPP_
 
+#include "JS8_Include/pimpl_h.h"
+
 #include <QModelIndex>
 #include <QSortFilterProxyModel>
-
-#include "JS8_Include/pimpl_h.h"
 
 class QAbstractItemModel;
 

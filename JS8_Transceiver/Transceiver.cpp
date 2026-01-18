@@ -1,3 +1,11 @@
+/**
+ * @file Transceiver.cpp
+ * @brief Implementation of the Transceiver class
+ * Provides a  Qt slot  to set  the frequency, mode  and PTT  of some
+ * transceiver. This is a Qt slot so  that it may be invoked across a thread
+ * boundary.
+ */
+
 #include "Transceiver.h"
 
 #include "moc_Transceiver.cpp"

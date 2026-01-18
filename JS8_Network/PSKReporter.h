@@ -3,6 +3,7 @@
 
 #include "JS8_Include/pimpl_h.h"
 #include "JS8_Main/Radio.h"
+
 #include <QObject>
 
 class QString;

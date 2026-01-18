@@ -1,8 +1,16 @@
+/**
+ * @file Geodesic.cpp
+ * @brief Implementation of geographic coordinates for determining location of a
+ * station
+ */
+
 #include "Geodesic.h"
 #include "JS8_Include/Maidenhead.h"
+
 #include <QCache>
 #include <QMutex>
 #include <QMutexLocker>
+
 #include <concepts>
 
 /******************************************************************************/

@@ -1,9 +1,17 @@
-#include "WSJTXMessageClient.h"
+/**
+ * @brief WSJT-X compatible message client for JS8Call
+ *
+ * This class implements the WSJT-X UDP binary protocol for inter-application
+ * communication. It allows JS8Call to send and receive messages compatible
+ * with WSJT-X and other applications that support the WSJT-X protocol.
+ *
+ * Based on WSJT-X MessageClient but adapted for JS8Call.
+ */
 
-#include <algorithm>
-#include <limits>
-#include <stdexcept>
-#include <vector>
+#include "WSJTXMessageClient.h"
+#include "JS8_Include/pimpl_impl.h"
+#include "JS8_Main/qt_helpers.h"
+#include "NetworkMessage.h"
 
 #include <QByteArray>
 #include <QColor>
@@ -16,9 +24,10 @@
 #include <QTimer>
 #include <QUdpSocket>
 
-#include "JS8_Include/pimpl_impl.h"
-#include "JS8_Main/qt_helpers.h"
-#include "NetworkMessage.h"
+#include <algorithm>
+#include <limits>
+#include <stdexcept>
+#include <vector>
 
 #include "moc_WSJTXMessageClient.cpp"
 

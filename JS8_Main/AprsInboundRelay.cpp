@@ -6,19 +6,19 @@
  * @brief Usage notes for APRS inbound relay.
  *
  * Create an AprsInboundRelay with callbacks for heard-list lookup, UI notices,
- * When function is enabled in settings JS8Call will listen for APRS messages via APRS-IS
- * When it detects a message to a station on the heard-list it relays it as a message to the station
- * with an @APRSIS MSG TO:<DEST> <TEXT> DE <CALLINGSTATION>
- * The destination station puts it in it's inbox. 
+ * When function is enabled in settings JS8Call will listen for APRS messages
+ * via APRS-IS When it detects a message to a station on the heard-list it
+ * relays it as a message to the station with an @APRSIS MSG TO:<DEST> <TEXT> DE
+ * <CALLINGSTATION> The destination station puts it in it's inbox.
  */
 #include "AprsInboundRelay.h"
-
-#include "JS8_UI/Configuration.h"
 #include "JS8_Main/DriftingDateTime.h"
+#include "JS8_UI/Configuration.h"
 
 #include <QDebug>
 #include <QLoggingCategory>
 #include <QRegularExpression>
+
 #include <utility>
 
 #include "moc_AprsInboundRelay.cpp"
@@ -37,11 +37,8 @@ AprsInboundRelay::AprsInboundRelay(Configuration const *config,
                                    CallActivityLookup callLookup,
                                    NoticeFn noticeFn, EnqueueFn enqueueFn,
                                    QObject *parent)
-    : QObject(parent),
-      m_config(config),
-      m_callLookup(std::move(callLookup)),
-      m_notice(std::move(noticeFn)),
-      m_enqueue(std::move(enqueueFn)) {}
+    : QObject(parent), m_config(config), m_callLookup(std::move(callLookup)),
+      m_notice(std::move(noticeFn)), m_enqueue(std::move(enqueueFn)) {}
 
 /**
  * @brief Process an APRS-IS message for relay.
@@ -51,8 +48,8 @@ AprsInboundRelay::AprsInboundRelay(Configuration const *config,
  */
 void AprsInboundRelay::onMessageReceived(QString from, QString to,
                                          QString message) {
-    qCDebug(mainwindow_js8) << "APRS Message Received from" << from << "to"
-                            << to << ":" << message;
+    qCDebug(mainwindow_js8)
+        << "APRS Message Received from" << from << "to" << to << ":" << message;
 
     // Explicitly log to ensure we see it
     qDebug() << "DEBUG: APRS Message Received from" << from << "to" << to << ":"
@@ -93,10 +90,8 @@ void AprsInboundRelay::onMessageReceived(QString from, QString to,
 
     // Construct the relay message
     // @APRSIS MSG to:<DESTCALL> <MESSAGE> DE <SENDER>
-    QString relayMsg = QString("@APRSIS MSG to:%1 %2 DE %3")
-                           .arg(to)
-                           .arg(message)
-                           .arg(from);
+    QString relayMsg =
+        QString("@APRSIS MSG to:%1 %2 DE %3").arg(to).arg(message).arg(from);
 
     qCDebug(mainwindow_js8)
         << "Relaying APRS message from" << from << "to" << to << ":" << message;

@@ -1,15 +1,15 @@
 #ifndef OMNI_RIG_TRANSCEIVER_HPP__
 #define OMNI_RIG_TRANSCEIVER_HPP__
 
-#include <memory>
-
-#include <QScopedPointer>
-#include <QString>
-
 #include "TransceiverBase.h"
 #include "TransceiverFactory.h"
 
 #include "OmniRig.h"
+
+#include <QScopedPointer>
+#include <QString>
+
+#include <memory>
 
 //
 // OmniRig Transceiver Interface

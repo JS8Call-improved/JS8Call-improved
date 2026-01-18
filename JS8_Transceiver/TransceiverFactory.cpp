@@ -1,7 +1,9 @@
+/**
+ * @file TransceiverFactory.cpp
+ * @brief Implementation of the TransceiverFactory class
+ */
+
 #include "TransceiverFactory.h"
-
-#include <QMetaType>
-
 #include "DXLabSuiteCommanderTransceiver.h"
 #include "EmulateSplitTransceiver.h"
 #include "HRDTransceiver.h"
@@ -10,6 +12,8 @@
 #if defined(Q_OS_WIN) && ENABLE_OMNIRIG
 #include "OmniRigTransceiver.h"
 #endif
+
+#include <QMetaType>
 
 #include "moc_TransceiverFactory.cpp"
 

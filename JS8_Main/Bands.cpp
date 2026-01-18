@@ -4,10 +4,10 @@
  */
 #include "Bands.h"
 
-#include <algorithm>
-
 #include <QString>
 #include <QVariant>
+
+#include <algorithm>
 
 namespace {
 // Table of ADIF band definitions as defined in the ADIF
@@ -51,14 +51,14 @@ struct ADIFBand {
 
 /**
  * @brief Out Of Band name
- * 
+ *
  */
 QString const oob_name{QObject::tr("OOB")};
 
 /**
  * @brief Get number of rows in ADIF band table
- * 
- * @return int 
+ *
+ * @return int
  */
 int constexpr table_rows() {
     return sizeof(ADIF_bands) / sizeof(ADIF_bands[0]);
@@ -69,9 +69,9 @@ Bands::Bands(QObject *parent) : QAbstractTableModel{parent} {}
 
 /**
  * @brief Find the band that contains the given frequency
- * 
- * @param f 
- * @return QString 
+ *
+ * @param f
+ * @return QString
  */
 QString Bands::find(Frequency f) const {
     QString result;
@@ -88,9 +88,9 @@ QString Bands::find(Frequency f) const {
 
 /**
  * @brief Find the row index of the given band name
- * 
- * @param band 
- * @return int 
+ *
+ * @param band
+ * @return int
  */
 int Bands::find(QString const &band) const {
     int result{-1};
@@ -104,10 +104,10 @@ int Bands::find(QString const &band) const {
 
 /**
  * @brief Find the frequency bounds for the given band name
- * 
- * @param band 
- * @param pFreqLower 
- * @param pFreqHigher 
+ *
+ * @param band
+ * @param pFreqLower
+ * @param pFreqHigher
  * @return true if band found, false otherwise
  */
 bool Bands::findFreq(QString const &band, Radio::Frequency *pFreqLower,
@@ -127,16 +127,16 @@ bool Bands::findFreq(QString const &band, Radio::Frequency *pFreqLower,
 
 /**
  * @brief Get Out Of Band name
- * 
- * @return QString const& 
+ *
+ * @return QString const&
  */
 QString const &Bands::oob() { return oob_name; }
 
 /**
  * @brief Get number of rows in the model
- * 
- * @param parent 
- * @return int 
+ *
+ * @param parent
+ * @return int
  */
 int Bands::rowCount(QModelIndex const &parent) const {
     return parent.isValid() ? 0 : table_rows();
@@ -144,9 +144,9 @@ int Bands::rowCount(QModelIndex const &parent) const {
 
 /**
  * @brief Get number of columns in the model
- * 
- * @param parent 
- * @return int 
+ *
+ * @param parent
+ * @return int
  */
 int Bands::columnCount(QModelIndex const &parent) const {
     return parent.isValid() ? 0 : 3;
@@ -154,9 +154,9 @@ int Bands::columnCount(QModelIndex const &parent) const {
 
 /**
  * @brief Get item flags for the given index
- * 
- * @param index 
- * @return Qt::ItemFlags 
+ *
+ * @param index
+ * @return Qt::ItemFlags
  */
 Qt::ItemFlags Bands::flags(QModelIndex const &index) const {
     return QAbstractTableModel::flags(index) | Qt::ItemIsDropEnabled;
@@ -164,10 +164,10 @@ Qt::ItemFlags Bands::flags(QModelIndex const &index) const {
 
 /**
  * @brief Get data for the given index and role
- * 
- * @param index 
- * @param role 
- * @return QVariant 
+ *
+ * @param index
+ * @param role
+ * @return QVariant
  */
 QVariant Bands::data(QModelIndex const &index, int role) const {
     QVariant item;
@@ -255,11 +255,11 @@ QVariant Bands::data(QModelIndex const &index, int role) const {
 
 /**
  * @brief Get header data for the given section, orientation, and role
- * 
- * @param section 
- * @param orientation 
- * @param role 
- * @return QVariant 
+ *
+ * @param section
+ * @param orientation
+ * @param role
+ * @return QVariant
  */
 QVariant Bands::headerData(int section, Qt::Orientation orientation,
                            int role) const {
@@ -286,15 +286,15 @@ QVariant Bands::headerData(int section, Qt::Orientation orientation,
 
 /**
  * @brief Dereference the iterator to get the band name
- * 
- * @return QString 
+ *
+ * @return QString
  */
 QString Bands::const_iterator::operator*() { return ADIF_bands[row_].name_; }
 
 /**
  * @brief Compare two iterators for inequality
- * 
- * @param rhs 
+ *
+ * @param rhs
  * @return true if not equal, false otherwise
  */
 bool Bands::const_iterator::operator!=(const_iterator const &rhs) const {
@@ -303,7 +303,7 @@ bool Bands::const_iterator::operator!=(const_iterator const &rhs) const {
 
 /**
  * @brief Increment the iterator
- * 
+ *
  * @return reference to incremented iterator
  */
 auto Bands::const_iterator::operator++() -> const_iterator & {
@@ -313,15 +313,15 @@ auto Bands::const_iterator::operator++() -> const_iterator & {
 
 /**
  * @brief Get begin iterator
- * 
- * @return Bands::const_iterator 
+ *
+ * @return Bands::const_iterator
  */
 auto Bands::begin() const -> Bands::const_iterator { return const_iterator(0); }
 
 /**
  * @brief Get end iterator
- * 
- * @return Bands::const_iterator 
+ *
+ * @return Bands::const_iterator
  */
 auto Bands::end() const -> Bands::const_iterator {
     return const_iterator(table_rows());

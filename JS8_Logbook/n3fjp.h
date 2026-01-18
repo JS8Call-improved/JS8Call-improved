@@ -1,7 +1,6 @@
 #ifndef N3FJP_H
 #define N3FJP_H
 
-
 // Mapping between ADIF field to N3FJP field
 static const QMap<QString, QString> N3FJP_ADIF_MAP = {
     {"AGE", "fldAge"},

@@ -1,15 +1,11 @@
 /**
  * @file CountriesWorked.cpp
- * @brief Implementation of the CountriesWorked class for tracking worked
- * countries.
- */
-#include "CountriesWorked.h"
-
-/**
  * @brief Initialize the CountriesWorked instance with the specified country
  * names.
  * @param countryNames A list of country names to track.
  */
+#include "CountriesWorked.h"
+
 void CountriesWorked::init(const QStringList countryNames) {
     _data.clear();
     foreach (QString name, countryNames)

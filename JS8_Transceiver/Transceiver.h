@@ -1,10 +1,10 @@
 #ifndef TRANSCEIVER_HPP__
 #define TRANSCEIVER_HPP__
 
-#include <QObject>
-
 #include "JS8_Main/Radio.h"
 #include "JS8_Main/qt_helpers.h"
+
+#include <QObject>
 
 class QString;
 

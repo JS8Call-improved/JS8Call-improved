@@ -1,3 +1,9 @@
+/**
+ * @file CheckableItemComboBox.cpp
+ * @brief QComboBox with support of checkboxes
+ * http://stackoverflow.com/questions/8422760/combobox-of-checkboxes
+ */
+
 #include "CheckableItemComboBox.h"
 
 #include <QEvent>

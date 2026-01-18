@@ -1,10 +1,16 @@
-#include "TransmitTextEdit.h"
+/**
+ * @file TransmitTextEdit.cpp
+ * @brief Implementation of TransmitTextEdit class for the text entry box
+ */
 
+#include "TransmitTextEdit.h"
 #include "JS8_Include/commons.h"
 #include "Varicode.h"
 
 #include <QLoggingCategory>
+
 #include <iterator>
+
 Q_DECLARE_LOGGING_CATEGORY(transmittextedit_js8)
 
 void setTextEditFont(QTextEdit *edit, QFont font) {

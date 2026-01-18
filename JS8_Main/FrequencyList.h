@@ -1,14 +1,13 @@
 #ifndef FREQUENCY_LIST_HPP__
 #define FREQUENCY_LIST_HPP__
 
+#include "IARURegions.h"
 #include "JS8_Include/pimpl_h.h"
+#include "Modes.h"
+#include "Radio.h"
 
 #include <QList>
 #include <QSortFilterProxyModel>
-
-#include "IARURegions.h"
-#include "Modes.h"
-#include "Radio.h"
 
 class Bands;
 

@@ -1,8 +1,14 @@
-#include "StationList.h"
+/**
+ * @file StationList.cpp
+ * @brief Implementation of StationList class
+ */
 
-#include <algorithm>
-#include <cmath>
-#include <utility>
+#include "StationList.h"
+#include "DriftingDateTime.h"
+#include "FrequencyList.h"
+#include "JS8_Include/pimpl_impl.h"
+#include "JS8_Main/Bands.h"
+#include "Radio.h"
 
 #include <QAbstractTableModel>
 #include <QByteArray>
@@ -17,13 +23,9 @@
 #include <QTimeZone>
 #include <QVector>
 
-#include "DriftingDateTime.h"
-
-#include "JS8_Include/pimpl_impl.h"
-
-#include "FrequencyList.h"
-#include "JS8_Main/Bands.h"
-#include "Radio.h"
+#include <algorithm>
+#include <cmath>
+#include <utility>
 
 #if !defined(QT_NO_DEBUG_STREAM)
 QDebug operator<<(QDebug debug, StationList::Station const &station) {

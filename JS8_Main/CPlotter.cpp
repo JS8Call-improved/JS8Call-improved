@@ -1,19 +1,27 @@
+/**
+ * @file Cplotter.cpp
+ * @brief Implementation of the waterfall plotter
+ */
+
 #include "CPlotter.h"
 #include "DriftingDateTime.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Mode/JS8Submode.h"
-#include "moc_CPlotter.cpp"
+
 #include <QDebug>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
 #include <QToolTip>
 #include <QWheelEvent>
+
 #include <concepts>
 #include <iterator>
 #include <numeric>
 #include <type_traits>
 #include <utility>
+
+#include "moc_CPlotter.cpp"
 
 /******************************************************************************/
 // Constants

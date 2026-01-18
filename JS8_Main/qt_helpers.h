@@ -1,14 +1,14 @@
 #ifndef QT_HELPERS_HPP_
 #define QT_HELPERS_HPP_
 
-#include <stdexcept>
-
 #include <QDataStream>
 #include <QHostAddress>
 #include <QMetaEnum>
 #include <QMetaObject>
 #include <QMetaType>
 #include <QString>
+
+#include <stdexcept>
 
 #define ENUM_QDATASTREAM_OPS_DECL(CLASS, ENUM)                                 \
     QDataStream &operator<<(QDataStream &, CLASS::ENUM const &);               \

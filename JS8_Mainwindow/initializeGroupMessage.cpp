@@ -1,9 +1,11 @@
-#include "JS8_UI/mainwindow.h"
+
 
 /** \file
  * @brief member function of the UI_Constructor class
  *  group messaging function
  */
+
+#include "JS8_UI/mainwindow.h"
 
 void UI_Constructor::initializeGroupMessage() {
     if (!QApplication::applicationName().contains("dummy")) {

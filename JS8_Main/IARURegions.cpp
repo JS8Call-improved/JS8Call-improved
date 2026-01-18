@@ -1,11 +1,16 @@
-#include "IARURegions.h"
+/**
+ * @file IARURegions.cpp
+ * @brief Implementation of the IARU regions
+ */
 
-#include <algorithm>
+#include "IARURegions.h"
 
 #include <QMetaType>
 #include <QModelIndex>
 #include <QString>
 #include <QVariant>
+
+#include <algorithm>
 
 #include "moc_IARURegions.cpp"
 

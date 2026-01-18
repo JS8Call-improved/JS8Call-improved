@@ -1,8 +1,7 @@
 /**
  * @file JSC_map.cpp
  * @brief Implementation of JSC character map
- */
-/**
+ *
  * This file is part of JS8Call.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,8 +18,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * (C) 2018 Jordan Sherer <kn4crd@gmail.com> - All Rights Reserved
- *
- **/
+ */
+
 #include "JSC.h"
 
 const Tuple JSC::map[262144] = {

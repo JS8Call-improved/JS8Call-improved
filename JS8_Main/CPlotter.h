@@ -11,6 +11,7 @@
 #include "JS8_Main/Flatten.h"
 #include "RDP.h"
 #include "WF.h"
+
 #include <QColor>
 #include <QPixmap>
 #include <QPolygonF>
@@ -19,6 +20,7 @@
 #include <QTimer>
 #include <QVector>
 #include <QWidget>
+
 #include <algorithm>
 #include <array>
 #include <boost/circular_buffer.hpp>

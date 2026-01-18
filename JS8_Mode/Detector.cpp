@@ -1,14 +1,18 @@
 /**
  * @file Detector.cpp
  * @brief Implementation of Detector class
+ * Output device that distributes data in predefined chunks via a signal
  */
+
 #include "Detector.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Main/DriftingDateTime.h"
+
 #include <QDateTime>
 #include <QLoggingCategory>
 #include <QMutexLocker>
 #include <QtAlgorithms>
+
 #include <algorithm>
 #include <cmath>
 
@@ -53,10 +57,10 @@ Q_DECLARE_LOGGING_CATEGORY(detector_js8)
 
 /**
  * @brief Construct a new Detector object
- * 
- * @param frameRate 
- * @param periodLengthInSeconds 
- * @param parent 
+ *
+ * @param frameRate
+ * @param periodLengthInSeconds
+ * @param parent
  */
 Detector::Detector(unsigned frameRate, unsigned periodLengthInSeconds,
                    QObject *parent)
@@ -67,16 +71,16 @@ Detector::Detector(unsigned frameRate, unsigned periodLengthInSeconds,
 
 /**
  * @brief Set the block size for FFT processing
- * 
- * @param n 
+ *
+ * @param n
  */
 void Detector::setBlockSize(unsigned n) { m_samplesPerFFT = n; }
 
 /**
  * @brief Reset the detector state
- * 
- * @return true 
- * @return false 
+ *
+ * @return true
+ * @return false
  */
 bool Detector::reset() {
     clear();
@@ -87,7 +91,7 @@ bool Detector::reset() {
 
 /**
  * @brief Clear the detector buffer
- * 
+ *
  */
 void Detector::clear() {
 #if JS8_RING_BUFFER
@@ -105,7 +109,7 @@ void Detector::clear() {
 
 /**
  * @brief Reset the buffer position based on current time
- * 
+ *
  */
 void Detector::resetBufferPosition() {
     QMutexLocker mutex(&m_lock);
@@ -139,7 +143,7 @@ void Detector::resetBufferPosition() {
 
 /**
  * @brief Reset the buffer content to zero
- * 
+ *
  */
 void Detector::resetBufferContent() {
     QMutexLocker mutex(&m_lock);
@@ -150,10 +154,10 @@ void Detector::resetBufferContent() {
 
 /**
  * @brief Write data to the detector buffer
- * 
- * @param data 
- * @param maxSize 
- * @return qint64 
+ *
+ * @param data
+ * @param maxSize
+ * @return qint64
  */
 qint64 Detector::writeData(char const *const data, qint64 const maxSize) {
     QMutexLocker mutex(&m_lock);
@@ -217,8 +221,8 @@ qint64 Detector::writeData(char const *const data, qint64 const maxSize) {
 
 /**
  * @brief Get the current second in the period
- * 
- * @return unsigned 
+ *
+ * @return unsigned
  */
 unsigned Detector::secondInPeriod() const {
     // we take the time of the data as the following assuming no latency

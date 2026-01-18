@@ -1,14 +1,13 @@
 #ifndef TRANSCEIVER_FACTORY_HPP__
 #define TRANSCEIVER_FACTORY_HPP__
 
-#include <memory>
+#include "JS8_Main/qt_helpers.h"
+#include "Transceiver.h"
 
 #include <QMap>
 #include <QObject>
 
-#include "Transceiver.h"
-
-#include "JS8_Main/qt_helpers.h"
+#include <memory>
 
 class QString;
 class QThread;

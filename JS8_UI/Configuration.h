@@ -1,18 +1,17 @@
 #ifndef CONFIGURATION_HPP_
 #define CONFIGURATION_HPP_
 
-#include <QAction>
-#include <QFont>
-#include <QLineEdit>
-#include <QObject>
-
 #include "JS8_Audio/AudioDevice.h"
+#include "JS8_Include/pimpl_h.h"
 #include "JS8_Main/IARURegions.h"
 #include "JS8_Main/Radio.h"
 #include "JS8_Main/StationList.h"
 #include "JS8_Transceiver/Transceiver.h"
 
-#include "JS8_Include/pimpl_h.h"
+#include <QAction>
+#include <QFont>
+#include <QLineEdit>
+#include <QObject>
 
 class QSettings;
 class QWidget;
@@ -345,7 +344,7 @@ class Configuration final : public QObject {
     Q_SIGNAL void tcp_server_changed(QString const &host);
     Q_SIGNAL void tcp_server_port_changed(port_type port);
     Q_SIGNAL void tcp_max_connections_changed(int n);
-    
+
     Q_SIGNAL void spot_to_aprs_relay_changed(bool enabled);
 
     // WSJT-X Protocol signals

@@ -1,9 +1,11 @@
-// Simple bargraph dB meter
-// Originally implemented by Edson Pereira PY2SDR
-//
+/**
+ * @file SignalMeter.cpp
+ * @brief Simple bargraph dB meter
+ * Originally implemented by Edson Pereira PY2SDR
+ */
 
 #include "SignalMeter.h"
-#include "moc_SignalMeter.cpp"
+
 #include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -11,6 +13,8 @@
 #include <QPolygon>
 #include <QVBoxLayout>
 #include <boost/circular_buffer.hpp>
+
+#include "moc_SignalMeter.cpp"
 
 // Meter component, which displays to the right of the scale, as a
 // level gauge with a peak hold indicator. Displays green when the

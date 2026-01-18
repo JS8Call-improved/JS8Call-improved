@@ -1,6 +1,14 @@
+/**
+ * @file MessageServer.cpp
+ * @brief Implementation of the external client message server
+ */
+
 #include "MessageServer.h"
+
 #include <QLoggingCategory>
+
 #include <stdexcept>
+
 Q_DECLARE_LOGGING_CATEGORY(messageserver_js8)
 
 MessageServer::MessageServer(QObject *parent) : QTcpServer(parent) {}

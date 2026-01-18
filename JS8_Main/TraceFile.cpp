@@ -1,6 +1,10 @@
-#include "TraceFile.h"
+/**
+ * @file TraceFile.cpp
+ * @brief Implementation of TraceFile class for logging
+ */
 
-#include <stdexcept>
+#include "TraceFile.h"
+#include "JS8_Include/pimpl_impl.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -11,7 +15,7 @@
 #include <QString>
 #include <QTextStream>
 
-#include "JS8_Include/pimpl_impl.h"
+#include <stdexcept>
 
 namespace {
 QMutex lock;

@@ -1,15 +1,15 @@
 #pragma once
 
+#include <QDebug>
+#include <QLoggingCategory>
+#include <QtGlobal>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
-
-#include <QDebug>
-#include <QLoggingCategory>
-#include <QtGlobal>
 
 Q_DECLARE_LOGGING_CATEGORY(decoder_js8);
 

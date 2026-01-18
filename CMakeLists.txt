@@ -299,12 +299,12 @@ target_sources(
   JS8_UDP/WSJTXMessageClient.cpp
   JS8_UDP/WSJTXMessageMapper.cpp
   JS8_UI/Configuration.cpp
-  JS8_UI/about.cpp
-  JS8_UI/logqso.cpp
+  JS8_UI/About.cpp
+  JS8_UI/LogQSO.cpp
   JS8_UI/mainwindow.cpp
-  JS8_UI/messagereplydialog.cpp
-  JS8_UI/messagewindow.cpp
-  JS8_UI/widegraph.cpp
+  JS8_UI/MessageReplyDialog.cpp
+  JS8_UI/MessageWindow.cpp
+  JS8_UI/WideGraph.cpp
   JS8_Widgets/CheckableItemComboBox.cpp
   JS8_Widgets/LazyFillComboBox.cpp
 )

@@ -5,7 +5,9 @@
 #include "JS8Submode.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Main/Varicode.h"
+
 #include <QLoggingCategory>
+
 #include <concepts>
 
 /******************************************************************************/

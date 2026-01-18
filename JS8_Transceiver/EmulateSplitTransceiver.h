@@ -1,9 +1,9 @@
 #ifndef EMULATE_SPLIT_TRANSCEIVER_HPP__
 #define EMULATE_SPLIT_TRANSCEIVER_HPP__
 
-#include <memory>
-
 #include "Transceiver.h"
+
+#include <memory>
 
 //
 // Emulate Split Transceiver

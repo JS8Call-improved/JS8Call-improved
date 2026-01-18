@@ -4,6 +4,7 @@
 #include "JS8_Include/pimpl_h.h"
 #include "Message.h"
 #include "Radio.h"
+
 #include <QByteArray>
 #include <QHostAddress>
 #include <QObject>

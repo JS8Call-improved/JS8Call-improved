@@ -1,16 +1,16 @@
 #ifndef HRD_TRANSCEIVER_HPP__
 #define HRD_TRANSCEIVER_HPP__
 
-#include <memory>
-#include <tuple>
-#include <vector>
+#include "PollingTransceiver.h"
+#include "TransceiverFactory.h"
 
 #include <QScopedPointer>
 #include <QString>
 #include <QStringList>
 
-#include "PollingTransceiver.h"
-#include "TransceiverFactory.h"
+#include <memory>
+#include <tuple>
+#include <vector>
 
 class QRegularExpression;
 class QTcpSocket;

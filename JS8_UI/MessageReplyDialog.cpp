@@ -1,7 +1,13 @@
-#include "messagereplydialog.h"
+/**
+ * \file MessageReplyDialog.cpp
+ * @brief implementation of the message reply dialog for the UI
+ */
+
+#include "MessageReplyDialog.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Main/Varicode.h"
-#include "ui_messagereplydialog.h"
+#include "ui_MessageReplyDialog.h"
+
 #include <QSet>
 
 MessageReplyDialog::MessageReplyDialog(QWidget *parent)

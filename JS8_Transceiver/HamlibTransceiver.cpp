@@ -1,9 +1,11 @@
+/**
+ * @file HamlibTransceiver.cpp
+ * @brief Implementation of the HamlibTransceiver class
+ * Implements rig control with Hamlib
+ */
+
 #include "HamlibTransceiver.h"
 
-#include <cmath>
-#include <cstring>
-
-#include "moc_HamlibTransceiver.cpp"
 #include <QByteArray>
 #include <QFile>
 #include <QJsonDocument>
@@ -12,6 +14,11 @@
 #include <QLoggingCategory>
 #include <QStandardPaths>
 #include <QString>
+
+#include <cmath>
+#include <cstring>
+
+#include "moc_HamlibTransceiver.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(hamlibtransceiver_js8)
 

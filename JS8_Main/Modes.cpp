@@ -1,10 +1,15 @@
-#include "Modes.h"
+/**
+ * @file Modes.cpp
+ * @brief Implementation of mode enumeration
+ */
 
-#include <algorithm>
+#include "Modes.h"
 
 #include <QModelIndex>
 #include <QString>
 #include <QVariant>
+
+#include <algorithm>
 
 #include "moc_Modes.cpp"
 

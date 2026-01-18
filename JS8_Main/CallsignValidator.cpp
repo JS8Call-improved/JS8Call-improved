@@ -1,25 +1,22 @@
 /**
  * @file CallsignValidator.cpp
- * @brief Implementation of CallsignValidator
+ * @brief Construct a new Callsign Validator:: Callsign Validator object
+ * @param parent
+ * @param allow_compound
  */
+
 #include "CallsignValidator.h"
 
-/**
- * @brief Construct a new Callsign Validator:: Callsign Validator object
- * 
- * @param parent 
- * @param allow_compound 
- */
 CallsignValidator::CallsignValidator(QObject *parent, bool allow_compound)
     : QValidator{parent},
       re_{allow_compound ? R"(^[A-Za-z0-9/]+$)" : R"(^[A-Za-z0-9]+$)"} {}
 
 /**
  * @brief Validate the callsign input
- * 
- * @param input 
- * @param pos 
- * @return State 
+ *
+ * @param input
+ * @param pos
+ * @return State
  */
 auto CallsignValidator::validate(QString &input, int &pos) const -> State {
     auto match =

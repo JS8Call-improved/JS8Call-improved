@@ -39,7 +39,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget_2">
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="stationTab">
           <attribute name="title">
@@ -2192,7 +2192,7 @@ transmitting periods.</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>672</width>
+            <width>917</width>
             <height>874</height>
            </rect>
           </property>
@@ -4281,11 +4281,11 @@ soundcard changes</string>
  </connections>
  <buttongroups>
   <buttongroup name="TX_mode_button_group"/>
-  <buttongroup name="CAT_handshake_button_group"/>
-  <buttongroup name="split_mode_button_group"/>
-  <buttongroup name="TX_audio_source_button_group"/>
   <buttongroup name="CAT_data_bits_button_group"/>
+  <buttongroup name="CAT_handshake_button_group"/>
   <buttongroup name="PTT_method_button_group"/>
+  <buttongroup name="TX_audio_source_button_group"/>
   <buttongroup name="CAT_stop_bits_button_group"/>
+  <buttongroup name="split_mode_button_group"/>
  </buttongroups>
 </ui>

@@ -1,28 +1,19 @@
 #ifndef WSJTX_MESSAGE_CLIENT_HPP__
 #define WSJTX_MESSAGE_CLIENT_HPP__
 
+#include "JS8_Include/pimpl_h.h"
+#include "JS8_Main/Radio.h"
+
 #include <QDateTime>
 #include <QHostAddress>
 #include <QObject>
 #include <QString>
 #include <QTime>
 
-#include "JS8_Include/pimpl_h.h"
-#include "JS8_Main/Radio.h"
-
 class QByteArray;
 class QHostAddress;
 class QColor;
 
-/**
- * @brief WSJT-X compatible message client for JS8Call
- *
- * This class implements the WSJT-X UDP binary protocol for inter-application
- * communication. It allows JS8Call to send and receive messages compatible
- * with WSJT-X and other applications that support the WSJT-X protocol.
- *
- * Based on WSJT-X MessageClient but adapted for JS8Call.
- */
 class WSJTXMessageClient : public QObject {
     Q_OBJECT;
 

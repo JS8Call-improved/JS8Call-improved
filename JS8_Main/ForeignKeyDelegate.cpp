@@ -1,8 +1,12 @@
+/**
+ * @file ForeignKeyDelegate.cpp
+ * @brief Implementation of Qt styles
+ */
+
 #include "ForeignKeyDelegate.h"
+#include "CandidateKeyFilter.h"
 
 #include <QComboBox>
-
-#include "CandidateKeyFilter.h"
 
 ForeignKeyDelegate::ForeignKeyDelegate(QAbstractItemModel *referenced_model,
                                        int referenced_key_column,

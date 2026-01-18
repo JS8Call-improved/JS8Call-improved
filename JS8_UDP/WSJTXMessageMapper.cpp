@@ -1,10 +1,3 @@
-#include "WSJTXMessageMapper.h"
-#include "JS8_UI/mainwindow.h"
-#include <QLoggingCategory>
-#include <limits>
-
-Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
-
 /**
  * @brief Construct a WSJT-X message mapper
  *
@@ -15,8 +8,19 @@ Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
  * @param main_window Main window instance for accessing JS8Call state
  * @param parent Parent QObject
  */
+
+#include "WSJTXMessageMapper.h"
+#include "JS8_UI/mainwindow.h"
+
+#include <QLoggingCategory>
+
+#include <limits>
+
+Q_LOGGING_CATEGORY(wsjtx_mapper_js8, "wsjtx.mapper.js8", QtWarningMsg)
+
 WSJTXMessageMapper::WSJTXMessageMapper(WSJTXMessageClient *client,
-                                       UI_Constructor *main_window, QObject *parent)
+                                       UI_Constructor *main_window,
+                                       QObject *parent)
     : QObject{parent}, client_{client}, main_window_{main_window} {
     connect(client_, &WSJTXMessageClient::reply, this,
             &WSJTXMessageMapper::handleReply);
@@ -167,8 +171,8 @@ void WSJTXMessageMapper::handleReply(QTime /*time*/, qint32 /*snr*/,
                                      quint8 /*modifiers*/) {
     // Map WSJT-X Reply to JS8Call action
     // This would trigger a reply in JS8Call similar to double-clicking a decode
-    // Implementation depends on UI_Constructor API - for now, just send as network
-    // message
+    // Implementation depends on UI_Constructor API - for now, just send as
+    // network message
     if (main_window_) {
         // TODO: Map to appropriate JS8Call action
         // main_window_->sendNetworkMessage("REPLY", message_text);

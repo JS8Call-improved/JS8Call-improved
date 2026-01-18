@@ -3,11 +3,10 @@
  * @brief Implementation of CandidateKeyFilter
  */
 #include "CandidateKeyFilter.h"
+#include "JS8_Include/pimpl_impl.h"
 
 #include <QAbstractItemModel>
 #include <QModelIndex>
-
-#include "JS8_Include/pimpl_impl.h"
 
 class CandidateKeyFilter::impl final {
   public:

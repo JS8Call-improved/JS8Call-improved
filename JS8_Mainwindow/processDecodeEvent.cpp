@@ -1,9 +1,11 @@
-#include "JS8_UI/mainwindow.h"
+
 
 /** \file
  * @brief member function of the UI_Constructor class
  *  process decoded text
  */
+
+#include "JS8_UI/mainwindow.h"
 
 void UI_Constructor::processDecodeEvent(JS8::Event::Variant const &event) {
     static QList<qint32> driftQueue;

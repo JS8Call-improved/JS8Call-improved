@@ -1,10 +1,17 @@
-#include "PollingTransceiver.h"
+/**
+ * @file PollingTransceiver.cpp
+ * @brief Implementation of the PollingTransceiver class
+ * Helper base  class that  encapsulates the emulation  of continuous update and
+ * caching of a transceiver state.
+ */
 
-#include <exception>
+#include "PollingTransceiver.h"
 
 #include <QObject>
 #include <QString>
 #include <QTimer>
+
+#include <exception>
 
 #include "moc_PollingTransceiver.cpp"
 

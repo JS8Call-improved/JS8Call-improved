@@ -3,13 +3,13 @@
  * @brief Implementation of APRS-IS client for JS8Call
  */
 #include "APRSISClient.h"
+#include "DriftingDateTime.h"
+#include "Varicode.h"
+
 #include <QLoggingCategory>
 #include <QRandomGenerator>
 
 #include <cmath>
-
-#include "DriftingDateTime.h"
-#include "Varicode.h"
 
 Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 

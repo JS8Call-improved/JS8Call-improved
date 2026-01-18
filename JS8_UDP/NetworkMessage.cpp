@@ -1,17 +1,18 @@
 /**
  * @file NetworkMessage.cpp
- * @brief Implementation of NetworkMessage::Builder and NetworkMessage::Reader classes
+ * @brief Implementation of NetworkMessage::Builder and NetworkMessage::Reader
+ * classes
  */
-#include "NetworkMessage.h"
 
-#include <exception>
+#include "NetworkMessage.h"
+#include "JS8_Include/pimpl_impl.h"
 
 #include <QByteArray>
 #include <QDebug>
 #include <QIODevice>
 #include <QString>
 
-#include "JS8_Include/pimpl_impl.h"
+#include <exception>
 
 namespace NetworkMessage {
 Builder::Builder(QIODevice *device, Type type, QString const &id,

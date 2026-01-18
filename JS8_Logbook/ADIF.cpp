@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QLoggingCategory>
 #include <QTextStream>
+
 Q_DECLARE_LOGGING_CATEGORY(adif_js8)
 
 const QStringList ADIF_FIELDS = {

@@ -1,9 +1,9 @@
 #ifndef MODES_HPP__
 #define MODES_HPP__
 
-#include <QAbstractListModel>
-
 #include "qt_helpers.h"
+
+#include <QAbstractListModel>
 
 class QString;
 class QVariant;

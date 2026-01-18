@@ -1,10 +1,16 @@
-#include "FrequencyLineEdit.h"
+/**
+ * @file FrequencyLineEdit.cpp
+ * @brief Implementation of the editor for the JS8 standard operating
+ * frequencies
+ */
 
-#include <limits>
+#include "FrequencyLineEdit.h"
 
 #include <QDoubleValidator>
 #include <QLocale>
 #include <QString>
+
+#include <limits>
 
 #include "moc_FrequencyLineEdit.cpp"
 

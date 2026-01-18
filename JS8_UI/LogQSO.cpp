@@ -1,4 +1,16 @@
-#include "logqso.h"
+/**
+ * @file LogQSO.cpp
+ * @brief implementation of the LogQSO dialog for the UI
+ */
+
+#include "LogQSO.h"
+#include "Configuration.h"
+#include "JS8_Include/Maidenhead.h"
+#include "JS8_Logbook/ADIF.h"
+#include "JS8_Main/Bands.h"
+#include "JS8_Main/DriftingDateTime.h"
+#include "JS8_Main/JS8MessageBox.h"
+#include "ui_LogQSO.h"
 
 #include <QAbstractItemView>
 #include <QComboBox>
@@ -9,15 +21,7 @@
 #include <QString>
 #include <QUdpSocket>
 
-#include "Configuration.h"
-#include "JS8_Include/Maidenhead.h"
-#include "JS8_Logbook/ADIF.h"
-#include "JS8_Main/Bands.h"
-#include "JS8_Main/DriftingDateTime.h"
-#include "JS8_Main/JS8MessageBox.h"
-
-#include "moc_logqso.cpp"
-#include "ui_logqso.h"
+#include "moc_LogQSO.cpp"
 
 LogQSO::LogQSO(QString const &programTitle, QSettings *settings,
                Configuration const *config, QWidget *parent)
