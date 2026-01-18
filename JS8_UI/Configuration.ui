@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1002</width>
-    <height>642</height>
+    <width>717</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -65,8 +65,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>886</width>
-                <height>480</height>
+                <width>601</width>
+                <height>438</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -315,7 +315,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>871</width>
+                <width>601</width>
                 <height>489</height>
                </rect>
               </property>
@@ -704,8 +704,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>886</width>
-                <height>480</height>
+                <width>601</width>
+                <height>438</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -783,12 +783,6 @@
                   <string>Autoreply</string>
                  </property>
                  <layout class="QFormLayout" name="formLayout">
-                  <property name="fieldGrowthPolicy">
-                   <enum>QFormLayout::FieldGrowthPolicy::ExpandingFieldsGrow</enum>
-                  </property>
-                  <property name="formAlignment">
-                   <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>
-                  </property>
                   <item row="0" column="0">
                    <widget class="QCheckBox" name="autoreply_on_check_box">
                     <property name="text">
@@ -1036,7 +1030,7 @@ radio interface behave as expected.</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>296</width>
+                <width>585</width>
                 <height>414</height>
                </rect>
               </property>
@@ -1861,8 +1855,8 @@ this setting allows you to select which audio input will be used
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>271</width>
-            <height>352</height>
+            <width>647</width>
+            <height>493</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2192,8 +2186,8 @@ transmitting periods.</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>917</width>
-            <height>874</height>
+            <width>647</width>
+            <height>722</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -2849,8 +2843,8 @@ transmitting periods.</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>431</width>
-            <height>335</height>
+            <width>647</width>
+            <height>493</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_31">
@@ -3165,8 +3159,8 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>145</width>
-            <height>97</height>
+            <width>647</width>
+            <height>493</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_35">
@@ -3308,8 +3302,8 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>283</width>
-                <height>709</height>
+                <width>601</width>
+                <height>485</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -4280,12 +4274,12 @@ soundcard changes</string>
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="TX_mode_button_group"/>
-  <buttongroup name="CAT_data_bits_button_group"/>
-  <buttongroup name="CAT_handshake_button_group"/>
-  <buttongroup name="PTT_method_button_group"/>
-  <buttongroup name="TX_audio_source_button_group"/>
   <buttongroup name="CAT_stop_bits_button_group"/>
+  <buttongroup name="TX_mode_button_group"/>
+  <buttongroup name="TX_audio_source_button_group"/>
+  <buttongroup name="PTT_method_button_group"/>
+  <buttongroup name="CAT_handshake_button_group"/>
   <buttongroup name="split_mode_button_group"/>
+  <buttongroup name="CAT_data_bits_button_group"/>
  </buttongroups>
 </ui>

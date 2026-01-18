@@ -1221,7 +1221,7 @@ Configuration::impl::impl(Configuration *self, QDir const &temp_directory,
       rig_is_dummy_{false}, rig_active_{false}, have_rig_{false},
       rig_changed_{false}, rig_resolution_{0},
       frequency_calibration_disabled_{false}, transceiver_command_number_{0},
-      spot_to_aprs_relay_{true} {
+      spot_to_aprs_relay_{false} {
     ui_->setupUi(this);
 
     //  ui_->groupBox_6->setVisible(false);              //### Temporary ??? ###
@@ -2119,7 +2119,7 @@ void Configuration::impl::read_settings() {
     spot_to_reporting_networks_ =
         settings_->value("PSKReporter", true).toBool();
     spot_to_aprs_ = settings_->value("SpotToAPRS", true).toBool();
-    spot_to_aprs_relay_ = settings_->value("APRSISRelay", true).toBool();
+    spot_to_aprs_relay_ = settings_->value("APRSISRelay", false).toBool();
     write_logs_ = settings_->value("WriteLogs", true).toBool();
     reset_activity_ = settings_->value("ResetActivity", false).toBool();
     check_for_updates_ = settings_->value("CheckForUpdates", true).toBool();
