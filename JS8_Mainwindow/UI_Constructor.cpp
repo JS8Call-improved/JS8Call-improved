@@ -67,7 +67,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
       m_pskReporter{new PSKReporter{&m_config, program_info}}, // UR
       m_spotClient{new SpotClient{"spot.js8call.com", 50000, program_info}},
       m_aprsClient{new APRSISClient{"rotate.aprs2.net", 14580}},
-      m_aprsInboundRelay{nullptr}, m_manual{&m_network_manager} {
+      m_aprsInboundRelay{nullptr} {
     ui->setupUi(this);
 
     createStatusBar();

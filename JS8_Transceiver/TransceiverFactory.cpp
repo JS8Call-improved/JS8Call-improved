@@ -10,7 +10,7 @@
 #include "HamlibTransceiver.h"
 
 #if defined(Q_OS_WIN) && ENABLE_OMNIRIG
-#include "OmniRigTransceiver.h"
+#include "JS8_Deprecated/OmniRigTransceiver.h"
 #endif
 
 #include <QMetaType>

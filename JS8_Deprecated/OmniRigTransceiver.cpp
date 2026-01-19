@@ -1,5 +1,6 @@
 /**
  * @file OmniRig.cpp
+ * @deprecated This class is scheduled for removal from the code in July 2026
  * @brief Implementation of the OmniRig class
  * Implements interface with OmniRig
  */

@@ -6,7 +6,6 @@
 #include "JS8_Audio/NotificationAudio.h"
 #include "JS8_Audio/SoundInput.h"
 #include "JS8_Audio/SoundOutput.h"
-#include "JS8_Deprecated/DisplayManual.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Include/qpriorityqueue.h"
@@ -932,7 +931,6 @@ class UI_Constructor : public QMainWindow {
     SpotClient *m_spotClient;
     APRSISClient *m_aprsClient;
     AprsInboundRelay *m_aprsInboundRelay;
-    DisplayManual m_manual;
     QVariantHash m_pwrBandTxMemory; // Remembers power level by band
     QVariantHash
         m_pwrBandTuneMemory; // Remembers power level by band for tuning
