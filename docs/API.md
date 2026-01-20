@@ -397,7 +397,7 @@ Sets the currently set transmit mode speed
 | Turbo |   2    |
 | Slow  |   4    |
 | Ultra |   8    |
-
+Please note, Ultra speed is an *experimental* and unreliable speed.
 
 # INBOX.GET_MESSAGES
 Fetches all Inbox messages
