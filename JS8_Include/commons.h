@@ -24,7 +24,7 @@
 #define JS8_ENABLE_JS8B    1
 #define JS8_ENABLE_JS8C    1
 #define JS8_ENABLE_JS8E    1
-#define JS8_ENABLE_JS8I    0
+#define JS8_ENABLE_JS8I    1
 
 #define JS8A_SYMBOL_SAMPLES 1920
 #define JS8A_TX_SECONDS     15
