@@ -47,7 +47,6 @@ env:
   opengl_package2: libxcb-keysyms1-dev libxcb-image0-dev libxcb-icccm4-dev libxcb-render-util0-dev 
   opengl_package3: libxcb-xfixes0-dev libxcb-sync-dev libxcb-randr0-dev libxrender-dev libxcb*
   ffmpeg_build: libgnutls28-dev libsdl2-dev libva-dev
-  CLANG_FORMAT: clang-format-20 # Assumed to be name of package and name of command
 
 # If we want to check on other variants of linux, just add it to the maxtix/include section
 # with the OS required libs for that platform. Some additional changes (like apt to dnf) will 
@@ -62,7 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev $CLANG_FORMAT}
+          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev clang-format-20}
           - {os: ubuntu-22.04-arm, arch: ARM64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
 
     steps:
@@ -143,7 +142,7 @@ jobs:
       if: ${{ (runner.arch == 'X64') && (steps.which-os.outputs.thisos == 'ubuntu22.04') }}
       run: |
         test -d JS8_Main # To make sure this runs in the right directory
-        $CLANG_FORMAT --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
+        clang-format-20 --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
 
     - name: Install dependencies needed to build libs (Ubuntu)
       if: |
