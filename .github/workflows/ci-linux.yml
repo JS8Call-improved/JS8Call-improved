@@ -61,6 +61,8 @@ jobs:
       fail-fast: true:
 
     steps:
+    - uses: actions/checkout@v5
+
     - name: Install minimum required dependencies (Ubuntu)
       run: |
         sudo apt-get update
@@ -159,7 +161,7 @@ jobs:
     - name: Check code style
       if: ${{ (runner.arch == 'X64') && (steps.which-os.outputs.thisos == 'ubuntu22.04') }}
       run: |
-
+        
 
     - name: Install dependencies needed to build libs (Ubuntu)
       if: |
