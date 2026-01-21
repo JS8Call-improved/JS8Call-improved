@@ -61,7 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev clang-format-20}
+          - {os: ubuntu-22.04, arch: X64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev clang-format-19}
           - {os: ubuntu-22.04-arm, arch: ARM64, packages: build-essential autoconf curl git cmake appstream libtool libxkbcommon-dev libudev-dev yasm libva-dev libpulse-dev libegl1-mesa-dev libgles2-mesa-dev libgbm-dev libgl1-mesa-dev libxkbcommon-x11-dev}
 
     steps:
@@ -142,7 +142,7 @@ jobs:
       if: ${{ (runner.arch == 'X64') && (steps.which-os.outputs.thisos == 'ubuntu22.04') }}
       run: |
         test -d JS8_Main # To make sure this runs in the right directory
-        clang-format-20 --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
+        clang-format-19 --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
 
     - name: Install dependencies needed to build libs (Ubuntu)
       if: |
