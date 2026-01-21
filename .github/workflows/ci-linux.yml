@@ -53,6 +53,24 @@ env:
 # need to occur elsewhere in this workflow. ie via the steps.which-os.outputs.thisos == 'some other linux OS'
 # Be aware, the global env package vars do not get expanded in the matrix.
 jobs:
+  check_code_style:
+    name: codestyle_ubuntu_24
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    strategy:
+      fail-fast: true:
+
+    steps:
+    - name: Install minimum required dependencies (Ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-20
+
+    - name: Check code style
+      run: |
+        test -d JS8_Main # To make sure this runs in the right directory
+        clang-format-20 --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
+
   ci_ubuntu_linux:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -141,8 +159,7 @@ jobs:
     - name: Check code style
       if: ${{ (runner.arch == 'X64') && (steps.which-os.outputs.thisos == 'ubuntu22.04') }}
       run: |
-        test -d JS8_Main # To make sure this runs in the right directory
-        clang-format-15 --Werror --dry-run --style='{BasedOnStyle: LLVM, IndentWidth: 4}' JS8*/*.h JS8*/*.cpp
+
 
     - name: Install dependencies needed to build libs (Ubuntu)
       if: |
