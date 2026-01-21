@@ -4,8 +4,12 @@ This document provides documention of the API to control JS8Call through version
 
 # Methods
 The API is normally located on localhost port 2242, but can be changed at ``Settings -> Reporting Tab -> API``
-<!-- TODO add more detail -->
-<!-- TODO add examples for telnet/etc -->
+If you have access to ``telnet`` you can connect to the API with
+
+```
+telnet 127.0.0.1 2242
+```
+If you do nothing, the API will print information as it has it available, or you can submit one of the ``End Points`` below.
 
 
 # API Format
@@ -71,6 +75,9 @@ Wakes up the API if need be.
 |--------------|-|
 | value        | empty string |
 
+| Response |
+|----------|
+| None     |
 
 # RIG.GET_FREQ
 Gets radio dial and offset frequencies
@@ -110,7 +117,7 @@ Sets radio dial and offset frequencies
 
 # STATION.GET_CALLSIGN
 Gets station callsign
-<!-- TODO add more detail -->
+
 | End Point |
 |-----------|
 |{"params":{},"type":"STATION.GET_CALLSIGN","value":""}|
@@ -238,7 +245,6 @@ Returns the recent call activity
 |----------|
 |{"params":{"":{"GRID":"","SNR":0,"UTC":0},"AB4WV":{"GRID":"","SNR":-18,"UTC":1768858992167},"AC4TC":{"GRID":" EM63","SNR":-8,"UTC":1768858257702},"K3XV":{"GRID":"FM19","SNR":-10,"UTC":1768857551924},"K4EXA":{"GRID":"EM63","SNR":-18,"UTC":1768858242147},"type":"RX.CALL_ACTIVITY","value":""}|
 
-<!-- TODO add more detail -->
 
 # RX.GET_CALL_SELECTED
 Returns the callsign of a station that has been selected in the UI.
@@ -258,6 +264,7 @@ Returns the callsign of a station that has been selected in the UI.
 1) First form is if no callsign is currently selected in the UI.
 2) Second form is the selected callsign in the UI.
 
+
 # RX.GET_BAND_ACTIVITY
 Gets current band activity
 
@@ -272,7 +279,7 @@ Gets current band activity
 | Response |
 |----------|
 |{"params":{"1067":{"DIAL":7078000,"FREQ":7079067,"OFFSET":1067,"SNR":-7,"TEXT":"W6OEM: VE3SOY HEARTBEAT SNR -20 ","UTC":1768860611907},"616":{"DIAL":7078000,"FREQ":7078616,"OFFSET":616,"SNR":-18,"TEXT":"KM4BOF: VE3SOY HEARTBEAT SNR -09 ","UTC":1768860611918},"type":"RX.BAND_ACTIVITY","value":""}|
-<!-- TODO explain what this response is -->
+
 
 # RX.GET_TEXT
 Gets the contents of the directed message window
@@ -288,7 +295,7 @@ Gets the contents of the directed message window
 | Response |
 |----------|
 |{"params":{"_ID":269562514193},"type":"RX.TEXT","value":"\n22:06:10 - (1950) - KJ4CTD: W4CAT SNR?  ♢ \n\n22:06:52 - (1950) - KJ4CTD: KB4DSF SNR?  ♢ \n\n22:14:29 - (800) - KJ4CTD: N0AAS HEARTBEAT SNR -18  ♢ \n\n22:25:31 - (1950) - KJ4CTD: @SITREP MSG F!104 100 ST[SC] GR[EM85] #ASRM KWC ♢ "}|
-<!-- TODO explain what this response is -->
+
 
 # TX.GET_TEXT
 Gets the text to be transmitted
@@ -370,7 +377,7 @@ Gets the currently set transmit mode speed
 |{"params":{"SPEED":1,"_ID":269564372867},"type":"MODE.SPEED","value":""}|
 |{"params":{"SPEED":2,"_ID":269564383363},"type":"MODE.SPEED","value":""}|
 |{"params":{"SPEED":4,"_ID":269564510080},"type":"MODE.SPEED","value":""}|
-
+|{"params":{"SPEED":8,"_ID":269564511182},"type":"MODE.SPEED","value":""}|
 
 # MODE.SET_SPEED
 Sets the currently set transmit mode speed
@@ -386,8 +393,8 @@ Sets the currently set transmit mode speed
 
 | Response |
 |----------|
-|{"params":{"DIAL":7078000,"FREQ":7079950,"OFFSET":1950,"SELECTED":"","SPEED":8,"_ID":"269564663038"},"type":"STATION.STATUS","value":""}|
-<!-- TODO explain what this response is -->
+|{"params":{"DIAL":7078000,"FREQ":7079950,"OFFSET":1950,"SELECTED":"","SPEED":0,"_ID":"269564663038"},"type":"STATION.STATUS","value":""}|
+
 
 ## MODE Speeds
 | Mode  | Number |
@@ -400,7 +407,7 @@ Sets the currently set transmit mode speed
 Please note, Ultra speed is an *experimental* and unreliable speed.
 
 # INBOX.GET_MESSAGES
-Fetches all Inbox messages
+Fetches all Inbox messages, warning, this could be very large
 
 | End Point |
 |-----------|
@@ -412,8 +419,11 @@ Fetches all Inbox messages
 
 | Response |
 |----------|
-| |
-<!-- TODO explain what this response is -->
+|{"params":{"MESSAGES":[{"params":{"CMD":" MSG ","DIAL":7078000,"FREQ":7080318,"FROM":"KJ5MIW","GRID":" EM15","OFFSET":2318,"PATH":"KJ5MIW","SNR":-15,"SUBMODE":0,"TDRIFT":0.13999998569488525,"TEXT":"F!104 100 ST[OK] GR[EM15] #ATTV","TO":"@SITREP","UTC":"2026-01-21 01:44:26","_ID":"269660742003"},"type":"READ","value":""}],"_ID":269699597005},"type":"INBOX.MESSAGES","value":""}|
+
+This is an example of a @SITREP message stored on my station and breaks down as follows.
+``MESSAGES`` is a comma seperated list of message records, each record is contained within brackets.
+
 
 # INBOX.STORE_MESSAGE
 Stores a message in YOUR Inbox
