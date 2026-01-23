@@ -1013,18 +1013,26 @@ void UI_Constructor::prepareApi() {
 }
 
 void UI_Constructor::prepareSpotting() {
-    if (m_config.spot_to_reporting_networks()) {
+    bool reportingEnabled = m_config.spot_to_reporting_networks();
+    bool aprsEnabled = reportingEnabled &&
+                       (m_config.spot_to_aprs() || m_config.spot_to_aprs_relay());
+
+    if (reportingEnabled) {
         spotSetLocal();
         pskSetLocal();
-        aprsSetLocal();
-        emit aprsClientSetSkipPercent(0.25);
-        emit aprsClientSetServer(m_config.aprs_server_name(),
-                                 m_config.aprs_server_port());
-        emit aprsClientSetIncomingRelayEnabled(m_config.spot_to_aprs_relay());
-        emit aprsClientSetPaused(false);
+        if (aprsEnabled) {
+            aprsSetLocal();
+            emit aprsClientSetSkipPercent(0.25);
+            emit aprsClientSetServer(m_config.aprs_server_name(),
+                                     m_config.aprs_server_port());
+        }
+        emit aprsClientSetIncomingRelayEnabled(
+            aprsEnabled && m_config.spot_to_aprs_relay());
+        emit aprsClientSetPaused(!aprsEnabled);
         ui->spotButton->setChecked(true);
     } else {
         emit aprsClientSetPaused(true);
+        emit aprsClientSetIncomingRelayEnabled(false);
         ui->spotButton->setChecked(false);
     }
 }
@@ -5276,7 +5284,10 @@ void UI_Constructor::handle_transceiver_update(
                 if (m_config.spot_to_reporting_networks()) {
                     spotSetLocal();
                     pskSetLocal();
-                    aprsSetLocal();
+                    if (m_config.spot_to_aprs() ||
+                        m_config.spot_to_aprs_relay()) {
+                        aprsSetLocal();
+                    }
                 }
                 statusChanged();
                 m_wideGraph->setDialFreq(m_freqNominal / 1.e6f);

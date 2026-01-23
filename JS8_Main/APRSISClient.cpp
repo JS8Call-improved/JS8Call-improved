@@ -24,8 +24,8 @@ const int PACKET_TIMEOUT_SECONDS = 300;
  */
 APRSISClient::APRSISClient(QString const host, quint16 const port,
                            QObject *parent)
-    : QTcpSocket{parent}, m_timer{this}, m_incomingRelayEnabled{false},
-      m_isLoggedIn{false} {
+    : QTcpSocket{parent}, m_timer{this}, m_paused{true},
+      m_incomingRelayEnabled{false}, m_isLoggedIn{false}, m_skipPercent{0.0f} {
     setServer(host, port);
 
     connect(&m_timer, &QTimer::timeout, this, &APRSISClient::sendReports);
@@ -300,7 +300,9 @@ void APRSISClient::setIncomingRelayEnabled(bool enabled) {
 
     if (m_incomingRelayEnabled) {
         // if enabled, trigger a connection immediately
-        processQueue(false);
+        if (!m_paused) {
+            processQueue(false);
+        }
     } else {
         // if disabled, and queue is empty, disconnect
         if (state() == QTcpSocket::ConnectedState && m_frameQueue.isEmpty()) {
@@ -373,6 +375,10 @@ void APRSISClient::processQueue(bool disconnect) {
     if (m_localCall.isEmpty()) {
         qCDebug(aprsisclient_js8)
             << "APRSISClient Abort ProcessQueue: No Local Call";
+        return;
+    }
+
+    if (!m_incomingRelayEnabled && m_frameQueue.isEmpty()) {
         return;
     }
 
