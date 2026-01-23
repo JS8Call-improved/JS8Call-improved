@@ -3,7 +3,7 @@
  * @brief member function of the UI_Constructor class
  * API commands for external control and data retrieval.
  *  sends data to external clients via the Network Message API
- * @defgroup API Network Message API
+ * defgroup API Network Message API
  */
 
 #include "JS8_UI/mainwindow.h"
@@ -35,7 +35,7 @@ void UI_Constructor::networkMessage(Message const &message) {
     // TODO: MAIN.AUTO - Auto
     // TODO: MAIN.SPOT - Spot
     // TODO: MAIN.HB - HB
-
+ 
     // RIG.GET_FREQ - Get the current Frequency
     // RIG.SET_FREQ - Set the current Frequency
     /**
@@ -184,6 +184,34 @@ void UI_Constructor::networkMessage(Message const &message) {
                            });
         return;
     }
+
+    /** @brief STATION.VERSION
+     * Returns the JS8Call version
+     */
+    if (type == "STATION.VERSION") {
+        QString ver = version();
+        sendNetworkMessage("STATION.VERSION", "",
+            {
+                {"_ID", id},
+                {"VERSION", QVariant(ver)}
+            });
+        return;
+    }
+
+    /** @brief STATION.GET_PTT
+     * Returns the PTT status 
+     */
+    if (type == "STATION.GET_PTT") {
+        bool isPTT = m_transmitting;
+        sendNetworkMessage("STATION.PTT_STATUS", "",
+            {
+                {"_ID", id},
+                {"PTT", QVariant(isPTT)},
+                {"MESSAGE", QVariant(isPTT ? m_currentMessage : "")}
+           });
+        return;
+    }
+
     /** @} */ // End STATION Commands
 
     // RX.GET_CALL_ACTIVITY
