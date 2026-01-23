@@ -41,6 +41,8 @@ The steps above are
 | [STATION.SET_INFO](#stationset_info)         |
 | [STATION.GET_STATUS](#stationget_status)     |
 | [STATION.SET_STATUS](#stationset_status)     |
+| [STATION.GET_PTT](#stationget_ptt)           |
+| [STATION.VERSION](#stationversion)           |
 | [RX.GET_CALL_ACTIVITY](#rxget_call_activity) |
 | [RX.GET_CALL_SELECTED](#rxget_call_selected) |
 | [RX.GET_BAND_ACTIVITY](#rxget_band_activity) |
@@ -236,6 +238,43 @@ Sets station status message
 |{"params":{"_ID":269559773383},"type":"STATION.STATUS","value":"IDLE <MYIDLE> JS8CALL-IMPORVED VERSION <MYVERSION>"}|
 
 Station status is returned in `value`
+
+
+# STATION.GET_PTT
+Gets station PTT status
+
+| End Point |
+|-----------|
+|{"params":{},"type":"STATION.GET_PTT","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"MESSAGE":"","PTT":false,"_ID":269908447335},"type":"STATION.PTT_STATUS","value":""}|
+|{"params":{"MESSAGE":"SLbuEVAt7YC0","PTT":true,"_ID":269908640060},"type":"STATION.PTT_STATUS","value":""}|
+
+`MESSAGE` will be empty string or a message if more is being transmitted.
+
+`PTT` will be true if transmitting.
+
+
+# STATION.VERSION
+Gets JS8Call version. Use to check for API changes or compatiblity.
+
+| End Point |
+|-----------|
+|{"params":{},"type":"STATION.VERSION","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"VERSION":"2.6.0-NOT_FOR_RELEASE","_ID":269908381596},"type":"STATION.VERSION","value":""}|
 
 
 # RX.GET_CALL_ACTIVITY
