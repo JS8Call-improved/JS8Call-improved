@@ -29,32 +29,36 @@ The steps above are
 ``{"params":xxx}`` is **required** in both directions and forms the overall packet
 
 
-| Commands                     |
-|-----------------------------|
-| [PING ](#ping)                               |
-| [RIG.GET_FREQ](#rigget_freq)                 |
-| [RIG.SET_FREQ](#rigset_freq)                 |
-| [STATION.GET_CALLSIGN](#stationget_callsign) |
-| [STATION.GET_GRID](#stationget_grid)         |
-| [STATION.SET_GRID](#stationset_grid)         |
-| [STATION.GET_INFO](#stationget_info)         |
-| [STATION.SET_INFO](#stationset_info)         |
-| [STATION.GET_STATUS](#stationget_status)     |
-| [STATION.SET_STATUS](#stationset_status)     |
-| [STATION.GET_PTT](#stationget_ptt)           |
-| [STATION.VERSION](#stationversion)           |
-| [RX.GET_CALL_ACTIVITY](#rxget_call_activity) |
-| [RX.GET_CALL_SELECTED](#rxget_call_selected) |
-| [RX.GET_BAND_ACTIVITY](#rxget_band_activity) |
-| [RX.GET_TEXT](#rxget_text)                   |
-| [TX.GET_TEXT](#txget_text)                   |
-| [TX.SET_TEXT](#txset_text)                   |
-| [TX.SEND_MESSAGE](#txsend_message)           |
-| [MODE.GET_SPEED](#modeget_speed)             |
-| [MODE.SET_SPEED](#modeset_speed)             |
-| [INBOX.GET_MESSAGES](#inboxget_messages)     |
-| [INBOX.STORE_MESSAGE](#inboxstore_message)   |
-| [WINDOW.RAISE](#windowraise)                 |
+| Commands                     | Version |
+|------------------------------|---------|
+| [PING ](#ping)                               | 2.5 |
+| [RIG.GET_FREQ](#rigget_freq)                 | 2.5 |
+| [RIG.SET_FREQ](#rigset_freq)                 | 2.5 |
+| [STATION.GET_CALLSIGN](#stationget_callsign) | 2.5 |
+| [STATION.GET_GRID](#stationget_grid)         | 2.5 |
+| [STATION.SET_GRID](#stationset_grid)         | 2.5 |
+| [STATION.GET_INFO](#stationget_info)         | 2.5 |
+| [STATION.SET_INFO](#stationset_info)         | 2.5 |
+| [STATION.GET_STATUS](#stationget_status)     | 2.5 |
+| [STATION.SET_STATUS](#stationset_status)     | 2.5 |
+| [STATION.GET_PTT](#stationget_ptt)           | 2.6 |
+| [STATION.VERSION](#stationversion)           | 2.6 |
+| [STATION.GET_OS](#stationget_os)             | 2.6 |
+| [STATION.SET_STATUS](#stationset_status)     | 2.5 |
+| [STATION.GET_SPOT](#stationget_spot)         | 2.6 |
+| [STATION.SET_SPOT](#stationset_spot)         | 2.6 |
+| [RX.GET_CALL_ACTIVITY](#rxget_call_activity) | 2.5 |
+| [RX.GET_CALL_SELECTED](#rxget_call_selected) | 2.5 |
+| [RX.GET_BAND_ACTIVITY](#rxget_band_activity) | 2.5 |
+| [RX.GET_TEXT](#rxget_text)                   | 2.5 |
+| [TX.GET_TEXT](#txget_text)                   | 2.5 |
+| [TX.SET_TEXT](#txset_text)                   | 2.5 |
+| [TX.SEND_MESSAGE](#txsend_message)           | 2.5 |
+| [MODE.GET_SPEED](#modeget_speed)             | 2.5 |
+| [MODE.SET_SPEED](#modeset_speed)             | 2.5 |
+| [INBOX.GET_MESSAGES](#inboxget_messages)     | 2.5 |
+| [INBOX.STORE_MESSAGE](#inboxstore_message)   | 2.5 |
+| [WINDOW.RAISE](#windowraise)                 | 2.5 |
 
 ## _ID Number
 The ID number is the epoch time of 1499299200000 (July 6, 2017) plus current epoch time.
@@ -276,6 +280,52 @@ Gets JS8Call version. Use to check for API changes or compatiblity.
 |----------|
 |{"params":{"VERSION":"2.6.0-NOT_FOR_RELEASE","_ID":269908381596},"type":"STATION.VERSION","value":""}|
 
+# STATION.GET_OS
+Gets OS info including name, kernel version, and type
+
+| End Point |
+|-----------|
+|{"params":{},"type":"STATION.GET_OS","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"OS_KERNEL":"linux","OS_KERNEL_VERSION":"6.14.0-37-generic","OS_NAME":"Ubuntu 24.04.3 LTS","_ID":269977840701},"type":"STATION.GET_OS","value":""}|
+
+
+# STATION.GET_SPOT
+Gets status of SPOT setting
+
+| End Point |
+|-----------|
+|{"params":{},"type":"STATION.GET_SPOT","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"_ID":269978316997},"type":"STATION.SPOT","value":true}|
+
+
+# STATION.SET_SPOT
+Sets status of SPOT setting
+
+| End Point |
+|-----------|
+|{"params":{},"type":"STATION.SET_SPOT","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | true/false |
+
+| Response |
+|----------|
+|{"params":{"_ID":269978362823},"type":"STATION.SPOT","value":""}|
 
 # RX.GET_CALL_ACTIVITY
 Returns the recent call activity
@@ -310,6 +360,7 @@ Returns the callsign of a station that has been selected in the UI.
 |{"params":{"_ID":269560649847},"type":"RX.CALL_SELECTED","value":"KM4PVB"}|
 
 1) First form is if no callsign is currently selected in the UI.
+
 2) Second form is the selected callsign in the UI.
 
 
