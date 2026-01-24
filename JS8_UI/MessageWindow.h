@@ -33,6 +33,7 @@ class MessageWindow : public QDialog {
     void on_replyPushButton_clicked();
 
   private:
+    void deleteSelectedMessages(); // shared by context menu + Delete key
     Ui::MessageWindow *ui;
 };
 

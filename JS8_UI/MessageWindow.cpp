@@ -47,26 +47,10 @@ MessageWindow::MessageWindow(QWidget *parent)
 
     ui->messageTableWidget->setContextMenuPolicy(Qt::ActionsContextMenu);
     auto deleteAction = new QAction("Delete", ui->messageTableWidget);
-    connect(deleteAction, &QAction::triggered, this, [this]() {
-        auto items = ui->messageTableWidget->selectedItems();
-        if (items.isEmpty()) {
-            return;
-        }
-        auto item = items.first();
-        auto col = ui->messageTableWidget->item(item->row(), 1);
-        if (!col) {
-            return;
-        }
-        bool ok = false;
-        auto mid = col->data(Qt::UserRole).toInt(&ok);
-        if (!ok) {
-            return;
-        }
-
-        ui->messageTableWidget->removeRow(item->row());
-
-        emit this->deleteMessage(mid);
-    });
+    deleteAction->setShortcut(QKeySequence(Qt::Key_Delete));
+    deleteAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    connect(deleteAction, &QAction::triggered, this,
+            [this]() { deleteSelectedMessages(); });
     ui->messageTableWidget->addAction(deleteAction);
 }
 
@@ -152,6 +136,44 @@ void MessageWindow::populateMessages(QList<QPair<int, Message>> msgs) {
     }
 }
 
+void MessageWindow::deleteSelectedMessages() {
+    auto items = ui->messageTableWidget->selectedItems();
+    if (items.isEmpty()) {
+        return;
+    }
+
+    // Collect unique rows and their message IDs
+    QMap<int, int> rowsToDelete; // row -> message id
+    for (auto item : items) {
+        int row = item->row();
+        if (rowsToDelete.contains(row)) {
+            continue;
+        }
+
+        auto col = ui->messageTableWidget->item(row, 1);
+        if (!col) {
+            continue;
+        }
+
+        bool ok = false;
+        auto mid = col->data(Qt::UserRole).toInt(&ok);
+        if (!ok) {
+            continue;
+        }
+
+        rowsToDelete.insert(row, mid);
+    }
+
+    // Delete rows in reverse order to avoid index shifting
+    auto rows = rowsToDelete.keys();
+    std::sort(rows.begin(), rows.end(), std::greater<int>());
+
+    for (int row : rows) {
+        ui->messageTableWidget->removeRow(row);
+        emit this->deleteMessage(rowsToDelete[row]);
+    }
+}
+
 QString MessageWindow::prepareReplyMessage(QString path, QString text) {
     return QString("%1 MSG %2").arg(path).arg(text);
 }
@@ -159,7 +181,16 @@ QString MessageWindow::prepareReplyMessage(QString path, QString text) {
 void MessageWindow::messageTableSelectionChanged(
     const QItemSelection & /*selected*/,
     const QItemSelection & /*deselected*/) {
-    auto row = ui->messageTableWidget->currentRow();
+
+    auto items = ui->messageTableWidget->selectedItems();
+    if (items.isEmpty() || items.size() > ui->messageTableWidget->columnCount()) {
+        ui->messageTextEdit->clear();
+        return;
+    }
+
+    auto firstItem = items.first();
+
+    auto row = firstItem->row();
 
     // message column
     auto item = ui->messageTableWidget->item(
