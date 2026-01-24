@@ -15,6 +15,32 @@ Q_DECLARE_LOGGING_CATEGORY(aprsisclient_js8)
 
 const int PACKET_TIMEOUT_SECONDS = 300;
 
+static QString extractMessageId(QString &message) {
+    auto trimmed = message.trimmed();
+    auto braceIndex = trimmed.lastIndexOf('{');
+    if (braceIndex < 0) {
+        return {};
+    }
+
+    auto suffix = trimmed.mid(braceIndex + 1);
+    if (suffix.endsWith('}')) {
+        suffix.chop(1);
+    }
+
+    if (suffix.isEmpty()) {
+        return {};
+    }
+
+    for (auto const &ch : suffix) {
+        if (!ch.isLetterOrNumber()) {
+            return {};
+        }
+    }
+
+    message = trimmed.left(braceIndex).trimmed();
+    return suffix;
+}
+
 /**
  * @brief Construct a new APRSISClient::APRSISClient object
  *
@@ -24,8 +50,8 @@ const int PACKET_TIMEOUT_SECONDS = 300;
  */
 APRSISClient::APRSISClient(QString const host, quint16 const port,
                            QObject *parent)
-    : QTcpSocket{parent}, m_timer{this}, m_paused{true},
-      m_incomingRelayEnabled{false}, m_isLoggedIn{false}, m_skipPercent{0.0f} {
+    : QTcpSocket{parent}, m_timer{this}, m_paused{false},
+      m_incomingRelayEnabled{false}, m_isLoggedIn{false}, m_skipPercent{0.0F} {
     setServer(host, port);
 
     connect(&m_timer, &QTimer::timeout, this, &APRSISClient::sendReports);
@@ -357,6 +383,32 @@ void APRSISClient::enqueueThirdParty(QString by_call, QString from_call,
 }
 
 /**
+ * @brief Enqueue a standard APRS message ACK frame for APRS-IS.
+ *
+ * @param from_call Source callsign (appears as the message sender).
+ * @param to_call Destination callsign to acknowledge.
+ * @param messageId APRS message identifier (preserved exactly).
+ */
+void APRSISClient::enqueueMessageAck(QString from_call, QString to_call,
+                                     QString messageId) {
+    if (!isPasscodeValid()) {
+        return;
+    }
+
+    if (from_call.isEmpty() || to_call.isEmpty() || messageId.isEmpty()) {
+        return;
+    }
+
+    auto dest = to_call.left(9).leftJustified(9, ' ', true);
+    auto frame = QString("%1>APRS,TCPIP*::%2:ack%3\n");
+    frame = frame.arg(from_call, dest, messageId);
+
+    qDebug() << "DEBUG: APRS ACK Frame:" << frame.trimmed();
+
+    enqueueRaw(frame);
+}
+
+/**
  * @brief Enqueue a raw APRS frame for APRS-IS
  *
  * @param aprsFrame
@@ -507,12 +559,16 @@ void APRSISClient::onSocketReadyRead() {
             auto from = match.captured(1);
             auto to = match.captured(2).trimmed();
             auto msg = match.captured(3);
+            auto messageId = extractMessageId(msg);
 
             qCDebug(aprsisclient_js8)
                 << "APRSISClient Parsed Message:"
-                << "From:" << from << "To:" << to << "Msg:" << msg;
+                << "From:" << from << "To:" << to << "Msg:" << msg
+                << "Id:" << messageId;
+            qDebug() << "DEBUG: APRS Parsed Message" << from << to << msg
+                     << "Id:" << messageId;
 
-            emit messageReceived(from, to, msg);
+            emit messageReceived(from, to, msg, messageId);
         } else {
             qCDebug(aprsisclient_js8)
                 << "APRSISClient: No Regex Match for:" << line;

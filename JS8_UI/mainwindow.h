@@ -468,6 +468,14 @@ class UI_Constructor : public QMainWindow {
                                         QString grid, QString comment);
     Q_SIGNAL void aprsClientEnqueueThirdParty(QString by_call,
                                               QString from_call, QString text);
+    /**
+     * @brief Send a standard APRS message ACK frame.
+     * @param from_call Source callsign for the ACK.
+     * @param to_call Destination callsign being acknowledged.
+     * @param messageId APRS message identifier to acknowledge.
+     */
+    Q_SIGNAL void aprsClientEnqueueAck(QString from_call, QString to_call,
+                                       QString messageId);
     Q_SIGNAL void aprsClientSetSkipPercent(float skipPercent);
     Q_SIGNAL void aprsClientSetIncomingRelayEnabled(bool enabled);
     Q_SIGNAL void aprsClientSetServer(QString host, quint16 port);

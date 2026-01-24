@@ -6,6 +6,7 @@
 #define APRSINBOUNDRELAY_H
 
 #include <QDateTime>
+#include <QHash>
 #include <QObject>
 #include <QString>
 
@@ -33,6 +34,15 @@ class AprsInboundRelay : public QObject {
     using NoticeFn =
         std::function<void(QDateTime const &utc, QString const &text)>;
     using EnqueueFn = std::function<void(QString const &message)>;
+    /**
+     * @brief Callback for APRS message ACKs.
+     * @param fromCall Source callsign for the ACK.
+     * @param toCall Destination callsign being acknowledged.
+     * @param messageId APRS message identifier to acknowledge.
+     */
+    using AckFn =
+        std::function<void(QString const &fromCall, QString const &toCall,
+                           QString const &messageId)>;
 
     /**
      * @brief Construct a new AprsInboundRelay handler.
@@ -40,10 +50,11 @@ class AprsInboundRelay : public QObject {
      * @param callLookup Callback to check heard list activity.
      * @param noticeFn Callback to post UI notices.
      * @param enqueueFn Callback to enqueue relay messages for transmit.
+     * @param ackFn Callback to emit APRS message ACKs.
      * @param parent QObject parent.
      */
     AprsInboundRelay(Configuration const *config, CallActivityLookup callLookup,
-                     NoticeFn noticeFn, EnqueueFn enqueueFn,
+                     NoticeFn noticeFn, EnqueueFn enqueueFn, AckFn ackFn,
                      QObject *parent = nullptr);
 
   public slots:
@@ -52,14 +63,18 @@ class AprsInboundRelay : public QObject {
      * @param from APRS sender callsign.
      * @param to APRS destination callsign.
      * @param message APRS message payload (may include checksum).
+     * @param messageId APRS message identifier (if present).
      */
-    void onMessageReceived(QString from, QString to, QString message);
+    void onMessageReceived(QString from, QString to, QString message,
+                           QString messageId);
 
   private:
     Configuration const *m_config;
     CallActivityLookup m_callLookup;
     NoticeFn m_notice;
     EnqueueFn m_enqueue;
+    AckFn m_ack;
+    QHash<QString, QDateTime> m_ackDedupCache;
 };
 
 #endif

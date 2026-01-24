@@ -17,13 +17,38 @@
 
 #include <QDebug>
 #include <QLoggingCategory>
-#include <QRegularExpression>
 
 #include <utility>
 
 #include "moc_AprsInboundRelay.cpp"
 
 Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
+
+static QString extractMessageId(QString &message) {
+    auto trimmed = message.trimmed();
+    auto braceIndex = trimmed.lastIndexOf('{');
+    if (braceIndex < 0) {
+        return {};
+    }
+
+    auto suffix = trimmed.mid(braceIndex + 1);
+    if (suffix.endsWith('}')) {
+        suffix.chop(1);
+    }
+
+    if (suffix.isEmpty()) {
+        return {};
+    }
+
+    for (auto const &ch : suffix) {
+        if (!ch.isLetterOrNumber()) {
+            return {};
+        }
+    }
+
+    message = trimmed.left(braceIndex).trimmed();
+    return suffix;
+}
 
 /**
  * @brief Construct a new AprsInboundRelay handler.
@@ -36,9 +61,10 @@ Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 AprsInboundRelay::AprsInboundRelay(Configuration const *config,
                                    CallActivityLookup callLookup,
                                    NoticeFn noticeFn, EnqueueFn enqueueFn,
-                                   QObject *parent)
+                                   AckFn ackFn, QObject *parent)
     : QObject(parent), m_config(config), m_callLookup(std::move(callLookup)),
-      m_notice(std::move(noticeFn)), m_enqueue(std::move(enqueueFn)) {}
+      m_notice(std::move(noticeFn)), m_enqueue(std::move(enqueueFn)),
+      m_ack(std::move(ackFn)) {}
 
 /**
  * @brief Process an APRS-IS message for relay.
@@ -47,13 +73,14 @@ AprsInboundRelay::AprsInboundRelay(Configuration const *config,
  * @param message APRS message payload (may include checksum).
  */
 void AprsInboundRelay::onMessageReceived(QString from, QString to,
-                                         QString message) {
+                                         QString message, QString messageId) {
     qCDebug(mainwindow_js8)
-        << "APRS Message Received from" << from << "to" << to << ":" << message;
+        << "APRS Message Received from" << from << "to" << to << ":" << message
+        << "id" << messageId;
 
     // Explicitly log to ensure we see it
     qDebug() << "DEBUG: APRS Message Received from" << from << "to" << to << ":"
-             << message;
+             << message << "id" << messageId;
 
     if (!m_config || !m_config->spot_to_aprs_relay()) {
         qDebug() << "DEBUG: APRS relay disabled";
@@ -80,13 +107,49 @@ void AprsInboundRelay::onMessageReceived(QString from, QString to,
         }
     }
 
-    // Strip APRS message checksum (format: {number})
-    // Handles cases with or without closing brace, and optional whitespace
-    QRegularExpression aprsChecksumRe("\\{\\d+\\}?\\s*$");
-    message.remove(aprsChecksumRe);
-    message = message.trimmed();
+    if (messageId.isEmpty()) {
+        auto recoveredId = extractMessageId(message);
+        if (!recoveredId.isEmpty()) {
+            messageId = recoveredId;
+            qDebug() << "DEBUG: APRS Message ID recovered" << messageId;
+        }
+    } else {
+        extractMessageId(message);
+    }
 
     qDebug() << "DEBUG: APRS Message after checksum strip:" << message;
+
+    constexpr int kAckDedupSeconds = 120;
+    bool isDuplicate = false;
+    if (!messageId.isEmpty()) {
+        auto dedupeKey = QString("%1|%2|%3").arg(from, to, messageId).toUpper();
+        auto now = DriftingDateTime::currentDateTimeUtc();
+        auto cutoff = now.addSecs(-kAckDedupSeconds);
+        auto it = m_ackDedupCache.begin();
+        while (it != m_ackDedupCache.end()) {
+            if (it.value() < cutoff) {
+                it = m_ackDedupCache.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        if (m_ackDedupCache.contains(dedupeKey)) {
+            isDuplicate = true;
+        } else {
+            m_ackDedupCache.insert(dedupeKey, now);
+        }
+
+        if (m_ack) {
+            m_ack(to, from, messageId);
+        }
+    }
+
+    if (isDuplicate) {
+        qCDebug(mainwindow_js8) << "APRS relay dedupe skip" << from << to
+                                << messageId;
+        return;
+    }
 
     // Construct the relay message
     // @APRSIS MSG to:<DESTCALL> <MESSAGE> DE <SENDER>

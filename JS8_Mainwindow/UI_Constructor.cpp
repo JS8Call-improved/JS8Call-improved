@@ -141,6 +141,10 @@ UI_Constructor::UI_Constructor(QString const &program_info,
         [this](QString const &relayMsg) {
             enqueueMessage(PriorityHigh, relayMsg, -1, nullptr);
         },
+        [this](QString const &fromCall, QString const &toCall,
+               QString const &messageId) {
+            emit aprsClientEnqueueAck(fromCall, toCall, messageId);
+        },
         this);
 
     // hook up the aprs client slots and signals and disposal
@@ -148,6 +152,8 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             &APRSISClient::enqueueSpot);
     connect(this, &UI_Constructor::aprsClientEnqueueThirdParty, m_aprsClient,
             &APRSISClient::enqueueThirdParty);
+    connect(this, &UI_Constructor::aprsClientEnqueueAck, m_aprsClient,
+            &APRSISClient::enqueueMessageAck);
     connect(this, &UI_Constructor::aprsClientSendReports, m_aprsClient,
             &APRSISClient::sendReports);
     connect(this, &UI_Constructor::aprsClientSetLocalStation, m_aprsClient,

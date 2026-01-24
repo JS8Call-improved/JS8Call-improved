@@ -86,6 +86,14 @@ class APRSISClient : public QTcpSocket {
     void enqueueSpot(QString by_call, QString from_call, QString grid,
                      QString comment);
     void enqueueThirdParty(QString by_call, QString from_call, QString text);
+    /**
+     * @brief Enqueue a standard APRS message ACK frame.
+     * @param from_call Source callsign for the ACK message.
+     * @param to_call Destination callsign being acknowledged.
+     * @param messageId APRS message identifier to acknowledge.
+     */
+    void enqueueMessageAck(QString from_call, QString to_call,
+                           QString messageId);
 
     void sendReports() {
         if (m_paused)
@@ -99,9 +107,11 @@ class APRSISClient : public QTcpSocket {
      * @brief Emitted when a parsed APRS-IS message is received.
      * @param from APRS sender callsign.
      * @param to APRS destination callsign.
-     * @param message APRS message payload.
+     * @param message APRS message payload without message ID suffix.
+     * @param messageId APRS message identifier (if present).
      */
-    void messageReceived(QString from, QString to, QString message);
+    void messageReceived(QString from, QString to, QString message,
+                         QString messageId);
 
   private slots:
     void onSocketConnected();
