@@ -67,8 +67,7 @@ set(PROJECT_COPYRIGHT "Copyright (C) 2001-2018 by Joe Taylor, K1JT, (C) 2018 by 
 set(PROJECT_HOMEPAGE https://groups.io/g/js8call)
 set(PROJECT_SUMMARY_DESCRIPTION "${PROJECT_NAME} - Digital Modes for Weak Signal Communications in Amateur Radio.")
 set(PROJECT_DESCRIPTION "${PROJECT_SUMMARY_DESCRIPTION}
- ${PROJECT_NAME} is a computer program designed to facilitate amateur
- radio communication using very weak signals.")
+ ${PROJECT_NAME} is a computer program designed to facilitate amateur radio communication using very weak signals.")
 
 #------------------------------------------------------------------------------#
 # Add our own CMake modules.
@@ -174,7 +173,7 @@ qt_add_executable(${TARGET} MACOSX_BUNDLE WIN32 ${ICON_FILE})
 set_target_properties(
   ${TARGET} PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST             "${CMAKE_CURRENT_SOURCE_DIR}/Darwin/Info.plist.in"
-  MACOSX_BUNDLE_INFO_STRING            "JS8 mode providing weak signal communications for Amateur Radio"
+  MACOSX_BUNDLE_INFO_STRING            "JS8Call facilitates amateur radio communication using very weak signals.."
   MACOSX_BUNDLE_ICON_FILE              "${ICON_FILE}"
   MACOSX_BUNDLE_BUNDLE_VERSION         "${wsjtx_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING   "${wsjtx_SHORT_VERSION}"

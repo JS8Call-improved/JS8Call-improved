@@ -5433,8 +5433,6 @@ void UI_Constructor::displayTransmit() {
 bool UI_Constructor::presentlyWantHBReplies() {
     return ui->actionModeAutoreply->isChecked() &&
            ui->actionHeartbeatAcknowledgements->isChecked() &&
-           // The folloing line is disputed, as it disallows replies to HBs
-           // if there is any (unrelated) activity on the band:
            m_messageBuffer.isEmpty() &&
            (!m_config.heartbeat_qso_pause() ||
             m_prevSelectedCallsign.isEmpty());
