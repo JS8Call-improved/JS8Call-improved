@@ -50,6 +50,30 @@ static QString extractMessageId(QString &message) {
     return suffix;
 }
 
+static bool isAckMessage(QString const &message) {
+    auto trimmed = message.trimmed();
+    if (trimmed.size() < 4) {
+        return false;
+    }
+
+    if (!trimmed.startsWith("ack", Qt::CaseInsensitive)) {
+        return false;
+    }
+
+    auto suffix = trimmed.mid(3);
+    if (suffix.isEmpty()) {
+        return false;
+    }
+
+    for (auto const &ch : suffix) {
+        if (!ch.isLetterOrNumber()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /**
  * @brief Construct a new AprsInboundRelay handler.
  * @param config Configuration instance for enable/aging checks.
@@ -118,6 +142,10 @@ void AprsInboundRelay::onMessageReceived(QString from, QString to,
     }
 
     qDebug() << "DEBUG: APRS Message after checksum strip:" << message;
+
+    if (isAckMessage(message)) {
+        return;
+    }
 
     constexpr int kAckDedupSeconds = 120;
     bool isDuplicate = false;
