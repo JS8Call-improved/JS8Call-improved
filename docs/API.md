@@ -309,7 +309,7 @@ Gets status of SPOT setting
 
 | Response |
 |----------|
-|{"params":{"_ID":269978316997},"type":"STATION.SPOT","value":true}|
+|{"params":{"_ID":270409823907,"value":true},"type":"STATION.SPOT","value":""}|
 
 
 # STATION.SET_SPOT
@@ -317,7 +317,7 @@ Sets status of SPOT setting
 
 | End Point |
 |-----------|
-|{"params":{},"type":"STATION.SET_SPOT","value":""}|
+|{"params":{},"type":"STATION.SET_SPOT","value":"true"}|
 
 | Requirements | |
 |--------------|-|
@@ -325,7 +325,8 @@ Sets status of SPOT setting
 
 | Response |
 |----------|
-|{"params":{"_ID":269978362823},"type":"STATION.SPOT","value":""}|
+|{"params":{"_ID":270409737648,"value":true},"type":"STATION.SPOT","value":""}|
+
 
 # RX.GET_CALL_ACTIVITY
 Returns the recent call activity

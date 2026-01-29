@@ -235,38 +235,28 @@ void UI_Constructor::networkMessage(Message const &message) {
 
     /** @brief STATION.GET_SPOT
      * Get the current spotting status
+     * Thanks to N0GQ Jeff Francis
      */
-
     if(type == "STATION.GET_SPOT") {
-      auto params = message.params();
-      if(!ui->spotButton->isChecked()) {
         sendNetworkMessage("STATION.SPOT", "", {
-              {"value", false},
+          {"value", ui->spotButton->isChecked()},
 	      {"_ID", id}
         });
         return;
-      } else {
-        sendNetworkMessage("STATION.SPOT", "", {
-              {"value", true},
-	      {"_ID", id}
-        });
-        return;
-     }
     }
 
     /** @brief STATION.SET_SPOT
-     * Get the current spotting status
+     * Set the current spotting status
+     * Thanks to N0GQ Jeff Francis
      */
-    // kj4ctd this doesn't work right yet
-    if(type == "STATION.SET_SPOT") {
-      auto params = message.params();
-      if(ui->spotButton->isChecked()) {
-          ui->spotButton->click();
-      }
-        sendNetworkMessage("STATION.SPOT", "", {
-          {"_ID", id}
-        });
-        return;
+if(type == "STATION.SET_SPOT") {
+        auto value = QVariant(message.value());
+        ui->spotButton->setChecked(value.toBool());
+          sendNetworkMessage("STATION.SPOT", "", {
+            {"value", ui->spotButton->isChecked()},
+            {"_ID", id}
+          });
+          return;
     }
 
     /** @} */ // End STATION Commands
