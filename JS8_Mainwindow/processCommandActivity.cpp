@@ -136,6 +136,18 @@ void UI_Constructor::processCommandActivity() {
         }
 
         QString text = textList.join(" ");
+
+        // Construct value without FROM prefix for TCP API
+        // (TCP clients may prepend FROM, so value should not include it)
+        QStringList valueList = {QString("%1%2").arg(d.to).arg(d.cmd)};
+        if (!d.extra.isEmpty()) {
+            valueList.append(d.extra);
+        }
+        if (!d.text.isEmpty()) {
+            valueList.append(d.text);
+        }
+        QString valueWithoutFrom = valueList.join(" ");
+
         bool isLast = (d.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast;
         if (isLast) {
             // append the eot character to the text
@@ -150,7 +162,7 @@ void UI_Constructor::processCommandActivity() {
         // write all directed messages to api
         if (canSendNetworkMessage()) {
             sendNetworkMessage(
-                "RX.DIRECTED", d.text,
+                "RX.DIRECTED", valueWithoutFrom,
                 {{"_ID", QVariant(-1)},
                  {"FROM", QVariant(d.from)},
                  {"TO", QVariant(d.to)},
