@@ -169,7 +169,7 @@ void UI_Constructor::processCommandActivity() {
                  {"CMD", QVariant(d.cmd)},
                  {"GRID", QVariant(d.grid)},
                  {"EXTRA", QVariant(d.extra)},
-                 {"TEXT", QVariant(d.text)},
+                 {"TEXT", QVariant(valueWithoutFrom)},
                  {"FREQ", QVariant(d.dial + d.offset)},
                  {"DIAL", QVariant(d.dial)},
                  {"OFFSET", QVariant(d.offset)},
