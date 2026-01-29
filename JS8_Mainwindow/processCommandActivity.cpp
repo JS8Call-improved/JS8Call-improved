@@ -150,7 +150,7 @@ void UI_Constructor::processCommandActivity() {
         // write all directed messages to api
         if (canSendNetworkMessage()) {
             sendNetworkMessage(
-                "RX.DIRECTED", text,
+                "RX.DIRECTED", d.text,
                 {{"_ID", QVariant(-1)},
                  {"FROM", QVariant(d.from)},
                  {"TO", QVariant(d.to)},
