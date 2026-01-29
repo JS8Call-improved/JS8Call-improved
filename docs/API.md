@@ -29,12 +29,14 @@ The steps above are
 ``{"params":xxx}`` is **required** in both directions and forms the overall packet
 
 
-| Commands                     | Version |
-|------------------------------|---------|
+| Commands                                 | Version |
+|------------------------------------------|---------|
 | [PING ](#ping)                               | 2.5 |
 | [RIG.GET_FREQ](#rigget_freq)                 | 2.5 |
 | [RIG.SET_FREQ](#rigset_freq)                 | 2.5 |
 | [RIG.GET_PTT](#rigget_ptt)                   | 2.6 |
+| [RIG.SET_TUNE](#rigset_tune)                 | 2.6 |
+| [RIG.TX_HALT](#rigtx_halt)                   | 2.6 |
 | [STATION.GET_CALLSIGN](#stationget_callsign) | 2.5 |
 | [STATION.GET_GRID](#stationget_grid)         | 2.5 |
 | [STATION.SET_GRID](#stationset_grid)         | 2.5 |
@@ -72,6 +74,8 @@ The ID number is the epoch time of 1499299200000 (July 6, 2017) plus current epo
 
 
 # PING
+API <= 2.6
+
 Wakes up the API if need be.
 
 | End Point |
@@ -87,6 +91,8 @@ Wakes up the API if need be.
 | None     |
 
 # RIG.GET_FREQ
+API <= 2.6
+
 Gets radio dial and offset frequencies
 
 | End Point |
@@ -104,6 +110,8 @@ Gets radio dial and offset frequencies
 
 
 # RIG.SET_FREQ
+API <= 2.6
+
 Sets radio dial and offset frequencies
 
 | End Point |
@@ -125,6 +133,8 @@ Sets radio dial and offset frequencies
 
 
 # RIG.GET_PTT
+[!note] API >= 2.6
+
 Gets rig PTT status
 
 | End Point |
@@ -145,7 +155,52 @@ Gets rig PTT status
 `PTT` will be true if transmitting.
 
 
+# RIG.SET_TUNE
+[!note] API >= 2.6
+
+Sets TUNE setting on or off
+
+| End Point |
+|-----------|
+|{"params":{},"type":"RIG.SET_TUNE","value":"false"}|
+
+| Requirements | |
+|--------------|-|
+| value        | true/false |
+
+| Response |
+|----------|
+|{"params":{"_ID":270422213693,"value":true},"type":"RIG.SET_TUNE","value":""}|
+|{"params":{"PTT":true,"UTC":1769721024401,"_ID":-1},"type":"RIG.PTT","value":"on"}|
+| |
+|{"params":{"_ID":270421833952,"value":false},"type":"RIG.SET_TUNE","value":""}|
+|{"params":{"PTT":false,"UTC":1769721034501,"_ID":-1},"type":"RIG.PTT","value":"off"}|
+| |
+
+NOTE: Both the SET_TUNE *and* PTT response messages are triggered. As there is a built-in max time on the tuning, no GET call exists.
+
+
+# RIG.TX_HALT
+[!note] API >= 2.6
+
+Halts the transmitter immediately
+
+| End Point |
+|-----------|
+|{"params":{},"type":"RIG.TX_HALT","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"_ID":270426906894,"value":true},"type":"RIG.TX_HALT","value":""}|
+
+
 # STATION.GET_CALLSIGN
+API <= 2.6
+
 Gets station callsign
 
 | End Point |
@@ -163,6 +218,8 @@ Callsign is returned in `value`
 
 
 # STATION.GET_GRID
+API <= 2.6
+
 Gets station grid square
 
 | End Point |
@@ -179,6 +236,8 @@ Gets station grid square
 Grid square is returned in `value`
 
 # STATION.SET_GRID
+API <= 2.6
+
 Sets station grid square
 
 | End Point |
@@ -196,6 +255,8 @@ Sets station grid square
 Grid square is returned in `value`
 
 # STATION.GET_INFO
+API <= 2.6
+
 Gets station info
 
 | End Point |
@@ -213,6 +274,8 @@ Gets station info
 Station info is returned in `value`
 
 # STATION.SET_INFO
+API <= 2.6
+
 Sets station info
 
 | End Point |
@@ -231,6 +294,8 @@ Station info is returned in `value`
 
 
 # STATION.GET_STATUS
+API <= 2.6
+
 Gets station status message
 | End Point |
 |-----------|
@@ -248,6 +313,8 @@ Station status is returned in `value`
 
 
 # STATION.SET_STATUS
+API <= 2.6
+
 Sets station status message
 
 | End Point |
@@ -266,6 +333,8 @@ Station status is returned in `value`
 
 
 # STATION.VERSION
+[!note] API >= 2.6
+
 Gets JS8Call version. Use to check for API changes or compatiblity.
 
 | End Point |
@@ -281,6 +350,8 @@ Gets JS8Call version. Use to check for API changes or compatiblity.
 |{"params":{"VERSION":"2.6.0-NOT_FOR_RELEASE","_ID":269908381596},"type":"STATION.VERSION","value":""}|
 
 # STATION.GET_OS
+[!note] API >= 2.6
+
 Gets OS info including name, kernel version, and type
 
 | End Point |
@@ -297,6 +368,8 @@ Gets OS info including name, kernel version, and type
 
 
 # STATION.GET_SPOT
+[!note] API >= 2.6
+
 Gets status of SPOT setting
 
 | End Point |
@@ -313,6 +386,8 @@ Gets status of SPOT setting
 
 
 # STATION.SET_SPOT
+[!note] API >= 2.6
+
 Sets status of SPOT setting
 
 | End Point |
@@ -329,6 +404,8 @@ Sets status of SPOT setting
 
 
 # RX.GET_CALL_ACTIVITY
+API <= 2.6
+
 Returns the recent call activity
 
 | End Point |
@@ -345,6 +422,8 @@ Returns the recent call activity
 
 
 # RX.GET_CALL_SELECTED
+API <= 2.6
+
 Returns the callsign of a station that has been selected in the UI.
 
 | End Point |
@@ -366,6 +445,8 @@ Returns the callsign of a station that has been selected in the UI.
 
 
 # RX.GET_BAND_ACTIVITY
+API <= 2.6
+
 Gets current band activity
 
 | End Point |
@@ -382,6 +463,8 @@ Gets current band activity
 
 
 # RX.GET_TEXT
+API <= 2.6
+
 Gets the contents of the directed message window
 
 | End Point |
@@ -398,6 +481,8 @@ Gets the contents of the directed message window
 
 
 # TX.GET_TEXT
+API <= 2.6
+
 Gets the text to be transmitted
 
 | End Point |
@@ -417,6 +502,8 @@ Gets the text to be transmitted
 2) If text box has something in it
 
 # TX.SET_TEXT
+API <= 2.6
+
 Sets the text to be transmitted
 
 | End Point |
@@ -433,6 +520,8 @@ Sets the text to be transmitted
 
 
 # TX.SEND_MESSAGE
+API <= 2.6
+
 Sends the value in the next transmit cycle
 
 [NOTE] If the message window already has text displayed, this will **NOT** transmit your new message!
@@ -463,6 +552,8 @@ Sends the value in the next transmit cycle
 
 
 # MODE.GET_SPEED
+API <= 2.6
+
 Gets the currently set transmit mode speed
 
 | End Point |
@@ -482,6 +573,8 @@ Gets the currently set transmit mode speed
 |{"params":{"SPEED":8,"_ID":269564511182},"type":"MODE.SPEED","value":""}|
 
 # MODE.SET_SPEED
+API <= 2.6
+
 Sets the currently set transmit mode speed
 
 | End Point |
@@ -512,6 +605,8 @@ Sets the currently set transmit mode speed
 Please note, Ultra speed is an *experimental* and unreliable speed.
 
 # INBOX.GET_MESSAGES
+API <= 2.6
+
 Fetches all Inbox messages, warning, this could be very large
 
 | End Point |
@@ -530,6 +625,8 @@ Fetches all Inbox messages, warning, this could be very large
 
 
 # INBOX.STORE_MESSAGE
+API <= 2.6
+
 Stores a message in YOUR Inbox
 
 | End Point |
@@ -548,6 +645,8 @@ Stores a message in YOUR Inbox
 
 
 # WINDOW.RAISE
+API <= 2.6
+
 If allowed by OS. brings the program to the front
 
 | End Point |
