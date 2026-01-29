@@ -433,7 +433,7 @@ if(type == "STATION.SET_SPOT") {
                 ui->actionModeJS8Ultra->setChecked(true);
             setupJS8();
         }
-        sendNetworkMessage("MODE.SPEED", "",
+        sendNetworkMessage("MODE.SET_SPEED", "",
                            {
                                {"_ID", id},
                                {"SPEED", m_nSubMode},

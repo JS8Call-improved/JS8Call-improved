@@ -34,6 +34,7 @@ The steps above are
 | [PING ](#ping)                               | 2.5 |
 | [RIG.GET_FREQ](#rigget_freq)                 | 2.5 |
 | [RIG.SET_FREQ](#rigset_freq)                 | 2.5 |
+| [RIG.GET_PTT](#rigget_ptt)                   | 2.6 |
 | [STATION.GET_CALLSIGN](#stationget_callsign) | 2.5 |
 | [STATION.GET_GRID](#stationget_grid)         | 2.5 |
 | [STATION.SET_GRID](#stationset_grid)         | 2.5 |
@@ -41,7 +42,6 @@ The steps above are
 | [STATION.SET_INFO](#stationset_info)         | 2.5 |
 | [STATION.GET_STATUS](#stationget_status)     | 2.5 |
 | [STATION.SET_STATUS](#stationset_status)     | 2.5 |
-| [STATION.GET_PTT](#stationget_ptt)           | 2.6 |
 | [STATION.VERSION](#stationversion)           | 2.6 |
 | [STATION.GET_OS](#stationget_os)             | 2.6 |
 | [STATION.SET_STATUS](#stationset_status)     | 2.5 |
@@ -122,6 +122,27 @@ Sets radio dial and offset frequencies
 
 ``FREQ`` is the ``DIAL`` frequency plus ``OFFSET``
 ``SPEED`` is one of the ``MODE`` speeds
+
+
+# RIG.GET_PTT
+Gets rig PTT status
+
+| End Point |
+|-----------|
+|{"params":{},"type":"RIG.GET_PTT","value":""}|
+
+| Requirements | |
+|--------------|-|
+| value        | empty string |
+
+| Response |
+|----------|
+|{"params":{"MESSAGE":"","PTT":false,"_ID":269908447335},"type":"RIG.PTT_STATUS","value":""}|
+|{"params":{"MESSAGE":"SLbuEVAt7YC0","PTT":true,"_ID":269908640060},"type":"RIG.PTT_STATUS","value":""}|
+
+`MESSAGE` will be empty string or a message if more is being transmitted.
+
+`PTT` will be true if transmitting.
 
 
 # STATION.GET_CALLSIGN
@@ -242,27 +263,6 @@ Sets station status message
 |{"params":{"_ID":269559773383},"type":"STATION.STATUS","value":"IDLE <MYIDLE> JS8CALL-IMPORVED VERSION <MYVERSION>"}|
 
 Station status is returned in `value`
-
-
-# STATION.GET_PTT
-Gets station PTT status
-
-| End Point |
-|-----------|
-|{"params":{},"type":"STATION.GET_PTT","value":""}|
-
-| Requirements | |
-|--------------|-|
-| value        | empty string |
-
-| Response |
-|----------|
-|{"params":{"MESSAGE":"","PTT":false,"_ID":269908447335},"type":"STATION.PTT_STATUS","value":""}|
-|{"params":{"MESSAGE":"SLbuEVAt7YC0","PTT":true,"_ID":269908640060},"type":"STATION.PTT_STATUS","value":""}|
-
-`MESSAGE` will be empty string or a message if more is being transmitted.
-
-`PTT` will be true if transmitting.
 
 
 # STATION.VERSION
@@ -496,6 +496,9 @@ Sets the currently set transmit mode speed
 | Response |
 |----------|
 |{"params":{"DIAL":7078000,"FREQ":7079950,"OFFSET":1950,"SELECTED":"","SPEED":0,"_ID":"269564663038"},"type":"STATION.STATUS","value":""}|
+|{"params":{"SPEED":0,"_ID":270412242558},"type":"MODE.SET_SPEED","value":""}|
+
+* Sometimes it comes back with the first form.
 
 
 ## MODE Speeds
