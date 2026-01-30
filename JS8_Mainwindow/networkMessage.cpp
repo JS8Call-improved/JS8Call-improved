@@ -419,12 +419,10 @@ if(type == "STATION.SET_SPOT") {
         }
     }
 
-    // TODO Check if this is still the case Jan 2026
-    // Notes: This seems to have disappeared in the newest code, but
-    // it's important and necessary. Queuing of messages seems to be
-    // broken in the current code, but assuming that gets fixed, this
-    // will be important.
-    /** @brief Return the number of items in the transmit queue.
+    /**
+     * @brief Return the number of items in the transmit queue.
+     * @note API 2.6+
+     * 
      * Thanks to N0GQ Jeff Francis
      */
     if(type == "TX.GET_QUEUE_DEPTH"){
