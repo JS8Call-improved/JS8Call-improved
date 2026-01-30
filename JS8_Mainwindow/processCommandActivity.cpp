@@ -123,53 +123,48 @@ void UI_Constructor::processCommandActivity() {
             spotAprsCmd(d);
         }
 
-        // PREPARE CMD TEXT STRING
-        QStringList textList = {
-            QString("%1: %2%3").arg(d.from).arg(d.to).arg(d.cmd)};
+        // PREPARE CMD TEXT
+        // Build baseText without the FROM prefix: "TO CMD EXTRA TEXT [eot]"
+        // This is used for the TCP API where FROM is sent as a separate field.
+        // The full text (with FROM prefix) is used for file logging and display.
+        QStringList baseList = {QString("%1%2").arg(d.to).arg(d.cmd)};
 
         if (!d.extra.isEmpty()) {
-            textList.append(d.extra);
+            baseList.append(d.extra);
         }
 
         if (!d.text.isEmpty()) {
-            textList.append(d.text);
+            baseList.append(d.text);
         }
 
-        QString text = textList.join(" ");
+        QString baseText = baseList.join(" ");
 
-        // Construct value without FROM prefix for TCP API
-        // (TCP clients may prepend FROM, so value should not include it)
-        QStringList valueList = {QString("%1%2").arg(d.to).arg(d.cmd)};
-        if (!d.extra.isEmpty()) {
-            valueList.append(d.extra);
-        }
-        if (!d.text.isEmpty()) {
-            valueList.append(d.text);
-        }
-        QString valueWithoutFrom = valueList.join(" ");
-
+        // Append the user-configured eot (end of transmission) character
+        // if this is the final frame of the message
         bool isLast = (d.bits & Varicode::JS8CallLast) == Varicode::JS8CallLast;
         if (isLast) {
-            // append the eot character to the text
-            text = QString("%1 %2 ")
-                       .arg(Varicode::rstrip(text))
-                       .arg(m_config.eot());
+            baseText = QString("%1 %2 ")
+                           .arg(Varicode::rstrip(baseText))
+                           .arg(m_config.eot());
         }
 
-        // log the text to directed txt log
+        // Prepend FROM for file logging and UI display: "FROM: TO CMD EXTRA TEXT [eot]"
+        QString text = QString("%1: %2").arg(d.from).arg(baseText);
+
+        // Log to DIRECTED.txt (includes FROM prefix)
         writeMsgTxt(text, d.snr, d.offset);
 
-        // write all directed messages to api
+        // Send to TCP API (FROM is a separate JSON field, so use baseText without prefix)
         if (canSendNetworkMessage()) {
             sendNetworkMessage(
-                "RX.DIRECTED", valueWithoutFrom,
+                "RX.DIRECTED", baseText,
                 {{"_ID", QVariant(-1)},
                  {"FROM", QVariant(d.from)},
                  {"TO", QVariant(d.to)},
                  {"CMD", QVariant(d.cmd)},
                  {"GRID", QVariant(d.grid)},
                  {"EXTRA", QVariant(d.extra)},
-                 {"TEXT", QVariant(valueWithoutFrom)},
+                 {"TEXT", QVariant(baseText)},
                  {"FREQ", QVariant(d.dial + d.offset)},
                  {"DIAL", QVariant(d.dial)},
                  {"OFFSET", QVariant(d.offset)},
