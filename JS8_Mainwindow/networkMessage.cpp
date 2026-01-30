@@ -427,7 +427,7 @@ if(type == "STATION.SET_SPOT") {
      */
     if(type == "TX.GET_QUEUE_DEPTH"){
       int depth = m_txMessageQueue.size();
-      if(m_transmitting && depth==0) depth=1; // todo: this is hacky and maybe not right
+      if(m_transmitting && depth==0) depth=1;
       sendNetworkMessage("TX.QUEUE_DEPTH", "", {
 	  {"_ID", id},
 	  {"DEPTH", QVariant(depth)}
