@@ -103,6 +103,55 @@ void copyMessage(QStringView const string, char *const array,
 
 void UI_Constructor(); // explicit member function of the UI_Constructor class
 
+void UI_Constructor::ensureMessageDock()
+{
+    if (messageDock_) return;
+
+    messagePanel_ = new MessagePanel(inboxPath(), this);
+
+    messageDock_ = new QDockWidget(tr("Message Inbox"), this);
+    messageDock_->setObjectName("messageInboxDock"); // important for save/restoreState
+    messageDock_->setWidget(messagePanel_);
+
+    // Choose where it can dock:
+    messageDock_->setAllowedAreas(Qt::LeftDockWidgetArea |
+                                  Qt::RightDockWidgetArea |
+                                  Qt::BottomDockWidgetArea);
+
+    // Choose behavior:
+    messageDock_->setFeatures(QDockWidget::DockWidgetMovable |
+                              QDockWidget::DockWidgetFloatable |
+                              QDockWidget::DockWidgetClosable);
+
+    // Initial placement:
+    addDockWidget(Qt::RightDockWidgetArea, messageDock_);
+
+    // Optional: closing hides (default); ensure no auto-delete:
+    messageDock_->setAttribute(Qt::WA_DeleteOnClose, false);
+
+    // Make the menu action reflect visibility automatically:
+    ui->actionShow_Message_Inbox->setCheckable(true);
+    ui->actionShow_Message_Inbox->setChecked(messageDock_->isVisible());
+    connect(messageDock_, &QDockWidget::visibilityChanged, this,
+            [this](bool visible) {
+                QSignalBlocker b(ui->actionShow_Message_Inbox);
+                ui->actionShow_Message_Inbox->setChecked(visible);
+            });
+
+    // Handle reply function
+    connect(messagePanel_, &MessagePanel::replyMessage, this,
+                [this](const QString &text) {
+                    addMessageText(text, true, true);
+                    refreshInboxCounts();
+                    displayCallActivity();
+                });
+
+    connect(messagePanel_, &MessagePanel::countsUpdated, this, [this]() {
+            refreshInboxCounts();
+            displayCallActivity();
+        });
+}
+
 bool checkVersion(); // JS8_Mainwindow/checkVersion.cpp
 
 void UI_Constructor::checkStartupWarnings() {
@@ -396,6 +445,7 @@ void UI_Constructor::writeSettings() {
 //---------------------------------------------------------- readSettings()
 void UI_Constructor::readSettings() {
     m_settings->beginGroup("UI_Constructor");
+    ensureMessageDock();
     setMinimumSize(800, 400);
     restoreGeometry(
         m_settings->value("geometry", saveGeometry()).toByteArray());
@@ -580,6 +630,19 @@ void UI_Constructor::readSettings() {
         }
         m_settings->endGroup();
     }
+
+    QTimer::singleShot(0, this, [this]{
+        if (!messageDock_) return;
+
+        // If restoreState made it floating, force Qt to recreate the floating window.
+        if (messageDock_->isFloating() && messageDock_->isVisible()) {
+            messageDock_->setFloating(false);
+            messageDock_->setFloating(true);
+
+            messageDock_->show();
+            messageDock_->raise();
+        }
+    });
 
     m_settings_read = true;
 }
@@ -4939,9 +5002,14 @@ void UI_Constructor::on_tableWidgetCalls_cellDoubleClicked(int row, int col) {
                 msgs.append(pair.second);
             }
 
-            auto mw = new MessageWindow(this);
-            mw->populateMessages(msgs);
-            mw->show();
+            auto mp = new MessagePanel(this);
+            mp->populateMessages(msgs);
+            mp->show();
+
+            ensureMessageDock();
+
+            messageDock_->show();
+            messageDock_->raise();
 
             auto pair = i.firstUnreadFrom(call);
             auto id = pair.first;
@@ -6182,7 +6250,11 @@ int UI_Constructor::addCommandToStorage(QString type, CommandDetail d) {
 
     auto m = Message(type, "", v);
 
-    return inbox.append(m);
+    int msgId = inbox.append(m);
+
+    emit messageAdded(msgId);
+
+    return msgId;
 }
 
 int UI_Constructor::getNextMessageIdForCallsign(QString callsign) {
