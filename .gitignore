@@ -21,10 +21,13 @@ xcuserdata/
 build/
 CMakeLists.txt.user
 ## end Qt Creator patch ##
+#### VS Code ####
+.vscode/
+## end VS Code ##
 ## Docs ##
-## Doxygen ##
+#### Doxygen ####
 docs/html/
-## Translation
+#### Translation ####
 *.pot
 *.po
 *.qph

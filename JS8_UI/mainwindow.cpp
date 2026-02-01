@@ -1336,6 +1336,11 @@ void UI_Constructor::createStatusBar() // createStatusBar
 void UI_Constructor::setup_status_bar() { last_tx_label.clear(); }
 
 void UI_Constructor::closeEvent(QCloseEvent *e) {
+        if (canSendNetworkMessage()) {
+        sendNetworkMessage("STATION.CLOSING", "",
+            {{"_ID", QVariant(-1)},
+             {"REASON", QVariant("User closed application")}});
+    }
     m_valid = false; // suppresses subprocess errors
     m_config.transceiver_offline();
     writeSettings();
