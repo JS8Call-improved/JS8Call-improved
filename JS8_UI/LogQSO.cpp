@@ -16,12 +16,15 @@
 #include <QComboBox>
 #include <QDebug>
 #include <QDir>
+#include <QLoggingCategory>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>
 #include <QUdpSocket>
 
 #include "moc_LogQSO.cpp"
+
+Q_DECLARE_LOGGING_CATEGORY(logqso_js8)
 
 LogQSO::LogQSO(QString const &programTitle, QSettings *settings,
                Configuration const *config, QWidget *parent)
@@ -257,6 +260,11 @@ void LogQSO::accept() {
     m_comments = comments;
     QString strDialFreq(QString::number(m_dialFreq / 1.e6, 'f', 6));
     operator_call = ui->loggedOperator->text();
+    qCDebug(logqso_js8) << "accept rptSent (" << rptSent << ")";
+    qCDebug(logqso_js8) << "accept rptRcvd (" << rptRcvd << ")";
+    qCDebug(logqso_js8) << "accept m_rptSent (" << m_rptSent << ")";
+    qCDebug(logqso_js8) << "accept m_rptRcvd (" << m_rptRcvd << ")";
+
     // Log this QSO to ADIF file "js8call_log.adi"
     QString filename = "js8call_log.adi"; // TODO allow user to set
     ADIF adifile;
@@ -332,3 +340,5 @@ void LogQSO::hideEvent(QHideEvent *e) {
     storeSettings();
     QDialog::hideEvent(e);
 }
+
+Q_LOGGING_CATEGORY(logqso_js8, "logqso.js8", QtWarningMsg)
