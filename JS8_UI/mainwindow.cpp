@@ -3729,6 +3729,15 @@ void UI_Constructor::on_logQSOButton_clicked() // Log QSO button
         return;
     }
 
+    // kj4ctd - hackish but I don't see anywhere else that we set rptSent
+    auto selectedCall = callsignSelected();
+    if (m_callActivity.contains(selectedCall)) {
+        auto cd = m_callActivity[selectedCall];
+        if (cd.snr > -50) {
+            m_rptSent = Varicode::formatSNR(cd.snr);
+        }
+    }
+
     m_logDlg->initLogQSO(call.trimmed(), grid.trimmed(), "JS8", m_rptSent,
                          m_rptRcvd, m_dateTimeQSOOn, dateTimeQSOOff,
                          m_freqNominal + freq(), m_config.my_callsign(),
@@ -3746,6 +3755,9 @@ void UI_Constructor::acceptQSO(
     QString date = QSO_date_on.toString("yyyyMMdd");
     m_logBook.addAsWorked(m_hisCall, m_config.bands()->find(m_freqNominal),
                           mode, submode, grid, date, name, comments);
+
+    qCDebug(mainwindow_js8) << "acceptQSO rptSent (" << m_rptSent << ")";
+    qCDebug(mainwindow_js8) << "acceptQSO rptRcvd (" << m_rptRcvd << ")";
 
     // Log to JS8Call API
     if (canSendNetworkMessage()) {
