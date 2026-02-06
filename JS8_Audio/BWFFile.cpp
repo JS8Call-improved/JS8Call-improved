@@ -156,6 +156,8 @@ class BWFFile::impl final {
     InfoDictionary info_dictionary_;
     qint64 header_length_;
     qint64 data_size_;
+    quint16 bits_per_sample_{0};
+    quint16 block_align_{0};
     FileError error_;
 };
 
@@ -212,36 +214,63 @@ bool BWFFile::impl::read_header() {
                         bext_ = file_.read(wave_size);
                     }
                     if (!memcmp(&wave_desc.id_, "fmt ", 4)) {
-                        FormatChunk fmt;
-                        if (file_.read(reinterpret_cast<char *>(&fmt),
-                                       sizeof fmt) != sizeof fmt)
+                        if (wave_size < sizeof(FormatChunk)) {
                             return false;
-                        auto audio_format =
-                            be ? qFromBigEndian<quint16>(fmt.audio_format)
-                               : qFromLittleEndian<quint16>(fmt.audio_format);
-                        if (audio_format != 0 && audio_format != 1)
+                        }
+
+                        FormatChunk fmt;
+                        if (file_.read(reinterpret_cast<char*>(&fmt), sizeof fmt) != sizeof fmt) {
+                            return false;
+                        }
+
+                        const auto audio_format = be ? qFromBigEndian<quint16>(fmt.audio_format)
+                                                     : qFromLittleEndian<quint16>(fmt.audio_format);
+                        if (audio_format != 0 && audio_format != 1 && audio_format != 3) {
                             return false; // not PCM nor undefined
-                        //                      format_.setByteOrder (be ?
-                        //                      QSysInfo::BigEndian :
-                        //                      QSysInfo::LittleEndian);
-                        format_.setChannelCount(
-                            be ? qFromBigEndian<quint16>(fmt.num_channels)
-                               : qFromLittleEndian<quint16>(fmt.num_channels));
-                        format_.setSampleRate(
-                            be ? qFromBigEndian<quint32>(fmt.sample_rate)
-                               : qFromLittleEndian<quint32>(fmt.sample_rate));
-                        //                      int bits_per_sample {be ?
-                        //                      qFromBigEndian<quint16>
-                        //                      (fmt.bits_per_sample) :
-                        //                      qFromLittleEndian<quint16>
-                        //                      (fmt.bits_per_sample)};
-                        format_.setSampleFormat(QAudioFormat::Int16);
-                        //                      format_.setSampleSize
-                        //                      (bits_per_sample);
-                        //                      format_.setSampleType (8 ==
-                        //                      bits_per_sample ?
-                        //                      QAudioFormat::UnSignedInt :
-                        //                      QAudioFormat::SignedInt);
+                        }
+
+                        const auto ch   = be ? qFromBigEndian<quint16>(fmt.num_channels)
+                                             : qFromLittleEndian<quint16>(fmt.num_channels);
+                        const auto rate = be ? qFromBigEndian<quint32>(fmt.sample_rate)
+                                             : qFromLittleEndian<quint32>(fmt.sample_rate);
+                        const auto bits = be ? qFromBigEndian<quint16>(fmt.bits_per_sample)
+                                             : qFromLittleEndian<quint16>(fmt.bits_per_sample);
+                        const auto ba   = be ? qFromBigEndian<quint16>(fmt.block_align)
+                                             : qFromLittleEndian<quint16>(fmt.block_align);
+
+                        if (audio_format == 3 && bits != 32) {
+                            return false;
+                        }
+
+                        bits_per_sample_ = bits;
+                        block_align_ = ba;
+
+                        format_.setChannelCount(ch);
+                        format_.setSampleRate(rate);
+
+                        switch (bits) {
+                            case 8:  format_.setSampleFormat(QAudioFormat::UInt8); break;
+                            case 16: format_.setSampleFormat(QAudioFormat::Int16); break;
+                            case 24: format_.setSampleFormat(QAudioFormat::Int32); break; // NOTE: we'll convert data to int32
+                            case 32:
+                                if (audio_format == 3) {
+                                    format_.setSampleFormat(QAudioFormat::Float);   // 32-bit float WAV
+                                } else {
+                                    format_.setSampleFormat(QAudioFormat::Int32);   // 32-bit int PCM
+                                }
+                                break;
+                        default:
+                            return false; // no 24-bit packed etc
+                        }
+
+                        if (bits != 24) {
+                            if (ba != format_.bytesPerFrame())
+                                return false;
+                        } else {
+                            // 24-bit packed: header must say 3 bytes/sample
+                            if (ba != ch * 3)
+                                return false;
+                        }
                     } else if (!memcmp(&wave_desc.id_, "data", 4)) {
                         data_size_ = wave_size;
                         header_length_ = file_.pos();
@@ -867,6 +896,9 @@ qint64 BWFFile::size() const {
 }
 
 bool BWFFile::isSequential() const { return m_->file_.isSequential(); }
+
+quint16 BWFFile::bitsPerSample() const { return m_->bits_per_sample_; }
+quint16 BWFFile::blockAlign() const { return m_->block_align_; }
 
 void BWFFile::close() {
     if (isOpen())
