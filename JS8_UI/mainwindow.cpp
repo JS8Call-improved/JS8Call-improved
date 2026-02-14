@@ -1,5 +1,5 @@
 /**
- * \file mainwindow.cpp
+ * @file mainwindow.cpp
  * @brief source file that implements the JS8Call user interface
  *   executes member functions of the UI_Constructor class that provide
  *   all functionality of the JS8call main window
@@ -3793,9 +3793,8 @@ void UI_Constructor::on_logQSOButton_clicked() // Log QSO button
     }
 
     // kj4ctd - hackish but I don't see anywhere else that we set rptSent
-    auto selectedCall = callsignSelected();
-    if (m_callActivity.contains(selectedCall)) {
-        auto cd = m_callActivity[selectedCall];
+    if (m_callActivity.contains(call)) {
+        auto cd = m_callActivity[call];
         if (cd.snr > -50) {
             m_rptSent = Varicode::formatSNR(cd.snr);
         }
