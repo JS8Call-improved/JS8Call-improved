@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MessageWindow</class>
- <widget class="QDialog" name="MessageWindow">
+ <class>MessagePanel</class>
+ <widget class="QWidget" name="MessagePanel">
   <property name="geometry">
    <rect>
     <x>0</x>

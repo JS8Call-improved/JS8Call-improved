@@ -181,6 +181,9 @@ class BWFFile : public QIODevice {
 
     bool isSequential() const override;
 
+    quint16 bitsPerSample() const;
+    quint16 blockAlign() const;
+
     // The reset  operation clears the  'bext' and LIST-INFO as  if they
     // were  never supplied.  If the  file  is writable  the 'bext'  and
     // LIST-INFO chunks will not be  written making the resulting file a

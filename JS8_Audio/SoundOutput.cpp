@@ -81,10 +81,12 @@ void SoundOutput::setDeviceFormat(QAudioDevice const &device,
                                   unsigned msBuffered) {
     if (!format.isValid()) {
         Q_EMIT error(tr("Requested output audio format is not valid."));
+        return;
     }
     if (!device.isFormatSupported(format)) {
         Q_EMIT error(
             tr("Requested output audio format is not supported on device."));
+        return;
     }
 
     m_device = device;

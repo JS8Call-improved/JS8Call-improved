@@ -1012,6 +1012,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             connect(deselectAction, &QAction::triggered, this, [this]() {
                 ui->tableWidgetRXAll->clearSelection();
                 ui->tableWidgetCalls->clearSelection();
+                messagePanel_->setCall("%");
             });
 
             menu->addSeparator();
@@ -1092,72 +1093,43 @@ UI_Constructor::UI_Constructor(QString const &program_info,
         displayActivity(true);
     });
 
-    connect(ui->actionShow_Message_Inbox, &QAction::triggered, this, [this]() {
-        QString selectedCall = callsignSelected();
-        if (selectedCall.isEmpty()) {
-            selectedCall = "%";
-        }
+    connect(ui->actionShow_Message_Inbox, &QAction::toggled, this,
+            [this](bool checked) {
 
-        Inbox inbox(inboxPath());
-        if (!inbox.open()) {
-            return;
-        }
+        if (checked) {
+            ensureMessageDock();
+            messageDock_->show();
+            messageDock_->raise();
 
-        QList<QPair<int, Message>> msgs;
-
-        msgs.append(
-            inbox.values("STORE", "$.params.TO", selectedCall, 0, 1000));
-
-        msgs.append(
-            inbox.values("READ", "$.params.FROM", selectedCall, 0, 1000));
-
-        foreach (auto pair, inbox.values("UNREAD", "$.params.FROM",
-                                         selectedCall, 0, 1000)) {
-            msgs.append(pair);
-
-            // mark as read
-            auto msg = pair.second;
-            msg.setType("READ");
-            inbox.set(pair.first, msg);
-        }
-
-        std::stable_sort(
-            msgs.begin(), msgs.end(),
-            [](QPair<int, Message> const &a, QPair<int, Message> const &b) {
-                return QVariant::compare(a.second.params().value("UTC"),
-                                         b.second.params().value("UTC")) ==
-                       QPartialOrdering::Greater;
-            });
-
-        auto mw = new MessageWindow(this);
-        connect(mw, &MessageWindow::finished, this, [this](int) {
-            refreshInboxCounts();
-            displayCallActivity();
-        });
-        connect(mw, &MessageWindow::deleteMessage, this, [this](int id) {
-            Inbox inbox(inboxPath());
-            if (!inbox.open()) {
-                return;
+            /*
+             * Disable the automatic selected call filter now that the inbox lives
+             * in a dockable panel
+            QString selectedCall = callsignSelected();
+            if (selectedCall.isEmpty()) selectedCall = "%";
+            messagePanel_->setCall(selectedCall);
+            */
+          messagePanel_->setCall("%");
+        } else {
+            if (messageDock_) {
+                // pick ONE: hide or close; for docks, hide is simplest
+                messageDock_->hide();
             }
-
-            inbox.del(id);
-        });
-        connect(mw, &MessageWindow::replyMessage, this,
-                [this, mw](const QString &text) {
-                    addMessageText(text, true, true);
-                    refreshInboxCounts();
-                    displayCallActivity();
-                    mw->close();
-                });
-        mw->setCall(selectedCall);
-        mw->populateMessages(msgs);
-        mw->show();
+        }
     });
+
+    // When a message is added to the inbox, refresh the message panel
+    connect(this, &UI_Constructor::messageAdded, messagePanel_, &MessagePanel::refresh);
 
     auto historyAction =
         new QAction(QString("Show Message Inbox..."), ui->tableWidgetCalls);
-    connect(historyAction, &QAction::triggered, ui->actionShow_Message_Inbox,
-            &QAction::trigger);
+    connect(historyAction, &QAction::triggered, this, [this]() {
+      ensureMessageDock();
+      messageDock_->show();
+      messageDock_->raise();
+
+      QString selectedCall = callsignSelected();
+      messagePanel_->setCall(selectedCall);
+    });
 
     auto localMessageAction =
         new QAction(QString("Store Message..."), ui->tableWidgetCalls);
@@ -1303,6 +1275,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             connect(deselect, &QAction::triggered, this, [this]() {
                 ui->tableWidgetRXAll->clearSelection();
                 ui->tableWidgetCalls->clearSelection();
+                messagePanel_->setCall("%");
             });
 
             menu->addSeparator();

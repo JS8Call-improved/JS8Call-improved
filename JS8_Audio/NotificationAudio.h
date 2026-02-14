@@ -29,6 +29,8 @@ class NotificationAudio : public QObject {
     using Cache = QHash<QString, Entry>;
 
     void playEntry(Cache::const_iterator);
+    static QByteArray pcm24le_to_int32le(const QByteArray &in);
+    static bool upmixMonoToStereoInPlace(QAudioFormat &fmt, QByteArray &data);
 
     QScopedPointer<SoundOutput> m_stream;
     Cache m_cache;

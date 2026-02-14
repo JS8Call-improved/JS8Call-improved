@@ -13,6 +13,7 @@
  */
 #include "AprsInboundRelay.h"
 #include "JS8_Main/DriftingDateTime.h"
+#include "JS8_Main/Radio.h"
 #include "JS8_UI/Configuration.h"
 
 #include <QDebug>
@@ -108,6 +109,12 @@ void AprsInboundRelay::onMessageReceived(QString from, QString to,
 
     if (!m_config || !m_config->spot_to_aprs_relay()) {
         qDebug() << "DEBUG: APRS relay disabled";
+        return;
+    }
+
+    if (m_config->spot_blacklist().contains(to) ||
+        m_config->spot_blacklist().contains(Radio::base_callsign(to))) {
+        qDebug() << "DEBUG: Destination in spot blacklist:" << to;
         return;
     }
 

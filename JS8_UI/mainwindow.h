@@ -50,9 +50,9 @@
 #include "JS8_UI/About.h"
 #include "JS8_UI/Configuration.h"
 #include "JS8_UI/WideGraph.h"
+#include "JS8_UI/MessagePanel.h"
 #include "LogQSO.h"
 #include "MessageReplyDialog.h"
-#include "MessageWindow.h"
 #include "ui_mainwindow.h"
 
 #include <QAbstractSocket>
@@ -65,6 +65,7 @@
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
+#include <QDockWidget>
 #include <QElapsedTimer>
 #include <QFileDialog>
 #include <QHash>
@@ -169,6 +170,7 @@ class AprsInboundRelay;
 class MultiSettings;
 class DecodedText;
 class JSCChecker;
+class MessagePanel;
 
 using namespace std;
 typedef std::function<void()> Callback;
@@ -520,6 +522,8 @@ class UI_Constructor : public QMainWindow {
     Q_SIGNAL void toggleShorthand() const;
     Q_SIGNAL void submodeChanged(Varicode::SubmodeType) const;
 
+    Q_SIGNAL void messageAdded(int) const;
+
   private:
     QByteArray wisdomFileName() const;
 
@@ -559,6 +563,13 @@ class UI_Constructor : public QMainWindow {
     // other windows
     Configuration m_config;
     JS8MessageBox m_rigErrorMessageBox;
+
+    QDockWidget* messageDock_ = nullptr;
+    MessagePanel* messagePanel_ = nullptr;
+    QDialog* messageFloatDialog_ = nullptr;
+
+    enum class MessageHost { Dock, Dialog };
+    MessageHost messageHost_ = MessageHost::Dock;
 
     QScopedPointer<WideGraph> m_wideGraph;
     QScopedPointer<LogQSO> m_logDlg;
@@ -1021,6 +1032,7 @@ class UI_Constructor : public QMainWindow {
     void remove_child_from_event_filter(QObject *);
     void setup_status_bar();
     QString columnLabel(QString defaultLabel);
+    void ensureMessageDock();
 
     void resetIdleTimer();
     void incrementIdleTimer();

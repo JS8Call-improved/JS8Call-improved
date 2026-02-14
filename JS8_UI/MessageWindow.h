@@ -4,11 +4,9 @@
 #include "JS8_Main/Message.h"
 
 #include <QDialog>
-#include <QItemSelection>
-#include <QPair>
 
 namespace Ui {
-class MessageWindow;
+class MessagePanel;
 }
 
 class MessageWindow : public QDialog {
@@ -18,23 +16,8 @@ class MessageWindow : public QDialog {
     explicit MessageWindow(QWidget *parent = 0);
     ~MessageWindow();
 
-  signals:
-    void deleteMessage(int id);
-    void replyMessage(const QString &call);
-
-  public slots:
-    void setCall(const QString &call);
-    void populateMessages(QList<QPair<int, Message>> msgs);
-    QString prepareReplyMessage(QString path, QString text);
-
-  private slots:
-    void messageTableSelectionChanged(const QItemSelection & /*selected*/,
-                                      const QItemSelection & /*deselected*/);
-    void on_replyPushButton_clicked();
-
   private:
-    void deleteSelectedMessages(); // shared by context menu + Delete key
-    Ui::MessageWindow *ui;
+    Ui::MessagePanel *ui;
 };
 
 #endif // MESSAGEWINDOW_H

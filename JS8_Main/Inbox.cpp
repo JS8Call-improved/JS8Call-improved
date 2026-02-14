@@ -165,6 +165,27 @@ QList<QPair<int, Message>> Inbox::values(QString type, QString query,
     return v;
 }
 
+QList<QPair<int, Message>> Inbox::fetchForCall(const QString& callPattern)
+{
+    if (!isOpen()) {
+        return {};
+    }
+
+    QList<QPair<int, Message>> msgs;
+    msgs.append(values("STORE", "$.params.TO",   callPattern, 0, 1000));
+    msgs.append(values("READ",  "$.params.FROM", callPattern, 0, 1000));
+    msgs.append(values("UNREAD", "$.params.FROM", callPattern, 0, 1000));
+
+    std::stable_sort(msgs.begin(), msgs.end(),
+        [](const QPair<int, Message>& a, const QPair<int, Message>& b) {
+            return QVariant::compare(a.second.params().value("UTC"),
+                                     b.second.params().value("UTC")) ==
+                   QPartialOrdering::Greater;
+        });
+
+    return msgs;
+}
+
 Message Inbox::value(int key) {
     if (!isOpen()) {
         return {};

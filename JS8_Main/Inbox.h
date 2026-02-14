@@ -32,6 +32,7 @@ class Inbox {
     bool del(int key);
 
     // High-Level Interface
+    QList<QPair<int, Message>> fetchForCall(const QString& callPattern);
     int countUnreadFrom(QString from);
     QPair<int, Message> firstUnreadFrom(QString from);
     int getLookaheadMessageIdForCallsign(const QString &callsign,
