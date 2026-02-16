@@ -138,7 +138,6 @@ class Configuration final : public QObject {
     bool heartbeat_qso_pause() const;
     bool heartbeat_ack_snr() const;
     bool relay_off() const;
-    bool psk_reporter_tcpip() const;
     bool monitor_off_at_startup() const;
     bool transmit_off_at_startup() const;
     bool monitor_last_used() const;

@@ -27,7 +27,6 @@
 #include <QRandomGenerator>
 #include <QSharedPointer>
 #include <QString>
-#include <QTcpSocket>
 #include <QTimer>
 #include <QUdpSocket>
 
@@ -48,7 +47,7 @@ using namespace Qt::Literals::StringLiterals;
 
 constexpr auto HOST = "report.pskreporter.info"_L1;
 constexpr quint16 PORT = 4739;               // 14739 for test
-constexpr int MIN_SEND_INTERVAL = 600;       // in seconds
+constexpr int MIN_SEND_INTERVAL = 120;       // in seconds
 constexpr int JITTER_MAX = 5;                // in seconds
 constexpr int FLUSH_INTERVAL = 125;          // in send intervals
 constexpr qsizetype MAX_STRING_LENGTH = 254; // PSK reporter spec
@@ -358,10 +357,7 @@ class PSKReporter::impl final : public QObject {
     }
 
     void check_connection() {
-        if (!socket_ || QAbstractSocket::UnconnectedState == socket_->state() ||
-            (socket_->socketType() != (config_->psk_reporter_tcpip()
-                                           ? QAbstractSocket::TcpSocket
-                                           : QAbstractSocket::UdpSocket))) {
+        if (!socket_ || QAbstractSocket::UnconnectedState == socket_->state()) {
             // we need to create the appropriate socket
             if (socket_ &&
                 QAbstractSocket::UnconnectedState != socket_->state() &&
@@ -407,13 +403,8 @@ class PSKReporter::impl final : public QObject {
         // Using deleteLater for the deleter as we may eventually
         // be called from the disconnected handler above.
 
-        if (config_->psk_reporter_tcpip()) {
-            socket_.reset(new QTcpSocket, &QObject::deleteLater);
-            send_descriptors_ = 1;
-        } else {
-            socket_.reset(new QUdpSocket, &QObject::deleteLater);
-            send_descriptors_ = 3;
-        }
+        socket_.reset(new QUdpSocket, &QObject::deleteLater);
+        send_descriptors_ = 3;
 
         connect(socket_.get(), &QAbstractSocket::errorOccurred, this,
                 &PSKReporter::impl::handle_socket_error);

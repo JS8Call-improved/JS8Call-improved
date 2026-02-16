@@ -633,7 +633,6 @@ class Configuration::impl final : public QDialog {
     bool heartbeat_qso_pause_;
     bool heartbeat_ack_snr_;
     bool relay_disabled_;
-    bool psk_reporter_tcpip_;
     bool monitor_off_at_startup_;
     bool transmit_off_at_startup_;
     bool monitor_last_used_;
@@ -851,9 +850,6 @@ bool Configuration::heartbeat_ack_snr() const {
 #endif
 }
 bool Configuration::relay_off() const { return m_->relay_disabled_; }
-bool Configuration::psk_reporter_tcpip() const {
-    return m_->psk_reporter_tcpip_;
-}
 bool Configuration::monitor_off_at_startup() const {
     return m_->monitor_off_at_startup_;
 }
@@ -1741,7 +1737,6 @@ void Configuration::impl::initialize_models() {
     ui_->heartbeat_qso_pause_check_box->setChecked(heartbeat_qso_pause_);
     ui_->heartbeat_ack_snr_check_box->setChecked(heartbeat_ack_snr_);
     ui_->relay_disabled_check_box->setChecked(relay_disabled_);
-    ui_->psk_reporter_tcpip_check_box->setChecked(psk_reporter_tcpip_);
     ui_->monitor_off_check_box->setChecked(monitor_off_at_startup_);
     ui_->transmit_off_check_box->setChecked(transmit_off_at_startup_);
     ui_->monitor_last_used_check_box->setChecked(monitor_last_used_);
@@ -2123,7 +2118,6 @@ void Configuration::impl::read_settings() {
     write_logs_ = settings_->value("WriteLogs", true).toBool();
     reset_activity_ = settings_->value("ResetActivity", false).toBool();
     check_for_updates_ = settings_->value("CheckForUpdates", true).toBool();
-    psk_reporter_tcpip_ = settings_->value("PSKReporterTCPIP", false).toBool();
     tx_qsy_allowed_ = settings_->value("TxQSYAllowed", false).toBool();
     use_dynamic_info_ = settings_->value("AutoGrid", false).toBool();
 
@@ -2400,7 +2394,6 @@ void Configuration::impl::write_settings() {
     settings_->setValue("WriteLogs", write_logs_);
     settings_->setValue("ResetActivity", reset_activity_);
     settings_->setValue("CheckForUpdates", check_for_updates_);
-    settings_->setValue("PSKReporterTCPIP", psk_reporter_tcpip_);
     settings_->setValue("TxQSYAllowed", tx_qsy_allowed_);
     settings_->setValue("Macros", macros_.stringList());
     settings_->setValue(versionedFrequenciesSettingsKey,
@@ -3030,7 +3023,6 @@ void Configuration::impl::accept() {
     activity_aging_ = ui_->activity_aging_spin_box->value();
     spot_to_reporting_networks_ = ui_->psk_reporter_check_box->isChecked();
     spot_to_aprs_ = ui_->enable_aprs_spotting_check_box->isChecked();
-    psk_reporter_tcpip_ = ui_->psk_reporter_tcpip_check_box->isChecked();
     txDelay_ = ui_->sbTxDelay->value();
     write_logs_ = ui_->write_logs_check_box->isChecked();
     reset_activity_ = ui_->reset_activity_check_box->isChecked();
