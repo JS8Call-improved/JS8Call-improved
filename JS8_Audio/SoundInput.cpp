@@ -177,6 +177,18 @@ void SoundInput::stop() {
 }
 
 /**
+ * @brief Tests whether device can be opened as an input
+ */
+
+bool SoundInput::canOpenAsInput(const QAudioDevice &dev) {
+    QAudioFormat fmt = dev.preferredFormat();
+    auto src = std::make_unique<QAudioSource>(dev, fmt);
+    src->start(); // opens device
+    src->stop();
+    return src->error() == QAudio::NoError;
+}
+
+/**
  * @brief Destructs the SoundInput object.
  */
 SoundInput::~SoundInput() { stop(); }

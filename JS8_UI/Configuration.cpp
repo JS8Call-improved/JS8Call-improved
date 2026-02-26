@@ -195,6 +195,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "JS8_Audio/SoundInput.h"
 #include "moc_Configuration.cpp"
 
 namespace {
@@ -4232,7 +4233,11 @@ Configuration::impl::find_audio_device(QAudioDevice::Mode const mode,
                                   : QMediaDevices::audioOutputs();
 
         for (auto const &p : devices) {
-            if (p.mode() == mode && p.description() == device_name) {
+            bool modeMatch = (mode == QAudioDevice::Input) ?
+                                SoundInput::canOpenAsInput(p):
+                                p.mode() == mode;
+
+            if (modeMatch && p.description() == device_name) {
                 combo_box->insertItem(0, p.description(),
                                       QVariant::fromValue(p));
                 combo_box->setCurrentIndex(0);
