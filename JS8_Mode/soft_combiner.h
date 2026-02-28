@@ -185,7 +185,7 @@ template <std::size_t N> class SoftCombiner {
         return indices;
     }
 
-    static Bucket::iterator findEntry(Bucket &bucket, uint32_t signature) {
+    static typename Bucket::iterator findEntry(Bucket &bucket, uint32_t signature) {
         constexpr int MAX_HAMMING =
             4; // allow small differences between noisy repeats
 
