@@ -2762,31 +2762,20 @@ bool Configuration::impl::validate() {
 
     auto ptt_method = static_cast<TransceiverFactory::PTTMethod>(
         ui_->PTT_method_button_group->checkedId());
-    auto const ptt_port = ui_->PTT_port_combo_box->currentText();
-    bool port_invalid = false;
+    if (ptt_method == TransceiverFactory::PTT_method_DTR ||
+        ptt_method == TransceiverFactory::PTT_method_RTS) {
+        const auto ptt_port = ui_->PTT_port_combo_box->currentText();
+        auto *model = dynamic_cast<QStandardItemModel *>(ui_->PTT_port_combo_box->model());
+        const int index = ui_->PTT_port_combo_box->findText(ptt_port);
+        QStandardItem *item = (index >= 0 && model) ? model->item(index) : nullptr;
 
-    if (TransceiverFactory::PTT_method_DTR == ptt_method || TransceiverFactory::PTT_method_RTS == ptt_method) {
-        if (ptt_port.isEmpty()) {
-            port_invalid = true;
-        } else {
-            auto* model = qobject_cast<QStandardItemModel*>(ui_->PTT_port_combo_box->model());
-            int idx = ui_->PTT_port_combo_box->findText(ptt_port);
+        const bool enabled = item && item->isEnabled();
+        const bool invalid = ptt_port.isEmpty() || !enabled;
 
-            if (model && idx != -1) {
-                if (QStandardItem* item = model->item(idx)) {
-                    port_invalid = !item->isEnabled();
-                } else {
-                    port_invalid = true;
-                }
-            } else {
-                port_invalid = true;
-            }
+        if (invalid) {
+            JS8MessageBox::critical_message(this, tr("Invalid PTT port"));
+            return false;
         }
-    }
-
-    if (port_invalid) {
-        JS8MessageBox::critical_message(this, tr("Invalid PTT port"));
-        return false;
     }
     return true;
 }
