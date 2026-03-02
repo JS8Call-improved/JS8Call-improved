@@ -1816,9 +1816,11 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
             qint32 const cycle = JS8::Submode::computeAltCycleForDecode(
                 submode, k, alt * oneSecondSamples);
             qint32 const cycleFrames = JS8::Submode::samplesPerPeriod(submode);
-            qint32 const cycleFramesNeeded = JS8::Submode::samplesForSymbols(
-                submode); // computeFramesNeededForDecode(submode)
-                          // - oneSecondSamples;
+            qint32 const cycleFramesNeeded =
+                (submode == Varicode::JS8CallTurbo ||
+                 submode == Varicode::JS8CallUltra)
+                    ? JS8::Submode::samplesNeeded(submode)
+                    : JS8::Submode::samplesForSymbols(submode);
             qint32 cycleFramesReady = k - (cycle * cycleFrames);
             if (cycleFramesReady < 0) {
                 cycleFramesReady = k + (maxSamples - (cycle * cycleFrames));

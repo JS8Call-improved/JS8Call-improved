@@ -1527,17 +1527,7 @@ template <typename Mode> class DecodeMode {
 
         auto const key =
             m_softCombiner.makeKey(Mode::NSUBMODE, f1, xdt, llr0, llr1);
-        auto combined = [&]() {
-            constexpr bool allowSoftCombine =
-                Mode::NSUBMODE != ModeC::NSUBMODE &&
-                Mode::NSUBMODE != ModeI::NSUBMODE;
-
-            if constexpr (!allowSoftCombine) {
-                return js8::SoftCombiner<N>::Combined{key, llr0, llr1, 1, false};
-            }
-
-            return m_softCombiner.combine(key, llr0, llr1, ttl);
-        }();
+        auto combined = m_softCombiner.combine(key, llr0, llr1, ttl);
 
         auto llr0Combined = combined.llr0;
         auto llr1Combined = combined.llr1;
