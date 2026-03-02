@@ -479,6 +479,59 @@ if(type == "STATION.SET_SPOT") {
     }
     /** @} */ // End MODE Commands
 
+    /**
+     * @name FILTER Commands
+     * Bandpass filter overlay on the waterfall (visual only, no DSP).
+     * Added for QMX-Pi remote control (Session 87).
+     */
+    /** @{ */
+
+    /** @brief FILTER.GET_FILTER: Returns current filter center, width and enabled state. */
+    if (type == "FILTER.GET_FILTER") {
+        sendNetworkMessage("FILTER.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief FILTER.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state. */
+    if (type == "FILTER.SET_FILTER") {
+        auto params = message.params();
+        if (params.contains("CENTER")) {
+            bool ok = false;
+            auto c = params["CENTER"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterCenter(c);
+        }
+        if (params.contains("WIDTH")) {
+            bool ok = false;
+            auto w = params["WIDTH"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterWidth(w);
+        }
+        sendNetworkMessage("FILTER.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief FILTER.SET_ENABLED: Toggle filter overlay on/off. */
+    if (type == "FILTER.SET_ENABLED") {
+        auto enabled = QVariant(message.value()).toBool();
+        m_wideGraph->setFilterEnabled(enabled);
+        sendNetworkMessage("FILTER.SET_ENABLED", "", {
+            {"_ID", id},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @} */ // End FILTER Commands
+
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
     /**

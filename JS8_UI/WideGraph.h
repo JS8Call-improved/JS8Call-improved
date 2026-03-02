@@ -39,6 +39,8 @@ class WideGraph : public QWidget {
     int filterMinimum() const;
     int filterMaximum() const;
     bool filterEnabled() const;
+    int filterCenter() const;
+    int filterWidth() const;
     int freq() const;
     bool isAutoSyncEnabled() const;
     int nStartFreq() const;

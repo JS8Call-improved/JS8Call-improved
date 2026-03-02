@@ -572,6 +572,10 @@ int WideGraph::filterMaximum() const {
 
 bool WideGraph::filterEnabled() const { return m_filterEnabled; }
 
+int WideGraph::filterCenter() const { return m_filterCenter; }
+
+int WideGraph::filterWidth() const { return m_filterWidth; }
+
 void WideGraph::setFilterCenter(int const value) {
     m_filterCenter = value;
     setValueBlocked(value, ui->filterCenterSpinBox);
