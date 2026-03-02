@@ -134,6 +134,7 @@ class Configuration final : public QObject {
     bool transmit_directed() const;
     bool autoreply_on_at_startup() const;
     bool autoreply_confirmation() const;
+    void set_autoreply_confirmation(bool);
     bool heartbeat_anywhere() const;
     bool heartbeat_qso_pause() const;
     bool heartbeat_ack_snr() const;

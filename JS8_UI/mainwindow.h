@@ -901,6 +901,18 @@ class UI_Constructor : public QMainWindow {
     QMap<QString, QMap<QString, QSet<QString>>>
         m_heardGraphIncomingBandCache; // band -> heard out
 
+    // Pending autoreply confirmations (TCP-based, remplace Qt dialog en headless)
+    struct PendingConfirmation {
+        int id;
+        int priority;
+        QString message;
+        int offset;
+        Callback callback;
+        QTimer *timer;
+    };
+    int m_nextConfirmId = 0;
+    QMap<int, PendingConfirmation> m_pendingConfirmations;
+
     QMap<QString, QDateTime>
         m_callSelectedTime; // call -> timestamp when callsign was last selected
     /**

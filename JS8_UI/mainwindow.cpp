@@ -3209,26 +3209,40 @@ void UI_Constructor::addMessageText(QString text, bool clear,
 void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
                                                QString message, int offset,
                                                Callback c) {
-    SelfDestructMessageBox *m = new SelfDestructMessageBox(
-        timeout, "Autoreply Confirmation Required",
-        QString("A transmission is queued for autoreply:\n\n%1\n\nWould you "
-                "like to send this transmission?")
-            .arg(message),
-        QMessageBox::Question, QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No, false, this);
+    // CRITIQUE: appelé depuis thread décodeur → QTimer/sendNetworkMessage dans thread GUI
+    QMetaObject::invokeMethod(this, [this, timeout, priority, message, offset, c]() {
+        int id = m_nextConfirmId++;
+        PendingConfirmation pc;
+        pc.id = id;
+        pc.priority = priority;
+        pc.message = message;
+        pc.offset = offset;
+        pc.callback = c;
 
-    connect(m, &SelfDestructMessageBox::finished, this,
-            [this, m, priority, message, offset, c](int) {
-                // make sure we delete the message box later...
-                m->deleteLater();
+        // Timer auto-reject après timeout
+        pc.timer = new QTimer(this);
+        pc.timer->setSingleShot(true);
+        connect(pc.timer, &QTimer::timeout, this, [this, id]() {
+            if (m_pendingConfirmations.contains(id)) {
+                auto pc = m_pendingConfirmations.take(id);
+                delete pc.timer;
+                sendNetworkMessage("MODE.AUTOREPLY_CONFIRM_EXPIRED", "",
+                    {{"_ID", QVariant(-1)},
+                     {"CONFIRM_ID", QVariant(id)},
+                     {"MESSAGE", QVariant(pc.message)}});
+            }
+        });
+        pc.timer->start(timeout * 1000);
 
-                if (m->result() == QMessageBox::Yes) {
-                    enqueueMessage(priority, message, offset, c);
-                }
-            });
+        m_pendingConfirmations.insert(id, pc);
 
-    m->setWindowModality(Qt::NonModal);
-    m->show();
+        sendNetworkMessage("MODE.AUTOREPLY_CONFIRM_REQUEST", message,
+            {{"_ID", QVariant(-1)},
+             {"CONFIRM_ID", QVariant(id)},
+             {"PRIORITY", QVariant(priority)},
+             {"OFFSET", QVariant(offset)},
+             {"TIMEOUT", QVariant(timeout)}});
+    });
 }
 
 void UI_Constructor::enqueueMessage(int priority, QString message, int offset,

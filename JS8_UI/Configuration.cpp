@@ -836,6 +836,12 @@ bool Configuration::autoreply_on_at_startup() const {
 bool Configuration::autoreply_confirmation() const {
     return m_->autoreply_confirmation_;
 }
+void Configuration::set_autoreply_confirmation(bool enabled) {
+    if (m_->autoreply_confirmation_ != enabled) {
+        m_->autoreply_confirmation_ = enabled;
+        m_->write_settings();
+    }
+}
 bool Configuration::heartbeat_anywhere() const {
     return m_->heartbeat_anywhere_;
 }
