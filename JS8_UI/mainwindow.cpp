@@ -3209,7 +3209,7 @@ void UI_Constructor::addMessageText(QString text, bool clear,
 void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
                                                QString message, int offset,
                                                Callback c) {
-    // CRITIQUE: appelé depuis thread décodeur → QTimer/sendNetworkMessage dans thread GUI
+    // CRITICAL: called from decoder thread → QTimer/sendNetworkMessage must run in GUI thread
     QMetaObject::invokeMethod(this, [this, timeout, priority, message, offset, c]() {
         int id = m_nextConfirmId++;
         PendingConfirmation pc;
@@ -3219,14 +3219,14 @@ void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
         pc.offset = offset;
         pc.callback = c;
 
-        // Timer auto-reject après timeout
+        // Timer auto-reject after timeout
         pc.timer = new QTimer(this);
         pc.timer->setSingleShot(true);
         connect(pc.timer, &QTimer::timeout, this, [this, id]() {
             if (m_pendingConfirmations.contains(id)) {
                 auto pc = m_pendingConfirmations.take(id);
                 delete pc.timer;
-                sendNetworkMessage("MODE.AUTOREPLY_CONFIRM_EXPIRED", "",
+                sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_EXPIRED", "",
                     {{"_ID", QVariant(-1)},
                      {"CONFIRM_ID", QVariant(id)},
                      {"MESSAGE", QVariant(pc.message)}});
@@ -3236,7 +3236,7 @@ void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
 
         m_pendingConfirmations.insert(id, pc);
 
-        sendNetworkMessage("MODE.AUTOREPLY_CONFIRM_REQUEST", message,
+        sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_REQUEST", message,
             {{"_ID", QVariant(-1)},
              {"CONFIRM_ID", QVariant(id)},
              {"PRIORITY", QVariant(priority)},
