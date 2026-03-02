@@ -479,16 +479,10 @@ if(type == "STATION.SET_SPOT") {
     }
     /** @} */ // End MODE Commands
 
-    /**
-     * @name FILTER Commands
-     * Bandpass filter overlay on the waterfall (visual only, no DSP).
-     * Added for QMX-Pi remote control (Session 87).
-     */
-    /** @{ */
-
-    /** @brief FILTER.GET_FILTER: Returns current filter center, width and enabled state. */
-    if (type == "FILTER.GET_FILTER") {
-        sendNetworkMessage("FILTER.FILTER", "", {
+    /** @brief RX.GET_FILTER: Returns current filter center, width and enabled state.
+     *  @note API 2.6+ */
+    if (type == "RX.GET_FILTER") {
+        sendNetworkMessage("RX.FILTER", "", {
             {"_ID", id},
             {"CENTER", QVariant(m_wideGraph->filterCenter())},
             {"WIDTH", QVariant(m_wideGraph->filterWidth())},
@@ -497,8 +491,9 @@ if(type == "STATION.SET_SPOT") {
         return;
     }
 
-    /** @brief FILTER.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state. */
-    if (type == "FILTER.SET_FILTER") {
+    /** @brief RX.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER") {
         auto params = message.params();
         if (params.contains("CENTER")) {
             bool ok = false;
@@ -510,7 +505,7 @@ if(type == "STATION.SET_SPOT") {
             auto w = params["WIDTH"].toInt(&ok);
             if (ok) m_wideGraph->setFilterWidth(w);
         }
-        sendNetworkMessage("FILTER.FILTER", "", {
+        sendNetworkMessage("RX.FILTER", "", {
             {"_ID", id},
             {"CENTER", QVariant(m_wideGraph->filterCenter())},
             {"WIDTH", QVariant(m_wideGraph->filterWidth())},
@@ -519,18 +514,17 @@ if(type == "STATION.SET_SPOT") {
         return;
     }
 
-    /** @brief FILTER.SET_ENABLED: Toggle filter overlay on/off. */
-    if (type == "FILTER.SET_ENABLED") {
+    /** @brief RX.SET_FILTER_ENABLED: Toggle filter overlay on/off.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER_ENABLED") {
         auto enabled = QVariant(message.value()).toBool();
         m_wideGraph->setFilterEnabled(enabled);
-        sendNetworkMessage("FILTER.SET_ENABLED", "", {
+        sendNetworkMessage("RX.SET_FILTER_ENABLED", "", {
             {"_ID", id},
             {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
         });
         return;
     }
-
-    /** @} */ // End FILTER Commands
 
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
