@@ -615,21 +615,32 @@ if(type == "STATION.SET_SPOT") {
     }
 
     /** @brief MODE.SET_GROUPS: Replace the subscribed groups list via TCP.
-     *  Bypasses addGroup() validation to avoid MessageBox under xvfb.
-     *  Input validation is done Python-side (forbidden groups filtered). */
+     *  Validates each group (isGroupAllowed + isCompoundCallsign) and returns
+     *  a TCP error instead of opening a MessageBox (headless-safe). */
     if (type == "MODE.SET_GROUPS") {
-        // Build new groups list from params
         QStringList newGroups;
         auto groupsVar = message.params().value("GROUPS");
         if (groupsVar.canConvert<QVariantList>()) {
             for (auto const &v : groupsVar.toList()) {
                 auto g = v.toString().trimmed();
-                if (!g.isEmpty() && g.startsWith("@")) {
-                    newGroups.append(g);
+                if (g.isEmpty() || !g.startsWith("@")) continue;
+                if (!Varicode::isGroupAllowed(g)) {
+                    sendNetworkMessage("MODE.SET_GROUPS", "", {
+                        {"_ID", id},
+                        {"ERROR", QString("Group not allowed: %1").arg(g)},
+                    });
+                    return;
                 }
+                if (!Varicode::isCompoundCallsign(g)) {
+                    sendNetworkMessage("MODE.SET_GROUPS", "", {
+                        {"_ID", id},
+                        {"ERROR", QString("Invalid group name: %1").arg(g)},
+                    });
+                    return;
+                }
+                newGroups.append(g);
             }
         }
-        // Direct write to config internals (bypass addGroup MessageBox)
         m_config.setMyGroups(newGroups);
 
         QVariantList result;
