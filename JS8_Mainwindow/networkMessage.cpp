@@ -479,6 +479,10 @@ if(type == "STATION.SET_SPOT") {
     }
     /** @brief MODE.GET_CONFIG: Returns all mode/config states for remote control. */
     if (type == "MODE.GET_CONFIG") {
+        QVariantList groupsList;
+        for (auto const &g : m_config.my_groups()) {
+            groupsList.append(g);
+        }
         sendNetworkMessage("MODE.CONFIG", "", {
             {"_ID", id},
             {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
@@ -492,6 +496,8 @@ if(type == "STATION.SET_SPOT") {
             {"SPEED", QVariant(m_nSubMode)},
             {"CAN_HB", QVariant(canCurrentModeSendHeartbeat())},
             {"AUTOREPLY_CONFIRMATION", QVariant(m_config.autoreply_confirmation())},
+            {"MY_GROUPS", QVariant(groupsList)},
+            {"AVOID_ALLCALL", QVariant(m_config.avoid_allcall())},
         });
         return;
     }
@@ -604,6 +610,46 @@ if(type == "STATION.SET_SPOT") {
                      {"ACCEPTED", QVariant(accepted)},
                      {"MESSAGE", QVariant(pc.message)}});
             }
+        });
+        return;
+    }
+
+    /** @brief MODE.SET_GROUPS: Replace the subscribed groups list via TCP.
+     *  Bypasses addGroup() validation to avoid MessageBox under xvfb.
+     *  Input validation is done Python-side (forbidden groups filtered). */
+    if (type == "MODE.SET_GROUPS") {
+        // Build new groups list from params
+        QStringList newGroups;
+        auto groupsVar = message.params().value("GROUPS");
+        if (groupsVar.canConvert<QVariantList>()) {
+            for (auto const &v : groupsVar.toList()) {
+                auto g = v.toString().trimmed();
+                if (!g.isEmpty() && g.startsWith("@")) {
+                    newGroups.append(g);
+                }
+            }
+        }
+        // Direct write to config internals (bypass addGroup MessageBox)
+        m_config.setMyGroups(newGroups);
+
+        QVariantList result;
+        for (auto const &g : m_config.my_groups()) {
+            result.append(g);
+        }
+        sendNetworkMessage("MODE.SET_GROUPS", "", {
+            {"_ID", id},
+            {"GROUPS", QVariant(result)},
+        });
+        return;
+    }
+
+    /** @brief MODE.SET_AVOID_ALLCALL: Toggle @ALLCALL opt-out via TCP. */
+    if (type == "MODE.SET_AVOID_ALLCALL") {
+        auto checked = QVariant(message.value()).toBool();
+        m_config.set_avoid_allcall(checked);
+        sendNetworkMessage("MODE.SET_AVOID_ALLCALL", "", {
+            {"_ID", id},
+            {"AVOID_ALLCALL", QVariant(m_config.avoid_allcall())},
         });
         return;
     }

@@ -1113,6 +1113,11 @@ void Configuration::removeGroup(QString const &group) {
     m_->write_settings();
 }
 
+void Configuration::setMyGroups(QStringList const &groups) {
+    m_->my_groups_ = groups;
+    m_->write_settings();
+}
+
 QSet<QString> Configuration::auto_whitelist() const {
     return QSet<QString>(m_->auto_whitelist_.begin(),
                          m_->auto_whitelist_.end());

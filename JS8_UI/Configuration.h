@@ -102,6 +102,7 @@ class Configuration final : public QObject {
     QSet<QString> my_groups() const;
     void addGroup(QString const &group);
     void removeGroup(QString const &group);
+    void setMyGroups(QStringList const &groups);
     QSet<QString> auto_whitelist() const;
     QSet<QString> auto_blacklist() const;
     QSet<QString> hb_blacklist() const;
