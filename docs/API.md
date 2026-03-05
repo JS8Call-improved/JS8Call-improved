@@ -53,6 +53,7 @@ The steps above are
 | [RX.GET_CALL_SELECTED](#rxget_call_selected) | 2.5 |
 | [RX.GET_BAND_ACTIVITY](#rxget_band_activity) | 2.5 |
 | [RX.GET_TEXT](#rxget_text)                   | 2.5 |
+| [RX.GET_FREE_OFFSETS](#rxget_free_offsets)   | 2.6 |
 | [TX.GET_TEXT](#txget_text)                   | 2.5 |
 | [TX.SET_TEXT](#txset_text)                   | 2.5 |
 | [TX.SEND_MESSAGE](#txsend_message)           | 2.5 |
@@ -514,6 +515,36 @@ Gets the contents of the directed message window
 | Response |
 |----------|
 |{"params":{"_ID":269562514193},"type":"RX.TEXT","value":"\n22:06:10 - (1950) - KJ4CTD: W4CAT SNR?  ♢ \n\n22:06:52 - (1950) - KJ4CTD: KB4DSF SNR?  ♢ \n\n22:14:29 - (800) - KJ4CTD: N0AAS HEARTBEAT SNR -18  ♢ \n\n22:25:31 - (1950) - KJ4CTD: @SITREP MSG F!104 100 ST[SC] GR[EM85] #ASRM KWC ♢ "}|
+
+
+# RX.GET_FREE_OFFSETS
+[!note] API >= 2.6
+
+Returns contiguous free offset segments in the passband not occupied by recently
+heard stations. Accounts for the bandwidth of each active signal's submode so the
+returned segments are guaranteed wide enough for your intended transmission without
+overlapping other stations.
+
+Entries older than 30 seconds are considered stale and treated as clear.
+
+| End Point |
+|-----------|
+|{"params":{},"type":"RX.GET_FREE_OFFSETS","value":""}|
+|{"params":{"SPEED":2,"LOW":500,"HIGH":2500},"type":"RX.GET_FREE_OFFSETS","value":""}|
+
+| Optional params | |
+|-----------------|-|
+| SPEED  | Submode int (0=Normal, 1=Fast, 2=Turbo, 4=Slow, 8=Ultra). Defaults to current mode. |
+| LOW    | Low passband bound in Hz. Default: 500  |
+| HIGH   | High passband bound in Hz. Default: 2500 |
+
+| Response |
+|----------|
+|{"params":{"FREE":[{"HIGH":860,"LOW":500,"WIDTH":360},{"HIGH":2500,"LOW":1120,"WIDTH":1380}],"BANDWIDTH":160,"HIGH":2500,"LOW":500,"SPEED":2,"_ID":269562514193},"type":"RX.FREE_OFFSETS","value":""}|
+
+`FREE` is a list of free segments, each with `LOW`, `HIGH`, and `WIDTH` in Hz.
+`BANDWIDTH` is the signal bandwidth (Hz) for the requested `SPEED`.
+Segments narrower than `BANDWIDTH` are omitted — they cannot fit the intended transmission.
 
 
 # TX.GET_TEXT

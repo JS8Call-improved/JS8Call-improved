@@ -377,6 +377,75 @@ if(type == "STATION.SET_SPOT") {
                            });
         return;
     }
+    /**
+     * @brief RX.GET_FREE_OFFSETS: Returns contiguous free offset segments in the passband.
+     * Accounts for the bandwidth of each active signal's submode when computing occupied
+     * zones, so returned segments are guaranteed wide enough for the requested TX mode.
+     * Optional params: SPEED (submode int, defaults to current), LOW (Hz, default 500),
+     * HIGH (Hz, default 2500). Entries older than 30 seconds are treated as clear.
+     */
+    if (type == "RX.GET_FREE_OFFSETS") {
+        int const speed = message.params().value("SPEED", QVariant(m_nSubMode)).toInt();
+        int const low   = message.params().value("LOW",   QVariant(500)).toInt();
+        int const high  = message.params().value("HIGH",  QVariant(2500)).toInt();
+        int const bw    = JS8::Submode::bandwidth(speed);
+
+        auto const now  = DriftingDateTime::currentDateTimeUtc();
+
+        // Build occupied intervals [start, end] for each recently active offset.
+        // The blocked zone around each occupied offset accounts for both the signal's
+        // own bandwidth and the requested TX bandwidth, ensuring the returned segments
+        // won't overlap either transmission.
+        QList<QPair<int, int>> occupied;
+        for (auto const [occ, activity] : m_bandActivity.asKeyValueRange()) {
+            if (activity.isEmpty() || activity.last().utcTimestamp.secsTo(now) >= 30)
+                continue;
+            int const occ_bw    = JS8::Submode::bandwidth(activity.last().submode);
+            int const halfTotal = bw / 2 + occ_bw / 2;
+            occupied.append({occ - halfTotal, occ + halfTotal});
+        }
+
+        std::sort(occupied.begin(), occupied.end());
+
+        // Merge overlapping intervals.
+        QList<QPair<int, int>> merged;
+        for (auto const &interval : occupied) {
+            if (merged.isEmpty() || merged.last().second < interval.first)
+                merged.append(interval);
+            else
+                merged.last().second = std::max(merged.last().second, interval.second);
+        }
+
+        // Find gaps in [low, high] that are at least bw wide.
+        QVariantList freeSegments;
+        int cursor = low;
+        for (auto const &[start, end] : merged) {
+            if (end <= cursor)
+                continue;
+            if (start > cursor) {
+                int const gapHigh = std::min(start, high);
+                int const width   = gapHigh - cursor;
+                if (cursor < high && width >= bw)
+                    freeSegments.append(QVariant(QVariantMap{
+                        {"LOW", cursor}, {"HIGH", gapHigh}, {"WIDTH", width}}));
+            }
+            cursor = std::max(cursor, end);
+            if (cursor >= high)
+                break;
+        }
+        if (cursor < high && (high - cursor) >= bw)
+            freeSegments.append(QVariant(QVariantMap{
+                {"LOW", cursor}, {"HIGH", high}, {"WIDTH", high - cursor}}));
+
+        sendNetworkMessage("RX.FREE_OFFSETS", "",
+                           {{"_ID", id},
+                            {"FREE", QVariant(freeSegments)},
+                            {"SPEED", speed},
+                            {"BANDWIDTH", bw},
+                            {"LOW", low},
+                            {"HIGH", high}});
+        return;
+    }
     /** @} */ // End RX Commands
 
     // TX.GET_TEXT - Retrieves the current TX text buffer.
