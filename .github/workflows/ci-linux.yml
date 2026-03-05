@@ -138,6 +138,11 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.packages }}
 
+    - name: GCC 12
+      run: |
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 120
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 120
+
     - name: Install dependencies needed to build libs (Ubuntu)
       if: |
         (steps.cache-usb.outputs.cache-hit != 'true' ||
@@ -290,7 +295,7 @@ jobs:
         git clone --depth=1 --branch=6.9.3 https://github.com/qt/qt5.git /tmp/qt6
         mkdir -p /tmp/qt6/build
         cd /tmp/qt6/build
-        /tmp/qt6/configure -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/local/ffmpeg" --prefix=${GITHUB_WORKSPACE}/local/qt693-install -init-submodules -submodules qtmultimedia,qtserialport,qtwayland -ffmpeg-dir /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
+        /tmp/qt6/configure -DWITH_PIPEWIRE=ON -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/local/ffmpeg" --prefix=${GITHUB_WORKSPACE}/local/qt693-install -init-submodules -submodules qtmultimedia,qtserialport,qtwayland -ffmpeg-dir /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
         cmake --build . --parallel
         cmake --install .
 
@@ -325,8 +330,8 @@ jobs:
       run: |
         echo "${{ secrets.CI_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
         ls -l /tmp/js8call.key.asc
-        gpg --batch --import /tmp/js8call.key.asc
-        echo "${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+        gpg --batch --yes --always-trust --import /tmp/js8call.key.asc
+        echo "${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -336,8 +341,8 @@ jobs:
       run: |
         echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
         ls -l /tmp/js8call.key.asc
-        gpg --batch --import /tmp/js8call.key.asc
-        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+        gpg --batch --yes --always-trust --import /tmp/js8call.key.asc
+        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
       continue-on-error: true
 
     - name: List keys
@@ -348,7 +353,7 @@ jobs:
       if: ${{ (runner.arch == 'X64') && (inputs.release-ver) && (inputs.environment == 'Release') }}
       run: |
         export LINUXDEPLOY_OUTPUT_VERSION=${{ inputs.release-ver }}
-        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
         export EXTRA_QT_MODULES="waylandcompositor"
         export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
 
@@ -370,7 +375,7 @@ jobs:
       if: ((runner.arch == 'X64') && !(inputs.release-ver) && (!(inputs.environment) || (inputs.environment == 'CI')))
       run: |
         export LINUXDEPLOY_OUTPUT_VERSION=devel
-        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
         export EXTRA_QT_MODULES="waylandcompositor"
         export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
 
@@ -392,7 +397,7 @@ jobs:
       if: ((runner.arch == 'ARM64') && !(inputs.release-ver) && (!(inputs.environment) || (inputs.environment == 'CI')))
       run: |
         export LINUXDEPLOY_OUTPUT_VERSION=devel
-        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
         export EXTRA_QT_MODULES="waylandcompositor"
         export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
 
@@ -414,7 +419,7 @@ jobs:
       if: ${{ (runner.arch == 'ARM64') && (inputs.release-ver) && (inputs.environment == 'Release') }}
       run: |
         export LINUXDEPLOY_OUTPUT_VERSION=${{ inputs.release-ver }}
-        export EXTRA_PLATFORM_PLUGINS=libqwayland-generic.so
+        export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
         export EXTRA_QT_MODULES="waylandcompositor"
         export LD_LIBRARY_PATH=/home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg/lib
 
