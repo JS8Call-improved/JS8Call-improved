@@ -1227,7 +1227,7 @@ template <typename Mode> class DecodeMode {
         }
 
         // Scale timing clamp relative to samples per symbol so short-symbol
-        // modes aren't allowed outsized shifts (e.g., 12-sample turbo).
+        // modes aren't allowed outsized shifts (e.g., 12-sample JS8 6/160 formerly "Turbo").
         double const timingMaxShift =
             std::clamp(0.08 * static_cast<double>(Mode::NDOWNSPS), 0.5, 2.0);
 

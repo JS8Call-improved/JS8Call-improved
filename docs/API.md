@@ -649,14 +649,14 @@ Sets the currently set transmit mode speed
 
 
 ## MODE Speeds
-| Mode  | Number |
-|-------|--------|
-| Normal|   0    |
-| Fast  |   1    |
-| Turbo |   2    |
-| Slow  |   4    |
-| Ultra |   8    |
-Please note, Ultra speed is an *experimental* and unreliable speed.
+| Mode      | Number |
+|-----------|--------|
+| Normal    |   0    |
+| Fast      |   1    |
+| JS8 6/160 |   2    |
+| Slow      |   4    |
+| JS8 4/250 |   8    |
+Please note, JS8 4/250 is an *experimental* and unreliable mode.
 
 # INBOX.GET_MESSAGES
 API <= 2.6

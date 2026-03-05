@@ -149,7 +149,9 @@ Make sure your rig is set to upper sideband (USB) mode for every band. If you ar
 
 ### Duty Cycle
 
-The JS8 modulator is a constant envelope, full-duty modulation that transmits in 12.6 second frames in normal speed. Because of the dead air between transmission frames, multi-frame messages can be classified as 84% duty on a 15-second window (12.6 / 15 = 0.84) for normal and slow (25.28 / 30 = 0.84), 79% for fast on a 10-second window (7.9 / 10 = 0.79), 65% for turbo on a 6-second window (3.95 / 6 = 0.653).
+The JS8 modulator is a constant envelope, full-duty modulation that transmits in 12.6 second frames in normal speed. Because of the dead air between transmission frames, multi-frame messages can be classified as 84% duty on a 15-second window (12.6 / 15 = 0.84) for normal and slow (25.28 / 30 = 0.84), 79% for fast on a 10-second window (7.9 / 10 = 0.79), 65% for JS8 6/160 (formerly "Turbo" on a 6-second window (3.95 / 6 = 0.653).
+
+JS8 4/250 is an experimental mode introduced in 2.6 and later; it uses a 3-second Tx on a 4-second frame interval, so is technically 75% duty cycle. However, these specs may change as JS8 4/250 is more cpu intensive than other modes and can be unreliable.
 
 Please make note of the power restrictions your transceiver manufacturer recommends for full-duty digital transmissions. When in doubt, use only a maximum of 50% of your rig's power output to "save your finals".
 
@@ -172,14 +174,19 @@ If you've used FSQ, Fldigi or WSJT-X before, you'll feel right at home with JS8C
 
 ### Mode Speed
 
-JS8Call 2.0 introduced two new faster mode speeds for QSOs and 2.1 introduced a slow mode. The four speeds now available in JS8 are:
+JS8Call 2.0 introduced two new faster mode speeds for QSOs and 2.1 introduced a slow mode. 2.6 and later introduced JS8 4/250 and renamed "Turbo" to 6/160, the two faster modes designated by frame time/bandwidth. The five speeds now available in JS8 are:
 
 Name | Period/s | Bandwidth/Hz | Speed/WPM | Sensitivity/dB
----|---|----|---|---|
-Slow | 30 | 25 | 8 | -28
+-------|----|----|----|----|
+Slow   | 30 | 25 | 8  | -28
 Normal | 15 | 50 | 16 | -24
-Fast | 10 | 80 | 24 | -20
-Turbo | 6 | 160 | 40 | -18
+Fast   | 10 | 80 | 24 | -20
+-------|----|----|----|----|
+Faster but less reliable modes designated by frame time/bandwidth
+----------|---|-----|----|----|
+JS8 6/160 | 6 | 160 | 40 | -18
+JS8 4/250 | 4 | 250 | 60 | -16
+----------|---|-----|----|----|
 
 The intent of the faster speeds is to start your QSO in normal and \"upgrade\" to the faster speeds if conditions support it. Unless you have a weak computer with a slow CPU, you should enable MULTI from the mode menu, asking the decoder to decode all modes at once. Other users typically expect you have that set. Otherwise if they can't reach you on Normal and move to Slow, you will not decode their message.
 
@@ -938,11 +945,12 @@ JS8Call uses JS8 modulation as the base transport for data. Being a derivative o
 | SLOW      | 25.28 seconds   | 8 / 79              | 3.125 baud    | 3.125Hz / 25Hz               |
 | NORMAL    | 12.64 seconds   | 8 / 79              | 6.25 baud     | 6.25Hz / 50Hz                |
 | FAST      | 7.9 seconds     | 8 / 79              | 10 baud       | 10Hz / 80Hz                  |
-| TURBO     | 3.95 seconds    | 8 / 79              | 20 baud       | 20Hz / 160Hz                 |
+| JS8 6/160 | 3.95 seconds    | 8 / 79              | 20 baud       | 20Hz / 160Hz                 |
+| JS8 4/250 |         Experimental - specs not published and may change in the future              |
 
 Normal speed is the closest relative to FT8. It uses 3 blocks of 7 tones 7x7 Costas array for synchronization for backwards compatibility.
 
-Fast, Turbo, and Slow speeds use 3 blocks of 7 tones with each block transmitting a unique 7x7 Costas array. This allows for more accurate synchronization.
+Fast, JS8 6/160 (formerly "Turbo"), and Slow speeds use 3 blocks of 7 tones with each block transmitting a unique 7x7 Costas array. This allows for more accurate synchronization.
 
 Based on the modulation bandwidth and error correction, under AWGN with all else being equal:
 
@@ -950,7 +958,7 @@ Based on the modulation bandwidth and error correction, under AWGN with all else
 
   - Fast is 2dB less sensitive than Normal (-2dB)
 
-  - Turbo is 3dB less sensitive than Fast and 6dB less sensitive than Normal (-6dB)
+  - 6/160 (formerly "Turbo") is 3dB less sensitive than Fast and 6dB less sensitive than Normal (-6dB)
 
 ### Protocol
 

@@ -626,7 +626,7 @@ class UI_Constructor : public QMainWindow {
     QMap<qint32, qint32>
         m_lastDecodeStartMap; // submode, decode k start position
     QMap<qint32, qint32>
-        m_lastDecodeCycleMap; // Turbo/Ultra submode, last enqueued cycle start
+        m_lastDecodeCycleMap; // JS 6/160 & JS8 4/250 submodes, last enqueued cycle start
     Radio::Frequency m_decoderBusyFreq;
     QDateTime m_decoderBusyStartTime;
     bool m_auto;

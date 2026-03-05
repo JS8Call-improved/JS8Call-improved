@@ -254,8 +254,9 @@ void UI_Constructor::displayBandActivity() {
                 ui->tableWidgetRXAll->setItem(row, col++, tdriftItem);
 
                 auto name = JS8::Submode::name(submode);
-                auto submodeItem =
-                    new QTableWidgetItem(name.left(1).replace("H", "N"));
+                auto submodeItem = (name == "JS8 6/160" || name == "JS8 4/250")
+                    ? new QTableWidgetItem(name.right(5))
+                    : new QTableWidgetItem(name.left(1).replace("H", "N"));
                 submodeItem->setToolTip(name);
                 submodeItem->setData(Qt::UserRole, QVariant(name));
                 submodeItem->setTextAlignment(Qt::AlignCenter);

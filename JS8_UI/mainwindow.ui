@@ -2248,7 +2248,7 @@ background-color: #22ff22;
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>JS8 (&amp;Normal, 15s, 50Hz, ~16 WPM)</string>
+    <string>JS8 Normal (&amp;~16 wpm, best for most conditions)</string>
    </property>
   </action>
   <action name="actionModeJS8Fast">
@@ -2256,7 +2256,7 @@ background-color: #22ff22;
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>JS8 (&amp;Fast, 10s, 80Hz, ~24 WPM)</string>
+    <string>JS8 Fast (&amp;~24 wpm, reduced decoder sensitivity)</string>
    </property>
   </action>
   <action name="actionModeJS8Turbo">
@@ -2264,7 +2264,7 @@ background-color: #22ff22;
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>JS8 (&amp;Turbo, 6s, 160Hz, ~40 WPM)</string>
+    <string>JS8 6/160 (&amp;~40 wpm, only use in good conditions)</string>
    </property>
   </action>
   <action name="actionModeJS8Ultra">
@@ -2272,7 +2272,7 @@ background-color: #22ff22;
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>JS8 (&amp;Ultra, 4s, 250Hz, ~60WPM)</string>
+    <string>JS8 4/250 (&amp;~60 wpm, fast but experimental mode)</string>
    </property>
   </action>
   <action name="actionModeJS8HB">
@@ -2323,7 +2323,7 @@ background-color: #22ff22;
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>JS8 (&amp;Slow, 30s, 25Hz, ~8 WPM)</string>
+    <string>JS8 Slow (&amp;~8 wpm, best decoder sensitivity)</string>
    </property>
   </action>
   <action name="actionEnable_Monitor_RX">

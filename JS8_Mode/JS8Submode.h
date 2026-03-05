@@ -39,7 +39,7 @@ Costas::Type costas(int);
  * How long from one transmission start to the next transmission start,
  * in seconds.
  *
- * This is the usual number a typical users knows: 30 s for SLOW, 6 s for TURBO.
+ * This is the usual number a typical users knows: 30 s for SLOW, 6 s for JS8 6/160 (formerly "Turbo").
  */
 unsigned int period(int);
 

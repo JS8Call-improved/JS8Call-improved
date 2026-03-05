@@ -112,37 +112,45 @@ class Data {
 };
 
 // Data for known submodes. Normal mode uses the old Costas Array
-// definition; all other modes use the new one. Note that as of this
-// writing, Ultra is a known, but unused, submode; we handle it here
-// nevertheless, but it's in general disabled in the calling code.
+// definition; all other modes use the new one.
 
-constexpr Data Normal = {
-    "NORMAL",        JS8A_SYMBOL_SAMPLES,    JS8A_START_DELAY_MS,
-    JS8A_TX_SECONDS, Costas::Type::ORIGINAL, -24};
-constexpr Data Fast = {"FAST",
-                       JS8B_SYMBOL_SAMPLES,
-                       JS8B_START_DELAY_MS,
-                       JS8B_TX_SECONDS,
-                       Costas::Type::MODIFIED,
-                       -22,
-                       16};
-constexpr Data Turbo = {"TURBO",
-                        JS8C_SYMBOL_SAMPLES,
-                        JS8C_START_DELAY_MS,
-                        JS8C_TX_SECONDS,
-                        Costas::Type::MODIFIED,
-                        -20,
-                        32};
-constexpr Data Slow = {
-    "SLOW",          JS8E_SYMBOL_SAMPLES,    JS8E_START_DELAY_MS,
-    JS8E_TX_SECONDS, Costas::Type::MODIFIED, -28};
-constexpr Data Ultra = {"ULTRA",
-                        JS8I_SYMBOL_SAMPLES,
-                        JS8I_START_DELAY_MS,
-                        JS8I_TX_SECONDS,
-                        Costas::Type::MODIFIED,
-                        -18,
-                        50};
+constexpr Data Normal = {"NORMAL",
+                         JS8A_SYMBOL_SAMPLES,
+                         JS8A_START_DELAY_MS,
+                         JS8A_TX_SECONDS,
+                         Costas::Type::ORIGINAL,
+                         -24};
+
+constexpr Data Fast =   {"FAST",
+                         JS8B_SYMBOL_SAMPLES,
+                         JS8B_START_DELAY_MS,
+                         JS8B_TX_SECONDS,
+                         Costas::Type::MODIFIED,
+                         -22,
+                         16};
+
+constexpr Data Turbo =  {"JS8 6/160",
+                         JS8C_SYMBOL_SAMPLES,
+                         JS8C_START_DELAY_MS,
+                         JS8C_TX_SECONDS,
+                         Costas::Type::MODIFIED,
+                         -20,
+                         32};
+
+constexpr Data Slow =   {"SLOW",
+                         JS8E_SYMBOL_SAMPLES,
+                         JS8E_START_DELAY_MS,
+                         JS8E_TX_SECONDS,
+                         Costas::Type::MODIFIED,
+                         -28};
+
+constexpr Data Ultra =  {"JS8 4/250",
+                         JS8I_SYMBOL_SAMPLES,
+                         JS8I_START_DELAY_MS,
+                         JS8I_TX_SECONDS,
+                         Costas::Type::MODIFIED,
+                         -18,
+                         50};
 
 // Given a submode, return data for it, or, if we don't have any idea
 // what the caller is talking about, throw.
