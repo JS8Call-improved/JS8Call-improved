@@ -1821,6 +1821,9 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
                  submode == Varicode::JS8CallUltra)
                     ? JS8::Submode::samplesNeeded(submode)
                     : JS8::Submode::samplesForSymbols(submode);
+            bool const turboOrUltra =
+                (submode == Varicode::JS8CallTurbo ||
+                 submode == Varicode::JS8CallUltra);
             qint32 cycleFramesReady = k - (cycle * cycleFrames);
             if (cycleFramesReady < 0) {
                 cycleFramesReady = k + (maxSamples - (cycle * cycleFrames));
@@ -1855,6 +1858,21 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
 
                 // keep track of last decode position
                 m_lastDecodeStartMap[submode] = k;
+            } else if (turboOrUltra &&
+                       cycleFramesReady >= cycleFramesNeeded) {
+                qint32 const cycleStart = cycle * cycleFrames;
+                if (m_lastDecodeCycleMap.value(submode, -1) != cycleStart) {
+                    DecodeParams d;
+                    d.submode = submode;
+                    d.start = cycleStart;
+                    d.sz = cycleFramesNeeded;
+                    m_decoderQueue.append(d);
+                    decodes++;
+
+                    // keep track of last decode position and cycle
+                    m_lastDecodeStartMap[submode] = k;
+                    m_lastDecodeCycleMap[submode] = cycleStart;
+                }
             } else if ((incrementedBy >= 1.5 * oneSecondSamples &&
                         cycleFramesReady >=
                             cycleFramesNeeded) || // within every 3/2 seconds
