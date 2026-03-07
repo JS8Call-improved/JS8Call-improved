@@ -165,6 +165,18 @@ void UI_Constructor::networkMessage(Message const &message) {
     // STATION.SET_SPOT - Set the current spotting status
     // STATION.GET_OS   - Get basic info about the OS we are running on
     // STATION.VERSION  - Get the JS8Call version
+    // STATION.GET_CONFIG - Get all config states (auto_reply, js8hb, hback, etc.)
+    // STATION.SET_AUTO_REPLY - Toggle auto-reply on/off
+    // STATION.SET_JS8HB - Toggle JS8 heartbeat on/off
+    // STATION.SET_HBACK - Toggle heartbeat acknowledgments on/off
+    // STATION.SET_MULTI_DECODER - Toggle multi-decoder on/off
+    // STATION.SET_HB_INTERVAL - Set heartbeat interval (seconds)
+    // STATION.SET_HB_TIMER - Start/stop heartbeat timer
+    // STATION.SEND_HB - Send heartbeat immediately
+    // STATION.SET_AUTOREPLY_CONFIRMATION - Toggle autoreply confirmation via TCP
+    // STATION.AUTOREPLY_CONFIRM_RESPONSE - Accept/reject pending autoreply
+    // STATION.SET_GROUPS - Replace subscribed groups list
+    // STATION.SET_AVOID_ALLCALL - Toggle @ALLCALL opt-out
     /**
      * @name STATION Commands
      * STATION related API calls
@@ -296,187 +308,6 @@ if(type == "STATION.SET_SPOT") {
           return;
     }
 
-    /** @} */ // End STATION Commands
-
-    // RX.GET_CALL_ACTIVITY
-    // RX.GET_CALL_SELECTED
-    // RX.GET_BAND_ACTIVITY
-    // RX.GET_TEXT
-    /**
-     * @name RX Commands
-     * RX related API calls
-     * Refers to received data and activity
-     */
-    /** @{ */
-
-    /**
-     * @brief RX.GET_CALL_ACTIVITY: Returns a list of active callsigns.
-     * Filters results based on the `callsign_aging` configuration.
-     */
-    if (type == "RX.GET_CALL_ACTIVITY") {
-        auto now = DriftingDateTime::currentDateTimeUtc();
-        int callsignAging = m_config.callsign_aging();
-        QVariantMap calls = {
-            {"_ID", id},
-        };
-
-        foreach (auto cd, m_callActivity.values()) {
-            if (callsignAging &&
-                cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
-                continue;
-            }
-            QVariantMap detail;
-            detail["SNR"] = QVariant(cd.snr);
-            detail["GRID"] = QVariant(cd.grid);
-            detail["UTC"] = QVariant(cd.utcTimestamp.toMSecsSinceEpoch());
-            calls[cd.call] = QVariant(detail);
-        }
-
-        sendNetworkMessage("RX.CALL_ACTIVITY", "", calls);
-        return;
-    }
-    /** @brief RX.GET_CALL_SELECTED: Returns the currently selected callsign. */
-    if (type == "RX.GET_CALL_SELECTED") {
-        sendNetworkMessage("RX.CALL_SELECTED", callsignSelected(),
-                           {
-                               {"_ID", id},
-                           });
-        return;
-    }
-    /**
-     * @brief RX.GET_BAND_ACTIVITY: Returns recent band activity details.
-     * Includes frequency, offset, text, SNR, and UTC timestamp for each entry.
-     */
-    if (type == "RX.GET_BAND_ACTIVITY") {
-        QVariantMap offsets = {
-            {"_ID", id},
-        };
-        for (auto const [offset, activity] : m_bandActivity.asKeyValueRange()) {
-            if (activity.isEmpty())
-                continue;
-
-            auto const d = activity.last();
-
-            offsets[QString("%1").arg(offset)] = QVariant(QVariantMap{
-                {"FREQ", QVariant(d.dial + d.offset)},
-                {"DIAL", QVariant(d.dial)},
-                {"OFFSET", QVariant(d.offset)},
-                {"TEXT", QVariant(d.text)},
-                {"SNR", QVariant(d.snr)},
-                {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
-        }
-
-        sendNetworkMessage("RX.BAND_ACTIVITY", "", offsets);
-        return;
-    }
-    /** @brief RX.GET_TEXT: Retrieves the current RX text buffer. */
-    if (type == "RX.GET_TEXT") { /** RX.GET_TEXT */
-        sendNetworkMessage("RX.TEXT", ui->textEditRX->toPlainText().right(1024),
-                           {
-                               {"_ID", id},
-                           });
-        return;
-    }
-    /** @} */ // End RX Commands
-
-    // TX.GET_TEXT - Retrieves the current TX text buffer.
-    // TX.SET_TEXT - Updates the TX text buffer with new content.
-    // TX.SEND_MESSAGE - Enqueues a message for transmission.
-    // TX.GET_QUEUE_DEPTH - Return the number of items in the transmit queue.
-    /**
-     * @name TX Commands
-     * TX related API calls
-     * Refers to transmitted data and activity
-     */
-    /** @{ */
-
-    /** @brief TX.GET_TEXT: Retrieves the current TX text buffer. */
-    if (type == "TX.GET_TEXT") {
-        sendNetworkMessage("TX.TEXT",
-                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
-                           {
-                               {"_ID", id},
-                           });
-        return;
-    }
-    /** @brief TX.SET_TEXT: Updates the TX text buffer with new content. */
-    if (type == "TX.SET_TEXT") {
-        addMessageText(message.value(), true);
-        sendNetworkMessage("TX.TEXT",
-                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
-                           {
-                               {"_ID", id},
-                           });
-        return;
-    }
-    /** @brief TX.SEND_MESSAGE: Enqueues a message for transmission. */
-    if (type == "TX.SEND_MESSAGE") {
-        auto text = message.value();
-        if (!text.isEmpty()) {
-            enqueueMessage(PriorityNormal, text, -1, nullptr);
-            processTxQueue();
-            return;
-        }
-    }
-
-    /**
-     * @brief Return the number of items in the transmit queue.
-     * @note API 2.6+
-     * 
-     * Thanks to N0GQ Jeff Francis
-     */
-    if(type == "TX.GET_QUEUE_DEPTH"){
-      int depth = m_txMessageQueue.size();
-      if(m_transmitting && depth==0) depth=1;
-      sendNetworkMessage("TX.QUEUE_DEPTH", "", {
-	  {"_ID", id},
-	  {"DEPTH", QVariant(depth)}
-	});
-      return;
-    }
-    /** @} */ // End TX Commands
-
-    // MODE.GET_SPEED
-    // MODE.SET_SPEED
-    /**
-     * @name MODE Commands
-     * MODE related API calls
-     */
-    /** @{ */
-    /** @brief MODE.GET_SPEED: Retrieves the current transmission speed mode. */
-    if (type == "MODE.GET_SPEED") {
-        sendNetworkMessage("MODE.SPEED", "",
-                           {
-                               {"_ID", id},
-                               {"SPEED", m_nSubMode},
-                           });
-        return;
-    }
-    /** @brief MODE.SET_SPEED: Updates the transmission speed mode. */
-    if (type == "MODE.SET_SPEED") {
-        auto ok = false;
-        auto const speed =
-            message.params().value("SPEED", QVariant(m_nSubMode)).toInt(&ok);
-        if (ok) {
-            if (speed == Varicode::JS8CallNormal)
-                ui->actionModeJS8Normal->setChecked(true);
-            else if (speed == Varicode::JS8CallFast)
-                ui->actionModeJS8Fast->setChecked(true);
-            else if (speed == Varicode::JS8CallTurbo)
-                ui->actionModeJS8Turbo->setChecked(true);
-            else if (speed == Varicode::JS8CallSlow)
-                ui->actionModeJS8Slow->setChecked(true);
-            else if (speed == Varicode::JS8CallUltra)
-                ui->actionModeJS8Ultra->setChecked(true);
-            setupJS8();
-        }
-        sendNetworkMessage("MODE.SET_SPEED", "",
-                           {
-                               {"_ID", id},
-                               {"SPEED", m_nSubMode},
-                           });
-        return;
-    }
     /** @brief STATION.GET_CONFIG: Returns all mode/config states for remote control.
      *  @note API 2.6+ */
     if (type == "STATION.GET_CONFIG") {
@@ -676,8 +507,189 @@ if(type == "STATION.SET_SPOT") {
         });
         return;
     }
-
     /** @} */ // End STATION Commands
+
+    // RX.GET_CALL_ACTIVITY
+    // RX.GET_CALL_SELECTED
+    // RX.GET_BAND_ACTIVITY
+    // RX.GET_TEXT
+    /**
+     * @name RX Commands
+     * RX related API calls
+     * Refers to received data and activity
+     */
+    /** @{ */
+
+    /**
+     * @brief RX.GET_CALL_ACTIVITY: Returns a list of active callsigns.
+     * Filters results based on the `callsign_aging` configuration.
+     */
+    if (type == "RX.GET_CALL_ACTIVITY") {
+        auto now = DriftingDateTime::currentDateTimeUtc();
+        int callsignAging = m_config.callsign_aging();
+        QVariantMap calls = {
+            {"_ID", id},
+        };
+
+        foreach (auto cd, m_callActivity.values()) {
+            if (callsignAging &&
+                cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
+                continue;
+            }
+            QVariantMap detail;
+            detail["SNR"] = QVariant(cd.snr);
+            detail["GRID"] = QVariant(cd.grid);
+            detail["UTC"] = QVariant(cd.utcTimestamp.toMSecsSinceEpoch());
+            calls[cd.call] = QVariant(detail);
+        }
+
+        sendNetworkMessage("RX.CALL_ACTIVITY", "", calls);
+        return;
+    }
+    /** @brief RX.GET_CALL_SELECTED: Returns the currently selected callsign. */
+    if (type == "RX.GET_CALL_SELECTED") {
+        sendNetworkMessage("RX.CALL_SELECTED", callsignSelected(),
+                           {
+                               {"_ID", id},
+                           });
+        return;
+    }
+    /**
+     * @brief RX.GET_BAND_ACTIVITY: Returns recent band activity details.
+     * Includes frequency, offset, text, SNR, and UTC timestamp for each entry.
+     */
+    if (type == "RX.GET_BAND_ACTIVITY") {
+        QVariantMap offsets = {
+            {"_ID", id},
+        };
+        for (auto const [offset, activity] : m_bandActivity.asKeyValueRange()) {
+            if (activity.isEmpty())
+                continue;
+
+            auto const d = activity.last();
+
+            offsets[QString("%1").arg(offset)] = QVariant(QVariantMap{
+                {"FREQ", QVariant(d.dial + d.offset)},
+                {"DIAL", QVariant(d.dial)},
+                {"OFFSET", QVariant(d.offset)},
+                {"TEXT", QVariant(d.text)},
+                {"SNR", QVariant(d.snr)},
+                {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
+        }
+
+        sendNetworkMessage("RX.BAND_ACTIVITY", "", offsets);
+        return;
+    }
+    /** @brief RX.GET_TEXT: Retrieves the current RX text buffer. */
+    if (type == "RX.GET_TEXT") { /** RX.GET_TEXT */
+        sendNetworkMessage("RX.TEXT", ui->textEditRX->toPlainText().right(1024),
+                           {
+                               {"_ID", id},
+                           });
+        return;
+    }
+    /** @} */ // End RX Commands
+
+    // TX.GET_TEXT - Retrieves the current TX text buffer.
+    // TX.SET_TEXT - Updates the TX text buffer with new content.
+    // TX.SEND_MESSAGE - Enqueues a message for transmission.
+    // TX.GET_QUEUE_DEPTH - Return the number of items in the transmit queue.
+    /**
+     * @name TX Commands
+     * TX related API calls
+     * Refers to transmitted data and activity
+     */
+    /** @{ */
+
+    /** @brief TX.GET_TEXT: Retrieves the current TX text buffer. */
+    if (type == "TX.GET_TEXT") {
+        sendNetworkMessage("TX.TEXT",
+                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
+                           {
+                               {"_ID", id},
+                           });
+        return;
+    }
+    /** @brief TX.SET_TEXT: Updates the TX text buffer with new content. */
+    if (type == "TX.SET_TEXT") {
+        addMessageText(message.value(), true);
+        sendNetworkMessage("TX.TEXT",
+                           ui->extFreeTextMsgEdit->toPlainText().right(1024),
+                           {
+                               {"_ID", id},
+                           });
+        return;
+    }
+    /** @brief TX.SEND_MESSAGE: Enqueues a message for transmission. */
+    if (type == "TX.SEND_MESSAGE") {
+        auto text = message.value();
+        if (!text.isEmpty()) {
+            enqueueMessage(PriorityNormal, text, -1, nullptr);
+            processTxQueue();
+            return;
+        }
+    }
+
+    /**
+     * @brief Return the number of items in the transmit queue.
+     * @note API 2.6+
+     * 
+     * Thanks to N0GQ Jeff Francis
+     */
+    if(type == "TX.GET_QUEUE_DEPTH"){
+      int depth = m_txMessageQueue.size();
+      if(m_transmitting && depth==0) depth=1;
+      sendNetworkMessage("TX.QUEUE_DEPTH", "", {
+	  {"_ID", id},
+	  {"DEPTH", QVariant(depth)}
+	});
+      return;
+    }
+    /** @} */ // End TX Commands
+
+    // MODE.GET_SPEED
+    // MODE.SET_SPEED
+    /**
+     * @name MODE Commands
+     * MODE related API calls
+     */
+    /** @{ */
+    /** @brief MODE.GET_SPEED: Retrieves the current transmission speed mode. */
+    if (type == "MODE.GET_SPEED") {
+        sendNetworkMessage("MODE.SPEED", "",
+                           {
+                               {"_ID", id},
+                               {"SPEED", m_nSubMode},
+                           });
+        return;
+    }
+    /** @brief MODE.SET_SPEED: Updates the transmission speed mode. */
+    if (type == "MODE.SET_SPEED") {
+        auto ok = false;
+        auto const speed =
+            message.params().value("SPEED", QVariant(m_nSubMode)).toInt(&ok);
+        if (ok) {
+            if (speed == Varicode::JS8CallNormal)
+                ui->actionModeJS8Normal->setChecked(true);
+            else if (speed == Varicode::JS8CallFast)
+                ui->actionModeJS8Fast->setChecked(true);
+            else if (speed == Varicode::JS8CallTurbo)
+                ui->actionModeJS8Turbo->setChecked(true);
+            else if (speed == Varicode::JS8CallSlow)
+                ui->actionModeJS8Slow->setChecked(true);
+            else if (speed == Varicode::JS8CallUltra)
+                ui->actionModeJS8Ultra->setChecked(true);
+            setupJS8();
+        }
+        sendNetworkMessage("MODE.SET_SPEED", "",
+                           {
+                               {"_ID", id},
+                               {"SPEED", m_nSubMode},
+                           });
+        return;
+    }
+
+    /** @} */ // End MODE Commands
 
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
