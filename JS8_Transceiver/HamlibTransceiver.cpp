@@ -767,6 +767,12 @@ void HamlibTransceiver::do_frequency(Frequency f, MODE m, bool no_ignore) {
 /** Work around hamlib bug
  * [#1966](https://github.com/Hamlib/Hamlib/issues/1966). */
 void HamlibTransceiver::hamlib_bug_bandaid(TransceiverState const &s) {
+    // Avoid an extra network CAT round-trip for network-backed rigs such as
+    // flrig. That extra write can push TX start late on Linux.
+    if (rig_->caps->port_type == RIG_PORT_NETWORK) {
+        return;
+    }
+
     if (s.frequency() == s.tx_frequency() && s.split() && s.ptt()) {
         // Change the frequency ever so slightly without telling anybody.
         // Will not matter during the upcoming transmit and will be corrected
