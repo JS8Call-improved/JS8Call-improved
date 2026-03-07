@@ -383,6 +383,7 @@ if(type == "STATION.SET_SPOT") {
      * zones, so returned segments are guaranteed wide enough for the requested TX mode.
      * Optional params: SPEED (submode int, defaults to current), LOW (Hz, default 500),
      * HIGH (Hz, default 2500). Entries older than 30 seconds are treated as clear.
+     * @note API 2.6+
      */
     if (type == "RX.GET_FREE_OFFSETS") {
         int const speed = message.params().value("SPEED", QVariant(m_nSubMode)).toInt();
@@ -491,7 +492,7 @@ if(type == "STATION.SET_SPOT") {
     /**
      * @brief Return the number of items in the transmit queue.
      * @note API 2.6+
-     * 
+     *
      * Thanks to N0GQ Jeff Francis
      */
     if(type == "TX.GET_QUEUE_DEPTH"){
