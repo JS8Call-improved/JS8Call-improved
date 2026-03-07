@@ -326,25 +326,27 @@ jobs:
 
 # Secrets
 #         gpg --batch --yes --always-trust --import /tmp/js8call.key.asc
+#         echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
     - name: Get secrets (CI)
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       run: |
         echo "${{ secrets.CI_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
         ls -l /tmp/js8call.key.asc
 
-        echo "${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+        echo "${{ secrets.CI_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import /tmp/js8call.key.asc
       continue-on-error: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 #         gpg --batch --yes --always-trust --import /tmp/js8call.key.asc
+#         echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
     - name: Get secrets (Release)
       if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       run: |
         echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_KEY }}" >/tmp/js8call.key.asc
         ls -l /tmp/js8call.key.asc
 
-        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import <(echo -e "/tmp/js8call.key.asc")
+        echo "${{ secrets.RELEASE_APPIMAGE_SIGNING_PASS }}" | gpg --batch --yes --always-trust --passphrase-fd 0 --pinentry-mode loopback --import /tmp/js8call.key.asc
       continue-on-error: true
 
     - name: List keys
