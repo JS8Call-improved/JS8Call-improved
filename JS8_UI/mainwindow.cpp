@@ -723,7 +723,7 @@ void UI_Constructor::on_actionCheck_for_Updates_triggered() {
 
 void UI_Constructor::on_actionUser_Guide_triggered() {
     QDesktopServices::openUrl(
-        QUrl("https://js8call-improved.com/downloads/JS8Call_User_Guide.pdf"));
+        QUrl("https://js8call-improved.github.io/JS8Call-improved/d6/d14/md_docs_2user__guide_2JS8Call__User__Guide.html"));
 }
 
 void UI_Constructor::on_actionEnable_Monitor_RX_toggled(bool checked) {

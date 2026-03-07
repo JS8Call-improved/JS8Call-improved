@@ -11,6 +11,8 @@
 </table>
 **This is a partially updated version of the v2.2 User Guide.  Links have been fixed/updated so it is slightly more useful than the v2.2 original**
 <hr>
+To save an offline copy of the User Guide as PDF [download from here] (https://js8call-improved.github.io/downloads/JS8Call_User_Guide.pdf)
+<hr>
  JS8Call is an experiment in combining the robustness of FT8 (a weak-signal mode by K1JT) with a messaging and network protocol layer for weak signal *communication*. The open source software is designed for connecting amateur radio operators who are operating under weak signal conditions and offers real-time keyboard-to-keyboard messaging, stored (inbox) messaging, message relay, and automatic station announcements. JS8Call is heavily inspired by [WSJT-X](https://wsjt.sourceforge.io/wsjtx.html), [Fldigi](http://www.w1hkj.org/), and [FSQCall](http://www.qsl.net/zl1bpu/MFSK/FSQweb.htm) and would not exist without the hard work and dedication of the many developers in the amateur radio community.
 
 <p>
@@ -149,7 +151,7 @@ Make sure your rig is set to upper sideband (USB) mode for every band. If you ar
 
 ### Duty Cycle
 
-The JS8 modulator is a constant envelope, full-duty modulation that transmits in 12.6 second frames in normal speed. Because of the dead air between transmission frames, multi-frame messages can be classified as 84% duty on a 15-second window (12.6 / 15 = 0.84) for normal and slow (25.28 / 30 = 0.84), 79% for fast on a 10-second window (7.9 / 10 = 0.79), 65% for JS8 40 (formerly "Turbo" on a 6-second window (3.95 / 6 = 0.653).
+The JS8 modulator is a constant envelope, full-duty modulation that transmits in 12.6 second frames in normal speed. Because of the dead air between transmission frames, multi-frame messages can be classified as 84% duty on a 15-second window (12.6 / 15 = 0.84) for normal and slow (25.28 / 30 = 0.84), 79% for fast on a 10-second window (7.9 / 10 = 0.79), 65% for JS8 40 (formerly "Turbo") on a 6-second window (3.95 / 6 = 0.653).
 
 JS8 60 is an experimental mode introduced in 2.6 and later; it uses a 3-second Tx on a 4-second frame interval, so is technically 75% duty cycle. However, these specs may change as JS8 60 is more cpu intensive than other modes and can be unreliable.
 
@@ -182,7 +184,7 @@ Slow   | 30 | 25 | 8  | -28
 Normal | 15 | 50 | 16 | -24
 Fast   | 10 | 80 | 24 | -20
 -------|----|----|----|----|
-Faster but less reliable modes designated by frame time/bandwidth. Heartbeat networking is disabled with these modes.
+Faster but less reliable modes designated by transmission speed in wpm. Heartbeat networking is disabled with these modes.
 -------|---|-----|----|----|
 JS8 40 | 6 | 160 | 40 | -18
 JS8 60 | 4 | 250 | 60 | -16
