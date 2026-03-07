@@ -12,13 +12,14 @@
 class Bands;
 
 //
-// Class FrequencyList_v2
+// Class FrequencyList_v3
 //
 //  Encapsulates a  collection of  frequencies with  associated modes.
 //  The implementation is a table  containing the list of IARU region,
 //  Frequency and  mode tuples which  are editable. A third  column is
 //  modeled in the  model which is an  immutable double representation
-//  of the corresponding Frequency item scaled to mega-Hertz.
+//  of the corresponding Frequency item scaled to mega-Hertz. The final,
+//  column column allows entry of a description for the entry.
 //
 //  The  list  is ordered.   A  filter  on  IARU  region and  mode  is
 //  available  and is  set by  the filter(Region,  Mode) method.   The
@@ -36,7 +37,7 @@ class Bands;
 //  Implements the QSortFilterProxyModel interface  for a list of spot
 //  frequencies.
 //
-class FrequencyList_v2 final : public QSortFilterProxyModel {
+class FrequencyList_v3 final : public QSortFilterProxyModel {
     Q_OBJECT;
 
   public:
@@ -48,6 +49,7 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
         Frequency frequency_;
         Mode mode_;
         Region region_;
+        QString description_;
     };
     using FrequencyItems = QList<Item>;
     using BandSet = QSet<QString>;
@@ -57,13 +59,14 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
         mode_column,
         frequency_column,
         frequency_mhz_column,
+        description_column,
         SENTINAL
     };
 
     // an iterator that meets the requirements of the C++ for range statement
     class const_iterator {
       public:
-        const_iterator(FrequencyList_v2 const *parent, int row)
+        const_iterator(FrequencyList_v3 const *parent, int row)
             : parent_{parent}, row_{row} {}
 
         Item const &operator*() const;
@@ -73,12 +76,12 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
         const_iterator &operator++();
 
       private:
-        FrequencyList_v2 const *parent_;
+        FrequencyList_v3 const *parent_;
         int row_;
     };
 
-    explicit FrequencyList_v2(Bands const *, QObject *parent = nullptr);
-    ~FrequencyList_v2();
+    explicit FrequencyList_v3(Bands const *, QObject *parent = nullptr);
+    ~FrequencyList_v3();
 
     // Load and store underlying items
     FrequencyItems frequency_list(FrequencyItems);
@@ -135,26 +138,51 @@ class FrequencyList_v2 final : public QSortFilterProxyModel {
     pimpl<impl> m_;
 };
 
-inline bool operator==(FrequencyList_v2::Item const &lhs,
-                       FrequencyList_v2::Item const &rhs) {
+inline bool operator==(FrequencyList_v3::Item const &lhs,
+                       FrequencyList_v3::Item const &rhs) {
     return lhs.frequency_ == rhs.frequency_ && lhs.region_ == rhs.region_ &&
-           lhs.mode_ == rhs.mode_;
+           lhs.mode_ == rhs.mode_ && lhs.description_ == rhs.description_;
 }
+
+QDataStream &operator<<(QDataStream &, FrequencyList_v3::Item const &);
+QDataStream &operator>>(QDataStream &, FrequencyList_v3::Item &);
+
+#if !defined(QT_NO_DEBUG_STREAM)
+QDebug operator<<(QDebug, FrequencyList_v3::Item const &);
+#endif
+
+Q_DECLARE_METATYPE(FrequencyList_v3::Item);
+Q_DECLARE_METATYPE(FrequencyList_v3::FrequencyItems);
+
+//
+// Obsolete versions of FrequencyList no longer used but needed to
+// allow loading and saving of old settings contents without damage
+//
+
+class FrequencyList_v2 final {
+public:
+  using Region = IARURegions::Region;
+  using Frequency = Radio::Frequency;
+  using Mode = Modes::Mode;
+
+  struct Item {
+    Frequency frequency_;
+    Mode mode_;
+    Region region_;
+  };
+  using FrequencyItems = QList<Item>;
+
+private:
+  FrequencyItems frequency_list_;
+};
+
 
 QDataStream &operator<<(QDataStream &, FrequencyList_v2::Item const &);
 QDataStream &operator>>(QDataStream &, FrequencyList_v2::Item &);
 
-#if !defined(QT_NO_DEBUG_STREAM)
-QDebug operator<<(QDebug, FrequencyList_v2::Item const &);
-#endif
-
 Q_DECLARE_METATYPE(FrequencyList_v2::Item);
 Q_DECLARE_METATYPE(FrequencyList_v2::FrequencyItems);
 
-//
-// Obsolete version of FrequencyList no longer used but needed to
-// allow loading and saving of old settings contents without damage
-//
 class FrequencyList final {
   public:
     using Frequency = Radio::Frequency;

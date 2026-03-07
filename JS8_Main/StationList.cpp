@@ -567,7 +567,7 @@ bool StationList::impl::dropMimeData(QMimeData const *data,
         QByteArray encoded_data{data->data("application/wsjt.Frequencies")};
         QDataStream stream{&encoded_data, QIODevice::ReadOnly};
         while (!stream.atEnd()) {
-            FrequencyList_v2::Item item;
+            FrequencyList_v3::Item item;
             stream >> item;
             auto const &band = bands_->find(item.frequency_);
             if (stations_.cend() ==

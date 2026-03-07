@@ -59,6 +59,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ${{ matrix.packages }}
+        
+    - name: GCC 12
+      run: |
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 120
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 120
 
     - name: Install dependencies needed to build libs (Ubuntu)
       if: steps.which-os.outputs.thisos == 'ubuntu22.04'
@@ -80,7 +85,6 @@ jobs:
         make install
 
     - name: Save libusb cache
-      if: steps.cache-usb.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-libusb1029
@@ -224,7 +228,6 @@ jobs:
         make install
 
     - name: Save libusb cache
-      if: steps.cache-usb.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-libusb1029

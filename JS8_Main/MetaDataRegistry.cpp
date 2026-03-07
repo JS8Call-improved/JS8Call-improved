@@ -44,6 +44,8 @@ void register_types() {
     // V100 Frequency list model
     qRegisterMetaType<FrequencyList_v2::Item>("Item_v2");
     qRegisterMetaType<FrequencyList_v2::FrequencyItems>("FrequencyItems_v2");
+    qRegisterMetaType<FrequencyList_v3::Item>("Item_v3");
+    qRegisterMetaType<FrequencyList_v3::FrequencyItems>("FrequencyItems_v3");
 
     // Audio device
     qRegisterMetaType<AudioDevice::Channel>("AudioDevice::Channel");

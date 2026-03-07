@@ -617,7 +617,7 @@ class UI_Constructor : public QMainWindow {
     qint32 m_inGain;
     qint32 m_idleMinutes;
     qint32 m_nSubMode;
-    FrequencyList_v2::const_iterator m_frequency_list_fcal_iter;
+    FrequencyList_v3::const_iterator m_frequency_list_fcal_iter;
     qint32 m_i3bit;
 
     bool m_btxok; // True if OK to transmit
@@ -625,6 +625,8 @@ class UI_Constructor : public QMainWindow {
     QString m_decoderBusyBand;
     QMap<qint32, qint32>
         m_lastDecodeStartMap; // submode, decode k start position
+    QMap<qint32, qint32>
+        m_lastDecodeCycleMap; // JS8 40 & JS8 60 submodes, last enqueued cycle start
     Radio::Frequency m_decoderBusyFreq;
     QDateTime m_decoderBusyStartTime;
     bool m_auto;

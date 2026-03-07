@@ -30,7 +30,8 @@ void UI_Constructor::processRxActivity() {
                  {"SNR", QVariant(d.snr)},
                  {"SPEED", QVariant(d.submode)},
                  {"TDRIFT", QVariant(d.tdrift)},
-                 {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())}});
+                 {"UTC", QVariant(d.utcTimestamp.toMSecsSinceEpoch())},
+                 {"BITS", QVariant(d.bits)}});
         }
 
         // use the actual frequency and check its delta from our current

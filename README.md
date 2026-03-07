@@ -3,6 +3,8 @@ JS8Call-improved is continued development of the original JS8Call project. Most 
 
 Like JS8Call, JS8Call-improved is licensed under the GPLv3, the Qt libraries used by JS8Call-improved are licensed under the LGPL. See [LICENSE](LICENSE) for the details. All copyrights remain with the original holders. Source code for JS8Call-improved is [here](https://github.com/JS8Call-improved/JS8Call-improved)
 
+You can view or save an offline copy of the JS8Call User Guide [here](https://js8call-improved.github.io/JS8Call-improved/d6/d14/md_docs_2user__guide_2JS8Call__User__Guide.html)
+
 # Building JS8Call-improved From Sourcecode
 Instructions can be found in [docs](docs) in the source tree for building JS8Call on MacOS, Linux and Windows, as well as a contributor's guide.
 

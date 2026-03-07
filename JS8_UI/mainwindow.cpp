@@ -723,7 +723,7 @@ void UI_Constructor::on_actionCheck_for_Updates_triggered() {
 
 void UI_Constructor::on_actionUser_Guide_triggered() {
     QDesktopServices::openUrl(
-        QUrl("https://js8call-improved.com/downloads/JS8Call_User_Guide.pdf"));
+        QUrl("https://js8call-improved.github.io/JS8Call-improved/d6/d14/md_docs_2user__guide_2JS8Call__User__Guide.html"));
 }
 
 void UI_Constructor::on_actionEnable_Monitor_RX_toggled(bool checked) {
@@ -1694,7 +1694,7 @@ bool UI_Constructor::decodeEnqueueReady(qint32 k, qint32 k0) {
 #if JS8_ENABLE_JS8I
     static qint32 currentDecodeStartI = -1;
     static qint32 nextDecodeStartI = -1;
-    qCDebug(decoder_js8) << "? ULTRA    " << currentDecodeStartI
+    qCDebug(decoder_js8) << "? JS8 60    " << currentDecodeStartI
                          << nextDecodeStartI;
     couldDecodeI =
         isDecodeReady(Varicode::JS8CallUltra, k, k0, &currentDecodeStartI,
@@ -1816,9 +1816,14 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
             qint32 const cycle = JS8::Submode::computeAltCycleForDecode(
                 submode, k, alt * oneSecondSamples);
             qint32 const cycleFrames = JS8::Submode::samplesPerPeriod(submode);
-            qint32 const cycleFramesNeeded = JS8::Submode::samplesForSymbols(
-                submode); // computeFramesNeededForDecode(submode)
-                          // - oneSecondSamples;
+            qint32 const cycleFramesNeeded =
+                (submode == Varicode::JS8CallTurbo ||
+                 submode == Varicode::JS8CallUltra)
+                    ? JS8::Submode::samplesNeeded(submode)
+                    : JS8::Submode::samplesForSymbols(submode);
+            bool const turboOrUltra =
+                (submode == Varicode::JS8CallTurbo ||
+                 submode == Varicode::JS8CallUltra);
             qint32 cycleFramesReady = k - (cycle * cycleFrames);
             if (cycleFramesReady < 0) {
                 cycleFramesReady = k + (maxSamples - (cycle * cycleFrames));
@@ -1853,6 +1858,21 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
 
                 // keep track of last decode position
                 m_lastDecodeStartMap[submode] = k;
+            } else if (turboOrUltra &&
+                       cycleFramesReady >= cycleFramesNeeded) {
+                qint32 const cycleStart = cycle * cycleFrames;
+                if (m_lastDecodeCycleMap.value(submode, -1) != cycleStart) {
+                    DecodeParams d;
+                    d.submode = submode;
+                    d.start = cycleStart;
+                    d.sz = cycleFramesNeeded;
+                    m_decoderQueue.append(d);
+                    decodes++;
+
+                    // keep track of last decode position and cycle
+                    m_lastDecodeStartMap[submode] = k;
+                    m_lastDecodeCycleMap[submode] = cycleStart;
+                }
             } else if ((incrementedBy >= 1.5 * oneSecondSamples &&
                         cycleFramesReady >=
                             cycleFramesNeeded) || // within every 3/2 seconds
@@ -2444,7 +2464,8 @@ void UI_Constructor::prepareSending(qint64 nowMS) {
         lateThreshold *= 0.75;
     } else if (m_nSubMode == Varicode::JS8CallTurbo ||
                m_nSubMode == Varicode::JS8CallUltra) {
-        // for the turbo and ultra mode, only allow 1/2 late threshold
+        // for the JS8 40 (formerly "Turbo") and JS8 60
+        // modes, only allow 1/2 late threshold
         lateThreshold *= 0.5;
     };
 
@@ -4197,7 +4218,7 @@ void UI_Constructor::buildFrequencyMenu(QMenu *menu) {
 
     auto frequencies = m_config.frequencies()->frequency_list();
     std::sort(frequencies.begin(), frequencies.end(),
-              [](FrequencyList_v2::Item &a, FrequencyList_v2::Item &b) {
+              [](FrequencyList_v3::Item &a, FrequencyList_v3::Item &b) {
                   return a.frequency_ < b.frequency_;
               });
 
@@ -4205,11 +4226,15 @@ void UI_Constructor::buildFrequencyMenu(QMenu *menu) {
         auto freq = Radio::pretty_frequency_MHz_string(f.frequency_);
         auto const &band = m_config.bands()->find(f.frequency_);
 
+        QString description = (f.description_.isEmpty()) ? ""
+            : QString(" - %1").arg(f.description_);
+
         auto a =
-            menu->addAction(QString("%1:%2%2%3 MHz")
+            menu->addAction(QString("%1:%2%2%3 MHz%4")
                                 .arg(band)
                                 .arg(QString(" ").repeated(5 - band.length()))
-                                .arg(freq));
+                                .arg(freq)
+                                .arg(description));
         connect(a, &QAction::triggered, this,
                 [this, f]() { setRig(f.frequency_); });
     }
@@ -5217,7 +5242,7 @@ void UI_Constructor::setXIT(int audio_freq) {
     // m_XIT is the frequency diff that will be added to the audio frequency
     // and subtracted from the radio frequency.
     // The new audio frequency is in the 1500 - 2000 Hz range,
-    // the audio actually transmitted is 1500 - 2160 Hz (TURBO has 160 Hz
+    // the audio actually transmitted is 1500 - 2160 Hz (JS8 40 has 160 Hz
     // bandwith). This way, the unwanted triple audio frequency possibly
     // generated by audio distortions is safely beyond the TX audio bandwidth of
     // 3 kHz and will not result in transmission. Also, the 1500 - 2160 Hz range

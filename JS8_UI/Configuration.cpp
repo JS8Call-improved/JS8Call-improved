@@ -1,6 +1,6 @@
 /**
  * @file Configuration.cpp
- * @brief implementation of the Configuration dialog for the UI
+ * @brief Implementation of the Configuration dialog for the UI
  */
 
 //
@@ -202,20 +202,23 @@ const QRegularExpression message_alphabet{"[^\\x00-\\x1F]*"};
 
 // Magic numbers for file validation
 constexpr quint32 qrg_magic{0xadbccbdb};
-constexpr quint32 qrg_version{102}; // M.mm
+constexpr quint32 qrg_version{103}; // M.mm
 
 // Bump this versioned key every time we need to "reset" our working
 // frequencies...
 const char *const versionedFrequenciesSettingsKey =
+    "FrequenciesForRegionModes_v3";
+
+const char *const v2FrequenciesSettingsKey =
     "FrequenciesForRegionModes_01";
-} // namespace
+}// namespace
 
 //
 // Dialog to get a new Frequency item
 //
 class FrequencyDialog final : public QDialog {
   public:
-    using Item = FrequencyList_v2::Item;
+    using Item = FrequencyList_v3::Item;
 
     explicit FrequencyDialog(IARURegions *regions_model, Modes *modes_model,
                              QWidget *parent = nullptr)
@@ -229,6 +232,7 @@ class FrequencyDialog final : public QDialog {
         form_layout->addRow(tr("IARU &Region:"), &region_combo_box_);
         form_layout->addRow(tr("&Mode:"), &mode_combo_box_);
         form_layout->addRow(tr("&Frequency (MHz):"), &frequency_line_edit_);
+        form_layout->addRow(tr("&Description:"), &description_line_edit_);
 
         auto main_layout = new QVBoxLayout(this);
         main_layout->addLayout(form_layout);
@@ -246,13 +250,16 @@ class FrequencyDialog final : public QDialog {
     Item item() const {
         return {frequency_line_edit_.frequency(),
                 Modes::value(mode_combo_box_.currentText()),
-                IARURegions::value(region_combo_box_.currentText())};
+                IARURegions::value(region_combo_box_.currentText()),
+                description_line_edit_.text().trimmed()
+        };
     }
 
   private:
     QComboBox region_combo_box_;
     QComboBox mode_combo_box_;
     FrequencyLineEdit frequency_line_edit_;
+    QLineEdit description_line_edit_;
 };
 
 //
@@ -426,7 +433,7 @@ class Configuration::impl final : public QDialog {
     void save_frequencies();
     void reset_frequencies();
     void insert_frequency();
-    FrequencyList_v2::FrequencyItems read_frequencies_file(QString const &);
+    FrequencyList_v3::FrequencyItems read_frequencies_file(QString const &);
 
     void delete_stations();
     void insert_station();
@@ -534,8 +541,8 @@ class Configuration::impl final : public QDialog {
     IARURegions regions_;
     IARURegions::Region region_;
     Modes modes_;
-    FrequencyList_v2 frequencies_;
-    FrequencyList_v2 next_frequencies_;
+    FrequencyList_v3 frequencies_;
+    FrequencyList_v3 next_frequencies_;
     StationList stations_;
     StationList next_stations_;
 
@@ -953,8 +960,8 @@ StationList *Configuration::stations() { return &m_->stations_; }
 StationList const *Configuration::stations() const { return &m_->stations_; }
 bool Configuration::auto_switch_bands() const { return m_->auto_switch_bands_; }
 IARURegions::Region Configuration::region() const { return m_->region_; }
-FrequencyList_v2 *Configuration::frequencies() { return &m_->frequencies_; }
-FrequencyList_v2 const *Configuration::frequencies() const {
+FrequencyList_v3 *Configuration::frequencies() { return &m_->frequencies_; }
+FrequencyList_v3 const *Configuration::frequencies() const {
     return &m_->frequencies_;
 }
 QStringListModel *Configuration::macros() { return &m_->macros_; }
@@ -1496,28 +1503,32 @@ Configuration::impl::impl(Configuration *self, QDir const &temp_directory,
     //
     // setup working frequencies table model & view
     //
-    frequencies_.sort(FrequencyList_v2::frequency_column);
+    frequencies_.sort(FrequencyList_v3::frequency_column);
 
     ui_->frequencies_table_view->setModel(&next_frequencies_);
     ui_->frequencies_table_view->sortByColumn(
-        FrequencyList_v2::frequency_column, Qt::AscendingOrder);
+        FrequencyList_v3::frequency_column, Qt::AscendingOrder);
     ui_->frequencies_table_view->setColumnHidden(
-        FrequencyList_v2::frequency_mhz_column, true);
+        FrequencyList_v3::frequency_mhz_column, true);
 
     // delegates
     auto frequencies_item_delegate = new QStyledItemDelegate{this};
     frequencies_item_delegate->setItemEditorFactory(item_editor_factory());
     ui_->frequencies_table_view->setItemDelegate(frequencies_item_delegate);
     ui_->frequencies_table_view->setItemDelegateForColumn(
-        FrequencyList_v2::region_column,
+        FrequencyList_v3::region_column,
         new ForeignKeyDelegate{&regions_, 0, this});
     ui_->frequencies_table_view->setItemDelegateForColumn(
-        FrequencyList_v2::mode_column,
+        FrequencyList_v3::mode_column,
         new ForeignKeyDelegate{&modes_, 0, this});
 
     // actions
     frequency_delete_action_ =
         new QAction{tr("&Delete"), ui_->frequencies_table_view};
+
+    frequency_delete_action_->setShortcut(QKeySequence(Qt::Key_Delete));
+    frequency_delete_action_->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+
     ui_->frequencies_table_view->insertAction(nullptr,
                                               frequency_delete_action_);
     connect(frequency_delete_action_, &QAction::triggered, this,
@@ -1603,6 +1614,10 @@ Configuration::impl::impl(Configuration *self, QDir const &temp_directory,
 
     station_delete_action_ =
         new QAction{tr("&Delete"), ui_->stations_table_view};
+
+    station_delete_action_->setShortcut(QKeySequence(Qt::Key_Delete));
+    station_delete_action_->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+
     ui_->stations_table_view->insertAction(nullptr, station_delete_action_);
     connect(station_delete_action_, &QAction::triggered, this,
             &Configuration::impl::delete_stations);
@@ -2144,11 +2159,37 @@ void Configuration::impl::read_settings() {
         auto const &v = settings_->value(versionedFrequenciesSettingsKey);
         if (v.isValid()) {
             frequencies_.frequency_list(
-                v.value<FrequencyList_v2::FrequencyItems>());
+                v.value<FrequencyList_v3::FrequencyItems>());
         } else {
             frequencies_.reset_to_defaults();
         }
-    } else {
+    } else // No new key: try to migrate from old key
+        if (settings_->contains(v2FrequenciesSettingsKey)) {
+            const QVariant v = settings_->value(v2FrequenciesSettingsKey);
+            if (v.isValid()) {
+                auto oldItems = v.value<FrequencyList_v2::FrequencyItems>();
+
+                FrequencyList_v3::FrequencyItems newItems;
+                newItems.reserve(oldItems.size());
+                for (const auto& it : oldItems) {
+                    FrequencyList_v3::Item n;
+                    n.frequency_ = it.frequency_;
+                    n.mode_      = it.mode_;
+                    n.region_    = it.region_;
+                    n.description_.clear();
+                    newItems.push_back(std::move(n));
+                }
+
+                frequencies_.frequency_list(std::move(newItems));
+
+                // Persist under new key
+                settings_->setValue(versionedFrequenciesSettingsKey, QVariant::fromValue(frequencies_.frequency_list()));
+
+                // Optionally remove the old version
+                //settings_->remove(v2FrequenciesSettingsKey);
+                write_settings();
+            }
+        } else {
         frequencies_.reset_to_defaults();
     }
 
@@ -2773,17 +2814,21 @@ bool Configuration::impl::validate() {
 
     auto ptt_method = static_cast<TransceiverFactory::PTTMethod>(
         ui_->PTT_method_button_group->checkedId());
-    if (auto const ptt_port = ui_->PTT_port_combo_box->currentText();
-        (TransceiverFactory::PTT_method_DTR == ptt_method ||
-         TransceiverFactory::PTT_method_RTS == ptt_method) &&
-        (ptt_port.isEmpty() ||
-         !(dynamic_cast<QStandardItemModel *>(ui_->PTT_port_combo_box->model())
-               ->item(ui_->PTT_port_combo_box->findText(ptt_port))
-               ->isEnabled()))) {
-        JS8MessageBox::critical_message(this, tr("Invalid PTT port"));
-        return false;
-    }
+    if (ptt_method == TransceiverFactory::PTT_method_DTR ||
+        ptt_method == TransceiverFactory::PTT_method_RTS) {
+        const auto ptt_port = ui_->PTT_port_combo_box->currentText();
+        auto *model = dynamic_cast<QStandardItemModel *>(ui_->PTT_port_combo_box->model());
+        const int index = ui_->PTT_port_combo_box->findText(ptt_port);
+        QStandardItem *item = (index >= 0 && model) ? model->item(index) : nullptr;
 
+        const bool enabled = item && item->isEnabled();
+        const bool invalid = ptt_port.isEmpty() || !enabled;
+
+        if (invalid) {
+            JS8MessageBox::critical_message(this, tr("Invalid PTT port"));
+            return false;
+        }
+    }
     return true;
 }
 
@@ -3176,7 +3221,7 @@ void Configuration::impl::accept() {
 
     if (frequencies_.frequency_list() != next_frequencies_.frequency_list()) {
         frequencies_.frequency_list(next_frequencies_.frequency_list());
-        frequencies_.sort(FrequencyList_v2::frequency_column);
+        frequencies_.sort(FrequencyList_v3::frequency_column);
     }
 
     if (stations_.station_list() != next_stations_.station_list()) {
@@ -3690,7 +3735,7 @@ void Configuration::impl::delete_frequencies() {
                                 QItemSelectionModel::Rows);
     next_frequencies_.removeDisjointRows(selection_model->selectedRows());
     ui_->frequencies_table_view->resizeColumnToContents(
-        FrequencyList_v2::mode_column);
+        FrequencyList_v3::mode_column);
 }
 
 void Configuration::impl::load_frequencies() {
@@ -3724,12 +3769,19 @@ void Configuration::impl::merge_frequencies() {
     }
 }
 
-FrequencyList_v2::FrequencyItems
+FrequencyList_v3::FrequencyItems
 Configuration::impl::read_frequencies_file(QString const &file_name) {
+    FrequencyList_v3::FrequencyItems list;
     QFile frequencies_file{file_name};
-    frequencies_file.open(QFile::ReadOnly);
+    bool opened = frequencies_file.open(QFile::ReadOnly);
+
+    if (!opened) {
+        JS8MessageBox::warning_message(this, tr("Unable to open frequencies file"));
+        return list;
+    }
+
     QDataStream ids{&frequencies_file};
-    FrequencyList_v2::FrequencyItems list;
+
     quint32 magic;
     ids >> magic;
     if (qrg_magic != magic) {
@@ -3749,7 +3801,24 @@ Configuration::impl::read_frequencies_file(QString const &file_name) {
 
     // de-serialize the data using version if necessary to
     // handle old schemata
-    ids >> list;
+    if (version == 102) {
+        FrequencyList_v2::FrequencyItems v2list;
+        ids >> v2list;
+
+        list.reserve(v2list.size());
+        for (const auto& it : v2list) {
+            FrequencyList_v3::Item n;
+            n.frequency_ = it.frequency_;
+            n.mode_      = it.mode_;
+            n.region_    = it.region_;
+            n.description_.clear();
+            list.push_back(std::move(n));
+        }
+    }
+    else {
+        ids >> list;
+    }
+
 
     if (ids.status() != QDataStream::Ok || !ids.atEnd()) {
         JS8MessageBox::warning_message(this, tr("Not a valid frequencies file"),
@@ -3768,7 +3837,13 @@ void Configuration::impl::save_frequencies() {
         tr("Frequency files (*.qrg);;All files (*.*)"));
     if (!file_name.isNull()) {
         QFile frequencies_file{file_name};
-        frequencies_file.open(QFile::WriteOnly);
+        bool opened = frequencies_file.open(QFile::WriteOnly);
+
+        if (!opened) {
+            JS8MessageBox::warning_message(this, tr("Unable to open frequencies file"));
+            return;
+        }
+
         QDataStream ods{&frequencies_file};
         auto selection_model = ui_->frequencies_table_view->selectionModel();
         if (selection_model->hasSelection() &&
@@ -3807,7 +3882,7 @@ void Configuration::impl::insert_frequency() {
         ui_->frequencies_table_view->setCurrentIndex(
             next_frequencies_.add(frequency_dialog_->item()));
         ui_->frequencies_table_view->resizeColumnToContents(
-            FrequencyList_v2::mode_column);
+            FrequencyList_v3::mode_column);
     }
 }
 
