@@ -129,7 +129,7 @@ constexpr Data Fast =   {"FAST",
                          -22,
                          16};
 
-constexpr Data Turbo =  {"JS8 6/160",
+constexpr Data Turbo =  {"JS8 40",
                          JS8C_SYMBOL_SAMPLES,
                          JS8C_START_DELAY_MS,
                          JS8C_TX_SECONDS,
@@ -144,7 +144,7 @@ constexpr Data Slow =   {"SLOW",
                          Costas::Type::MODIFIED,
                          -28};
 
-constexpr Data Ultra =  {"JS8 4/250",
+constexpr Data Ultra =  {"JS8 60",
                          JS8I_SYMBOL_SAMPLES,
                          JS8I_START_DELAY_MS,
                          JS8I_TX_SECONDS,

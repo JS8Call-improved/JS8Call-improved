@@ -653,10 +653,10 @@ Sets the currently set transmit mode speed
 |-----------|--------|
 | Normal    |   0    |
 | Fast      |   1    |
-| JS8 6/160 |   2    |
+| JS8 40    |   2    |
 | Slow      |   4    |
-| JS8 4/250 |   8    |
-Please note, JS8 4/250 is an *experimental* and unreliable mode.
+| JS8 60    |   8    |
+Please note, JS8 60 is an *experimental* and unreliable mode.
 
 # INBOX.GET_MESSAGES
 API <= 2.6

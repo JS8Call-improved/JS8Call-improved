@@ -284,8 +284,8 @@ void UI_Constructor::displayCallActivity() {
                 ui->tableWidgetCalls->setItem(row, col++, tdriftItem);
 
                 auto name = JS8::Submode::name(d.submode);
-                auto modeItem = (name == "JS8 6/160" || name == "JS8 4/250")
-                    ? new QTableWidgetItem(name.right(5))
+                auto modeItem = (name == "JS8 40" || name == "JS8 60")
+                    ? new QTableWidgetItem(name.right(2))
                     : new QTableWidgetItem(name.left(1).replace("H", "N"));
                 modeItem->setToolTip(name);
                 modeItem->setData(Qt::UserRole, QVariant(name));
