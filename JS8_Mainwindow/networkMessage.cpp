@@ -302,6 +302,9 @@ if(type == "STATION.SET_SPOT") {
     // RX.GET_CALL_SELECTED
     // RX.GET_BAND_ACTIVITY
     // RX.GET_TEXT
+    // RX.GET_FILTER - Get bandpass filter center, width, enabled state
+    // RX.SET_FILTER - Set filter CENTER and/or WIDTH
+    // RX.SET_FILTER_ENABLED - Toggle filter overlay on/off
     /**
      * @name RX Commands
      * RX related API calls
@@ -375,6 +378,53 @@ if(type == "STATION.SET_SPOT") {
                            {
                                {"_ID", id},
                            });
+        return;
+    }
+
+    /** @brief RX.GET_FILTER: Returns current filter center, width and enabled state.
+     *  @note API 2.6+ */
+    if (type == "RX.GET_FILTER") {
+        sendNetworkMessage("RX.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief RX.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER") {
+        auto params = message.params();
+        if (params.contains("CENTER")) {
+            bool ok = false;
+            auto c = params["CENTER"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterCenter(c);
+        }
+        if (params.contains("WIDTH")) {
+            bool ok = false;
+            auto w = params["WIDTH"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterWidth(w);
+        }
+        sendNetworkMessage("RX.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief RX.SET_FILTER_ENABLED: Toggle filter overlay on/off.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER_ENABLED") {
+        auto enabled = QVariant(message.value()).toBool();
+        m_wideGraph->setFilterEnabled(enabled);
+        sendNetworkMessage("RX.SET_FILTER_ENABLED", "", {
+            {"_ID", id},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
         return;
     }
     /** @} */ // End RX Commands
@@ -479,52 +529,6 @@ if(type == "STATION.SET_SPOT") {
     }
     /** @} */ // End MODE Commands
 
-    /** @brief RX.GET_FILTER: Returns current filter center, width and enabled state.
-     *  @note API 2.6+ */
-    if (type == "RX.GET_FILTER") {
-        sendNetworkMessage("RX.FILTER", "", {
-            {"_ID", id},
-            {"CENTER", QVariant(m_wideGraph->filterCenter())},
-            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
-            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
-        });
-        return;
-    }
-
-    /** @brief RX.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state.
-     *  @note API 2.6+ */
-    if (type == "RX.SET_FILTER") {
-        auto params = message.params();
-        if (params.contains("CENTER")) {
-            bool ok = false;
-            auto c = params["CENTER"].toInt(&ok);
-            if (ok) m_wideGraph->setFilterCenter(c);
-        }
-        if (params.contains("WIDTH")) {
-            bool ok = false;
-            auto w = params["WIDTH"].toInt(&ok);
-            if (ok) m_wideGraph->setFilterWidth(w);
-        }
-        sendNetworkMessage("RX.FILTER", "", {
-            {"_ID", id},
-            {"CENTER", QVariant(m_wideGraph->filterCenter())},
-            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
-            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
-        });
-        return;
-    }
-
-    /** @brief RX.SET_FILTER_ENABLED: Toggle filter overlay on/off.
-     *  @note API 2.6+ */
-    if (type == "RX.SET_FILTER_ENABLED") {
-        auto enabled = QVariant(message.value()).toBool();
-        m_wideGraph->setFilterEnabled(enabled);
-        sendNetworkMessage("RX.SET_FILTER_ENABLED", "", {
-            {"_ID", id},
-            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
-        });
-        return;
-    }
 
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
