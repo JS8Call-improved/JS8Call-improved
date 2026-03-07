@@ -54,6 +54,10 @@ The steps above are
 | [RX.GET_BAND_ACTIVITY](#rxget_band_activity) | 2.5 |
 | [RX.GET_TEXT](#rxget_text)                   | 2.5 |
 | [TX.GET_TEXT](#txget_text)                   | 2.5 |
+| [TX.GET_ENABLED](#txget_enabled)             | 2.7 |
+| [TX.SET_ENABLED](#txset_enabled)             | 2.7 |
+| [TX.GET_AUTOREPLY](#txget_autoreply)         | 2.7 |
+| [TX.SET_AUTOREPLY](#txset_autoreply)         | 2.7 |
 | [TX.SET_TEXT](#txset_text)                   | 2.5 |
 | [TX.SEND_MESSAGE](#txsend_message)           | 2.5 |
 | [TX.GET_QUEUE_DEPTH](#txget_queue_depth)     | 2.6 |
@@ -536,6 +540,60 @@ Gets the text to be transmitted
 
 1) If text box is empty
 2) If text box has something in it
+
+# TX.GET_ENABLED
+[!note] API >= 2.7
+
+Gets whether JS8Call is currently allowed to transmit.
+
+| End Point |
+|-----------|
+|{"params":{},"type":"TX.GET_ENABLED","value":""}|
+
+| Response |
+|----------|
+|{"params":{"ENABLED":true,"_ID":270422213693},"type":"TX.ENABLED","value":""}|
+
+# TX.SET_ENABLED
+[!note] API >= 2.7
+
+Enables or disables all transmit activity, including autoreplies that would key
+the transmitter.
+
+| End Point |
+|-----------|
+|{"params":{"ENABLED":false},"type":"TX.SET_ENABLED","value":""}|
+
+| Response |
+|----------|
+|{"params":{"ENABLED":false,"_ID":270422213693},"type":"TX.ENABLED","value":""}|
+
+# TX.GET_AUTOREPLY
+[!note] API >= 2.7
+
+Gets whether autoreply mode is enabled.
+
+| End Point |
+|-----------|
+|{"params":{},"type":"TX.GET_AUTOREPLY","value":""}|
+
+| Response |
+|----------|
+|{"params":{"ENABLED":true,"_ID":270422213693},"type":"TX.AUTOREPLY","value":""}|
+
+# TX.SET_AUTOREPLY
+[!note] API >= 2.7
+
+Enables or disables autoreply mode without changing the general TX enable
+state.
+
+| End Point |
+|-----------|
+|{"params":{"ENABLED":false},"type":"TX.SET_AUTOREPLY","value":""}|
+
+| Response |
+|----------|
+|{"params":{"ENABLED":false,"_ID":270422213693},"type":"TX.AUTOREPLY","value":""}|
 
 # TX.SET_TEXT
 API <= 2.6

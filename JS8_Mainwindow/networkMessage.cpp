@@ -27,6 +27,54 @@ void UI_Constructor::networkMessage(Message const &message) {
 
     qCDebug(mainwindow_js8) << "try processing network message" << type << id;
 
+    auto parseBoolean = [](QVariant const &raw, bool *ok = nullptr,
+                           bool default_value = false) {
+        if (!raw.isValid() || raw.isNull()) {
+            if (ok) {
+                *ok = false;
+            }
+            return default_value;
+        }
+
+        if (raw.canConvert<bool>() && raw.typeId() == QMetaType::Bool) {
+            if (ok) {
+                *ok = true;
+            }
+            return raw.toBool();
+        }
+
+        auto text = raw.toString().trimmed().toLower();
+        if (text == "1" || text == "true" || text == "on" || text == "yes" ||
+            text == "enable" || text == "enabled") {
+            if (ok) {
+                *ok = true;
+            }
+            return true;
+        }
+
+        if (text == "0" || text == "false" || text == "off" || text == "no" ||
+            text == "disable" || text == "disabled") {
+            if (ok) {
+                *ok = true;
+            }
+            return false;
+        }
+
+        if (ok) {
+            *ok = false;
+        }
+        return default_value;
+    };
+
+    auto messageBoolean = [&](QString const &param_name, bool *ok = nullptr,
+                              bool default_value = false) {
+        if (message.params().contains(param_name)) {
+            return parseBoolean(message.params().value(param_name), ok,
+                                default_value);
+        }
+        return parseBoolean(QVariant(message.value()), ok, default_value);
+    };
+
     // Inspired by FLDigi
     // TODO: MAIN.RX - Turn on RX
     // TODO: MAIN.TX - Transmit
@@ -546,6 +594,54 @@ if(type == "STATION.SET_SPOT") {
                            ui->extFreeTextMsgEdit->toPlainText().right(1024),
                            {
                                {"_ID", id},
+                           });
+        return;
+    }
+    /** @brief TX.GET_ENABLED: Retrieves whether TX is currently allowed. */
+    if (type == "TX.GET_ENABLED") {
+        sendNetworkMessage("TX.ENABLED", "",
+                           {
+                               {"_ID", id},
+                               {"ENABLED", ui->monitorTxButton->isChecked()},
+                           });
+        return;
+    }
+    /** @brief TX.SET_ENABLED: Enables or disables all transmissions. */
+    if (type == "TX.SET_ENABLED") {
+        bool ok = false;
+        bool const enabled = messageBoolean("ENABLED", &ok);
+        if (ok && ui->monitorTxButton->isChecked() != enabled) {
+            ui->monitorTxButton->setChecked(enabled);
+        }
+        sendNetworkMessage("TX.ENABLED", "",
+                           {
+                               {"_ID", id},
+                               {"ENABLED", ui->monitorTxButton->isChecked()},
+                           });
+        return;
+    }
+    /** @brief TX.GET_AUTOREPLY: Retrieves whether autoreply is enabled. */
+    if (type == "TX.GET_AUTOREPLY") {
+        sendNetworkMessage("TX.AUTOREPLY", "",
+                           {
+                               {"_ID", id},
+                               {"ENABLED",
+                                ui->actionModeAutoreply->isChecked()},
+                           });
+        return;
+    }
+    /** @brief TX.SET_AUTOREPLY: Enables or disables autoreply mode. */
+    if (type == "TX.SET_AUTOREPLY") {
+        bool ok = false;
+        bool const enabled = messageBoolean("ENABLED", &ok);
+        if (ok && ui->actionModeAutoreply->isChecked() != enabled) {
+            ui->actionModeAutoreply->setChecked(enabled);
+        }
+        sendNetworkMessage("TX.AUTOREPLY", "",
+                           {
+                               {"_ID", id},
+                               {"ENABLED",
+                                ui->actionModeAutoreply->isChecked()},
                            });
         return;
     }
