@@ -165,6 +165,16 @@ void UI_Constructor::networkMessage(Message const &message) {
     // STATION.SET_SPOT - Set the current spotting status
     // STATION.GET_OS   - Get basic info about the OS we are running on
     // STATION.VERSION  - Get the JS8Call version
+    // STATION.GET_CONFIG - Get all config states (auto_reply, js8hb, hback, etc.)
+    // STATION.SET_AUTO_REPLY - Toggle auto-reply on/off
+    // STATION.SET_JS8HB - Toggle JS8 heartbeat on/off
+    // STATION.SET_HBACK - Toggle heartbeat acknowledgments on/off
+    // STATION.SET_MULTI_DECODER - Toggle multi-decoder on/off
+    // STATION.SET_HB_INTERVAL - Set heartbeat interval (seconds)
+    // STATION.SET_HB_TIMER - Start/stop heartbeat timer
+    // STATION.SEND_HB - Send heartbeat immediately
+    // STATION.SET_AUTOREPLY_CONFIRMATION - Toggle autoreply confirmation via TCP
+    // STATION.AUTOREPLY_CONFIRM_RESPONSE - Accept/reject pending autoreply
     /**
      * @name STATION Commands
      * STATION related API calls
@@ -296,6 +306,146 @@ if(type == "STATION.SET_SPOT") {
           return;
     }
 
+    /** @brief STATION.GET_CONFIG: Returns all mode/config states for remote control.
+     *  @note API 2.6+ */
+    if (type == "STATION.GET_CONFIG") {
+        sendNetworkMessage("STATION.CONFIG", "", {
+            {"_ID", id},
+            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
+            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
+            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
+            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
+            {"HB_INTERVAL", QVariant(m_hbInterval)},
+            {"HB_TIMER_ACTIVE", QVariant(m_hb_loop->isActive())},
+            {"MONITOR", QVariant(ui->monitorButton->isChecked())},
+            {"TX_ENABLED", QVariant(ui->monitorTxButton->isChecked())},
+            {"SPEED", QVariant(m_nSubMode)},
+            {"CAN_HB", QVariant(canCurrentModeSendHeartbeat())},
+            {"AUTOREPLY_CONFIRMATION", QVariant(m_config.autoreply_confirmation())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_AUTO_REPLY: Toggle auto-reply mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_AUTO_REPLY") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeAutoreply->setChecked(checked);
+        sendNetworkMessage("STATION.SET_AUTO_REPLY", "", {
+            {"_ID", id},
+            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_JS8HB: Toggle heartbeat networking mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_JS8HB") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeJS8HB->setChecked(checked);
+        sendNetworkMessage("STATION.SET_JS8HB", "", {
+            {"_ID", id},
+            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HBACK: Toggle heartbeat acknowledgments.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HBACK") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionHeartbeatAcknowledgements->setChecked(checked);
+        sendNetworkMessage("STATION.SET_HBACK", "", {
+            {"_ID", id},
+            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_MULTI_DECODER: Toggle multi-decoder mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_MULTI_DECODER") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeMultiDecoder->setChecked(checked);
+        sendNetworkMessage("STATION.SET_MULTI_DECODER", "", {
+            {"_ID", id},
+            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HB_INTERVAL: Set heartbeat interval in minutes.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HB_INTERVAL") {
+        auto interval = message.params().value("INTERVAL").toInt();
+        m_hbInterval = interval;
+        if (ui->hbMacroButton->isChecked() && interval > 0) {
+            m_hb_loop->onTxLoopPeriodChangeStart(interval * (qint64)60000);
+        }
+        updateHBButtonDisplay();
+        sendNetworkMessage("STATION.SET_HB_INTERVAL", "", {
+            {"_ID", id},
+            {"HB_INTERVAL", QVariant(m_hbInterval)},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HB_TIMER: Start/stop heartbeat timer loop.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HB_TIMER") {
+        auto start = QVariant(message.value()).toBool();
+        ui->hbMacroButton->setChecked(start);
+        sendNetworkMessage("STATION.SET_HB_TIMER", "", {
+            {"_ID", id},
+            {"HB_TIMER_ACTIVE", QVariant(ui->hbMacroButton->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SEND_HB: Send an immediate heartbeat.
+     *  @note API 2.6+ */
+    if (type == "STATION.SEND_HB") {
+        sendHB();
+        sendNetworkMessage("STATION.SEND_HB", "", {
+            {"_ID", id},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_AUTOREPLY_CONFIRMATION: Toggle autoreply confirmation via TCP.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_AUTOREPLY_CONFIRMATION") {
+        auto checked = QVariant(message.value()).toBool();
+        m_config.set_autoreply_confirmation(checked);
+        sendNetworkMessage("STATION.AUTOREPLY_CONFIRMATION", "",
+            {{"_ID", id},
+             {"AUTOREPLY_CONFIRMATION", QVariant(checked)}});
+        return;
+    }
+
+    /** @brief STATION.AUTOREPLY_CONFIRM_RESPONSE: Accept/reject a pending autoreply confirmation.
+     *  @note API 2.6+ */
+    if (type == "STATION.AUTOREPLY_CONFIRM_RESPONSE") {
+        auto confirmId = message.params().value("CONFIRM_ID").toInt();
+        auto accepted = QVariant(message.value()).toBool();
+        // CRITICAL: m_pendingConfirmations lives in the GUI thread
+        QMetaObject::invokeMethod(this, [this, confirmId, accepted]() {
+            if (m_pendingConfirmations.contains(confirmId)) {
+                auto pc = m_pendingConfirmations.take(confirmId);
+                pc.timer->stop();
+                delete pc.timer;
+                if (accepted) {
+                    enqueueMessage(pc.priority, pc.message, pc.offset, pc.callback);
+                }
+                sendNetworkMessage("STATION.AUTOREPLY_CONFIRMED", "",
+                    {{"_ID", QVariant(-1)},
+                     {"CONFIRM_ID", QVariant(confirmId)},
+                     {"ACCEPTED", QVariant(accepted)},
+                     {"MESSAGE", QVariant(pc.message)}});
+            }
+        });
+        return;
+    }
     /** @} */ // End STATION Commands
 
     // RX.GET_CALL_ACTIVITY
@@ -475,146 +625,6 @@ if(type == "STATION.SET_SPOT") {
                                {"_ID", id},
                                {"SPEED", m_nSubMode},
                            });
-        return;
-    }
-    /** @brief STATION.GET_CONFIG: Returns all mode/config states for remote control.
-     *  @note API 2.6+ */
-    if (type == "STATION.GET_CONFIG") {
-        sendNetworkMessage("STATION.CONFIG", "", {
-            {"_ID", id},
-            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
-            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
-            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
-            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
-            {"HB_INTERVAL", QVariant(m_hbInterval)},
-            {"HB_TIMER_ACTIVE", QVariant(m_hb_loop->isActive())},
-            {"MONITOR", QVariant(ui->monitorButton->isChecked())},
-            {"TX_ENABLED", QVariant(ui->monitorTxButton->isChecked())},
-            {"SPEED", QVariant(m_nSubMode)},
-            {"CAN_HB", QVariant(canCurrentModeSendHeartbeat())},
-            {"AUTOREPLY_CONFIRMATION", QVariant(m_config.autoreply_confirmation())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_AUTO_REPLY: Toggle auto-reply mode.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_AUTO_REPLY") {
-        auto checked = QVariant(message.value()).toBool();
-        ui->actionModeAutoreply->setChecked(checked);
-        sendNetworkMessage("STATION.SET_AUTO_REPLY", "", {
-            {"_ID", id},
-            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_JS8HB: Toggle heartbeat networking mode.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_JS8HB") {
-        auto checked = QVariant(message.value()).toBool();
-        ui->actionModeJS8HB->setChecked(checked);
-        sendNetworkMessage("STATION.SET_JS8HB", "", {
-            {"_ID", id},
-            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_HBACK: Toggle heartbeat acknowledgments.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_HBACK") {
-        auto checked = QVariant(message.value()).toBool();
-        ui->actionHeartbeatAcknowledgements->setChecked(checked);
-        sendNetworkMessage("STATION.SET_HBACK", "", {
-            {"_ID", id},
-            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_MULTI_DECODER: Toggle multi-decoder mode.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_MULTI_DECODER") {
-        auto checked = QVariant(message.value()).toBool();
-        ui->actionModeMultiDecoder->setChecked(checked);
-        sendNetworkMessage("STATION.SET_MULTI_DECODER", "", {
-            {"_ID", id},
-            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_HB_INTERVAL: Set heartbeat interval in minutes.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_HB_INTERVAL") {
-        auto interval = message.params().value("INTERVAL").toInt();
-        m_hbInterval = interval;
-        if (ui->hbMacroButton->isChecked() && interval > 0) {
-            m_hb_loop->onTxLoopPeriodChangeStart(interval * (qint64)60000);
-        }
-        updateHBButtonDisplay();
-        sendNetworkMessage("STATION.SET_HB_INTERVAL", "", {
-            {"_ID", id},
-            {"HB_INTERVAL", QVariant(m_hbInterval)},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_HB_TIMER: Start/stop heartbeat timer loop.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_HB_TIMER") {
-        auto start = QVariant(message.value()).toBool();
-        ui->hbMacroButton->setChecked(start);
-        sendNetworkMessage("STATION.SET_HB_TIMER", "", {
-            {"_ID", id},
-            {"HB_TIMER_ACTIVE", QVariant(ui->hbMacroButton->isChecked())},
-        });
-        return;
-    }
-
-    /** @brief STATION.SEND_HB: Send an immediate heartbeat.
-     *  @note API 2.6+ */
-    if (type == "STATION.SEND_HB") {
-        sendHB();
-        sendNetworkMessage("STATION.SEND_HB", "", {
-            {"_ID", id},
-        });
-        return;
-    }
-
-    /** @brief STATION.SET_AUTOREPLY_CONFIRMATION: Toggle autoreply confirmation via TCP.
-     *  @note API 2.6+ */
-    if (type == "STATION.SET_AUTOREPLY_CONFIRMATION") {
-        auto checked = QVariant(message.value()).toBool();
-        m_config.set_autoreply_confirmation(checked);
-        sendNetworkMessage("STATION.AUTOREPLY_CONFIRMATION", "",
-            {{"_ID", id},
-             {"AUTOREPLY_CONFIRMATION", QVariant(checked)}});
-        return;
-    }
-
-    /** @brief STATION.AUTOREPLY_CONFIRM_RESPONSE: Accept/reject a pending autoreply confirmation.
-     *  @note API 2.6+ */
-    if (type == "STATION.AUTOREPLY_CONFIRM_RESPONSE") {
-        auto confirmId = message.params().value("CONFIRM_ID").toInt();
-        auto accepted = QVariant(message.value()).toBool();
-        // CRITICAL: m_pendingConfirmations lives in the GUI thread
-        QMetaObject::invokeMethod(this, [this, confirmId, accepted]() {
-            if (m_pendingConfirmations.contains(confirmId)) {
-                auto pc = m_pendingConfirmations.take(confirmId);
-                pc.timer->stop();
-                delete pc.timer;
-                if (accepted) {
-                    enqueueMessage(pc.priority, pc.message, pc.offset, pc.callback);
-                }
-                sendNetworkMessage("STATION.AUTOREPLY_CONFIRMED", "",
-                    {{"_ID", QVariant(-1)},
-                     {"CONFIRM_ID", QVariant(confirmId)},
-                     {"ACCEPTED", QVariant(accepted)},
-                     {"MESSAGE", QVariant(pc.message)}});
-            }
-        });
         return;
     }
 
