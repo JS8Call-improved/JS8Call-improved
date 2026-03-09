@@ -1141,6 +1141,9 @@ void UI_Constructor::monitor(bool state) {
         Q_EMIT suspendAudioInputStream();
     }
     m_monitoring = state;
+
+    // Notify WSJT-X protocol clients of receive state change (Monitor on/off)
+    statusUpdate();
 }
 
 void UI_Constructor::on_actionAbout_triggered() // Display "About"
@@ -2095,6 +2098,9 @@ void UI_Constructor::decodeBusy(bool b) // decodeBusy()
         m_decoderBusyFreq = dialFrequency();
         m_decoderBusyBand = m_config.bands()->find(m_decoderBusyFreq);
     }
+
+    // Notify WSJT-X protocol clients of decode state change (start/end of decode round)
+    statusUpdate();
 }
 
 /**
@@ -6760,7 +6766,7 @@ void UI_Constructor::statusUpdate() {
             true, // tx_enabled - JS8Call always allows TX when not in
                   // special modes
             m_transmitting,
-            m_decoderBusy || m_monitoring, // decoding
+            m_decoderBusy, // decoding (match WSJT-X: decoder busy only)
             tx_message);
     }
 

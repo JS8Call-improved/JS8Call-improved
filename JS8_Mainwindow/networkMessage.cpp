@@ -109,7 +109,7 @@ void UI_Constructor::networkMessage(Message const &message) {
                 dx_call, m_config.my_callsign(), m_config.my_grid(), dx_grid,
                 true, // tx_enabled
                 m_transmitting,
-                m_decoderBusy || m_monitoring, // decoding
+                m_decoderBusy, // decoding (match WSJT-X: decoder busy only)
                 tx_message);
         }
 
