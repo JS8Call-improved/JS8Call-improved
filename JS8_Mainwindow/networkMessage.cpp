@@ -659,6 +659,8 @@ if(type == "STATION.SET_SPOT") {
                             {"BANDWIDTH", bw},
                             {"LOW", low},
                             {"HIGH", high}});
+        return;
+    }
 
     /** @brief RX.GET_FILTER: Returns current filter center, width and enabled state.
      *  @note API 2.6+ */
@@ -911,6 +913,6 @@ if(type == "STATION.SET_SPOT") {
     }
 
     qCDebug(mainwindow_js8) << "Unable to process networkMessage:" << type;
-}
     /** @} */ // end of WINDOW Commands
-/** @} */ // end of API
+    /** @} */ // end of API
+}
