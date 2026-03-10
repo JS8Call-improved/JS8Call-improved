@@ -625,6 +625,8 @@ class UI_Constructor : public QMainWindow {
     QString m_decoderBusyBand;
     QMap<qint32, qint32>
         m_lastDecodeStartMap; // submode, decode k start position
+    QMap<qint32, qint32>
+        m_lastDecodeCycleMap; // JS8 40 & JS8 60 submodes, last enqueued cycle start
     Radio::Frequency m_decoderBusyFreq;
     QDateTime m_decoderBusyStartTime;
     bool m_auto;
@@ -900,6 +902,18 @@ class UI_Constructor : public QMainWindow {
         m_heardGraphOutgoingBandCache; // band -> heard in
     QMap<QString, QMap<QString, QSet<QString>>>
         m_heardGraphIncomingBandCache; // band -> heard out
+
+    // Pending autoreply confirmations (TCP-based, remplace Qt dialog en headless)
+    struct PendingConfirmation {
+        int id;
+        int priority;
+        QString message;
+        int offset;
+        Callback callback;
+        QTimer *timer;
+    };
+    int m_nextConfirmId = 0;
+    QMap<int, PendingConfirmation> m_pendingConfirmations;
 
     QMap<QString, QDateTime>
         m_callSelectedTime; // call -> timestamp when callsign was last selected

@@ -843,6 +843,12 @@ bool Configuration::autoreply_on_at_startup() const {
 bool Configuration::autoreply_confirmation() const {
     return m_->autoreply_confirmation_;
 }
+void Configuration::set_autoreply_confirmation(bool enabled) {
+    if (m_->autoreply_confirmation_ != enabled) {
+        m_->autoreply_confirmation_ = enabled;
+        m_->write_settings();
+    }
+}
 bool Configuration::heartbeat_anywhere() const {
     return m_->heartbeat_anywhere_;
 }
@@ -1111,6 +1117,11 @@ void Configuration::removeGroup(QString const &group) {
     QSet<QString> groups = my_groups();
     groups.remove(group.trimmed());
     m_->my_groups_ = groups.values();
+    m_->write_settings();
+}
+
+void Configuration::setMyGroups(QStringList const &groups) {
+    m_->my_groups_ = groups;
     m_->write_settings();
 }
 

@@ -723,7 +723,7 @@ void UI_Constructor::on_actionCheck_for_Updates_triggered() {
 
 void UI_Constructor::on_actionUser_Guide_triggered() {
     QDesktopServices::openUrl(
-        QUrl("https://js8call-improved.com/downloads/JS8Call_User_Guide.pdf"));
+        QUrl("https://js8call-improved.github.io/JS8Call-improved/d6/d14/md_docs_2user__guide_2JS8Call__User__Guide.html"));
 }
 
 void UI_Constructor::on_actionEnable_Monitor_RX_toggled(bool checked) {
@@ -1141,6 +1141,9 @@ void UI_Constructor::monitor(bool state) {
         Q_EMIT suspendAudioInputStream();
     }
     m_monitoring = state;
+
+    // Notify WSJT-X protocol clients of receive state change (Monitor on/off)
+    statusUpdate();
 }
 
 void UI_Constructor::on_actionAbout_triggered() // Display "About"
@@ -1694,7 +1697,7 @@ bool UI_Constructor::decodeEnqueueReady(qint32 k, qint32 k0) {
 #if JS8_ENABLE_JS8I
     static qint32 currentDecodeStartI = -1;
     static qint32 nextDecodeStartI = -1;
-    qCDebug(decoder_js8) << "? ULTRA    " << currentDecodeStartI
+    qCDebug(decoder_js8) << "? JS8 60    " << currentDecodeStartI
                          << nextDecodeStartI;
     couldDecodeI =
         isDecodeReady(Varicode::JS8CallUltra, k, k0, &currentDecodeStartI,
@@ -1821,6 +1824,9 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
                  submode == Varicode::JS8CallUltra)
                     ? JS8::Submode::samplesNeeded(submode)
                     : JS8::Submode::samplesForSymbols(submode);
+            bool const turboOrUltra =
+                (submode == Varicode::JS8CallTurbo ||
+                 submode == Varicode::JS8CallUltra);
             qint32 cycleFramesReady = k - (cycle * cycleFrames);
             if (cycleFramesReady < 0) {
                 cycleFramesReady = k + (maxSamples - (cycle * cycleFrames));
@@ -1855,6 +1861,21 @@ bool UI_Constructor::decodeEnqueueReadyExperiment(qint32 k, qint32 /*k0*/) {
 
                 // keep track of last decode position
                 m_lastDecodeStartMap[submode] = k;
+            } else if (turboOrUltra &&
+                       cycleFramesReady >= cycleFramesNeeded) {
+                qint32 const cycleStart = cycle * cycleFrames;
+                if (m_lastDecodeCycleMap.value(submode, -1) != cycleStart) {
+                    DecodeParams d;
+                    d.submode = submode;
+                    d.start = cycleStart;
+                    d.sz = cycleFramesNeeded;
+                    m_decoderQueue.append(d);
+                    decodes++;
+
+                    // keep track of last decode position and cycle
+                    m_lastDecodeStartMap[submode] = k;
+                    m_lastDecodeCycleMap[submode] = cycleStart;
+                }
             } else if ((incrementedBy >= 1.5 * oneSecondSamples &&
                         cycleFramesReady >=
                             cycleFramesNeeded) || // within every 3/2 seconds
@@ -2077,6 +2098,9 @@ void UI_Constructor::decodeBusy(bool b) // decodeBusy()
         m_decoderBusyFreq = dialFrequency();
         m_decoderBusyBand = m_config.bands()->find(m_decoderBusyFreq);
     }
+
+    // Notify WSJT-X protocol clients of decode state change (start/end of decode round)
+    statusUpdate();
 }
 
 /**
@@ -2446,7 +2470,8 @@ void UI_Constructor::prepareSending(qint64 nowMS) {
         lateThreshold *= 0.75;
     } else if (m_nSubMode == Varicode::JS8CallTurbo ||
                m_nSubMode == Varicode::JS8CallUltra) {
-        // for the turbo and ultra mode, only allow 1/2 late threshold
+        // for the JS8 40 (formerly "Turbo") and JS8 60
+        // modes, only allow 1/2 late threshold
         lateThreshold *= 0.5;
     };
 
@@ -3211,26 +3236,40 @@ void UI_Constructor::addMessageText(QString text, bool clear,
 void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
                                                QString message, int offset,
                                                Callback c) {
-    SelfDestructMessageBox *m = new SelfDestructMessageBox(
-        timeout, "Autoreply Confirmation Required",
-        QString("A transmission is queued for autoreply:\n\n%1\n\nWould you "
-                "like to send this transmission?")
-            .arg(message),
-        QMessageBox::Question, QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::No, false, this);
+    // CRITICAL: called from decoder thread → QTimer/sendNetworkMessage must run in GUI thread
+    QMetaObject::invokeMethod(this, [this, timeout, priority, message, offset, c]() {
+        int id = m_nextConfirmId++;
+        PendingConfirmation pc;
+        pc.id = id;
+        pc.priority = priority;
+        pc.message = message;
+        pc.offset = offset;
+        pc.callback = c;
 
-    connect(m, &SelfDestructMessageBox::finished, this,
-            [this, m, priority, message, offset, c](int) {
-                // make sure we delete the message box later...
-                m->deleteLater();
+        // Timer auto-reject after timeout
+        pc.timer = new QTimer(this);
+        pc.timer->setSingleShot(true);
+        connect(pc.timer, &QTimer::timeout, this, [this, id]() {
+            if (m_pendingConfirmations.contains(id)) {
+                auto pc = m_pendingConfirmations.take(id);
+                delete pc.timer;
+                sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_EXPIRED", "",
+                    {{"_ID", QVariant(-1)},
+                     {"CONFIRM_ID", QVariant(id)},
+                     {"MESSAGE", QVariant(pc.message)}});
+            }
+        });
+        pc.timer->start(timeout * 1000);
 
-                if (m->result() == QMessageBox::Yes) {
-                    enqueueMessage(priority, message, offset, c);
-                }
-            });
+        m_pendingConfirmations.insert(id, pc);
 
-    m->setWindowModality(Qt::NonModal);
-    m->show();
+        sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_REQUEST", message,
+            {{"_ID", QVariant(-1)},
+             {"CONFIRM_ID", QVariant(id)},
+             {"PRIORITY", QVariant(priority)},
+             {"OFFSET", QVariant(offset)},
+             {"TIMEOUT", QVariant(timeout)}});
+    });
 }
 
 void UI_Constructor::enqueueMessage(int priority, QString message, int offset,
@@ -5209,7 +5248,7 @@ void UI_Constructor::setXIT(int audio_freq) {
     // m_XIT is the frequency diff that will be added to the audio frequency
     // and subtracted from the radio frequency.
     // The new audio frequency is in the 1500 - 2000 Hz range,
-    // the audio actually transmitted is 1500 - 2160 Hz (TURBO has 160 Hz
+    // the audio actually transmitted is 1500 - 2160 Hz (JS8 40 has 160 Hz
     // bandwith). This way, the unwanted triple audio frequency possibly
     // generated by audio distortions is safely beyond the TX audio bandwidth of
     // 3 kHz and will not result in transmission. Also, the 1500 - 2160 Hz range
@@ -6727,7 +6766,7 @@ void UI_Constructor::statusUpdate() {
             true, // tx_enabled - JS8Call always allows TX when not in
                   // special modes
             m_transmitting,
-            m_decoderBusy || m_monitoring, // decoding
+            m_decoderBusy, // decoding (match WSJT-X: decoder busy only)
             tx_message);
     }
 

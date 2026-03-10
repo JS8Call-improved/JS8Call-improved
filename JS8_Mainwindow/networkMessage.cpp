@@ -109,7 +109,7 @@ void UI_Constructor::networkMessage(Message const &message) {
                 dx_call, m_config.my_callsign(), m_config.my_grid(), dx_grid,
                 true, // tx_enabled
                 m_transmitting,
-                m_decoderBusy || m_monitoring, // decoding
+                m_decoderBusy, // decoding (match WSJT-X: decoder busy only)
                 tx_message);
         }
 
@@ -165,6 +165,18 @@ void UI_Constructor::networkMessage(Message const &message) {
     // STATION.SET_SPOT - Set the current spotting status
     // STATION.GET_OS   - Get basic info about the OS we are running on
     // STATION.VERSION  - Get the JS8Call version
+    // STATION.GET_CONFIG - Get all config states (auto_reply, js8hb, hback, etc.)
+    // STATION.SET_AUTO_REPLY - Toggle auto-reply on/off
+    // STATION.SET_JS8HB - Toggle JS8 heartbeat on/off
+    // STATION.SET_HBACK - Toggle heartbeat acknowledgments on/off
+    // STATION.SET_MULTI_DECODER - Toggle multi-decoder on/off
+    // STATION.SET_HB_INTERVAL - Set heartbeat interval (seconds)
+    // STATION.SET_HB_TIMER - Start/stop heartbeat timer
+    // STATION.SEND_HB - Send heartbeat immediately
+    // STATION.SET_AUTOREPLY_CONFIRMATION - Toggle autoreply confirmation via TCP
+    // STATION.AUTOREPLY_CONFIRM_RESPONSE - Accept/reject pending autoreply
+    // STATION.SET_GROUPS - Replace subscribed groups list
+    // STATION.SET_AVOID_ALLCALL - Toggle @ALLCALL opt-out
     /**
      * @name STATION Commands
      * STATION related API calls
@@ -296,12 +308,214 @@ if(type == "STATION.SET_SPOT") {
           return;
     }
 
+    /** @brief STATION.GET_CONFIG: Returns all mode/config states for remote control.
+     *  @note API 2.6+ */
+    if (type == "STATION.GET_CONFIG") {
+        QVariantList groupsList;
+        for (auto const &g : m_config.my_groups()) {
+            groupsList.append(g);
+        }
+        sendNetworkMessage("STATION.CONFIG", "", {
+            {"_ID", id},
+            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
+            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
+            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
+            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
+            {"HB_INTERVAL", QVariant(m_hbInterval)},
+            {"HB_TIMER_ACTIVE", QVariant(m_hb_loop->isActive())},
+            {"MONITOR", QVariant(ui->monitorButton->isChecked())},
+            {"TX_ENABLED", QVariant(ui->monitorTxButton->isChecked())},
+            {"SPEED", QVariant(m_nSubMode)},
+            {"CAN_HB", QVariant(canCurrentModeSendHeartbeat())},
+            {"AUTOREPLY_CONFIRMATION", QVariant(m_config.autoreply_confirmation())},
+            {"MY_GROUPS", QVariant(groupsList)},
+            {"AVOID_ALLCALL", QVariant(m_config.avoid_allcall())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_AUTO_REPLY: Toggle auto-reply mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_AUTO_REPLY") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeAutoreply->setChecked(checked);
+        sendNetworkMessage("STATION.SET_AUTO_REPLY", "", {
+            {"_ID", id},
+            {"AUTO_REPLY", QVariant(ui->actionModeAutoreply->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_JS8HB: Toggle heartbeat networking mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_JS8HB") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeJS8HB->setChecked(checked);
+        sendNetworkMessage("STATION.SET_JS8HB", "", {
+            {"_ID", id},
+            {"JS8HB", QVariant(ui->actionModeJS8HB->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HBACK: Toggle heartbeat acknowledgments.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HBACK") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionHeartbeatAcknowledgements->setChecked(checked);
+        sendNetworkMessage("STATION.SET_HBACK", "", {
+            {"_ID", id},
+            {"HBACK", QVariant(ui->actionHeartbeatAcknowledgements->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_MULTI_DECODER: Toggle multi-decoder mode.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_MULTI_DECODER") {
+        auto checked = QVariant(message.value()).toBool();
+        ui->actionModeMultiDecoder->setChecked(checked);
+        sendNetworkMessage("STATION.SET_MULTI_DECODER", "", {
+            {"_ID", id},
+            {"MULTI_DECODER", QVariant(ui->actionModeMultiDecoder->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HB_INTERVAL: Set heartbeat interval in minutes.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HB_INTERVAL") {
+        auto interval = message.params().value("INTERVAL").toInt();
+        m_hbInterval = interval;
+        if (ui->hbMacroButton->isChecked() && interval > 0) {
+            m_hb_loop->onTxLoopPeriodChangeStart(interval * (qint64)60000);
+        }
+        updateHBButtonDisplay();
+        sendNetworkMessage("STATION.SET_HB_INTERVAL", "", {
+            {"_ID", id},
+            {"HB_INTERVAL", QVariant(m_hbInterval)},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_HB_TIMER: Start/stop heartbeat timer loop.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_HB_TIMER") {
+        auto start = QVariant(message.value()).toBool();
+        ui->hbMacroButton->setChecked(start);
+        sendNetworkMessage("STATION.SET_HB_TIMER", "", {
+            {"_ID", id},
+            {"HB_TIMER_ACTIVE", QVariant(ui->hbMacroButton->isChecked())},
+        });
+        return;
+    }
+
+    /** @brief STATION.SEND_HB: Send an immediate heartbeat.
+     *  @note API 2.6+ */
+    if (type == "STATION.SEND_HB") {
+        sendHB();
+        sendNetworkMessage("STATION.SEND_HB", "", {
+            {"_ID", id},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_AUTOREPLY_CONFIRMATION: Toggle autoreply confirmation via TCP.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_AUTOREPLY_CONFIRMATION") {
+        auto checked = QVariant(message.value()).toBool();
+        m_config.set_autoreply_confirmation(checked);
+        sendNetworkMessage("STATION.AUTOREPLY_CONFIRMATION", "",
+            {{"_ID", id},
+             {"AUTOREPLY_CONFIRMATION", QVariant(checked)}});
+        return;
+    }
+
+    /** @brief STATION.AUTOREPLY_CONFIRM_RESPONSE: Accept/reject a pending autoreply confirmation.
+     *  @note API 2.6+ */
+    if (type == "STATION.AUTOREPLY_CONFIRM_RESPONSE") {
+        auto confirmId = message.params().value("CONFIRM_ID").toInt();
+        auto accepted = QVariant(message.value()).toBool();
+        // CRITICAL: m_pendingConfirmations lives in the GUI thread
+        QMetaObject::invokeMethod(this, [this, confirmId, accepted]() {
+            if (m_pendingConfirmations.contains(confirmId)) {
+                auto pc = m_pendingConfirmations.take(confirmId);
+                pc.timer->stop();
+                delete pc.timer;
+                if (accepted) {
+                    enqueueMessage(pc.priority, pc.message, pc.offset, pc.callback);
+                }
+                sendNetworkMessage("STATION.AUTOREPLY_CONFIRMED", "",
+                    {{"_ID", QVariant(-1)},
+                     {"CONFIRM_ID", QVariant(confirmId)},
+                     {"ACCEPTED", QVariant(accepted)},
+                     {"MESSAGE", QVariant(pc.message)}});
+            }
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_GROUPS: Replace the subscribed groups list via TCP.
+     *  Validates each group (isGroupAllowed + isCompoundCallsign) and returns
+     *  a TCP error instead of opening a MessageBox (headless-safe).
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_GROUPS") {
+        QStringList newGroups;
+        auto groupsVar = message.params().value("GROUPS");
+        if (groupsVar.canConvert<QVariantList>()) {
+            for (auto const &v : groupsVar.toList()) {
+                auto g = v.toString().trimmed();
+                if (g.isEmpty() || !g.startsWith("@")) continue;
+                if (!Varicode::isGroupAllowed(g)) {
+                    sendNetworkMessage("STATION.SET_GROUPS", "", {
+                        {"_ID", id},
+                        {"ERROR", QString("Group not allowed: %1").arg(g)},
+                    });
+                    return;
+                }
+                if (!Varicode::isCompoundCallsign(g)) {
+                    sendNetworkMessage("STATION.SET_GROUPS", "", {
+                        {"_ID", id},
+                        {"ERROR", QString("Invalid group name: %1").arg(g)},
+                    });
+                    return;
+                }
+                newGroups.append(g);
+            }
+        }
+        m_config.setMyGroups(newGroups);
+
+        QVariantList result;
+        for (auto const &g : m_config.my_groups()) {
+            result.append(g);
+        }
+        sendNetworkMessage("STATION.SET_GROUPS", "", {
+            {"_ID", id},
+            {"GROUPS", QVariant(result)},
+        });
+        return;
+    }
+
+    /** @brief STATION.SET_AVOID_ALLCALL: Toggle @ALLCALL opt-out via TCP.
+     *  @note API 2.6+ */
+    if (type == "STATION.SET_AVOID_ALLCALL") {
+        auto checked = QVariant(message.value()).toBool();
+        m_config.set_avoid_allcall(checked);
+        sendNetworkMessage("STATION.SET_AVOID_ALLCALL", "", {
+            {"_ID", id},
+            {"AVOID_ALLCALL", QVariant(m_config.avoid_allcall())},
+        });
+        return;
+    }
     /** @} */ // End STATION Commands
 
     // RX.GET_CALL_ACTIVITY
     // RX.GET_CALL_SELECTED
     // RX.GET_BAND_ACTIVITY
     // RX.GET_TEXT
+    // RX.GET_FILTER - Get bandpass filter center, width, enabled state
+    // RX.SET_FILTER - Set filter CENTER and/or WIDTH
+    // RX.SET_FILTER_ENABLED - Toggle filter overlay on/off
     /**
      * @name RX Commands
      * RX related API calls
@@ -445,6 +659,51 @@ if(type == "STATION.SET_SPOT") {
                             {"BANDWIDTH", bw},
                             {"LOW", low},
                             {"HIGH", high}});
+
+    /** @brief RX.GET_FILTER: Returns current filter center, width and enabled state.
+     *  @note API 2.6+ */
+    if (type == "RX.GET_FILTER") {
+        sendNetworkMessage("RX.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief RX.SET_FILTER: Set filter CENTER and/or WIDTH, returns updated state.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER") {
+        auto params = message.params();
+        if (params.contains("CENTER")) {
+            bool ok = false;
+            auto c = params["CENTER"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterCenter(c);
+        }
+        if (params.contains("WIDTH")) {
+            bool ok = false;
+            auto w = params["WIDTH"].toInt(&ok);
+            if (ok) m_wideGraph->setFilterWidth(w);
+        }
+        sendNetworkMessage("RX.FILTER", "", {
+            {"_ID", id},
+            {"CENTER", QVariant(m_wideGraph->filterCenter())},
+            {"WIDTH", QVariant(m_wideGraph->filterWidth())},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
+        return;
+    }
+
+    /** @brief RX.SET_FILTER_ENABLED: Toggle filter overlay on/off.
+     *  @note API 2.6+ */
+    if (type == "RX.SET_FILTER_ENABLED") {
+        auto enabled = QVariant(message.value()).toBool();
+        m_wideGraph->setFilterEnabled(enabled);
+        sendNetworkMessage("RX.SET_FILTER_ENABLED", "", {
+            {"_ID", id},
+            {"ENABLED", QVariant(m_wideGraph->filterEnabled())},
+        });
         return;
     }
     /** @} */ // End RX Commands
@@ -547,7 +806,9 @@ if(type == "STATION.SET_SPOT") {
                            });
         return;
     }
+
     /** @} */ // End MODE Commands
+
 
     // INBOX.GET_MESSAGES
     // INBOX.STORE_MESSAGE
