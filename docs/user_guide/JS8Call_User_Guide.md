@@ -4,12 +4,12 @@
 <tbody>
 <tr class="odd">
 <td><img src="JS8Call_User_Guide_html_e18288a9.png" style="width:0.7465in;height:0.7465in" /></td>
-<td><p><span id="anchor"></span><span id="anchor-1"></span>JS8Call de KN4CRD</p><p>2026-01-18 - v2.2+ 
+<td><p><span id="anchor"></span><span id="anchor-1"></span>JS8Call de KN4CRD</p><p>2026-03-12 - v2.6 
 <!-- TODO: change to User Guide release date following approval and remove 'partially updated' warning below | assignee: @Aqueum --> </p></td>
 </tr>
 </tbody>
 </table>
-**This is a partially updated version of the v2.2 User Guide.  Links have been fixed/updated so it is slightly more useful than the v2.2 original**
+**This is the User Guide from the repo master and contains items currently in development. We have marked items not released yet.**
 <hr>
 To save an offline copy of the User Guide as PDF [download from here](https://js8call-improved.github.io/downloads/JS8Call_User_Guide.pdf)
 <hr>
@@ -98,6 +98,13 @@ To save an offline copy of the User Guide as PDF [download from here](https://js
 - **December 22, 2019** - Version 2.1.0 general availability - Slow speed introduced!
 
 - **June 30, 2020** - Version 2.2.0 general availability
+
+- **November 3, 2025** - Version 2.4.0 released as JS8Call-improved, OmniRig deprecated on Windows, Fortran code removed
+  See [Release notes v2.4.0](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/release%2F2.4.0)
+
+- **January 6, 2026** - Version 2.5.0 released, renamed back to JS8Call. 
+  See [Release notes v2.5.0](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/release%2F2.5.0)
+  
 <!-- TODO: add subsequent versions & milestones | assignee: @Aqueum -->
 
 ## Notice
@@ -129,7 +136,7 @@ JS8Call currently comes in a variety of builds.
 - Mac OS - Universal (Intel + Apple Silicon)
 - [Android](https://github.com/JS8Call-improved/Android-port)
 
-Application downloads are available here: [https://github.com/JS8Call-improved/JS8Call-improved/releases/](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant .AppImage for Linux, .exe for Windows, ...arm64.dmg for Apple Silicone Mac or ...universal.dmg for Intel Mac.
+Application downloads are available here: [Github release page](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant *.AppImage for Linux, *installer.exe for Windows, *.arm64.dmg for Apple Silicone Mac or *.universal.dmg for Intel Mac.
 
 Of course, you are always free to take a look at the [source code](https://github.com/JS8Call-improved) as well!
 
@@ -141,9 +148,11 @@ In the application you can see the current time reported by your computer in UTC
 
 JS8Call includes an automatic and manual clock drift tool that you can use to modify JS8Call's internal clock to match signals you see / hear (or to an external time source like a Timex watch, a handheld GPS device, WWV, or a rooster crowing). This is intended to be used as a fail-safe for when your synchronized time source is not available (like if you were out portable, away from internet connectivity).
 
-> [!NOTE] You do not actually have to have the exact time synchronized...just synchronized to the start of a transmission window (15, 10, or 6 seconds), +/- 2 seconds. Many operators can manually synchronize their system clock based on signals in the waterfall and the time drift reported for each station.
+> [!NOTE]
+> You do not actually have to have the exact time synchronized...just synchronized to the start of a transmission window (15, 10, or 6 seconds), +/- 2 seconds. Many operators can manually synchronize their system clock based on signals in the waterfall and the time drift reported for each station.
 
-> [!TIP] You can use the manual drift tool to make your JS8Call's internal clock go "wrong" on purpose, to synchronize it with another station's clock that is off. This will make communication to that station more reliable. This is available via that other station's line in the callsigns' panel, in the context menu: "Jump to X ms drift time."
+> [!TIP]
+> You can use the manual drift tool to make your JS8Call's internal clock go "wrong" on purpose, to synchronize it with another station's clock that is off. This will make communication to that station more reliable. This is available via that other station's line in the callsigns' panel, in the context menu: "Jump to X ms drift time."
 
 ### USB - Upper Sideband Only
 
@@ -153,6 +162,7 @@ Make sure your rig is set to upper sideband (USB) mode for every band. If you ar
 
 The JS8 modulator is a constant envelope, full-duty modulation that transmits in 12.6 second frames in normal speed. Because of the dead air between transmission frames, multi-frame messages can be classified as 84% duty on a 15-second window (12.6 / 15 = 0.84) for normal and slow (25.28 / 30 = 0.84), 79% for fast on a 10-second window (7.9 / 10 = 0.79), 65% for JS8 40 (formerly "Turbo") on a 6-second window (3.95 / 6 = 0.653).
 
+> [!NOTE]
 JS8 60 is an experimental mode introduced in 2.6 and later; it uses a 3-second Tx on a 4-second frame interval, so is technically 75% duty cycle. However, these specs may change as JS8 60 is more cpu intensive than other modes and can be unreliable.
 
 Please make note of the power restrictions your transceiver manufacturer recommends for full-duty digital transmissions. When in doubt, use only a maximum of 50% of your rig's power output to "save your finals".
@@ -178,17 +188,21 @@ If you've used FSQ, Fldigi or WSJT-X before, you'll feel right at home with JS8C
 
 JS8Call 2.0 introduced two new faster mode speeds for QSOs and 2.1 introduced a slow mode. 2.6 and later introduced JS8 60 and renamed "Turbo" to JS8 40, the two faster modes designated by approximate words-per-minute transmission speed. As noted in the table below, JS8 40 and JS8 60 do not allow participation in the Heartbeat (HB) networking system. These two modes are not suitable for sending MSG's and are more designed for faster keyboard-to-keyboard QSO in good conditions. The five speeds now available in JS8 are:
 
-Name | Period/s | Bandwidth/Hz | Speed/WPM | Sensitivity/dB
--------|----|----|----|----|
-Slow   | 30 | 25 | 8  | -28
-Normal | 15 | 50 | 16 | -24
-Fast   | 10 | 80 | 24 | -20
--------|----|----|----|----|
-Faster but less reliable modes designated by transmission speed in wpm. Heartbeat networking is disabled with these modes.
--------|---|-----|----|----|
-JS8 40 | 6 | 160 | 40 | -18
-JS8 60 | 4 | 250 | 60 | -16
--------|---|-----|----|----|
+|Name | Period/s | Bandwidth/Hz | Speed/WPM | Sensitivity/dB|
+|-------|:----:|:-----:|:----:|:----:|
+|Slow   | 30 | 25  | 8  | -28|
+|Normal | 15 | 50  | 16 | -24|
+|Fast   | 10 | 80  | 24 | -20|
+
+>[!NOTE]
+>JS 60 available in 2.6.0+, JS8 40 renamed from Turbo
+>
+> Faster but less reliable modes designated by transmission speed in wpm. Heartbeat networking is disabled with these modes.
+> |Name | Period/s | Bandwidth/Hz | Speed/WPM | Sensitivity/dB|
+> |-------|:---:|:------:|:---:|:----:|
+> |JS8 40 | 6 | 160  | 40 | -18|
+> |JS8 60 | 4 | 250  | 60 | -16|
+
 
 The intent of the faster speeds is to start your QSO in normal and \"upgrade\" to the faster speeds if conditions support it. Unless you have a weak computer with a slow CPU, you should enable MULTI from the mode menu, asking the decoder to decode all modes at once. Other users typically expect you have that set. Otherwise if they can't reach you on Normal and move to Slow, you will not decode their message.
 
@@ -319,15 +333,14 @@ Everything after the CMD frame is forwarded in an APRS packet, like:
 
 #### Directed Commands:
 
-There are special directed messages that you can send to stations to have them automatically reply if they have AUTO enabled. They are comprised in the form of \[CALLSIGN\]\[COMMAND\].
+There are special directed messages that you can send to stations to have them automatically reply if they have AUTO enabled. They are comprised in the form of \[CALLSIGN\] \[COMMAND\].
 
 - SNR? - What is my SNR?
 - GRID? - What is your grid locator?
 - INFO? - What is your station information?
 - STATUS? - What is your station status message?
 - HEARING? - What stations are you HEARING?
--  \-\--
-
+- 
 - \>\[MESSAGE\] - Please relay this message to its destination
   - When received in its entirety, the destination station will send an `ACK` reply to the message
   - Optionally, this message can be relayed to its final destination through multiple relay stations by prefixing additional callsigns to the message:
@@ -359,8 +372,8 @@ There are special directed messages that you can send to stations to have them a
   - To retrieve the message text, issue a QUERY MSG command with the ID
 
 - AGN? - Have the station automatically retransmit their last message
-
-- \-\--
+  
+- 
 
 - SNR - Send signal report
 - INFO - Send station information
@@ -390,7 +403,7 @@ If we wanted to ask DR4CNK what their station information was, we'd send:
 
   `DR4CNK: KN4CRD INFO 50W VERT IN THE SOUTH OF FRANCE`
 
-  automatically if AUTO reply is enabled.
+  automatically if `AUTO` reply is enabled.
 
 If we wanted to transmit a "relay" message to OH8STN through DR4CNK, we could use the relay command and send:
 
@@ -414,7 +427,7 @@ You can also mix and match standard and free text messages, but most of the time
 
 Directed messaging allows three commands to be used for message storage and retrieval at intermediate stations:
 
-- MSG TO:\[CALLSIGN\] \[MESSAGE\] - Store this MESSAGE at an intermediate station for CALLSIGN
+- MSG TO: \[CALLSIGN\] \[MESSAGE\] - Store this MESSAGE at an intermediate station for CALLSIGN
 
 - QUERY MSGS - Query the destination for messages stored for your station callsign
 
@@ -423,25 +436,25 @@ Directed messaging allows three commands to be used for message storage and retr
 
 ### AUTO - Automatic Replies
 
-While AUTO is enabled, the software will automatically respond to directed queries, like "SNR?", "INFO?", and "GRID?". When AUTO is turned off, JS8Call will buffer responses to directed queries in the send message textbox until you are ready to send the replies manually.
+While `AUTO` is enabled, the software will automatically respond to directed queries, like "SNR?", "INFO?", and "GRID?". When `AUTO` is turned off, JS8Call will buffer responses to directed queries in the send message textbox until you are ready to send the replies manually.
 
-If you would like to participate in AUTO, but would not like to be responsible for message relays, you can disable relays while AUTO is enabled in the settings.
+If you would like to participate in `AUTO`, but would not like to be responsible for message relays, you can disable relays while `AUTO` is enabled in the settings.
 
 ### LOG - Station Log
 
 There's a log item in the main menu of the application. You can also press F5 to start a log entry. The software will do its best effort to pre-populate log fields. However, you'll likely have to fill out some missing information manually since the QSO is free-text and not automated.
 
-The log is stored in JS8Call.log & JS8Call.adif in the log directory (which you can find by clicking "File -\> Open log directory" in the main menu).
+The log is stored in JS8Call.log and JS8Call.adif in the log directory (which you can find by clicking "File -\> Open log directory" in the main menu).
 
-Currently, the logging function in JS8Call will log each contact, according to the ADIF spec, as MFSK mode and JS8 submode. There is also an option in the Logging settings to log the mode as DATA instead of MFSK & JS8.
+Currently, the logging function in JS8Call will log each contact, according to the ADIF spec, as MFSK mode and JS8 submode. There is also an option in the Logging settings to log the mode as DATA instead of MFSK and JS8.
 
 Once logged, the selected directed callsign is automatically deselected by default, however this option can be overridden in the configuration.
 
 ### SPOT - Callsign Spotting
 
-When SPOT is enabled, JS8Call will report callsigns you hear (or your callsign if heard by other stations) to PSKReporter under the "JS8Call" mode.
+When `SPOT` is enabled, JS8Call will report callsigns you hear (or your callsign if heard by other stations) to PSKReporter under the "JS8Call" mode.
 
-JS8Call will also spot GRID commands with 6 or more characters. Make sure to set your grid locator to 6-12 characters for the most accurate spot. You can drill down with this map to your location if you're unsure of your grid: [http://k7fry.com/grid/](http://k7fry.com/grid/). If you have a lat/lon, you can also use the lonlat2maiden script here: [http://www.jidanni.org/geo/maidenhead/](http://www.jidanni.org/geo/maidenhead/)
+JS8Call will also spot GRID commands with 6 or more characters. Make sure to set your grid locator to 6-12 characters for the most accurate spot. You can drill down with this map to your location if you're unsure of your grid: [k7fry grid locator](http://k7fry.com/grid/). If you have a lat/lon, you can also use [QRZ Gridmapper](https://www.qrz.com/gridmapper).
 
 ### HB - Heartbeat Transmission
 
@@ -469,7 +482,8 @@ While in QSO (i.e., when you receive a transmission that is displayed in your in
 
 Also, keep in mind that unattended transmissions may be against the rules of your jurisdiction. To be most safe, heartbeat should only be automatically sent while you're at the control point of your station. There's an idle timer that you can configure in the settings that will disable your heartbeat once you leave your station idle (no mouse or keyboard movement).
 
-> [!NOTE] HBs are intentionally restricted to Slow, Normal, and Fast speeds for bandwidth  efficiency and enhanced compatibility in the HB network. HB is disabled and will not appear on the button for JS8 40 and JS8 60
+> [!NOTE]
+> HBs are intentionally restricted to Slow, Normal, and Fast speeds for bandwidth  efficiency and enhanced compatibility in the HB network. HB is disabled and will not appear on the button for JS8 40 and JS8 60
 
 ### CQ - Calling CQ
 
@@ -536,7 +550,7 @@ When JS8Call starts transmitting, it will execute: ``/usr/bin/ptt "on"``
 
 And when JS8Call has finished transmitting, it will execute: ``/usr/bin/ptt "off"``
 
-This is particularly helpful for Raspberry Pi / DRAWS when the GPIO ports are used to control your rig PTT. An example script can be found here: [https://gist.github.com/jsherer/dd09895ab23bdf571e2117cdd814c198](https://gist.github.com/jsherer/dd09895ab23bdf571e2117cdd814c198)
+This is particularly helpful for Raspberry Pi / DRAWS when the GPIO ports are used to control your rig PTT. An example script can be found here: [GPIO Toggle Script](https://gist.github.com/jsherer/dd09895ab23bdf571e2117cdd814c198)
 
 ### Audio (Sound Card)
 
@@ -581,7 +595,8 @@ Most operators testing the application can be found +/- 4-8kHz from the standard
 
 You might notice a few of these being close to the JT9 frequencies. Don't grab your pitchforks! JS8Call blocks out transmitting within the lower 500Hz of the passband. This leaves enough room for 25 simultaneous JT9 signals.
 
-You might also notice that there are a few bands missing from this list. JS8Call does not make a recommendation for calling frequencies on 2200m, 630m, 11m (CB), or higher than 2m, as many of these bands are special cases and have unique rules in many jurisdictions. It's up to the operator(s) to coordinate and determine the best frequency and operating pattern on these bands.
+>[!NOTE]
+>You might also notice that there are a few bands missing from this list. JS8Call does not make a recommendation for calling frequencies on 2200m, 630m, 11m (CB), or higher than 2m, as many of these bands are special cases and have unique rules in many jurisdictions. It's up to the operator(s) to coordinate and determine the best frequency and operating pattern on these bands.
 
 But also, please keep in mind these are only *suggested* frequencies. We all have VFOs, so please use them. Just remember to be good operators and prevent from interfering with other signals on our shared bands.
 
@@ -874,9 +889,11 @@ Saved messages have macro-like functionality. These are the macros variables (wo
 
         - (4x) Four Decode Passes - The decoder will perform four subtraction passes using belief propagation with ordered statistics.
 
-      > [!NOTE] You may have to run with a lower sensitivity if you have a low power machine or if your CPU cannot keep up with the decoder.
+      > [!NOTE]
+      > You may have to run with a lower sensitivity if you have a low power machine or if your CPU cannot keep up with the decoder.
 
-      > [!NOTE] Higher sensitivity levels that use ordered statistics have a higher chance of producing a "false decode" (i.e., noise that matches the sync pattern and passes the checksum process). This tradeoff is intentional. If you would like to avoid false decodes, you can decrease your sensitivity to 1x or 2x.
+      > [!NOTE]
+      > Higher sensitivity levels that use ordered statistics have a higher chance of producing a "false decode" (i.e., noise that matches the sync pattern and passes the checksum process). This tradeoff is intentional. If you would like to avoid false decodes, you can decrease your sensitivity to 1x or 2x.
 
   - I love what you're doing. Do you have a PayPal or Patreon where I can send you a donation as a "Thank you?"
 
@@ -894,7 +911,7 @@ via [https://sourceforge.net/p/wsjt/mailman/message/36224507/](https://sourcefor
 
 ## Troubleshooting
 
-If you're having trouble, head over to the troubleshooting chatroom for help: [https://js8call.groups.io/g/main](https://js8call.groups.io/g/main) or email Jordan directly: [kn4crd@gmail.com](mailto:kn4crd@gmail.com)
+If you're having trouble, head over to the troubleshooting chatroom for help: [JS8Call email list](https://js8call.groups.io/g/main), [Github Discussions](https://github.com/orgs/JS8Call-improved/discussions) or email Jordan directly: [kn4crd@gmail.com](mailto:kn4crd@gmail.com)
 
 ### Common Problems & Solutions
 
@@ -918,7 +935,8 @@ Check to make sure you're on one of the JS8Call frequencies. Keep in mind that J
 2) None of the operators are operating on the band you are on, or
 3) Propagation isn't being friendly to you.
 
-> [!NOTE] Keep in mind that JS8Call isn't magic...we're still at the mercy of the ionosphere.
+> [!NOTE]
+> Keep in mind that JS8Call isn't magic...we're still at the mercy of the ionosphere.
 
 #### My rig won't transmit
 
@@ -928,11 +946,11 @@ After that, make sure your rig works...switch over to FM or CW and send a carrie
 
 #### Bug Reports
 
-You can send bug reports to Jordan Sherer (KN4CRD) at [kn4crd@gmail.com](mailto:kn4crd@gmail.com) or submit them to the issue tracker here: [https://github.com/JS8Call-improved/JS8Call-improved/issues](https://github.com/JS8Call-improved/JS8Call-improved/issues)
+You can send bug reports to the developers using the issue tracker here: [Github issues](https://github.com/JS8Call-improved/JS8Call-improved/issues)
 
 ## API Definition
 
-JS8Call uses a JSON API offered over UDP and TCP. More detailed documentation will be available in the future.
+JS8Call uses a JSON API offered over UDP and TCP. More detailed documentation is available on [Github documention](https://js8call-improved.github.io/JS8Call-improved/)
 
 ## Technical Implementation
 
@@ -943,7 +961,7 @@ JS8Call is under active development and details about the technical implementati
 JS8Call uses JS8 modulation as the base transport for data. Being a derivative of WSJT-X, JS8Call heavily leverages the work by the WSJT-X Development Group on the FT8 mode.
 
 | **Speed** | **TX Duration** | **Tones / Symbols** | **Baud Rate** | **Tone Spacing / Bandwidth** |
-|-----------|-----------------|---------------------|---------------|------------------------------|
+|-----------|-----------------|-------------------|-----------------:|:---------------------------:|
 | SLOW      | 25.28 seconds   | 8 / 79              | 3.125 baud    | 3.125Hz / 25Hz               |
 | NORMAL    | 12.64 seconds   | 8 / 79              | 6.25 baud     | 6.25Hz / 50Hz                |
 | FAST      | 7.9 seconds     | 8 / 79              | 10 baud       | 10Hz / 80Hz                  |
@@ -964,7 +982,7 @@ Based on the modulation bandwidth and error correction, under AWGN with all else
 
 ### Protocol
 
-The JS8Call protocol sits at a layer above the base transport. Much of the implementation is inspired by the design document: [https://github.com/jsherer/ft8call](https://github.com/jsherer/ft8call) with a few deviations from the original proposal.
+The JS8Call protocol sits at a layer above the base transport. Much of the implementation is inspired by the design document: [FT8Call Design](https://github.com/jsherer/ft8call) with a few deviations from the original proposal.
 
 Messages in JS8Call are transmitted in intervals (frames), with each frame being classified as one of 6 frame types:
 
