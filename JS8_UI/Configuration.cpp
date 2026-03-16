@@ -470,6 +470,10 @@ class Configuration::impl final : public QDialog {
     void fill_port_combo_box(QComboBox *);
     Frequency apply_calibration(Frequency) const;
     Frequency remove_calibration(Frequency) const;
+    void updatePillPreview(QLabel *label, const QColor &bg, const QColor &fg);
+    void choosePillPreviewColor(QColor &target, QLabel *label,
+                                const QColor &bg, const QColor &fg,
+                                const QString &title);
 
     void delete_frequencies();
     void load_frequencies();
@@ -532,6 +536,14 @@ class Configuration::impl final : public QDialog {
     Q_SLOT void on_composeFontButton_clicked();
     Q_SLOT void on_txForegroundButton_clicked();
     Q_SLOT void on_txFontButton_clicked();
+    Q_SLOT void on_pillRecipientBgButton_clicked();
+    Q_SLOT void on_pillRecipientFgButton_clicked();
+    Q_SLOT void on_pillCommandBgButton_clicked();
+    Q_SLOT void on_pillCommandFgButton_clicked();
+    Q_SLOT void on_pillGroupBgButton_clicked();
+    Q_SLOT void on_pillGroupFgButton_clicked();
+    Q_SLOT void on_pillSenderBgButton_clicked();
+    Q_SLOT void on_pillSenderFgButton_clicked();
 
     // typenames used as arguments must match registered type names :(
     Q_SIGNAL void start_transceiver(unsigned seqeunce_number) const;
@@ -669,6 +681,23 @@ class Configuration::impl final : public QDialog {
     QColor next_color_DXCC_;
     QColor color_NewCall_;
     QColor next_color_NewCall_;
+    bool pills_enabled_;
+    QColor color_pill_recipient_bg_;
+    QColor next_color_pill_recipient_bg_;
+    QColor color_pill_recipient_fg_;
+    QColor next_color_pill_recipient_fg_;
+    QColor color_pill_command_bg_;
+    QColor next_color_pill_command_bg_;
+    QColor color_pill_command_fg_;
+    QColor next_color_pill_command_fg_;
+    QColor color_pill_group_bg_;
+    QColor next_color_pill_group_bg_;
+    QColor color_pill_group_fg_;
+    QColor next_color_pill_group_fg_;
+    QColor color_pill_sender_bg_;
+    QColor next_color_pill_sender_bg_;
+    QColor color_pill_sender_fg_;
+    QColor next_color_pill_sender_fg_;
     double txDelay_;
     bool write_logs_;
     bool reset_activity_;
@@ -845,6 +874,15 @@ QColor Configuration::color_compose_foreground() const {
 }
 QColor Configuration::color_DXCC() const { return m_->color_DXCC_; }
 QColor Configuration::color_NewCall() const { return m_->color_NewCall_; }
+bool Configuration::pills_enabled() const { return m_->pills_enabled_; }
+QColor Configuration::color_pill_recipient_bg() const { return m_->color_pill_recipient_bg_; }
+QColor Configuration::color_pill_recipient_fg() const { return m_->color_pill_recipient_fg_; }
+QColor Configuration::color_pill_command_bg() const { return m_->color_pill_command_bg_; }
+QColor Configuration::color_pill_command_fg() const { return m_->color_pill_command_fg_; }
+QColor Configuration::color_pill_group_bg() const { return m_->color_pill_group_bg_; }
+QColor Configuration::color_pill_group_fg() const { return m_->color_pill_group_fg_; }
+QColor Configuration::color_pill_sender_bg() const { return m_->color_pill_sender_bg_; }
+QColor Configuration::color_pill_sender_fg() const { return m_->color_pill_sender_fg_; }
 QFont Configuration::table_font() const { return m_->table_font_; }
 QFont Configuration::text_font() const { return m_->font_; }
 QFont Configuration::rx_text_font() const { return m_->rx_text_font_; }
@@ -1809,6 +1847,15 @@ void Configuration::impl::initialize_models() {
         QString("background: %1; color: %2")
             .arg(color_compose_background_.name())
             .arg(color_compose_foreground_.name()));
+    ui_->pills_enabled_check_box->setChecked(pills_enabled_);
+    updatePillPreview(ui_->pillRecipientLabel, next_color_pill_recipient_bg_,
+                      next_color_pill_recipient_fg_);
+    updatePillPreview(ui_->pillCommandLabel, next_color_pill_command_bg_,
+                      next_color_pill_command_fg_);
+    updatePillPreview(ui_->pillGroupLabel, next_color_pill_group_bg_,
+                      next_color_pill_group_fg_);
+    updatePillPreview(ui_->pillSenderLabel, next_color_pill_sender_bg_,
+                      next_color_pill_sender_fg_);
 
     ui_->sbTxDelay->setValue(txDelay_);
     ui_->PTT_method_button_group->button(rig_params_.ptt_type)
@@ -2109,6 +2156,25 @@ void Configuration::impl::read_settings() {
         settings_->value("colorTableHighlight", "#3498db").toString();
     next_color_table_foreground_ = color_table_foreground_ =
         settings_->value("colorTableForeground", "#000000").toString();
+
+    pills_enabled_ = settings_->value("PillsEnabled", true).toBool();
+
+    next_color_pill_recipient_bg_ = color_pill_recipient_bg_ =
+        settings_->value("colorPillRecipientBg", "#2980b9").toString();
+    next_color_pill_recipient_fg_ = color_pill_recipient_fg_ =
+        settings_->value("colorPillRecipientFg", "#ffffff").toString();
+    next_color_pill_command_bg_ = color_pill_command_bg_ =
+        settings_->value("colorPillCommandBg", "#e67e22").toString();
+    next_color_pill_command_fg_ = color_pill_command_fg_ =
+        settings_->value("colorPillCommandFg", "#ffffff").toString();
+    next_color_pill_group_bg_ = color_pill_group_bg_ =
+        settings_->value("colorPillGroupBg", "#16a085").toString();
+    next_color_pill_group_fg_ = color_pill_group_fg_ =
+        settings_->value("colorPillGroupFg", "#ffffff").toString();
+    next_color_pill_sender_bg_ = color_pill_sender_bg_ =
+        settings_->value("colorPillSenderBg", "#7f8c8d").toString();
+    next_color_pill_sender_fg_ = color_pill_sender_fg_ =
+        settings_->value("colorPillSenderFg", "#ffffff").toString();
 
     if (next_font_.fromString(
             settings_->value("Font", QGuiApplication::font().toString())
@@ -2529,6 +2595,16 @@ void Configuration::impl::write_settings() {
     settings_->setValue("colorTableBackground", color_table_background_);
     settings_->setValue("colorTableHighlight", color_table_highlight_);
     settings_->setValue("colorTableForeground", color_table_foreground_);
+
+    settings_->setValue("PillsEnabled", pills_enabled_);
+    settings_->setValue("colorPillRecipientBg", color_pill_recipient_bg_);
+    settings_->setValue("colorPillRecipientFg", color_pill_recipient_fg_);
+    settings_->setValue("colorPillCommandBg", color_pill_command_bg_);
+    settings_->setValue("colorPillCommandFg", color_pill_command_fg_);
+    settings_->setValue("colorPillGroupBg", color_pill_group_bg_);
+    settings_->setValue("colorPillGroupFg", color_pill_group_fg_);
+    settings_->setValue("colorPillSenderBg", color_pill_sender_bg_);
+    settings_->setValue("colorPillSenderFg", color_pill_sender_fg_);
 
     settings_->setValue("Font", font_.toString());
     settings_->setValue("RXTextFont", rx_text_font_.toString());
@@ -3098,6 +3174,15 @@ void Configuration::impl::accept() {
     color_table_background_ = next_color_table_background_;
     color_table_highlight_ = next_color_table_highlight_;
     color_table_foreground_ = next_color_table_foreground_;
+    pills_enabled_ = ui_->pills_enabled_check_box->isChecked();
+    color_pill_recipient_bg_ = next_color_pill_recipient_bg_;
+    color_pill_recipient_fg_ = next_color_pill_recipient_fg_;
+    color_pill_command_bg_ = next_color_pill_command_bg_;
+    color_pill_command_fg_ = next_color_pill_command_fg_;
+    color_pill_group_bg_ = next_color_pill_group_bg_;
+    color_pill_group_fg_ = next_color_pill_group_fg_;
+    color_pill_sender_bg_ = next_color_pill_sender_bg_;
+    color_pill_sender_fg_ = next_color_pill_sender_fg_;
 
     Q_EMIT self_->colors_changed();
 
@@ -3479,6 +3564,24 @@ QColor getColor(QColor initial, QWidget *parent, QString title) {
     }
 }
 
+void Configuration::impl::updatePillPreview(QLabel *label, const QColor &bg,
+                                            const QColor &fg) {
+    label->setStyleSheet(QString("background: %1; color: %2")
+                             .arg(bg.name())
+                             .arg(fg.name()));
+}
+
+void Configuration::impl::choosePillPreviewColor(
+    QColor &target, QLabel *label, const QColor &bg, const QColor &fg,
+    const QString &title) {
+    auto color = getColor(target, this, title);
+    if (!color.isValid())
+        return;
+
+    target = color;
+    updatePillPreview(label, bg, fg);
+}
+
 void Configuration::impl::on_cqMessagesButton_clicked() {
     auto new_color = getColor(next_color_cq_, this, "CQ Messages Color");
     if (new_color.isValid()) {
@@ -3707,6 +3810,64 @@ void Configuration::impl::on_composeFontButton_clicked() {
         QString("Font (%1 %2)")
             .arg(next_compose_text_font_.family())
             .arg(next_compose_text_font_.pointSize()));
+}
+
+void Configuration::impl::on_pillRecipientBgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_recipient_bg_,
+                           ui_->pillRecipientLabel,
+                           next_color_pill_recipient_bg_,
+                           next_color_pill_recipient_fg_,
+                           QStringLiteral("Recipient Pill Background"));
+}
+
+void Configuration::impl::on_pillRecipientFgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_recipient_fg_,
+                           ui_->pillRecipientLabel,
+                           next_color_pill_recipient_bg_,
+                           next_color_pill_recipient_fg_,
+                           QStringLiteral("Recipient Pill Font"));
+}
+
+void Configuration::impl::on_pillCommandBgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_command_bg_, ui_->pillCommandLabel,
+                           next_color_pill_command_bg_,
+                           next_color_pill_command_fg_,
+                           QStringLiteral("Command Pill Background"));
+}
+
+void Configuration::impl::on_pillCommandFgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_command_fg_, ui_->pillCommandLabel,
+                           next_color_pill_command_bg_,
+                           next_color_pill_command_fg_,
+                           QStringLiteral("Command Pill Font"));
+}
+
+void Configuration::impl::on_pillGroupBgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_group_bg_, ui_->pillGroupLabel,
+                           next_color_pill_group_bg_,
+                           next_color_pill_group_fg_,
+                           QStringLiteral("Group Pill Background"));
+}
+
+void Configuration::impl::on_pillGroupFgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_group_fg_, ui_->pillGroupLabel,
+                           next_color_pill_group_bg_,
+                           next_color_pill_group_fg_,
+                           QStringLiteral("Group Pill Font"));
+}
+
+void Configuration::impl::on_pillSenderBgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_sender_bg_, ui_->pillSenderLabel,
+                           next_color_pill_sender_bg_,
+                           next_color_pill_sender_fg_,
+                           QStringLiteral("Sender Pill Background"));
+}
+
+void Configuration::impl::on_pillSenderFgButton_clicked() {
+    choosePillPreviewColor(next_color_pill_sender_fg_, ui_->pillSenderLabel,
+                           next_color_pill_sender_bg_,
+                           next_color_pill_sender_fg_,
+                           QStringLiteral("Sender Pill Font"));
 }
 
 void Configuration::impl::on_PTT_port_combo_box_activated(int /* index */) {

@@ -1,6 +1,7 @@
 #ifndef TRANSMITTEXTEDIT_H
 #define TRANSMITTEXTEDIT_H
 
+#include "JS8_Include/pimpl_h.h"
 #include "qt_helpers.h"
 
 #include <QBrush>
@@ -10,14 +11,21 @@
 #include <QTextCursor>
 #include <QTextEdit>
 
+class PillRenderer;
+class ScopedDocumentMutation;
+
 void setTextEditFont(QTextEdit *edit, QFont font);
 void setTextEditStyle(QTextEdit *edit, QColor fg, QColor bg, QFont font);
 void highlightBlock(QTextBlock block, QFont font, QColor foreground,
                     QColor background);
 
 class TransmitTextEdit : public QTextEdit {
+    friend class PillRenderer;
+    friend class ScopedDocumentMutation;
+
   public:
-    TransmitTextEdit(QWidget *parent);
+    explicit TransmitTextEdit(QWidget *parent);
+    ~TransmitTextEdit();
 
     static QPair<int, int> relativeTextCursorPosition(QTextCursor cursor) {
         auto c = QTextCursor(cursor);
@@ -42,6 +50,8 @@ class TransmitTextEdit : public QTextEdit {
     void setPlainText(const QString &text);
     void replaceUnsentText(const QString &text, bool keepCursor);
     void replacePlainText(const QString &text, bool keepCursor);
+    void undo();
+    void redo();
 
     void setFont(QFont f);
     void setFont(QFont f, QColor fg, QColor bg);
@@ -55,25 +65,39 @@ class TransmitTextEdit : public QTextEdit {
     bool isDirty() const { return m_dirty; }
     void setClean() { m_dirty = false; }
 
+    PillRenderer *pillRenderer() const { return m_pillRenderer; }
+
     void highlightBase();
     void highlightCharsSent();
     void highlight();
 
-    bool eventFilter(QObject * /*o*/, QEvent *e);
+    void paintEvent(QPaintEvent *event) override;
+    bool event(QEvent *e) override;
+    bool eventFilter(QObject * /*o*/, QEvent *e) override;
+    void keyPressEvent(QKeyEvent *e) override;
 
   public slots:
     void on_selectionChanged();
     void on_textContentsChanged(int pos, int rem, int add);
 
   private:
+    class source_mirror;
+
+    void beginInternalDocumentMutation();
+    void endInternalDocumentMutation();
+    bool isInternalDocumentMutationActive() const;
+
     QString m_lastText;
     int m_sent;
     QString m_textSent;
     bool m_protected;
-    bool m_dirty;
+    bool m_dirty = false;
     QFont m_font;
     QColor m_fg;
     QColor m_bg;
+    PillRenderer *m_pillRenderer;
+    bool m_isHighlighting = false;
+    pimpl<source_mirror> m_sourceMirror;
 };
 
 #endif // TRANSMITTEXTEDIT_H

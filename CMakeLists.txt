@@ -228,6 +228,8 @@ target_sources(
   JS8_Main/CallsignValidator.cpp
   JS8_Main/CandidateKeyFilter.cpp
   JS8_Main/CPlotter.cpp
+  JS8_Main/DirectedMessageHighlighter.cpp
+  JS8_Main/DirectedMessageParser.cpp
   JS8_Main/DriftingDateTime.cpp
   JS8_Main/Flatten.cpp
   JS8_Main/ForeignKeyDelegate.cpp
@@ -251,6 +253,7 @@ target_sources(
   JS8_Main/fileutils.cpp
   JS8_Main/main.cpp
   JS8_Main/Modes.cpp
+  JS8_Main/PillRenderer.cpp
   JS8_Main/ProcessThread.cpp
   JS8_Main/qt_helpers.cpp
   JS8_Main/Radio.cpp
@@ -259,6 +262,7 @@ target_sources(
   JS8_Main/SelfDestructMessageBox.cpp
   JS8_Main/SignalMeter.cpp
   JS8_Main/TraceFile.cpp
+  JS8_Main/TransmitTextSourceMirror.cpp
   JS8_Main/TransmitTextEdit.cpp
   JS8_Main/TwoPhaseSignal.cpp
   JS8_Main/Varicode.cpp

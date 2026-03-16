@@ -442,6 +442,20 @@ void UI_Constructor::writeSettings() {
     m_settings->endGroup();
 }
 
+void UI_Constructor::applyPillSettings() {
+    if (auto *pr = ui->extFreeTextMsgEdit->pillRenderer()) {
+        pr->setPillColors({m_config.color_pill_recipient_bg(),
+                           m_config.color_pill_recipient_fg(),
+                           m_config.color_pill_command_bg(),
+                           m_config.color_pill_command_fg(),
+                           m_config.color_pill_group_bg(),
+                           m_config.color_pill_group_fg(),
+                           m_config.color_pill_sender_bg(),
+                           m_config.color_pill_sender_fg()});
+        pr->setEnabled(m_config.pills_enabled());
+    }
+}
+
 //---------------------------------------------------------- readSettings()
 void UI_Constructor::readSettings() {
     m_settings->beginGroup("UI_Constructor");
@@ -555,6 +569,8 @@ void UI_Constructor::readSettings() {
     ui->extFreeTextMsgEdit->setFont(m_config.compose_text_font(),
                                     m_config.color_compose_foreground(),
                                     m_config.color_compose_background());
+    applyPillSettings();
+    ui->extFreeTextMsgEdit->highlight();
 
     m_settings->endGroup();
 
@@ -5926,6 +5942,7 @@ void UI_Constructor::callsignSelectedChanged(QString /*old*/,
         }
     }
     ui->extFreeTextMsgEdit->setPlaceholderText(placeholderText);
+    ui->extFreeTextMsgEdit->pillRenderer()->setSelectedCallsign(selectedCall);
 
 #if SHOW_CALL_DETAIL_BROWSER
     auto html = generateCallDetail(selectedCall);

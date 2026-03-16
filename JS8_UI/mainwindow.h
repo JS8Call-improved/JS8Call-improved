@@ -14,6 +14,7 @@
 #include "JS8_Main/APRSISClient.h"
 #include "JS8_Main/AprsInboundRelay.h"
 #include "JS8_Main/Bands.h"
+#include "JS8_Main/DirectedMessageHighlighter.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/FrequencyList.h"
 #include "JS8_Main/Geodesic.h"
@@ -24,6 +25,7 @@
 #include "JS8_Main/MessageServer.h"
 #include "JS8_Main/Modes.h"
 #include "JS8_Main/MultiSettings.h"
+#include "JS8_Main/PillRenderer.h"
 #include "JS8_Main/ProcessThread.h"
 #include "JS8_Main/Radio.h"
 #include "JS8_Main/SelfDestructMessageBox.h"
@@ -533,6 +535,7 @@ class UI_Constructor : public QMainWindow {
     void currentTextChanged();
     void tableSelectionChanged(QItemSelection const &, QItemSelection const &);
     void setupJS8();
+    void applyPillSettings();
 
     int freq() const { return m_freq; }
 

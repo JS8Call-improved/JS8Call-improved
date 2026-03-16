@@ -239,6 +239,15 @@ class Configuration final : public QObject {
     QColor color_compose_foreground() const;
     QColor color_DXCC() const;
     QColor color_NewCall() const;
+    bool pills_enabled() const;
+    QColor color_pill_recipient_bg() const;
+    QColor color_pill_recipient_fg() const;
+    QColor color_pill_command_bg() const;
+    QColor color_pill_command_fg() const;
+    QColor color_pill_group_bg() const;
+    QColor color_pill_group_fg() const;
+    QColor color_pill_sender_bg() const;
+    QColor color_pill_sender_fg() const;
     bool pwrBandTxMemory() const;
     bool pwrBandTuneMemory() const;
 

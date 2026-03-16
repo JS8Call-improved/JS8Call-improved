@@ -398,6 +398,10 @@ UI_Constructor::UI_Constructor(QString const &program_info,
                                         m_config.color_compose_foreground(),
                                         m_config.color_compose_background());
 
+        // update pill enabled state, colors, and rehighlight compose box
+        applyPillSettings();
+        ui->extFreeTextMsgEdit->highlight();
+
         // rehighlight
         auto d = ui->textEditRX->document();
         if (d) {
@@ -419,6 +423,9 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             }
         }
     });
+
+    // Apply initial pill settings (colors_changed is not emitted at startup)
+    applyPillSettings();
 
     setWindowTitle(program_title());
     buildColumnLabelMap();
