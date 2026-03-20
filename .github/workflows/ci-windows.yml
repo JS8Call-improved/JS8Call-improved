@@ -78,19 +78,19 @@ jobs:
         cache: true
         dir: 'D:/a/JS8Call-improved/JS8Call-improved/local/qt693'
 
-    - name: hamlib/hamlib release
+    - name: hamlib/hamlib release 4.7.0
       uses: robinraju/release-downloader@v1.12
       with:
         repository: 'hamlib/hamlib'
-        fileName: 'hamlib-w64-4.6.5.zip'
-        tag: '4.6.5'
+        fileName: 'hamlib-w64-4.7.0.zip'
+        tag: '4.7.0'
         extract: true
-        out-file-path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib465-tmp'
+        out-file-path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib470-tmp'
 
     - name: Move hamlib directory to the right spot
       shell: msys2 {0}
       run: |
-        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib465-tmp/hamlib-w64-4.6.5' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
+        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib470-tmp/hamlib-w64-4.7.0' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
         mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/gcc/libhamlib.dll.a' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/libhamlib.dll.a'
 
     - name: Configure JS8Call
