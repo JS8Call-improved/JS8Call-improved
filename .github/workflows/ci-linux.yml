@@ -246,6 +246,11 @@ jobs:
         tag: '4.7.0'
         extract: true
         out-file-path: /tmp/hamlib
+        
+    - name: Directory layout
+      run: |
+        cd /tmp/hamlib
+        ls -LR
 
     - name: Build Hamlib 4.7.0 with debug flags
       run: |
