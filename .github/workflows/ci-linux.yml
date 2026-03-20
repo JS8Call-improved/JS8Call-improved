@@ -228,6 +228,7 @@ jobs:
         out-file-path: /tmp/hamlib
 
     - name: Build Hamlib 4.7.0 with debug flags
+      if: steps.cache-hamlib.outputs.cache-hit != 'true'
       run: |
         cd /tmp/hamlib/hamlib-4.7.0/
         ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib --no-create --no-recursion CFLAGS="-g -O0 -fPIC"
