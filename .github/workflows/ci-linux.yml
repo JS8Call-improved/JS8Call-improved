@@ -216,15 +216,43 @@ jobs:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
 
 ## hamlib
-    - name: Install Hamlib 4.7.x branch
+##    - name: Install Hamlib 4.7.x branch
+##      if: steps.cache-hamlib.outputs.cache-hit != 'true'
+##      id: install-hamlib
+##      run: |
+##        git clone --depth=1 --branch=4.7.0 https://github.com/Hamlib/Hamlib.git /tmp/hamlib
+##        cd /tmp/hamlib
+##        ./bootstrap
+##        ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib
+##        make -j 4
+##        make install-strip
+##        sudo ldconfig
+
+##    - name: Save Hamlib cache
+##      if: steps.cache-hamlib.outputs.cache-hit != 'true'
+##      uses: actions/cache/save@v4
+##      with:
+##        key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-hamlib470
+##        path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/hamlib
+
+## Hamlib official release
+    - name: Build/Install Hamlib 4.7.0
       if: steps.cache-hamlib.outputs.cache-hit != 'true'
       id: install-hamlib
+      uses: robinraju/release-downloader@v1.12
+      with:
+        repository: 'hamlib/hamlib'
+        fileName: 'hamlib-4.7.0.tar.gz '
+        tag: '4.7.0'
+        extract: true
+        out-file-path: /tmp/hamlib
+
+    - name: Build Hamlib 4.7.0
       run: |
-        git clone --depth=1 --branch=4.7.0 https://github.com/Hamlib/Hamlib.git /tmp/hamlib
         cd /tmp/hamlib
         ./bootstrap
         ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib
-        make -j 4
+        make -j
         make install-strip
         sudo ldconfig
 
