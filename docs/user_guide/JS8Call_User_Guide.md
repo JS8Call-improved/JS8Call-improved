@@ -136,7 +136,7 @@ JS8Call currently comes in a variety of builds.
 - Mac OS - Universal (Intel + Apple Silicon)
 - [Android](https://github.com/JS8Call-improved/Android-port)
 
-Application downloads are available here: [Github release page](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant *.AppImage for Linux, *installer.exe for Windows, *.arm64.dmg for Apple Silicone Mac or *.universal.dmg for Intel Mac.
+Application downloads are available here: [Github release page](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant *.AppImage for Linux, *installer.exe for Windows, *.arm64.dmg for Apple Silicon Mac or *.universal.dmg for Intel Mac.
 
 Of course, you are always free to take a look at the [source code](https://github.com/JS8Call-improved) as well!
 
