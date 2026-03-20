@@ -247,14 +247,13 @@ jobs:
         extract: true
         out-file-path: /tmp/hamlib
 
-    - name: Build Hamlib 4.7.0
+    - name: Build Hamlib 4.7.0 with debug flags
       run: |
         cd /tmp/hamlib
-        ./bootstrap
-        ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib
+        ./configure --prefix=${GITHUB_WORKSPACE}/local/hamlib --no-create --no-recursion CFLAGS="-g -O0 -fPIC"
+        ./config.status
         make -j
-        make install-strip
-        sudo ldconfig
+        sudo make install
 
     - name: Save Hamlib cache
       if: steps.cache-hamlib.outputs.cache-hit != 'true'
