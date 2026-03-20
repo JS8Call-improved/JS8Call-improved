@@ -89,7 +89,7 @@ jobs:
         path: /home/runner/work/JS8Call-improved/JS8Call-improved/local/ffmpeg
         key: ${{ runner.os }}-${{ steps.which-os.outputs.thisos }}-${{ runner.arch }}-ffmpeg713
 
-    - name: Cache Check Hamlib 4.7.x
+    - name: Cache Check Hamlib 4.7.0
       id: cache-hamlib
       uses: actions/cache/restore@v4
       with:
