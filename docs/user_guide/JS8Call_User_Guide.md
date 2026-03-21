@@ -104,8 +104,11 @@ To save an offline copy of the User Guide as PDF [download from here](https://js
 
 - **January 6, 2026** - Version 2.5.0 released, renamed back to JS8Call. 
   See [Release notes v2.5.0](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/release%2F2.5.0)
-  
-<!-- TODO: add subsequent versions & milestones | assignee: @Aqueum -->
+
+- **TBD** - Version 2.6.0 - Feature and bug fix release.
+  See Release notes v2.6.0
+
+<!-- Remember to point to the 2.6.0 release tag when we release -->
 
 ## Notice
 
@@ -130,13 +133,15 @@ JS8Call currently comes in a variety of builds.
 
 - Linux (ARM64)
 - Linux (x86_64 - AMD64)
-- Windows (Windows x86_64)
-  - Windows 10 and 11 are the only officially supported Windows builds at this time, but the application has been confirmed to work all the way back to Windows XP.
+- Windows (Windows x86_64) Windows 10 and 11 are the only officially supported Windows builds at this time, but the application has been confirmed to work all the way back to Windows XP.
 - Mac OS - ARM64 (Apple Silicon)
-- Mac OS - Universal (Intel + Apple Silicon)
+- Mac OS - Universal (Intel + Apple Silicon) **See the note below**
 - [Android](https://github.com/JS8Call-improved/Android-port)
 
-Application downloads are available here: [Github release page](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant *.AppImage for Linux, *installer.exe for Windows, *.arm64.dmg for Apple Silicon Mac or *.universal.dmg for Intel Mac.
+Application downloads are available on the [Github release page](https://github.com/JS8Call-improved/JS8Call-improved/releases/) select the relevant *.AppImage for Linux, *installer.exe for Windows, *.AppleSilicon.dmg for Apple Silicon Mac or *.Intel.dmg for Intel Mac.
+
+> [!NOTE]
+> Mac OS Universal builds are being deprecated. Please use the *.Intel.dmg if you are on a Mac Intel machine.
 
 Of course, you are always free to take a look at the [source code](https://github.com/JS8Call-improved) as well!
 
@@ -238,7 +243,7 @@ Normal FT8 character restrictions **do not** apply! The extended character set i
 
 As you type your message you'll see the send button display the transmission time it'll take to send your complete message. All you have to do is click send (or hit enter) to start transmitting on the next interval. As each frame is transmitted one after the other, the button will update with the amount of time left to transmit the message. JS8Call 2.0 supports typeahead, so you can start transmitting and continue typing your message as each frame is transmitted. Checksummed messages like MSG or Relays cannot use typeahead.
 
-Because of this special variable encoding, messages in JS8Call cannot be decoded by WSJT-X. The same is also true, WSJT-X messages will not be shown in JS8Call.<!-- TODO: "The reverse is also true, ... I'm just catching myself reviewing stuff that has been in the guide for a long time and none of your doing. That is a bit unfair. So I will stop doing that now and instead come up with a PR of my own, after this one has been merged." | assignee: @aknrdureegaesr  -->
+Because of this special variable encoding, messages in JS8Call cannot be decoded by WSJT-X. The same is also true, WSJT-X messages will not be shown in JS8Call.
 
 ### Message Types
 
@@ -912,6 +917,9 @@ via [https://sourceforge.net/p/wsjt/mailman/message/36224507/](https://sourcefor
 ## Troubleshooting
 
 If you're having trouble, head over to the troubleshooting chatroom for help: [JS8Call email list](https://js8call.groups.io/g/main), [Github Discussions](https://github.com/orgs/JS8Call-improved/discussions) or email Jordan directly: [kn4crd@gmail.com](mailto:kn4crd@gmail.com)
+
+> [!NOTE]
+> Starting with the 2.6.0 release, there is a new `Diagnostics` tab on the main Settings screen. Information from this sreen may be requested when you are submitting an issue or bug report.
 
 ### Common Problems & Solutions
 
