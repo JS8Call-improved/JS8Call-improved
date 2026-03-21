@@ -721,7 +721,7 @@ void CPlotter::mouseMoveEvent(QMouseEvent *event) {
 
     QToolTip::showText(
         event->globalPosition().toPoint(),
-        QString::number(static_cast<int>(freqFromX(m_lastMouseX))));
+        QString::number(static_cast<int>(freqFromX(m_lastMouseX))), this);
 }
 
 void CPlotter::mouseReleaseEvent(QMouseEvent *event) {
