@@ -57,7 +57,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 12.0)
 
 project(
   JS8Call
-  VERSION   2.5.0
+  VERSION   2.6.0
   LANGUAGES C CXX
 )
 
@@ -84,11 +84,10 @@ include(CheckSymbolExists)
 include(CMakeDependentOption)
 include(GenerateExportHeader)
 include(GNUInstallDirs)
-include(VersionCompute)
 
 #------------------------------------------------------------------------------#
 # Options and features. Some of these directly affect compilation by being
-# define in wsjtx_config.h.in, which makes them available to the C/C++
+# define in js8call_config.h.in, which makes them available to the C/C++
 # preprocessor.
 #------------------------------------------------------------------------------#
 
@@ -173,14 +172,10 @@ qt_add_executable(${TARGET} MACOSX_BUNDLE WIN32 ${ICON_FILE})
 set_target_properties(
   ${TARGET} PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST             "${CMAKE_CURRENT_SOURCE_DIR}/resources/MacOS/Info.plist.in"
-  MACOSX_BUNDLE_INFO_STRING            "JS8Call facilitates amateur radio communication using very weak signals.."
   MACOSX_BUNDLE_ICON_FILE              "${ICON_FILE}"
-  MACOSX_BUNDLE_BUNDLE_VERSION         "${wsjtx_VERSION}"
-  MACOSX_BUNDLE_SHORT_VERSION_STRING   "${wsjtx_SHORT_VERSION}"
-  MACOSX_BUNDLE_BUNDLE_NAME            "${PROJECT_NAME}"
-  MACOSX_BUNDLE_BUNDLE_EXECUTABLE_NAME "${PROJECT_NAME}"
+  MACOSX_BUNDLE_BUNDLE_VERSION         "${PROJECT_VERSION}"
+  MACOSX_BUNDLE_SHORT_VERSION_STRING   "${PROJECT_VERSION}"
   MACOSX_BUNDLE_COPYRIGHT              "${PROJECT_COPYRIGHT}"
-  MACOSX_BUNDLE_GUI_IDENTIFIER          "org.kn4crd.js8call"
 )
 
 #------------------------------------------------------------------------------#
@@ -188,17 +183,55 @@ set_target_properties(
 # they're being compiled under cmake, then preprocess and precompile
 # the configuration header.
 #------------------------------------------------------------------------------#
+find_program(GIT_EXECUTABLE git)
+if(GIT_EXECUTABLE)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+else()
+    set(GIT_HASH "nogit")
+endif()
 
-target_compile_definitions(${TARGET} PRIVATE CMAKE_BUILD)
+if(WIN32)
+    # Prefer environment variables on Windows
+    set(HOSTNAME "$ENV{COMPUTERNAME}")
+    set(USERNAME "$ENV{USERNAME}")
+else()
+    execute_process(
+        COMMAND hostname
+        OUTPUT_VARIABLE HOSTNAME
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    execute_process(
+        COMMAND whoami
+        OUTPUT_VARIABLE USERNAME
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+endif()
+    
+target_compile_definitions(${TARGET}
+    PRIVATE
+    CMAKE_BUILD
+    JS8CALL_VERSION=\"${PROJECT_VERSION}\"
+    GITSHORT=\"${GIT_HASH}\"
+    MACHINE=\"${HOSTNAME}\"
+    UNAME=\"${USERNAME}\"
+)
+
+string(TIMESTAMP TODAY_DATE "%m-%d-%Y")
 
 configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/JS8_Include/wsjtx_config.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/wsjtx_config.h"
+  "${CMAKE_CURRENT_SOURCE_DIR}/JS8_Include/js8call_config.h.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/js8call_config.h"
 )
 
 target_precompile_headers(
   ${TARGET} PRIVATE
-  ${CMAKE_CURRENT_BINARY_DIR}/wsjtx_config.h
+  ${CMAKE_CURRENT_BINARY_DIR}/js8call_config.h
 )
 
 #------------------------------------------------------------------------------#

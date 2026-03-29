@@ -9,13 +9,7 @@
 
 QString version() {
 #if defined(CMAKE_BUILD)
-    QString v{WSJTX_STRINGIZE(WSJTX_VERSION_MAJOR) "." WSJTX_STRINGIZE(
-        WSJTX_VERSION_MINOR) "." WSJTX_STRINGIZE(WSJTX_VERSION_PATCH)};
-#if 0
-#if defined(WSJTX_RC)
-    v += "-rc" WSJTX_STRINGIZE (WSJTX_RC)
-#endif
-#endif
+    QString v{JS8CALL_VERSION};
 #else
     QString v{"Not for Release"};
 #endif

@@ -12,8 +12,9 @@
 CAboutDlg::CAboutDlg(QWidget *parent) : QDialog(parent), ui(new Ui::CAboutDlg) {
     ui->setupUi(this);
     setWindowTitle("About JS8Call");
-    ui->labelTxt->setText(QString{
-        "<h2>%1</h2>"
+    ui->labelTxt->setText(QString(
+        "<h3>%1</h3><br/ >"
+        "Build %2 on %3 by %4@%5<br />"
         "<h3>About the JS8Call Development Team</h3>"
         "<p align='left'>JS8Call is now being developed by the team that "
         "continued development of the original "
@@ -60,8 +61,8 @@ CAboutDlg::CAboutDlg(QWidget *parent) : QDialog(parent), ui(new Ui::CAboutDlg) {
         "W0FW, "
         "W6BAZ,</strong><br/><br/>"
         "and the many other amateur radio operators who have helped bring "
-        "JS8Call into the world.</p>"}
-                              .arg(program_title()));
+        "JS8Call into the world.</p>"
+    ).arg(program_title(), GITSHORT, CREATED, UNAME, MACHINE));
 }
 
 CAboutDlg::~CAboutDlg() {}
