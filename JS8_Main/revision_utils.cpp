@@ -9,22 +9,24 @@
 
 QString version() {
 #if defined(CMAKE_BUILD)
-    QString v{JS8CALL_VERSION};
-#else
-    QString v{"Not for Release"};
-#endif
-
+    QString v = (JS8CALL_VERSION);
+    if (v == ("0.0.0")) {
+        v = QStringLiteral("Development Build %1").arg(QLatin1String(GITSHORT));
+    }
     return v;
+#else
+    QString v{QStringLiteral("Not for Release")};
+#endif
 }
 
 QString program_title() {
-    return QString{"%1(v%2) de KN4CRD"}
+    return QString{"%1 %2"}
         .arg(QCoreApplication::applicationName())
         .arg(QCoreApplication::applicationVersion());
 }
 
 QString program_version() {
-    return QString{"%1 v%2"}
+    return QString{"%1 %2"}
         .arg(QCoreApplication::applicationName())
         .arg(QCoreApplication::applicationVersion());
 }

@@ -52,12 +52,13 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_OSX_DEPLOYMENT_TARGET 12.0)
 
 #------------------------------------------------------------------------------#
-# Project
+# Project configuration. The software build version is set here. If the version
+# is set to 0.0.0 the build will be unversioned and marked as "Development"
 #------------------------------------------------------------------------------#
 
 project(
   JS8Call
-  VERSION   2.6.0
+  VERSION   0.0.0
   LANGUAGES C CXX
 )
 
