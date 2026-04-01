@@ -503,7 +503,7 @@ if (WIN32)
 
   # Windows icons require an RC file.
 
-  target_sources(${TARGET} PRIVATE JS8_Include/wsjtx.rc)
+  target_sources(${TARGET} PRIVATE JS8_Include/js8call.rc)
 
   # Find the windeployqt command and run it against the generated binary,
   # which should handle all the gnarly bits.

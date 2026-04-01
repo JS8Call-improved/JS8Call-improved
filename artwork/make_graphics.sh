@@ -49,19 +49,6 @@ inkscape -z -e ../icons/Darwin/JS8Call.iconset/icon_256x256@2x.png -w 512 -h 512
 inkscape -z -e ../icons/Darwin/JS8Call.iconset/icon_512x512.png -w 512 -h 512 icon_1024.svg
 inkscape -z -e ../icons/Darwin/JS8Call.iconset/icon_512x512@2x.png -w 1024 -h 1024 icon_1024.svg
 identify -format '%f %p/%n %m %C/%Q %r %G %A %z\n' ../icons/Darwin/JS8Call.iconset/*
-# generic globe iconset for utilities
-mkdir -p ../icons/Darwin/wsjt.iconset
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_16x16.png -w 16 -h 16 icon_128.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_16x16@2x.png -w 32 -h 32 icon_128.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_32x32.png -w 32 -h 32 icon_128.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_32x32@2x.png -w 64 -h 64 icon_128.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_128x128.png -w 128 -h 128 icon_1024.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_128x128@2x.png -w 256 -h 256 icon_1024.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_256x256.png -w 256 -h 256 icon_1024.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_256x256@2x.png -w 512 -h 512 icon_1024.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_512x512.png -w 512 -h 512 icon_1024.svg
-inkscape -z -e ../icons/Darwin/wsjt.iconset/icon_512x512@2x.png -w 1024 -h 1024 icon_1024.svg
-identify -format '%f %p/%n %m %C/%Q %r %G %A %z\n' ../icons/Darwin/wsjt.iconset/*
 
 #
 # KDE & Gnome

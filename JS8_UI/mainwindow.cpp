@@ -4807,7 +4807,7 @@ QMap<QString, QString> UI_Constructor::buildMacroValues() {
     auto lastActive =
         DriftingDateTime::currentDateTimeUtc().addSecs(-m_idleMinutes * 60);
     QString myIdle = since(lastActive).toUpper().replace("NOW", "0M");
-    QString myVersion = version().replace("-devel", "").replace("-rc", "");
+    QString myVersion = version();
 
     QMap<QString, QString> values = {
         {"<MYCALL>", m_config.my_callsign()},
