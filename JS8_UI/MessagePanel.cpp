@@ -54,6 +54,7 @@ MessagePanel::MessagePanel(QString inboxPath, QWidget *parent)
 
   auto *hdr = new SemiSortableHeader(Qt::Horizontal, table);
   hdr->addNonSortableColumn(6);
+  hdr->addNonSortableColumn(0);
   hdr->setSectionResizeMode(QHeaderView::Interactive);
   hdr->setStretchLastSection(true);
   hdr->attachTo(table);
@@ -89,8 +90,9 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
   SemiSortableHeader *hdr = static_cast<SemiSortableHeader *>(
       ui->messageTableWidget->horizontalHeader());
 
-  // Remember sort state
-  const int sortCol = hdr->sortIndicatorSection() >= 0 ? hdr->sortIndicatorSection() : 2;
+  // Remember sort state (avoid sorting by unread flag column 0)
+  const int rememberedCol = hdr->sortIndicatorSection() >= 0 ? hdr->sortIndicatorSection() : 2;
+  const int sortCol = (rememberedCol == 0 ? 2 : rememberedCol);
   const Qt::SortOrder sortOrder = hdr->sortIndicatorOrder();
 
   // Freeze behavior while populating
@@ -172,10 +174,6 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
 
   ui->messageTableWidget->setUpdatesEnabled(true);
 
-  if (ui->messageTableWidget->rowCount() > 0) {
-    ui->messageTableWidget->selectRow(0);
-  }
-
   // Unfreeze + restore sort once, at the end
   ui->messageTableWidget->setSortingEnabled(wasSorting);     // or true if you want arrows always
   ui->messageTableWidget->setUpdatesEnabled(true);
@@ -251,6 +249,7 @@ void MessagePanel::markMessageRead(int id) {
   if (msg.type() == "UNREAD") {
     msg.setType("READ");
     inbox->set(id, msg);
+    emit countsUpdated();
   }
 }
 
@@ -259,8 +258,8 @@ QString MessagePanel::prepareReplyMessage(QString path, QString text) {
 }
 
 void MessagePanel::messageTableSelectionChanged(
-    const QItemSelection & /*selected*/,
-    const QItemSelection &deselected) {
+    const QItemSelection &selected,
+    const QItemSelection &/*deselected*/) {
 
   auto items = ui->messageTableWidget->selectedItems();
   if (items.isEmpty() || items.size() > ui->messageTableWidget->columnCount()) {
@@ -283,20 +282,20 @@ void MessagePanel::messageTableSelectionChanged(
   ui->messageTextEdit->setPlainText(text);
 
   // Mark deselected as read in table
-  auto deselectedItemIndexes = deselected.indexes();
+  auto selectedItemIndexes = selected.indexes();
 
-  if (deselectedItemIndexes.empty()) {
+  if (selectedItemIndexes.empty()) {
     return;
   }
 
-  auto deselectedRowIndex = deselectedItemIndexes.first();
-  auto deselectedRow = deselectedRowIndex.row();
-  auto readFlagItem = ui->messageTableWidget->item(deselectedRow, 0);
+  auto selectedRowIndex = selectedItemIndexes.first();
+  auto selectedRow = selectedRowIndex.row();
+  auto readFlagItem = ui->messageTableWidget->item(selectedRow, 0);
   readFlagItem->setText("");
   readFlagItem->setData(Qt::UserRole, "");
 
   // Mark message read in DB
-  auto col = ui->messageTableWidget->item(deselectedRow, 1);
+  auto col = ui->messageTableWidget->item(selectedRow, 1);
   if (!col) {
     return;
   }
