@@ -249,6 +249,29 @@ void MessagePanel::markMessageRead(int id) {
   if (msg.type() == "UNREAD") {
     msg.setType("READ");
     inbox->set(id, msg);
+
+    // Also clear the unread flag in the table UI for this message id
+    auto *table = ui->messageTableWidget;
+    if (table) {
+      for (int row = 0; row < table->rowCount(); ++row) {
+        auto *idItem = table->item(row, 1); // column 1 holds the message id
+        if (!idItem)
+          continue;
+        bool okId = false;
+        int midInRow = idItem->data(Qt::EditRole).toInt(&okId);
+        if (!okId)
+          continue;
+        if (midInRow == id) {
+          auto *flagItem = table->item(row, 0); // column 0 is the unread flag
+          if (flagItem) {
+            flagItem->setText("");
+            flagItem->setData(Qt::UserRole, "");
+          }
+          break;
+        }
+      }
+    }
+
     emit countsUpdated();
   }
 }
