@@ -52,7 +52,7 @@ Windows 10 or 11
 
 * Create a directory called `development` at `C:\development`
 
-* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/2.4) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call-improved
+* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call-improved
 
 * Next we need to get the JS8Call-improved source code with git. This requires use of the Windows Command shell (installing the Windows PowerShell is recommended). Change to the `C:\development` folder and type `git clone https://github.com/JS8Call-improved/JS8Call-improved.git` This will create a folder called JS8Call-improved which contains the source code.
 

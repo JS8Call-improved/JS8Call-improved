@@ -2,7 +2,7 @@
 
 ...and also building Hamlib.
 
-Note: versions of Qt older than 6.5 are deprecated for building JS8Call-improved 2.4 or newer. Use of Qt 6.9.3 is recommended. While other versions of Qt down to 6.5 are possible to use, there is significant risk that unwanted audio or PTT bugs may be injected into your build. The Qt Group is deprecating use of native audio back ends in favor of standardizing on FFmpeg audio, which requires either PulseAudio or PipeWire on linux. Most linux distributions do not ship with Qt 6.9.3 with proper FFmpeg audio support. Instead of using distribution packaged Qt, you can download pre-built Qt 6.9.3 library packages with FFmpeg audio support built-in [here](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/2.4) for both x86_64 and arm64.
+Note: versions of Qt older than 6.5 are deprecated for building JS8Call-improved 2.4 or newer. Use of Qt 6.9.3 is recommended. While other versions of Qt down to 6.5 are possible to use, there is significant risk that unwanted audio or PTT bugs may be injected into your build. The Qt Group is deprecating use of native audio back ends in favor of standardizing on FFmpeg audio, which requires either PulseAudio or PipeWire on linux. Most linux distributions do not ship with Qt 6.9.3 with proper FFmpeg audio support. Instead of using distribution packaged Qt, you can download pre-built Qt 6.9.3 library packages with FFmpeg audio support built-in [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) for both x86_64 and arm64.
 
 Depending on where you install the package (/usr/local/Qt recommended), this will require using `-DCMAKE_PREFIX_PATH=<path_to_your_qt_install>` for build.
 

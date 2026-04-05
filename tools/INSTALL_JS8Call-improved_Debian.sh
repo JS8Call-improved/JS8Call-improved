@@ -174,9 +174,9 @@ cd ~/development
 if [ ! -d $HOME/.local/lib/Qt ]; then
   mkdir ~/.local/lib
   if [ "${ARCH}" = "aarch64" ]; then
-    wget https://github.com/JS8Call-improved/JS8Call-improved/releases/download/2.4/Qt6.9.3_Linux_aarch64.tar.gz
+    wget https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/Qt6.9.3_Linux_aarch64.tar.gz
   else
-    wget https://github.com/JS8Call-improved/JS8Call-improved/releases/download/2.4/Qt6.9.3_Linux_x86_64.tar.gz
+    wget https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/Qt6.9.3_Linux_x86_64.tar.gz
   fi
 else
   echo "~/.local/lib/Qt already exists......"

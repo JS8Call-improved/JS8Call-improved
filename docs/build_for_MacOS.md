@@ -27,7 +27,7 @@ Below are the required libraries and tested versions for a JS8Call-improved buil
 
     If you wish to build the libraries yourself you can clone this [repository](https://github.com/JS8Call-improved/js8lib) and follow the developer instructions. You can check out one of the MacOS branches with `git switch branch-name` and follow the instructions to build your libraries. It's optional to build Qt with the developer library. I recommend building the base libraries and obtaining Qt 6.9.3 with the Online Installer from the Qt Group for Intel builds. For Apple silicon builds you must build the Qt libraries yourself.
     
-    Pre-built libraries without Qt6 can be downloaded [here](https://github.com/JS8Call-improved/JS8Call-improved/releases/tag/lib%2F2.6)
+    Pre-built libraries without Qt6 can be downloaded [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0)
 
 *   In Terminal create the directory structure to build JS8Call-improved with the following command.
     ```

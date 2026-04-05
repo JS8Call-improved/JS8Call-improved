@@ -41,12 +41,12 @@ jobs:
 
     - name: Grab build dependeneces
       run: |
-        curl --location --output /tmp/js8lib2.6-MacOS_AppleSilicon_Qt.tar.gz https://github.com/JS8Call-improved/JS8Call-improved/releases/download/lib%2F2.6/js8lib2.6-MacOS_AppleSilicon_Qt.tar.gz
+        curl --location --output /tmp/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz
         cd /tmp
-        tar zxf /tmp/js8lib2.6-MacOS_AppleSilicon_Qt.tar.gz
+        tar zxf /tmp/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz
         sudo mv /tmp/js8lib /usr/local/js8lib
 
-        curl --location --output /tmp/ffmpeg_MacOS_arm64.tar.gz https://github.com/JS8Call-improved/JS8Call-improved/releases/download/lib%2F2.6/ffmpeg_MacOS_arm64.tar.gz
+        curl --location --output /tmp/ffmpeg_MacOS_arm64.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/ffmpeg_MacOS_arm64.tar.gz
         tar zxf /tmp/ffmpeg_MacOS_arm64.tar.gz
         sudo mv /tmp/ffmpeg /usr/local/ffmpeg
       
