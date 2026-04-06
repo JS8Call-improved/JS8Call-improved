@@ -1820,7 +1820,7 @@ background-color: #22ff22;
              </property>
              <property name="font">
               <font>
-               <pointsize>16</pointsize>
+               <pointsize>10</pointsize>
               </font>
              </property>
              <property name="toolTip">

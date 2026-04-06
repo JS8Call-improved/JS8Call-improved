@@ -491,6 +491,7 @@ class Configuration::impl final : public QDialog {
     Q_SLOT void on_enable_aprs_relay_check_box_toggled(bool checked);
     Q_SLOT void on_notifications_check_box_toggled(bool checked);
     Q_SLOT void on_font_push_button_clicked();
+    Q_SLOT void on_style_push_button_clicked();
     Q_SLOT void on_tableFontButton_clicked();
     Q_SLOT void on_PTT_port_combo_box_activated(int);
     Q_SLOT void on_CAT_port_combo_box_activated(int);
@@ -3531,6 +3532,24 @@ void Configuration::impl::on_font_push_button_clicked() {
     ui_->font_push_button->setText(QString("Application Font (%1 %2)")
                                        .arg(next_font_.family())
                                        .arg(next_font_.pointSize()));
+}
+
+void Configuration::impl::on_style_push_button_clicked() {
+    QString fileName = QFileDialog::getOpenFileName(nullptr,
+        "Open Stylesheet", "", "Style Sheets (*.qss);;All Files (*)");
+
+    if (fileName.isEmpty()) return;
+
+    QFile file(fileName);
+    if (file.open(QFile::ReadOnly | QFile::Text)) {
+        QTextStream stream(&file);
+        // Apply the stylesheet globally
+        qApp->setStyleSheet(stream.readAll());
+        file.close();
+    }
+
+    ui_->style_push_button->setText(QString("Application Stylesheet (%1)")
+                                            .arg(QFileInfo(fileName).fileName()));
 }
 
 void Configuration::impl::on_tableFontButton_clicked() {

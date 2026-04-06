@@ -3236,6 +3236,16 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_17">
           <item row="0" column="0">
+           <widget class="QPushButton" name="style_push_button">
+            <property name="toolTip">
+             <string>Loads a new qss stylefile</string>
+            </property>
+            <property name="text">
+             <string>Load stylesheet</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
            <widget class="QPushButton" name="font_push_button">
             <property name="enabled">
              <bool>true</bool>
@@ -4416,6 +4426,7 @@ soundcard changes</string>
   <tabstop>delete_macro_push_button</tabstop>
   <tabstop>macros_list_view</tabstop>
   <tabstop>font_push_button</tabstop>
+  <tabstop>style_push_button</tabstop>
   <tabstop>tabWidget</tabstop>
   <tabstop>scrollArea_8</tabstop>
   <tabstop>tableForegroundButton</tabstop>
