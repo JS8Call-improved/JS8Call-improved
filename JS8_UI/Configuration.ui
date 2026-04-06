@@ -3241,7 +3241,7 @@ Click, SHIFT+Click and, CRTL+Click to select items</string>
              <string>Loads a new qss stylefile</string>
             </property>
             <property name="text">
-             <string>Load stylesheet</string>
+             <string>Application stylesheet</string>
             </property>
            </widget>
           </item>
