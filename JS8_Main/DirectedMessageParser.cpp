@@ -123,6 +123,12 @@ const QRegularExpression &grid4Re() {
     return re;
 }
 
+const QRegularExpression &runtimeRelayFollowHopStandaloneRe() {
+    static const QRegularExpression re(
+        R"(^\b(?<prefix>[A-Z0-9]{1,4}\/)?(?<base>([0-9A-Z])?([0-9A-Z])([0-9])([A-Z])?([A-Z])?([A-Z])?)(?<suffix>\/[A-Z0-9]{1,4})?\b$)");
+    return re;
+}
+
 const PillCommandDef *findCommandDef(const QString &cmd) {
     for (const auto &def : s_commandDefs) {
         if (cmd == QLatin1String(def.command))
@@ -266,6 +272,54 @@ QList<QPair<int, int>> parseHops(const QString &chainText) {
     return hops;
 }
 
+struct RelayChainValidation {
+    QList<QPair<int, int>> hops;
+    int validHopCount = 0;
+    int tokenLength = 0;
+};
+
+bool isRelayHopZeroValid(const QString &hopText) {
+    return !hopText.startsWith('@') &&
+           Varicode::isValidCallsign(hopText, nullptr);
+}
+
+bool isRuntimeRelayFollowHopValid(const QString &hopText) {
+    if (hopText.startsWith('@'))
+        return false;
+
+    return runtimeRelayFollowHopStandaloneRe().match(hopText).hasMatch();
+}
+
+RelayChainValidation validateRelayChain(const QString &chainText, bool partial,
+                                        const QString &implicitTarget) {
+    RelayChainValidation validation;
+    validation.hops = parseHops(chainText);
+    if (validation.hops.isEmpty())
+        return validation;
+
+    if (partial && !isRelayHopZeroValid(implicitTarget))
+        return validation;
+
+    for (int i = 0; i < validation.hops.size(); ++i) {
+        const auto hop = validation.hops.at(i);
+        const QString hopText = chainText.mid(hop.first, hop.second);
+        const bool valid =
+            (partial || i > 0) ? isRuntimeRelayFollowHopValid(hopText)
+                               : isRelayHopZeroValid(hopText);
+        if (!valid)
+            break;
+        validation.validHopCount++;
+    }
+
+    if (validation.validHopCount > 0) {
+        const auto lastHop = validation.hops.at(validation.validHopCount - 1);
+        validation.tokenLength = lastHop.first + lastHop.second;
+        validation.hops = validation.hops.mid(0, validation.validHopCount);
+    }
+
+    return validation;
+}
+
 QList<DirectedMessageParser::Token> parseTokensUpper(
     const QString &text, const QString &implicitTarget) {
     QList<DirectedMessageParser::Token> tokens;
@@ -300,30 +354,49 @@ QList<DirectedMessageParser::Token> parseTokensUpper(
 
     int pos = 0;
     bool explicitTargetPresent = false;
+    bool foundAddress = false;
+    int addressEndPos = -1;
 
     auto relayMatch = relayChainRe().match(content);
     if (relayMatch.hasMatch()) {
-        DirectedMessageParser::Token t;
-        t.start = 0;
-        t.length = relayMatch.capturedLength();
-        t.type = DirectedMessageParser::Token::RelayChain;
+        const QString chainText = relayMatch.captured();
+        const auto validation = validateRelayChain(chainText, false, QString());
 
-        QString chainText = relayMatch.captured();
-        t.hops = parseHops(chainText);
-        t.recipientHopIndex = t.hops.size() - 1;
-        t.tooltip = DirectedMessageTooltipUtils::relayTooltip(chainText,
-                                                              t.hops);
+        if (validation.validHopCount >= 2) {
+            DirectedMessageParser::Token t;
+            t.start = 0;
+            t.length = validation.tokenLength;
+            t.type = DirectedMessageParser::Token::RelayChain;
+            t.hops = validation.hops;
+            t.recipientHopIndex = t.hops.size() - 1;
+            t.tooltip = DirectedMessageTooltipUtils::relayTooltip(
+                chainText.left(validation.tokenLength), t.hops);
 
-        tokens.append(t);
-        pos = t.length;
-        explicitTargetPresent = true;
-    } else {
+            tokens.append(t);
+            foundAddress = true;
+            explicitTargetPresent = true;
+            addressEndPos = validation.tokenLength;
+        } else if (validation.validHopCount == 1) {
+            const auto hop = validation.hops.first();
+            const QString recipient = chainText.mid(hop.first, hop.second);
+
+            DirectedMessageParser::Token t;
+            t.start = hop.first;
+            t.length = hop.second;
+            t.type = DirectedMessageParser::Token::Recipient;
+            t.tooltip = QString("Directed to %1").arg(recipient);
+
+            tokens.append(t);
+            foundAddress = true;
+            explicitTargetPresent = true;
+            addressEndPos = hop.first + hop.second;
+        }
+    }
+
+    if (!foundAddress) {
         int firstSpace = content.indexOf(' ');
         QString addressPart =
             (firstSpace >= 0) ? content.left(firstSpace) : content;
-
-        bool foundAddress = false;
-        int addressEndPos = -1;
 
         if (!addressPart.isEmpty()) {
             if (addressPart.startsWith('@')) {
@@ -359,30 +432,33 @@ QList<DirectedMessageParser::Token> parseTokensUpper(
         if (!foundAddress && content.startsWith('>')) {
             auto partialMatch = partialRelayRe().match(content);
             if (partialMatch.hasMatch()) {
-                DirectedMessageParser::Token t;
-                t.start = 0;
-                t.length = partialMatch.capturedLength();
-                t.type = DirectedMessageParser::Token::RelayChain;
-                t.partial = true;
-
                 QString chainText = partialMatch.captured();
-                t.hops = parseHops(chainText);
-                t.recipientHopIndex = t.hops.size() - 1;
-                t.tooltip = DirectedMessageTooltipUtils::relayTooltip(
-                    chainText, t.hops);
+                const auto validation =
+                    validateRelayChain(chainText, true, implicitTarget);
+                if (validation.validHopCount >= 1) {
+                    DirectedMessageParser::Token t;
+                    t.start = 0;
+                    t.length = validation.tokenLength;
+                    t.type = DirectedMessageParser::Token::RelayChain;
+                    t.partial = true;
+                    t.hops = validation.hops;
+                    t.recipientHopIndex = t.hops.size() - 1;
+                    t.tooltip = DirectedMessageTooltipUtils::relayTooltip(
+                        chainText.left(validation.tokenLength), t.hops);
 
-                tokens.append(t);
-                foundAddress = true;
-                explicitTargetPresent = true;
-                addressEndPos = t.length;
+                    tokens.append(t);
+                    foundAddress = true;
+                    explicitTargetPresent = true;
+                    addressEndPos = validation.tokenLength;
+                }
             }
         }
+    }
 
-        if (foundAddress) {
-            pos = (addressEndPos >= 0)
-                      ? addressEndPos
-                      : ((firstSpace >= 0) ? firstSpace : content.length());
-        }
+    if (foundAddress) {
+        pos = (addressEndPos >= 0)
+                  ? addressEndPos
+                  : content.length();
     }
 
     if (!explicitTargetPresent) {
