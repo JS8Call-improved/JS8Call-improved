@@ -189,6 +189,9 @@ void UI_Constructor::on_the_minute() {
 
     if (m_config.watchdog()) {
         incrementIdleTimer();
+        if (!m_tx_watchdog && m_idleMinutes >= m_config.watchdog()) {
+            tx_watchdog(true);
+        }
     } else {
         tx_watchdog(false);
     }
@@ -1341,6 +1344,9 @@ void UI_Constructor::displayDialFrequency() {
         audio_frequency += m_XIT;
     }
     ui->labDialFreqOffset->setText(QString("%1 Hz").arg(audio_frequency));
+
+    auto const onAir = dial_frequency + audio_frequency;
+        frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(onAir)));
 }
 
 void UI_Constructor::statusChanged() { statusUpdate(); }
@@ -1387,6 +1393,11 @@ void UI_Constructor::createStatusBar() // createStatusBar
     tx_status_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
     statusBar()->addWidget(&tx_status_label);
 
+    last_tx_label.setAlignment(Qt::AlignCenter);
+    last_tx_label.setMinimumSize(QSize{150, 18});
+    last_tx_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    statusBar()->addWidget(&last_tx_label);
+
     config_label.setAlignment(Qt::AlignCenter);
     config_label.setMinimumSize(QSize{80, 18});
     config_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
@@ -1397,16 +1408,54 @@ void UI_Constructor::createStatusBar() // createStatusBar
     mode_label.setMinimumSize(QSize{80, 18});
     mode_label.setStyleSheet("QLabel{background-color: #6699ff}");
     mode_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
-    mode_label.setText("JS8");
+    {
+        QString modeLabelText;
+        switch (m_nSubMode) {
+        case Varicode::JS8CallSlow:
+            modeLabelText = "JS8 Slow";
+            break;
+        case Varicode::JS8CallNormal:
+            modeLabelText = "JS8 Normal";
+            break;
+        case Varicode::JS8CallFast:
+            modeLabelText = "JS8 Fast";
+            break;
+        case Varicode::JS8CallTurbo:
+            modeLabelText = "JS8 40";
+            break;
+        case Varicode::JS8CallUltra:
+            modeLabelText = "JS8 60";
+            break;
+        default:
+            modeLabelText = "JS8";
+            break;
+        }
+        mode_label.setText(modeLabelText);
+    }
     statusBar()->addWidget(&mode_label);
 
-    last_tx_label.setAlignment(Qt::AlignCenter);
-    last_tx_label.setMinimumSize(QSize{150, 18});
-    last_tx_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
-    statusBar()->addWidget(&last_tx_label);
+    frequency_label.setAlignment(Qt::AlignCenter);
+    frequency_label.setMinimumSize(QSize{110, 18});
+    frequency_label.setStyleSheet("QLabel{background-color: #6699ff}");
+    frequency_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(dialFrequency() + freq())));
+    statusBar()->addWidget(&frequency_label);
+    
+    auto_reply_label.setAlignment(Qt::AlignCenter);
+    auto_reply_label.setMinimumSize(QSize{110, 18});
+    auto_reply_label.setStyleSheet("QLabel{background-color: #6699ff}");
+    auto_reply_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    QString autoReplyState = ui->actionModeAutoreply->isChecked() ? "On" : "Off";
+    statusBar()->addWidget(&auto_reply_label);
 
     statusBar()->addPermanentWidget(&progressBar);
     progressBar.setMinimumSize(QSize{100, 18});
+    if (QStyle *fusion = QStyleFactory::create("Fusion")) {
+        progressBar.setStyle(fusion);
+    }
+    const QColor textColor = this->palette().color(QPalette::WindowText);
+    progressBar.setStyleSheet(QString("QProgressBar { color: %1; text-align: center; }")
+                                  .arg(textColor.name()));
     progressBar.setFormat("%v/%m");
 
     statusBar()->addPermanentWidget(&wpm_label);
@@ -4062,6 +4111,10 @@ void UI_Constructor::on_actionModeAutoreply_toggled(bool) {
     prepareHeartbeatMode(canCurrentModeSendHeartbeat() &&
                          ui->actionModeJS8HB->isChecked());
 
+    // Update the status label to reflect the auto reply state
+    const QString autoReplyState = ui->actionModeAutoreply->isChecked() ? "On" : "Off";
+    auto_reply_label.setText(QString("Auto Reply: %1").arg(autoReplyState));
+
     // then update the js8 mode
     setupJS8();
 }
@@ -5611,6 +5664,30 @@ void UI_Constructor::updateModeButtonText() {
     }
 
     ui->modeButton->setText(modeText);
+    {
+        QString modeLabelText;
+        switch (m_nSubMode) {
+        case Varicode::JS8CallSlow:
+            modeLabelText = "JS8 Slow";
+            break;
+        case Varicode::JS8CallNormal:
+            modeLabelText = "JS8 Normal";
+            break;
+        case Varicode::JS8CallFast:
+            modeLabelText = "JS8 Fast";
+            break;
+        case Varicode::JS8CallTurbo:
+            modeLabelText = "JS8 40";
+            break;
+        case Varicode::JS8CallUltra:
+            modeLabelText = "JS8 60";
+            break;
+        default:
+            modeLabelText = "JS8";
+            break;
+        }
+        mode_label.setText(modeLabelText);
+    }
 }
 
 void UI_Constructor::updateButtonDisplay() {
@@ -6888,6 +6965,7 @@ void UI_Constructor::tx_watchdog(bool triggered) {
                                    "cqMacroButton from TX watchdog.";
         ui->hbMacroButton->setChecked(false);
         ui->cqMacroButton->setChecked(false);
+        auto_reply_label.setText(QString("Auto Reply: %1").arg("Off"));
 
         // clear the tx queues
         resetMessageTransmitQueue();
@@ -6904,6 +6982,10 @@ void UI_Constructor::tx_watchdog(bool triggered) {
                 [this, wasAuto, wasHB, wasCQ](int /*result*/) {
                     // restore the button states
                     ui->actionModeAutoreply->setChecked(wasAuto);
+                    {
+                        QString autoReplyState = ui->actionModeAutoreply->isChecked() ? "On" : "Off";
+                        auto_reply_label.setText(QString("Auto Reply: %1").arg(autoReplyState));
+                    }
                     ui->hbMacroButton->setChecked(wasHB);
                     ui->cqMacroButton->setChecked(wasCQ);
 

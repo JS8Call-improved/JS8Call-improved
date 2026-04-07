@@ -98,6 +98,7 @@
 #include <QSoundEffect>
 #include <QStandardPaths>
 #include <QStringBuilder>
+#include <QStyleFactory>
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QThread>
@@ -659,6 +660,8 @@ class UI_Constructor : public QMainWindow {
     QLabel tx_status_label;
     QLabel config_label;
     QLabel mode_label;
+    QLabel frequency_label;
+    QLabel auto_reply_label;
     QLabel last_tx_label;
     QLabel auto_tx_label;
     QProgressBar progressBar;
