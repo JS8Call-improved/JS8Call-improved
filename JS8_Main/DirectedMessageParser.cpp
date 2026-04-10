@@ -76,6 +76,16 @@ std::optional<QString> parseCallsignArg(QStringView token) {
     return tokenText;
 }
 
+std::optional<QString> parseQueryCallArg(QStringView token) {
+    if (token.isEmpty())
+        return std::nullopt;
+
+    if (token.endsWith(QLatin1Char('?')))
+        token.chop(1);
+
+    return parseCallsignArg(token);
+}
+
 std::optional<QString> parseMessageIdArg(QStringView token) {
     if (token.isEmpty())
         return std::nullopt;
@@ -121,7 +131,7 @@ static const PillCommandDef s_commandDefs[] = {
     {"QUERY MSGS", "Query: Do you have stored messages for me?", false,
      false},
     {"QUERY CALL", "Query: Can you reach %1?", true, false,
-     parseCallsignArg, "[target callsign is missing]"},
+     parseQueryCallArg, "[target callsign is missing]"},
     {"QUERY MSG", "Query: Deliver stored message %1", true, false,
      parseMessageIdArg, "[message id is missing]"},
     {"QUERY", "Generic query", false, false},
@@ -245,9 +255,6 @@ CommandMatch buildCommandMatch(const PillCommandDef *def, const QString &text,
     const int argEnd = nextTokenEnd(text, argStart);
     QStringView tokenView(text);
     tokenView = tokenView.sliced(argStart, argEnd - argStart);
-
-    if (cmd == QLatin1String("QUERY CALL") && tokenView.endsWith('?'))
-        tokenView.chop(1);
 
     if (const auto parsedArg = def->argParser(tokenView)) {
         match.hasValidArg = true;
