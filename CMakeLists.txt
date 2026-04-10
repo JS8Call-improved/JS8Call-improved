@@ -230,6 +230,14 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/js8call_config.h"
 )
 
+#------------------------------------------------------------------------------#
+# On Linux we allow QSS theme injection
+#------------------------------------------------------------------------------#
+if (UNIX AND NOT APPLE)
+      target_compile_definitions(
+      ${TARGET} PRIVATE USE_QSS_THEMES)
+endif()
+
 target_precompile_headers(
   ${TARGET} PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR}/js8call_config.h

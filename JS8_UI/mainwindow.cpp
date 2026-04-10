@@ -6,6 +6,7 @@
  */
 
 #include "mainwindow.h"
+#include "styles.h"
 
 #include "moc_mainwindow.cpp"
 
@@ -1389,27 +1390,24 @@ void UI_Constructor::createStatusBar() // createStatusBar
 {
     tx_status_label.setAlignment(Qt::AlignCenter);
     tx_status_label.setMinimumSize(QSize{150, 18});
-    tx_status_label.setStyleSheet("QLabel{background-color: #22ff22; color: #000000}");
-    tx_status_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    tx_status_label.setStyleSheet(txStatusLabelStyle(TxStatusAppearance::Receiving));
     statusBar()->addWidget(&tx_status_label);
 
     last_tx_label.setAlignment(Qt::AlignCenter);
     last_tx_label.setMinimumSize(QSize{150, 18});
-    last_tx_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    last_tx_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    last_tx_label.setStyleSheet(statusLabelStyle());
     statusBar()->addWidget(&last_tx_label);
 
     config_label.setAlignment(Qt::AlignCenter);
     config_label.setMinimumSize(QSize{80, 18});
-    config_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    config_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    config_label.setStyleSheet(statusLabelStyle());
     statusBar()->addWidget(&config_label);
     config_label.hide(); // only shown for non-default configuration
 
     mode_label.setAlignment(Qt::AlignCenter);
     mode_label.setMinimumSize(QSize{80, 18});
-    mode_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    mode_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    mode_label.setStyleSheet(statusLabelStyle());
+
     {
         QString modeLabelText;
         switch (m_nSubMode) {
@@ -1438,32 +1436,26 @@ void UI_Constructor::createStatusBar() // createStatusBar
 
     frequency_label.setAlignment(Qt::AlignCenter);
     frequency_label.setMinimumSize(QSize{110, 18});
-    frequency_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    frequency_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    frequency_label.setStyleSheet(statusLabelStyle());
     frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(dialFrequency() + freq())));
     statusBar()->addWidget(&frequency_label);
     
     auto_reply_label.setAlignment(Qt::AlignCenter);
     auto_reply_label.setMinimumSize(QSize{110, 18});
-    auto_reply_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    auto_reply_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    auto_reply_label.setStyleSheet(statusLabelStyle());
     QString autoReplyState = ui->actionModeAutoreply->isChecked() ? "On" : "Off";
     statusBar()->addWidget(&auto_reply_label);
 
     statusBar()->addPermanentWidget(&progressBar);
     progressBar.setMinimumSize(QSize{100, 18});
-    if (QStyle *fusion = QStyleFactory::create("Fusion")) {
-        progressBar.setStyle(fusion);
-    }
+    const bool small = true;
     const QColor textColor = this->palette().color(QPalette::WindowText);
-    progressBar.setStyleSheet(QString("QProgressBar { color: %1; text-align: center; }")
-                                  .arg(textColor.name()));
+    progressBar.setStyleSheet(progress_bar_stylesheet(textColor, small));
     progressBar.setFormat("%v/%m");
 
     statusBar()->addPermanentWidget(&wpm_label);
     wpm_label.setMinimumSize(QSize{120, 18});
-    wpm_label.setStyleSheet("QLabel{background-color: #6699ff; color: #000000}");
-    wpm_label.setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    wpm_label.setStyleSheet(statusLabelStyle());
     wpm_label.setAlignment(Qt::AlignCenter);
 }
 
@@ -2734,8 +2726,8 @@ void UI_Constructor::guiUpdate() {
         }
 
         if (m_transmitting) {
-            tx_status_label.setStyleSheet(
-                "QLabel{background-color: #ff2222; color:#000}");
+            tx_status_label.setStyleSheet(txStatusLabelStyle(TxStatusAppearance::Transmitting));
+
             if (m_tune) {
                 tx_status_label.setText("Tx: TUNE");
             } else {
@@ -2747,12 +2739,10 @@ void UI_Constructor::guiUpdate() {
             transmitDisplay(true);
         } else if (m_monitoring) {
             if (m_tx_watchdog) {
-                tx_status_label.setStyleSheet(
-                    "QLabel{background-color: #000; color:#fff}");
+                tx_status_label.setStyleSheet(txStatusLabelStyle(TxStatusAppearance::IdleTimeout));
                 tx_status_label.setText("Idle timeout");
             } else {
-                tx_status_label.setStyleSheet(
-                    "QLabel{background-color: #22ff22; color: #000}");
+                tx_status_label.setStyleSheet(txStatusLabelStyle(TxStatusAppearance::Decoding));
                 tx_status_label.setText(m_decoderBusy ? "Decoding"
                                                       : "Receiving");
             }
@@ -6953,8 +6943,9 @@ void UI_Constructor::tx_watchdog(bool triggered) {
         if (m_auto)
             auto_tx_mode(false);
         stopTx();
-        tx_status_label.setStyleSheet(
-            "QLabel{background-color: #000000; color:#ffffff; }");
+        {
+            tx_status_label.setStyleSheet(txStatusLabelStyle(TxStatusAppearance::IdleTimeout));
+        }
         tx_status_label.setText("Idle timeout");
 
         // if the watchdog is triggered...we're no longer active
