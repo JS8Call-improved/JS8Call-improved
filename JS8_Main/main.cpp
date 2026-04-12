@@ -9,6 +9,7 @@
 #include "JS8_Include/SettingsGroup.h"
 #include "JS8_Include/commons.h"
 #include "JS8_UI/mainwindow.h"
+#include "JS8_UI/styles.h"
 #include "MetaDataRegistry.h"
 #include "MultiSettings.h"
 #include "Radio.h"
@@ -89,6 +90,9 @@ int main(int argc, char *argv[]) {
         // Override programs executable basename as application name.
         a.setApplicationName("JS8Call");
         a.setApplicationVersion(version());
+        
+        // Apply QPushButton styles globally
+        a.setStyleSheet(buttonStyle());
 
 #if QT_VERSION >= 0x050200
         QCommandLineParser parser;
