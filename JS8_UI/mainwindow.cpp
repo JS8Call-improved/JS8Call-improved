@@ -1338,13 +1338,12 @@ void UI_Constructor::displayDialFrequency() {
     auto const &band_name = m_config.bands()->find(dial_frequency);
 
     auto sFreq = Radio::pretty_frequency_MHz_string(dial_frequency);
-    ui->currentFreq->setDigitCount(sFreq.length());
-    ui->currentFreq->display(sFreq);
+    ui->currentFreq->setText(sFreq);
 
     if (m_splitMode && m_transmitting) {
         audio_frequency += m_XIT;
     }
-    ui->labDialFreqOffset->setText(QString("%1 Hz").arg(audio_frequency));
+    ui->labDialFreqOffset->setText(QString("Offset: %1 Hz").arg(audio_frequency));
 
     auto const onAir = dial_frequency + audio_frequency;
         frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(onAir)));
@@ -2674,13 +2673,13 @@ void UI_Constructor::prepareSending(qint64 nowMS) {
 void UI_Constructor::updateClockUI(const QDateTime &now) {
     qint64 drift = DriftingDateTime::drift();
     QStringList parts;
+    parts << now.date().toString("yyyy MMM dd");
     parts
         << (now.time().toString() +
             (!drift
                  ? " "
                  : QString(" (%1%2ms)").arg(drift > 0 ? "+" : "").arg(drift)));
-    parts << now.date().toString("yyyy MMM dd");
-    ui->labUTC->setText(parts.join("\n"));
+    ui->labUTC->setText(parts.join(" "));
 }
 
 //------------------------------------------------------------- //guiUpdate()

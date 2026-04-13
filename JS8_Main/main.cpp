@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
         a.setApplicationName("JS8Call");
         a.setApplicationVersion(version());
         
-        // Apply QPushButton styles globally
+        // Apply platform-specific styles from styles.h
         a.setStyleSheet(buttonStyle());
 
 #if QT_VERSION >= 0x050200

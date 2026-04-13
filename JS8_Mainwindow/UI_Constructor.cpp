@@ -5,6 +5,7 @@
  */
 
 #include "JS8_UI/mainwindow.h"
+#include "JS8_UI/styles.h"
 
 int ms_minute_error() {
     auto const now = DriftingDateTime::currentDateTimeLocal();
@@ -69,6 +70,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
       m_aprsClient{new APRSISClient{"rotate.aprs2.net", 14580}},
       m_aprsInboundRelay{nullptr} {
     ui->setupUi(this);
+    ui->frame->setStyleSheet(logFrameStyle());
 
     createStatusBar();
     add_child_to_event_filter(this);
@@ -433,7 +435,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     // Hook up working frequencies.
 
     ui->currentFreq->setCursor(QCursor(Qt::PointingHandCursor));
-    ui->currentFreq->display("14.078 000");
+    ui->currentFreq->setText("14.078 000");
     ui->currentFreq->installEventFilter(new EventFilter::MouseButtonPress(
         [this](QMouseEvent *event) {
             QMenu *menu = new QMenu(ui->currentFreq);

@@ -42,7 +42,7 @@
  * @return A QSS QString for the requested appearance, or an empty QString()
  *         for any unhandled @c default case (compiler safety fallback).
  */
-inline QString statusLabelStyle(const QString& bg = "#6699ff",
+static inline QString statusLabelStyle(const QString& bg = "#6699ff",
                                 const QString& fg = "#000000")
 {
 #if defined(Q_OS_MACOS)
@@ -114,6 +114,53 @@ inline QString txStatusLabelStyle(TxStatusAppearance appearance) {
     default:
         return QString(); // no style for compiler fallback
     }
+}
+
+// Frequency display in main window
+static inline QString logFrameStyle()
+{
+#if defined(Q_OS_MACOS)
+    return QStringLiteral(
+        "QFrame#frame { background-color: #F2F2F0; }"
+        "QLabel#currentFreq {"
+        " color: #39FF14;"
+        " background-color: black;"
+        " border-radius:6px; padding:0px 8px; "
+        " font-family: Monaco, 'Courier New', monospace;"
+        " font-size: 28pt;"
+        " font-weight: bold;"
+        " min-width: 200px;"
+        " min-height: 40px;"
+        "}"
+    );
+#elif defined(Q_OS_WIN)
+    return QStringLiteral(
+        "QFrame#frame { background-color: #F2F2F0; }"
+        "QLabel#currentFreq {"
+        " color: #39FF14;"
+        " background-color: black;"
+        " border-radius:4px; padding:0px 8px; "
+        " font-family: Consolas, 'Courier New', monospace;"
+        " font-size: 28pt;"
+        " font-weight: bold;"
+        " min-width: 200px;"
+        " min-height: 40px;"
+        "}"
+    );
+#else
+    return QStringLiteral(
+        "QFrame#frame { background-color: #F2F2F0; }"
+        "QLabel#currentFreq {"
+        " color: #39FF14;"
+        " background-color: black;"
+        " border-radius:2px; padding:0px 8px; "
+        " font-size: 28pt;"
+        " font-weight: bold;"
+        " min-width: 200px;"
+        " min-height: 40px;"
+        "}"
+    );
+#endif
 }
 
 /**
@@ -208,6 +255,8 @@ inline QString buttonStyle() {
             border: none;
             border-radius: 6px;
             padding: 3px 9px;
+            min-height: 15px;
+            max-height: 15px;
             font-family: "-apple-system";
         }
         QPushButton:hover {
