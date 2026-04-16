@@ -71,6 +71,19 @@ UI_Constructor::UI_Constructor(QString const &program_info,
       m_aprsInboundRelay{nullptr} {
     ui->setupUi(this);
     ui->frame->setStyleSheet(logFrameStyle());
+    ui->logWidget->setStyleSheet(Styles::LogWidgetStyle);
+    ui->dialFreqUpButton->setStyleSheet(Styles::DialFreqUpDownButtonStyle);
+    ui->dialFreqDownButton->setStyleSheet(Styles::DialFreqUpDownButtonStyle);
+    ui->labDialFreqOffset->setStyleSheet(Styles::LabDialFreqOffsetStyle);
+    ui->labCallsign->setStyleSheet(Styles::LabCallsignStyle);
+    ui->labUTC->setStyleSheet(Styles::LabUTCStyle);
+    ui->buttonGrid->setStyleSheet(Styles::ButtonGridStyle);
+    ui->monitorTxButton->setStyleSheet(Styles::MonitorTxButtonStyle);
+    ui->monitorButton->setStyleSheet(Styles::MonitorButtonStyle);
+    ui->logQSOButton->setStyleSheet(Styles::LogQSOButtonStyle);
+    ui->tuneButton->setStyleSheet(Styles::TuneButtonStyle);
+    ui->modeButton->setStyleSheet(Styles::ModeButtonStyle);
+    ui->spotButton->setStyleSheet(Styles::SpotButtonStyle);
 
     createStatusBar();
     add_child_to_event_filter(this);

@@ -1449,7 +1449,7 @@ void UI_Constructor::createStatusBar() // createStatusBar
     progressBar.setMinimumSize(QSize{100, 18});
     const bool small = true;
     const QColor textColor = this->palette().color(QPalette::WindowText);
-    progressBar.setStyleSheet(progress_bar_stylesheet(textColor, small));
+    progressBar.setStyleSheet(progress_bar_stylesheet(small));
     progressBar.setFormat("%v/%m");
 
     statusBar()->addPermanentWidget(&wpm_label);

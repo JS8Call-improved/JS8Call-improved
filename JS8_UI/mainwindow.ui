@@ -90,9 +90,6 @@
         </property>
         <item>
          <widget class="QFrame" name="logWidget">
-          <property name="styleSheet">
-           <string>QFrame#logWidget { background-color: #F2F2F0; }</string>
-          </property>
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
             <horstretch>0</horstretch>
@@ -102,7 +99,7 @@
           <property name="minimumSize">
            <size>
             <width>0</width>
-            <height>10</height>
+            <height>40</height>
            </size>
           </property>
           <property name="maximumSize">
@@ -209,20 +206,6 @@
                     <property name="text">
                      <string>▲</string>
                     </property>
-                    <property name="styleSheet">
-                     <string notr="true">
-                    QPushButton {
-                        background-color: #000000;
-                        color: #39FF14;
-                        font-size: 12pt;
-                        border:1px solid;
-                        border-radius:2px;
-                    }
-                    QPushButton:pressed {
-                        background-color: #222;
-                    }
-                    </string>
-                    </property>
                    </widget>
                   </item>
                   <item>
@@ -238,20 +221,6 @@
                     </property>
                     <property name="text">
                     <string>▼</string>
-                    </property>
-                    <property name="styleSheet">
-                     <string notr="true">
-                      QPushButton {
-                       background-color: #000000;
-                       color: #39FF14;
-                       font-size: 12pt;
-                       border:1px solid;
-                       border-radius:2px;
-                      }
-                      QPushButton:pressed {
-                       background-color: #222;
-                      }
-                    </string>
                     </property>
                    </widget>
                   </item>
@@ -272,15 +241,6 @@
                 </property>
                 <property name="toolTip">
                  <string>Set Current Frequency Offset</string>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">
-                  QLabel {
-                   font-size: 14pt;
-                   line-height:12pt;
-                   color : black;
-                  }
-                 </string>
                 </property>
                 <property name="text">
                  <string>1500 Hz</string>
@@ -353,14 +313,6 @@
                 <property name="toolTip">
                  <string>Set Callsign and Grid</string>
                 </property>
-                <property name="styleSheet">
-                    <string notr="true">QLabel {
-                        font-size: 14pt;
-                        line-height:12pt;
-                        color : black;
-                        }
-                    </string>
-                </property>
                 <property name="text">
                  <string>Callsign</string>
                 </property>
@@ -381,18 +333,6 @@
                  <font>
                   <pointsize>14</pointsize>
                  </font>
-                </property>
-                <property name="styleSheet">
-                    <string notr="true">QLabel {
-                        border-radius:2px;
-                        font-size: 18pt;
-                        line-height:18pt;
-                        font-family: Consolas, 'Courier New', monospace;
-                        font-weight: bold;
-                        background-color: black;
-                        color : #39FF14;
-                        }
-                    </string>
                 </property>
                 <property name="frameShape">
                  <enum>QFrame::Shape::NoFrame</enum>
@@ -449,19 +389,6 @@
                <width>0</width>
                <height>0</height>
               </size>
-             </property>
-             <property name="styleSheet">
-              <string notr="true">QPushButton {
-	background-color:lightgray;
-	padding:0.25em 0.25em; font-weight:normal;
-	border-style:solid;
-	border-width:0px;
-	border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#6699ff;
-}</string>
              </property>
              <property name="frameShape">
               <enum>QFrame::Shape::NoFrame</enum>
@@ -522,23 +449,6 @@ QPushButton:checked {
                 <property name="toolTip">
                  <string>Enable or disable the transmitter</string>
                 </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-	background-color:lightgray;
-	padding:0.25em 0.25em; font-weight:normal;
-	border-style:solid;
-	border-width:0px;
-	border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#22FF22;
-}
-
-QPushButton[transmitting=&quot;true&quot;] {
-  background-color:#FF2222;
-}</string>
-                </property>
                 <property name="text">
                  <string>TX</string>
                 </property>
@@ -584,19 +494,6 @@ QPushButton[transmitting=&quot;true&quot;] {
                 </property>
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable or disable the receiver&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-	background-color:lightgray;
-	padding:0.25em 0.25em; font-weight:normal;
-	border-style:solid;
-	border-width:0px;
-	border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#22FF22;
-}</string>
                 </property>
                 <property name="text">
                  <string>RX</string>
@@ -647,19 +544,6 @@ QPushButton:checked {
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Insert a new entry into the log&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-	background-color:lightgray;
-	padding:0.25em 0.25em; font-weight:normal;
-	border-style:solid;
-	border-width:0px;
-	border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#6699ff;
-}</string>
-                </property>
                 <property name="text">
                  <string>LOG</string>
                 </property>
@@ -699,19 +583,6 @@ QPushButton:checked {
                 </property>
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Transmit a tuning tone&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-	background-color:lightgray;
-	padding:0.25em 0.25em; font-weight:normal;
-	border-style:solid;
-	border-width:0px;
-	border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#6699ff;
-}</string>
                 </property>
                 <property name="text">
                  <string>TUNE</string>
@@ -755,19 +626,6 @@ QPushButton:checked {
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the JS8 mode settings&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-padding:0.25em 0.25em; font-weight:bold;
-border-style:solid;
-border-width:0px;
-border-radius:2px;
-background-color:#6699ff;
-}
-
-QPushButton:checked {
-background-color:#6699ff;
-}</string>
-                </property>
                 <property name="text">
                  <string>JS8</string>
                 </property>
@@ -810,19 +668,6 @@ background-color:#6699ff;
                 </property>
                 <property name="toolTip">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Spot to reporting networks&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">QPushButton {
-        background-color:lightgray;
-        padding:0.25em 0.25em; font-weight:normal;
-        border-style:solid;
-        border-width:0px;
-        border-radius:2px;
- }
-
-QPushButton:checked {
-  background-color:#6699ff;
-}</string>
                 </property>
                 <property name="text">
                  <string>SPOT</string>
