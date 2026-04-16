@@ -221,28 +221,27 @@ inline QString buttonStyle() {
         }
     )";
 
-    // Suggested possibility for linux - not defined at this time
-    // #elif defined(Q_OS_LINUX)
-    //    return R"(
-    //        QPushButton {
-    //            background-color: #E0E0E0;
-    //            color: #212121;
-    //            border: 1px solid #BDBDBD;
-    //            border-radius: 1px;
-    //            padding: 5px 15px;
-    //            font-family: "Ubuntu", "Noto Sans";
-    //        }
-    //        QPushButton:hover {
-    //            background-color: #F5F5F5;
-    //        }
-    //        QPushButton:pressed {
-    //            background-color: #BDBDBD;
-    //        }
-    //        QPushButton:disabled {
-    //            background-color: #ececec;
-    //            color: #888888;
-    //        }
-    //    )";
+#elif defined(Q_OS_LINUX)
+    return R"(
+       QPushButton {
+           background-color: #6699ff;
+           color: black;
+           border: none;
+           border-radius: 5px;
+           padding: px 9px;
+           font-family: "Ubuntu", "Noto Sans";
+       }
+       QPushButton:hover {
+           background-color: #4d7fff;
+       }
+       QPushButton:pressed {
+           background-color: #003EAA;
+       }
+       QPushButton:disabled {
+           background-color: #ececec;
+           color: #888888;
+       }
+   )";
 
 #else
     return QString();
