@@ -394,7 +394,7 @@ constexpr const char *MonitorButtonStyle =
 
 constexpr const char *LogQSOButtonStyle =
     "QPushButton {"
-    "    background-color:lightgray;"
+    "    background-color:#6699ff;"
     "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
@@ -406,7 +406,19 @@ constexpr const char *LogQSOButtonStyle =
     "    color:black;"
     "}";
 
-constexpr const char *TuneButtonStyle = LogQSOButtonStyle; // Same as above
+constexpr const char *TuneButtonStyle =
+    "QPushButton {"
+    "    background-color:lightgray;"
+    "    color:black;"
+    "    padding:0.25em 0.25em; font-weight:normal;"
+    "    border-style:solid;"
+    "    border-width:0px;"
+    "    border-radius:6px;"
+    "}"
+    "QPushButton:checked {"
+    "    background-color:#6699ff;"
+    "    color:black;"
+    "}";
 
 constexpr const char *ModeButtonStyle =
     "QPushButton {"
