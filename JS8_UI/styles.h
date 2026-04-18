@@ -181,6 +181,8 @@ inline QString buttonStyle() {
             border: none;
             border-radius: 4px;
             padding: 3px 9px;
+            min-height: 15px;
+            max-height: 15px;
             font-family: "Segoe UI";
         }
         QPushButton:hover {
