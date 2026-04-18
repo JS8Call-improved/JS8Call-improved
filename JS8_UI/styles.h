@@ -263,7 +263,7 @@ static inline QString logFrameStyle() {
                           " min-height: 40px;"
                           "}");
 #elif defined(Q_OS_WIN)
-    return QStringLiteral("QFrame#frame { background-color: #F2F2F0; }"
+    return QStringLiteral("QFrame#frame { background-color: #DDEEFF; }"
                           "QLabel#currentFreq {"
                           " color: #39FF14;"
                           " background-color: black;"
@@ -361,6 +361,7 @@ constexpr const char *ButtonGridStyle =
 constexpr const char *MonitorTxButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -368,14 +369,17 @@ constexpr const char *MonitorTxButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#22FF22;"
+    "    color:black;"
     "}"
     "QPushButton[transmitting=\"true\"] {"
     "    background-color:#FF2222;"
+    "    color:black;"
     "}";
 
 constexpr const char *MonitorButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -383,11 +387,13 @@ constexpr const char *MonitorButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#22FF22;"
+    "    color:black;"
     "}";
 
 constexpr const char *LogQSOButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -395,6 +401,7 @@ constexpr const char *LogQSOButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 constexpr const char *TuneButtonStyle = LogQSOButtonStyle; // Same as above
@@ -406,14 +413,17 @@ constexpr const char *ModeButtonStyle =
     "    border-width:0px;"
     "    border-radius:6px;"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 constexpr const char *SpotButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -421,6 +431,7 @@ constexpr const char *SpotButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 }
@@ -428,7 +439,7 @@ constexpr const char *SpotButtonStyle =
 namespace Styles {
 
 constexpr const char *LogWidgetStyle =
-    "QFrame#logWidget { background-color: #F0F0F0; }";
+    "QFrame#logWidget { background-color: #DDEEFF; }";
 
 constexpr const char *DialFreqUpDownButtonStyle =
     "QPushButton {"
@@ -480,6 +491,7 @@ constexpr const char *ButtonGridStyle =
 constexpr const char *MonitorTxButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -487,14 +499,17 @@ constexpr const char *MonitorTxButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#22FF22;"
+    "    color:black;"
     "}"
     "QPushButton[transmitting=\"true\"] {"
     "    background-color:#FF2222;"
+    "    color:black;"
     "}";
 
 constexpr const char *MonitorButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -502,11 +517,13 @@ constexpr const char *MonitorButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#22FF22;"
+    "    color:black;"
     "}";
 
 constexpr const char *LogQSOButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -514,6 +531,7 @@ constexpr const char *LogQSOButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 constexpr const char *TuneButtonStyle = LogQSOButtonStyle; // Same as above
@@ -525,14 +543,17 @@ constexpr const char *ModeButtonStyle =
     "    border-width:0px;"
     "    border-radius:4px;"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 constexpr const char *SpotButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
+    "    color:black;"
     "    padding:0.25em 0.25em; font-weight:normal;"
     "    border-style:solid;"
     "    border-width:0px;"
@@ -540,6 +561,7 @@ constexpr const char *SpotButtonStyle =
     "}"
     "QPushButton:checked {"
     "    background-color:#6699ff;"
+    "    color:black;"
     "}";
 
 }
