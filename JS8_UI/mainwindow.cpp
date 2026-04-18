@@ -6,7 +6,6 @@
  */
 
 #include "mainwindow.h"
-#include "styles.h"
 
 #include "moc_mainwindow.cpp"
 
@@ -1343,7 +1342,12 @@ void UI_Constructor::displayDialFrequency() {
     if (m_splitMode && m_transmitting) {
         audio_frequency += m_XIT;
     }
+
+#if defined(Q_OS_MACOS)
+    freqOffsetWidget->setValue(audio_frequency);
+#else
     ui->labDialFreqOffset->setText(QString("Offset: %1 Hz").arg(audio_frequency));
+#endif
 
     auto const onAir = dial_frequency + audio_frequency;
         frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(onAir)));
@@ -1448,7 +1452,6 @@ void UI_Constructor::createStatusBar() // createStatusBar
     statusBar()->addPermanentWidget(&progressBar);
     progressBar.setMinimumSize(QSize{100, 18});
     const bool small = true;
-    const QColor textColor = this->palette().color(QPalette::WindowText);
     progressBar.setStyleSheet(progress_bar_stylesheet(small));
     progressBar.setFormat("%v/%m");
 
@@ -5384,12 +5387,19 @@ void UI_Constructor::setFreqOffsetForRestore(int freq, bool shouldRestore) {
 }
 
 bool UI_Constructor::tryRestoreFreqOffset() {
+#if defined(Q_OS_MACOS)
+    if (m_sliderFreqBeforeHB == 0) return false;
+    int restoreFreq = m_sliderFreqBeforeHB;
+    m_sliderFreqBeforeHB = 0;
+    setFreqOffsetForRestore(restoreFreq, false);
+    return true;
+#else
     if (!m_shouldRestoreFreq || m_previousFreq == 0) {
         return false;
     }
-
     setFreqOffsetForRestore(m_previousFreq, false);
     return true;
+#endif
 }
 
 void UI_Constructor::changeFreq(int const newFreq) {
@@ -6673,10 +6683,12 @@ void UI_Constructor::processTxQueue() {
         message.message.contains(" HEARTBEAT ") ||
         message.message.contains(" HB ") || message.message.contains(" ACK ") ||
         ui->actionModeAutoreply->isChecked()) {
-        // then try to set the frequency...
+#if defined(Q_OS_MACOS)
+        if (m_sliderFreqBeforeHB == 0) {
+            m_sliderFreqBeforeHB = freq(); // save current freq before HB changes it
+        }
+#endif
         setFreqOffsetForRestore(f, true);
-
-        // then prepare to transmit...
         toggleTx(true);
     }
 

@@ -55,6 +55,7 @@
 #include "JS8_UI/MessagePanel.h"
 #include "LogQSO.h"
 #include "MessageReplyDialog.h"
+#include "styles.h"
 #include "ui_mainwindow.h"
 
 #include <QAbstractSocket>
@@ -666,6 +667,11 @@ class UI_Constructor : public QMainWindow {
     QLabel auto_tx_label;
     QProgressBar progressBar;
     QLabel wpm_label;
+    // MacOS frequency slider widget
+#if defined(Q_OS_MACOS)
+    Styles::OffsetSliderWidget *freqOffsetWidget = nullptr;
+    int m_sliderFreqBeforeHB = 0;
+#endif
 
     // QPointer<QProcess> proc_js8;
 

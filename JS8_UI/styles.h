@@ -13,6 +13,10 @@
 #include <QtCore/QString>
 #include <QtGlobal>
 #include <QtGui/QGuiApplication>
+#include <QHBoxLayout>
+#include <QSlider>
+#include <QLabel>
+#include <QWidget>
 
 /**
  * @brief Provides platform-adaptive stylesheet strings for status bar QLabel
@@ -325,11 +329,34 @@ constexpr const char *DialFreqUpDownButtonStyle =
     "    background-color: #222;"
     "}";
 
-constexpr const char *LabDialFreqOffsetStyle = "QLabel {"
-                                               "   font-size: 12pt;"
-                                               "   line-height:12pt;"
-                                               "   color : black;"
-                                               "}";
+class OffsetSliderWidget : public QWidget {
+  public:
+    explicit OffsetSliderWidget(QWidget *parent = nullptr) : QWidget(parent) {
+        auto *layout = new QHBoxLayout(this);
+        auto *caption = new QLabel("Offset:", this);
+        slider = new QSlider(Qt::Horizontal, this);
+        slider->setRange(0, 3000);
+        slider->setValue(1500);
+        valueLabel = new QLabel("0 Hz", this);
+        valueLabel->setMinimumWidth(60);
+        layout->addWidget(caption);
+        layout->addWidget(slider, 1);
+        layout->addWidget(valueLabel);
+        connect(slider, &QSlider::valueChanged, this, [this](int val) {
+            valueLabel->setText(QString("%1 Hz").arg(val));
+            if (onValueChanged) onValueChanged(val);
+        });
+    }
+
+    int offset() const { return slider->value(); }
+    void setValue(int hz) { slider->setValue(hz); }
+    void setOnValueChanged(std::function<void(int)> cb) { onValueChanged = cb; }
+
+  private:
+    QSlider *slider;
+    QLabel *valueLabel;
+    std::function<void(int)> onValueChanged;
+};
 
 constexpr const char *LabCallsignStyle = "QLabel {"
                                          "    font-size: 12pt;"

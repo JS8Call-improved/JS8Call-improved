@@ -372,19 +372,6 @@ qt_add_resources(
 )
 
 #------------------------------------------------------------------------------#
-# Up and down arrow image resources, used in the main window by the
-# frequency controls.
-#------------------------------------------------------------------------------#
-
-qt_add_resources(
-  ${TARGET} "images"
-  PREFIX   "/images"
-  FILES
-  artwork/up.png
-  artwork/down.png
-)
-
-#------------------------------------------------------------------------------#
 # Waterfall palette resources.
 #------------------------------------------------------------------------------#
 

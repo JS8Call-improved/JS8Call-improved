@@ -74,7 +74,6 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     ui->logWidget->setStyleSheet(Styles::LogWidgetStyle);
     ui->dialFreqUpButton->setStyleSheet(Styles::DialFreqUpDownButtonStyle);
     ui->dialFreqDownButton->setStyleSheet(Styles::DialFreqUpDownButtonStyle);
-    ui->labDialFreqOffset->setStyleSheet(Styles::LabDialFreqOffsetStyle);
     ui->labCallsign->setStyleSheet(Styles::LabCallsignStyle);
     ui->labUTC->setStyleSheet(Styles::LabUTCStyle);
     ui->buttonGrid->setStyleSheet(Styles::ButtonGridStyle);
@@ -457,7 +456,23 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             return true;
         },
         this));
-
+      
+#if defined(Q_OS_MACOS)
+    freqOffsetWidget = new Styles::OffsetSliderWidget(nullptr);
+    // Find the label's parent layout and replace it on Mac to display a
+    // QSlider widget instead of a QLabel
+    QLayout *parentLayout = ui->labDialFreqOffset->parentWidget()->layout();
+    if (auto *vbox = qobject_cast<QVBoxLayout *>(parentLayout)) {
+        int index = vbox->indexOf(ui->labDialFreqOffset);
+        vbox->removeWidget(ui->labDialFreqOffset);
+        ui->labDialFreqOffset->hide();
+        vbox->insertWidget(index, freqOffsetWidget);
+    }
+    freqOffsetWidget->setOnValueChanged([this](int val) {
+        setFreqOffsetForRestore(val, false);
+    });
+#else
+    ui->labDialFreqOffset->setStyleSheet(Styles::LabDialFreqOffsetStyle);
     ui->labDialFreqOffset->setCursor(QCursor(Qt::PointingHandCursor));
     ui->labDialFreqOffset->installEventFilter(new EventFilter::MouseButtonPress(
         [this](QMouseEvent *) {
@@ -465,6 +480,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             return true;
         },
         this));
+#endif
 
     // Hook up callsign label click to open preferences
 
