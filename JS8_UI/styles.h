@@ -254,7 +254,8 @@ inline QString buttonStyle() {
 #endif
 }
 
-// Frequency display in JS8Call main window header bar
+// defines the background, color, font and size of the header bar frequency
+// display, the #else section contains the definitions for linux
 static inline QString logFrameStyle() {
 #if defined(Q_OS_MACOS)
     return QStringLiteral("QFrame#frame { background-color: #F2F2F0; }"
@@ -609,9 +610,11 @@ constexpr const char *SpotButtonStyle =
 #else
 namespace Styles {
 
+// background color of the header bar - must be the same as the frequency display above
 constexpr const char *LogWidgetStyle =
     "QFrame#logWidget { background-color: #F2F2F0; }";
 
+// definition of the frequency displqy for the up/down buttons
 constexpr const char *DialFreqUpDownButtonStyle =
     "QPushButton {"
     "    background-color: #000000;"
@@ -630,12 +633,14 @@ constexpr const char *LabDialFreqOffsetStyle = "QLabel {"
                                                "   color : black;"
                                                "}";
 
+// definition of the display of the callsign label
 constexpr const char *LabCallsignStyle = "QLabel {"
                                          "    font-size: 14pt;"
                                          "    line-height:12pt;"
                                          "    color : black;"
                                          "}";
 
+// definition of the display of the of the date/time label
 constexpr const char *LabUTCStyle =
     "QLabel {"
     "    border-radius:0px;"
@@ -647,6 +652,7 @@ constexpr const char *LabUTCStyle =
     "    color : #39FF14;"
     "}";
 
+// defintion of the display of the button grid
 constexpr const char *ButtonGridStyle =
     "QPushButton {"
     "    background-color:lightgray;"
@@ -659,6 +665,7 @@ constexpr const char *ButtonGridStyle =
     "    background-color:#6699ff;"
     "}";
 
+// defintion of the display of the Tx button
 constexpr const char *MonitorTxButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
@@ -674,6 +681,7 @@ constexpr const char *MonitorTxButtonStyle =
     "    background-color:#FF2222;"
     "}";
 
+// definition of the display of the Rx button
 constexpr const char *MonitorButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
@@ -686,6 +694,7 @@ constexpr const char *MonitorButtonStyle =
     "    background-color:#22FF22;"
     "}";
 
+// defintion of the display of the Log and Tune buttons
 constexpr const char *LogQSOButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
@@ -700,6 +709,7 @@ constexpr const char *LogQSOButtonStyle =
 
 constexpr const char *TuneButtonStyle = LogQSOButtonStyle; // Same as above
 
+// definition of the display of the Mode button
 constexpr const char *ModeButtonStyle =
     "QPushButton {"
     "    padding:0.25em 0.25em; font-weight:bold;"
@@ -712,6 +722,7 @@ constexpr const char *ModeButtonStyle =
     "    background-color:#6699ff;"
     "}";
 
+// defintion of the display of the Spot button
 constexpr const char *SpotButtonStyle =
     "QPushButton {"
     "    background-color:lightgray;"
