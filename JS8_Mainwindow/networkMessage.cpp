@@ -149,7 +149,7 @@ void UI_Constructor::networkMessage(Message const &message) {
             bool ok = false;
             auto f = params["OFFSET"].toInt(&ok);
             if (ok) {
-                setFreqOffsetForRestore(f, false);
+                changeFreq(f);
             }
         }
     }

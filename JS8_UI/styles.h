@@ -346,15 +346,15 @@ class OffsetSliderWidget : public QWidget {
             QSlider::groove:horizontal {
                 border: 1px solid #b0b0b0;
                 height: 6px;
-                background: #e0e0e0;
+                background: #a5cdff;
                 border-radius: 3px;
             }
             QSlider::handle:horizontal {
                 background: #6699ff;
-                border: 1px solid #003eaa;
+                border: 1px solid #c2c8d1;
                 width: 16px;
-                margin: -6px 0;
-                border-radius: 8px;
+                margin: -3px 0;
+                border-radius: 6px;
             }
             QSlider::sub-page:horizontal {
                 background: #a5cdff;
@@ -525,11 +525,64 @@ constexpr const char *DialFreqUpDownButtonStyle =
     "    background-color: #222;"
     "}";
 
-constexpr const char *LabDialFreqOffsetStyle = "QLabel {"
-                                               "   font-size: 12pt;"
-                                               "   line-height:12pt;"
-                                               "   color : black;"
-                                               "}";
+class OffsetSliderWidget : public QWidget {
+  public:
+    explicit OffsetSliderWidget(QWidget *parent = nullptr) : QWidget(parent) {
+        auto *layout = new QHBoxLayout(this);
+        auto *caption = new QLabel("Offset:", this);
+        caption->setStyleSheet("QLabel { color: black; }");
+        slider = new QSlider(Qt::Horizontal, this);
+        // Lock the QSlider's appearance regardless of the system theme
+        slider->setStyleSheet(R"(
+            QSlider {
+                background: transparent;
+                min-height: 24px;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #b0b0b0;
+                height: 6px;
+                background: #a5cdff;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #6699ff;
+                border: 1px solid #c2c8d1;
+                width: 16px;
+                margin: -3px 0;
+                border-radius: 5px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #a5cdff;
+                border-radius: 3px;
+            }
+            QSlider::add-page:horizontal {
+                background: #e0e0e0;
+                border-radius: 3px;
+            }
+        )");
+        slider->setRange(0, 3000);
+        slider->setValue(1500);
+        valueLabel = new QLabel("0 Hz", this);
+        valueLabel->setStyleSheet("QLabel { color: black; }");
+        valueLabel->setMinimumWidth(60);
+        layout->addWidget(caption);
+        layout->addWidget(slider, 1);
+        layout->addWidget(valueLabel);
+        connect(slider, &QSlider::valueChanged, this, [this](int val) {
+            valueLabel->setText(QString("%1 Hz").arg(val));
+            if (onValueChanged) onValueChanged(val);
+        });
+    }
+
+    int offset() const { return slider->value(); }
+    void setValue(int hz) { slider->setValue(hz); }
+    void setOnValueChanged(std::function<void(int)> cb) { onValueChanged = cb; }
+
+  private:
+    QSlider *slider;
+    QLabel *valueLabel;
+    std::function<void(int)> onValueChanged;
+};
 
 constexpr const char *LabCallsignStyle = "QLabel {"
                                          "    font-size: 12pt;"
@@ -657,11 +710,64 @@ constexpr const char *DialFreqUpDownButtonStyle =
     "    background-color: #222;"
     "}";
 
-constexpr const char *LabDialFreqOffsetStyle = "QLabel {"
-                                               "   font-size: 14pt;"
-                                               "   line-height:12pt;"
-                                               "   color : black;"
-                                               "}";
+class OffsetSliderWidget : public QWidget {
+  public:
+    explicit OffsetSliderWidget(QWidget *parent = nullptr) : QWidget(parent) {
+        auto *layout = new QHBoxLayout(this);
+        auto *caption = new QLabel("Offset:", this);
+        caption->setStyleSheet("QLabel { color: black; }");
+        slider = new QSlider(Qt::Horizontal, this);
+        // Lock the QSlider's appearance regardless of the system theme
+        slider->setStyleSheet(R"(
+            QSlider {
+                background: transparent;
+                min-height: 24px;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #b0b0b0;
+                height: 6px;
+                background: #a5cdff;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #6699ff;
+                border: 1px solid #c2c8d1;
+                width: 16px;
+                margin: -3px 0;
+                border-radius: 5px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #a5cdff;
+                border-radius: 3px;
+            }
+            QSlider::add-page:horizontal {
+                background: #e0e0e0;
+                border-radius: 3px;
+            }
+        )");
+        slider->setRange(0, 3000);
+        slider->setValue(1500);
+        valueLabel = new QLabel("0 Hz", this);
+        valueLabel->setStyleSheet("QLabel { color: black; }");
+        valueLabel->setMinimumWidth(60);
+        layout->addWidget(caption);
+        layout->addWidget(slider, 1);
+        layout->addWidget(valueLabel);
+        connect(slider, &QSlider::valueChanged, this, [this](int val) {
+            valueLabel->setText(QString("%1 Hz").arg(val));
+            if (onValueChanged) onValueChanged(val);
+        });
+    }
+
+    int offset() const { return slider->value(); }
+    void setValue(int hz) { slider->setValue(hz); }
+    void setOnValueChanged(std::function<void(int)> cb) { onValueChanged = cb; }
+
+  private:
+    QSlider *slider;
+    QLabel *valueLabel;
+    std::function<void(int)> onValueChanged;
+};
 
 // definition of the display of the callsign label
 constexpr const char *LabCallsignStyle = "QLabel {"

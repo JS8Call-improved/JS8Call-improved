@@ -233,7 +233,6 @@ class UI_Constructor : public QMainWindow {
     void setXIT(int n);
     void qsy(int hzDelta);
     void onDriftChanged(qint64 new_drift_ms);
-    void setFreqOffsetForRestore(int freq, bool shouldRestore);
     bool tryRestoreFreqOffset();
     void changeFreq(int);
 
@@ -657,7 +656,7 @@ class UI_Constructor : public QMainWindow {
 
     char m_msg[100][80];
 
-    // labels in status bar
+    // labels and widgets in status and header bar
     QLabel tx_status_label;
     QLabel config_label;
     QLabel mode_label;
@@ -667,11 +666,8 @@ class UI_Constructor : public QMainWindow {
     QLabel auto_tx_label;
     QProgressBar progressBar;
     QLabel wpm_label;
-    // MacOS frequency slider widget
-#if defined(Q_OS_MACOS)
     Styles::OffsetSliderWidget *freqOffsetWidget = nullptr;
     int m_sliderFreqBeforeHB = 0;
-#endif
 
     // QPointer<QProcess> proc_js8;
 
@@ -935,8 +931,6 @@ class UI_Constructor : public QMainWindow {
      */
     QHash<QString, QDateTime> m_aprsRelayDedupCache;
     QSet<QString> m_callSeenHeartbeat; // call
-    int m_previousFreq;
-    bool m_shouldRestoreFreq;
     bool m_bandHopped;
     Frequency m_bandHoppedFreq;
 

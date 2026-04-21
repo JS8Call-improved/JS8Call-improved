@@ -516,8 +516,8 @@ void UI_Constructor::readSettings() {
     m_settings->beginGroup("Common");
 
     // set the frequency offset
-    setFreqOffsetForRestore(
-        m_settings->value("Freq", Default::FREQUENCY).toInt(), false); // XXX
+    changeFreq(
+        m_settings->value("Freq", Default::FREQUENCY).toInt()); // XXX
 
     setSubmode(m_settings->value("SubMode", Default::SUBMODE).toInt());
     ui->actionModeJS8HB->setChecked(
@@ -857,7 +857,7 @@ void UI_Constructor::on_actionSetOffset_triggered() {
         return;
     }
 
-    setFreqOffsetForRestore(offset, false);
+    changeFreq(offset);
 }
 
 void UI_Constructor::on_actionShow_Fullscreen_triggered(bool checked) {
@@ -1343,11 +1343,7 @@ void UI_Constructor::displayDialFrequency() {
         audio_frequency += m_XIT;
     }
 
-#if defined(Q_OS_MACOS)
     freqOffsetWidget->setValue(audio_frequency);
-#else
-    ui->labDialFreqOffset->setText(QString("Offset: %1 Hz").arg(audio_frequency));
-#endif
 
     auto const onAir = dial_frequency + audio_frequency;
         frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(onAir)));
@@ -5041,7 +5037,7 @@ void UI_Constructor::on_tableWidgetRXAll_cellDoubleClicked(int row, int col) {
     int offset = item->text().replace(" Hz", "").toInt();
 
     // switch to the offset of this row
-    setFreqOffsetForRestore(offset, false);
+    changeFreq(offset);
 
     // TODO: prompt mode switch?
 
@@ -5342,7 +5338,7 @@ void UI_Constructor::setXIT(int audio_freq) {
 
 void UI_Constructor::qsy(int const hzDelta) {
     setRig(m_freqNominal + hzDelta);
-    setFreqOffsetForRestore(m_wideGraph->centerFreq(), false);
+    changeFreq(m_wideGraph->centerFreq());
 
     // Adjust band activity frequencies.
 
@@ -5376,30 +5372,12 @@ void UI_Constructor::onDriftChanged(qint64 /*new_drift_ms*/) {
     m_detector->resetBufferPosition();
 }
 
-void UI_Constructor::setFreqOffsetForRestore(int freq, bool shouldRestore) {
-    changeFreq(freq);
-    if (shouldRestore) {
-        m_shouldRestoreFreq = true;
-    } else {
-        m_previousFreq = 0;
-        m_shouldRestoreFreq = false;
-    }
-}
-
 bool UI_Constructor::tryRestoreFreqOffset() {
-#if defined(Q_OS_MACOS)
     if (m_sliderFreqBeforeHB == 0) return false;
     int restoreFreq = m_sliderFreqBeforeHB;
     m_sliderFreqBeforeHB = 0;
-    setFreqOffsetForRestore(restoreFreq, false);
+    changeFreq(restoreFreq);
     return true;
-#else
-    if (!m_shouldRestoreFreq || m_previousFreq == 0) {
-        return false;
-    }
-    setFreqOffsetForRestore(m_previousFreq, false);
-    return true;
-#endif
 }
 
 void UI_Constructor::changeFreq(int const newFreq) {
@@ -5411,7 +5389,6 @@ void UI_Constructor::changeFreq(int const newFreq) {
 
     // TODO: jsherer - here's where we'd set minimum frequency again (later?)
 
-    m_previousFreq = freq();
     setFreq(std::max(0, newFreq));
 
     displayDialFrequency();
@@ -6683,12 +6660,10 @@ void UI_Constructor::processTxQueue() {
         message.message.contains(" HEARTBEAT ") ||
         message.message.contains(" HB ") || message.message.contains(" ACK ") ||
         ui->actionModeAutoreply->isChecked()) {
-#if defined(Q_OS_MACOS)
         if (m_sliderFreqBeforeHB == 0) {
             m_sliderFreqBeforeHB = freq(); // save current freq before HB changes it
         }
-#endif
-        setFreqOffsetForRestore(f, true);
+        changeFreq(f);
         toggleTx(true);
     }
 

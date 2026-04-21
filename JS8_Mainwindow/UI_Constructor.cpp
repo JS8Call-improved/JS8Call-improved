@@ -51,7 +51,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
       m_appDir{QApplication::applicationDirPath()}, m_palette{"Linrad"},
       m_txFrameCountEstimate{0}, m_txFrameCount{0}, m_txFrameCountSent{0},
       m_txTextDirty{false}, m_driftMsMMA{0}, m_driftMsMMA_N{0},
-      m_previousFreq{0}, m_hbInterval{0}, m_cqInterval{0}, m_hbPaused{false},
+      m_hbInterval{0}, m_cqInterval{0}, m_hbPaused{false},
       m_msAudioOutputBuffered(0u),
       m_framesAudioInputBuffered(JS8_RX_SAMPLE_RATE / 10),
       m_audioThreadPriority(QThread::HighPriority),
@@ -456,11 +456,8 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             return true;
         },
         this));
-      
-#if defined(Q_OS_MACOS)
+
     freqOffsetWidget = new Styles::OffsetSliderWidget(nullptr);
-    // Find the label's parent layout and replace it on Mac to display a
-    // QSlider widget instead of a QLabel
     QLayout *parentLayout = ui->labDialFreqOffset->parentWidget()->layout();
     if (auto *vbox = qobject_cast<QVBoxLayout *>(parentLayout)) {
         int index = vbox->indexOf(ui->labDialFreqOffset);
@@ -469,18 +466,8 @@ UI_Constructor::UI_Constructor(QString const &program_info,
         vbox->insertWidget(index, freqOffsetWidget);
     }
     freqOffsetWidget->setOnValueChanged([this](int val) {
-        setFreqOffsetForRestore(val, false);
+        changeFreq(val);
     });
-#else
-    ui->labDialFreqOffset->setStyleSheet(Styles::LabDialFreqOffsetStyle);
-    ui->labDialFreqOffset->setCursor(QCursor(Qt::PointingHandCursor));
-    ui->labDialFreqOffset->installEventFilter(new EventFilter::MouseButtonPress(
-        [this](QMouseEvent *) {
-            on_actionSetOffset_triggered();
-            return true;
-        },
-        this));
-#endif
 
     // Hook up callsign label click to open preferences
 
@@ -700,9 +687,6 @@ UI_Constructor::UI_Constructor(QString const &program_info,
         }
         ui->menuBar->removeAction(action);
     }
-
-    // auto f = findFreeFreqOffset(1000, 2000, 50);
-    // setFreqOffsetForRestore(f, false);
 
     ui->actionModeAutoreply->setChecked(m_config.autoreply_on_at_startup());
     ui->spotButton->setChecked(m_config.spot_to_reporting_networks());
@@ -991,7 +975,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
                     QString("Jump to %1Hz").arg(selectedOffset));
                 connect(qsyAction, &QAction::triggered, this,
                         [this, selectedOffset]() {
-                            setFreqOffsetForRestore(selectedOffset, false);
+                            changeFreq(selectedOffset);
                         });
 
                 if (m_wideGraph->filterEnabled()) {
@@ -1246,7 +1230,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
                         QString("Jump to %1Hz").arg(selectedOffset));
                     connect(qsyAction, &QAction::triggered, this,
                             [this, selectedOffset]() {
-                                setFreqOffsetForRestore(selectedOffset, false);
+                                changeFreq(selectedOffset);
                             });
 
                     if (m_wideGraph->filterEnabled()) {
