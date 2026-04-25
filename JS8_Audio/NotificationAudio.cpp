@@ -19,10 +19,10 @@ Q_DECLARE_LOGGING_CATEGORY(notificationaudio_js8)
  * @return None.
  */
 NotificationAudio::NotificationAudio(QObject *parent)
-    : QObject{parent}, m_stream{new SoundOutput} {
-    connect(m_stream.data(), &SoundOutput::status, this,
+    : QObject{parent}, m_stream{new NotificationSoundOutput} {
+    connect(m_stream.data(), &NotificationSoundOutput::status, this,
             &NotificationAudio::status);
-    connect(m_stream.data(), &SoundOutput::error, this,
+    connect(m_stream.data(), &NotificationSoundOutput::error, this,
             &NotificationAudio::error);
 }
 
@@ -115,17 +115,9 @@ void NotificationAudio::stop() { m_stream->stop(); }
 /******************************************************************************/
 
 void NotificationAudio::playEntry(Cache::const_iterator const it) {
-    if (m_buffer.isOpen())
-        m_buffer.close();
-
     auto const &[format, data] = *it;
-
-    m_buffer.setData(data);
-
-    if (m_buffer.open(QIODevice::ReadOnly)) {
-        m_stream->setDeviceFormat(m_device, format, m_msBuffer);
-        m_stream->restart(&m_buffer);
-    }
+    m_stream->setDevice(m_device, m_msBuffer);
+    m_stream->play(data, format);
 }
 
 /**

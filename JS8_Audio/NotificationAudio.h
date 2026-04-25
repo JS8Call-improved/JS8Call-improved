@@ -1,6 +1,8 @@
 #ifndef NOTIFICATIONAUDIO_H
 #define NOTIFICATIONAUDIO_H
 
+#include "NotificationSoundOutput.h"
+
 #include <QAudioDevice>
 #include <QBuffer>
 #include <QByteArray>
@@ -32,7 +34,7 @@ class NotificationAudio : public QObject {
     static QByteArray pcm24le_to_int32le(const QByteArray &in);
     static bool upmixMonoToStereoInPlace(QAudioFormat &fmt, QByteArray &data);
 
-    QScopedPointer<SoundOutput> m_stream;
+    QScopedPointer<NotificationSoundOutput> m_stream;
     Cache m_cache;
     QAudioDevice m_device;
     QBuffer m_buffer;
