@@ -176,10 +176,9 @@ QPair<float, float> APRSISClient::grid2deg(QString locator) {
     foreach (QStringList matched, lats) {
         char x = matched.at(1).at(0).toLatin1();
         char y = matched.at(2).at(0).toLatin1();
-
+        if (i * 2 + 1 >= 22) break;
         valx[i * 2] = x - A;
         valy[i * 2] = y - A;
-
         i++;
         tot++;
     }
@@ -188,9 +187,9 @@ QPair<float, float> APRSISClient::grid2deg(QString locator) {
     foreach (QStringList matched, lons) {
         int x = matched.at(1).toInt();
         int y = matched.at(2).toInt();
+        if (i * 2 + 1 >= 22) break;
         valx[i * 2 + 1] = x;
         valy[i * 2 + 1] = y;
-
         i++;
         tot++;
     }
