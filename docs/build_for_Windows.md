@@ -1,9 +1,12 @@
-# Building JS8Call-improved on Windows
+# Building JS8Call on Windows
 
-This is a general overview with some slight variations for building Qt6-compliant JS8Call-improved using JTSDK64-Tools (HamlibSDK) - see the detailed instructions for JTSDK64-Tools at Sourceforge:  [https://hamlib-sdk.sourceforge.io/](https://hamlib-sdk.sourceforge.io/)
+This is a general overview with some slight variations for building Qt6-compliant JS8Call using JTSDK64-Tools (HamlibSDK) - see the detailed instructions for JTSDK64-Tools at Sourceforge:  [https://hamlib-sdk.sourceforge.io/](https://hamlib-sdk.sourceforge.io/)
 
 **Prerequisites:**
 Windows 10 or 11
+
+> [!note]
+> Js8Call-improved is the name of the Github repository and will be present in your paths, the program is JS8Call.
 
 **Set up the JTSDK64-Tools build environment**
 1) Install the JTSDK (Hamlib-SDK) 4.1.0 (the latest version from https://sourceforge.net/projects/hamlib-sdk as of this writing)
@@ -35,7 +38,7 @@ Windows 10 or 11
    ```
 5) To run JS8Call from the build directory, the above-mentioned four .dll files will need to be copied into the binary directory (e.g., `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build\JS8Call`), and the JS8Call.exe file in the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build` directory will need to be copied into the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build\JS8Call` directory.  JS8Call.exe in the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.6.0\Release\build\JS8Call` directory can now be executed.
 ------------------------------------------------------------------------------
-## Building JS8Call-improved 2.4 and later with Qt Creator
+## Building JS8Call 2.4 and later with Qt Creator
 
 **Set up the build environment**
 1) Download and install CMake 4.1.1 from Kitware. You can search for this on the web.
@@ -52,7 +55,7 @@ Windows 10 or 11
 
 * Create a directory called `development` at `C:\development`
 
-* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call-improved
+* Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call.
 
 * Next we need to get the JS8Call-improved source code with git. This requires use of the Windows Command shell (installing the Windows PowerShell is recommended). Change to the `C:\development` folder and type `git clone https://github.com/JS8Call-improved/JS8Call-improved.git` This will create a folder called JS8Call-improved which contains the source code.
 
