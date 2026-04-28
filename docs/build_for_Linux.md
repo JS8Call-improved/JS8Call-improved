@@ -1,12 +1,15 @@
-# Building JS8Call-improved on Linux
+# Building JS8Call on Linux
 
-...and also building Hamlib.
-
-Note: versions of Qt older than 6.5 are deprecated for building JS8Call-improved 2.4 or newer. Use of Qt 6.9.3 is recommended. While other versions of Qt down to 6.5 are possible to use, there is significant risk that unwanted audio or PTT bugs may be injected into your build. The Qt Group is deprecating use of native audio back ends in favor of standardizing on FFmpeg audio, which requires either PulseAudio or PipeWire on linux. Most linux distributions do not ship with Qt 6.9.3 with proper FFmpeg audio support. Instead of using distribution packaged Qt, you can download pre-built Qt 6.9.3 library packages with FFmpeg audio support built-in [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) for both x86_64 and arm64.
+> [!note]
+> Note: We recommend building with QT 6.9.3 for all versions of JS8Call 2.4.0 or newer. While other versions of Qt down to 6.5 are possible to use, there is significant risk that unwanted audio or PTT bugs may be injected into your build. The Qt Group is deprecating use of native audio back ends in favor of standardizing on FFmpeg audio, which requires either PulseAudio or PipeWire on linux. Most linux distributions do not ship with Qt 6.9.3 with proper FFmpeg audio support. Instead of using distribution packaged Qt, you can download pre-built Qt 6.9.3 library packages with FFmpeg audio support built-in [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) for both x86_64 and arm64.
 
 Depending on where you install the package (/usr/local/Qt recommended), this will require using `-DCMAKE_PREFIX_PATH=<path_to_your_qt_install>` for build.
 
-Alternatively, you can obtain Qt 6.9.3 from qt.io by downloading and using the Qt Online Installer and Qt Maintenence Tool to maintain your installed versions of Qt on your linux distribution. Qt is both commercially and open source licensed. This requires creation of a free account on qt.io which will allow access to their download area to get the Online Installer, where you must agree to use the open source license to build JS8Call-improved.
+Alternatively, you can obtain Qt 6.9.3 from qt.io by downloading and using the Qt Online Installer and Qt Maintenence Tool to maintain your installed versions of Qt on your linux distribution. Qt is both commercially and open source licensed. This requires creation of a free account on qt.io which will allow access to their download area to get the Online Installer, where you must agree to use the open source license to build JS8Call.
+
+> [!note]
+> Js8Call-improved is the name of the Github repository and will be present in your paths, the program is JS8Call.
+
 
 ## Linux versions
 
@@ -17,7 +20,7 @@ This file contains build instructions for
 
 ## Compile prerequisites
 
-### Debian &amp; derivatives:
+### Debian & derivatives
 
 Issue the following commands in a terminal window (running `bash` or compatible):
 
@@ -36,9 +39,9 @@ If you get `Couldn't find any package by glob 'libboost1.81-dev'`, you need to r
 apt-cache search --names-only libboost1 | grep -P 'libboost1.\d+\-dev'
 ```
 
-JS8Call-improved has been compiled successfully with `libboost1.81-dev`, `libboost1.83-dev`, and `libboost1.88-dev`.
+JS8Call has been compiled successfully with `libboost1.81-dev`, `libboost1.83-dev`, and `libboost1.88-dev`. Development is done with version 1.88, and has been fully tested.
 
-### Fedora:
+### Fedora
 
 Issue the following commands in a terminal window:
 
@@ -60,9 +63,9 @@ Create that directory via
 mkdir $HOME/js8-build
 ```
 
-## Building JS8Call-improved
+## Building JS8Call
 
-To obtain the JS8Call-improved source, issue the following commands in a terminal window:
+To obtain the JS8Call source, issue the following commands in a terminal window:
 
 ```bash
 cd $HOME/js8-build &&
@@ -86,7 +89,7 @@ cmake -D CMAKE_INSTALL_PREFIX=/opt/JS8Call-improved ../JS8Call-improved &&
 cmake --build . -- -j 4
 ```
 
-The final `-- -j 4` part instructs the build to do up to 4 different things in parallel. This is not essential, but speeds up the build process considerably. You can tune this by changing the 4 to some other number. To stay on the safe side, use a number that is less than the total amount of RAM in GByte of the computer that runs the build, and also less than the number of CPU kernels. Other than slowness, it never hurts to use 1.  Build instability can result if you use too high a number.
+The final `-- -j 4` part instructs the build to do up to multiple different things in parallel. This is not essential, but speeds up the build process considerably. You can tune this by changing the 4 to some other number. To stay on the safe side, use a number that is less than the total amount of RAM in GByte of the computer that runs the build, and also less than the number of CPU kernels. Other than slowness, it never hurts to use 1.  Build instability can result if you use too high a number.
 
 This builds `JS8Call-improved` (which takes a while), but does not install it yet.  For quick experiments, you can skip that still-missing installation step and run the `JS8Call` binary that the build has provided in the `build` directory:
 
@@ -98,11 +101,11 @@ cd $HOME/js8-build/build &&
 
 ## Installation
 
-Note: these instructions only work with versions of JS8Call, 2.3.1 and earlier. CPack was deprecated in the JS8Call project after v2.3.1 and you must consult your distro documentation and use the native tools available in your linux distribution to package a distributable installer.
+Note: These instructions only work with versions of JS8Call, 2.3.1 and earlier. CPack was deprecated in the JS8Call project after v2.3.1 and you must consult your distro documentation and use the native tools available in your linux distribution to package a distributable installer.
 
 ### Debian-based systems
 
-Run,
+Run
 
 ```bash
 cd $HOME/js8-build/build &&
@@ -137,7 +140,7 @@ sudo dnf install ./JS8Call-*.*.rpm
 
 ## Optional: Building Hamlib
 
-**It is not required to compile Hamlib yourself in order to compile JS8Call-improved.  It is not required to compile JS8Call-improved to make use of a self-compiled Hamlib.**
+**It is not required to compile Hamlib yourself in order to compile JS8Call.  It is not required to compile JS8Call to make use of a self-compiled Hamlib.**
 
 You may want to do compile Hamlib, e.g., if your rig is only supported (or better supported) by a newer version of Hamlib, newer than the one that comes with your distribution.
 
@@ -150,10 +153,10 @@ git clone https://github.com/Hamlib/Hamlib.git hamlib &&
 cd hamlib
 ```
 
-To see what versions of Hamlib are available, while in the hamlib directory, type `git tag` to get a list. If, for example, you find a tag `4.6.4` and want to build that, run (in the same terminal):
+To see what versions of Hamlib are available, while in the hamlib directory, type `git tag` to get a list. If, for example, you find a tag `4.7.1` and want to build that, run (in the same terminal):
 
 ```bash
-git switch -c my_build 4.6.4
+git switch -c my_build 4.7.1
 ```
 
 So, now we have the source we want to compile. What is needed to do the compilation? Unfortunately, the Hamlib folks do not make it too easy to find that out.
@@ -195,23 +198,22 @@ As for the `-j 4`, the same as above applies.  If in doubt (especially while usi
 
 If you want to start a new build from a clean slate, it is not necessary to remove the entire `hamlib` directory and checkout anew. Instead, use this:
 
-
 ```bash
 cd $HOME/js8-build/hamlib &&
 git status --ignored --porcelain | perl -wnle 'print $2 if m/^(\!\!|\?\?)\s+(.+)$/' | xargs rm -rf
 ```
 
-### How to feed my custom-crafted Hamlib to JS8Call-improved?
+### How to feed my custom-crafted Hamlib to JS8Call?
 
-**It is not necessary to build JS8Call-improved in order to benefit from your newly compiled Hamlib version.** You can compile JS8Call-improved if you have a reason to do so.  Just wanting a special Hamlib isn't forcing you to do that.  You can use any standard `JS8Call-improved` binary, including one that you installed from a pre-built package.
+**It is not necessary to build JS8Call in order to benefit from your newly compiled Hamlib version.** You can compile JS8Call if you have a reason to do so.  Just wanting a special Hamlib isn't forcing you to do that. You can use any standard `JS8Call` binary, including one that you installed from a pre-built package.
 
-Starting `JS8Call-improved` in a special way makes it use your custom-crafted Hamlib.  That special way is simple: Set an environment variable `LD_LIBRARY_PATH` to an appropriate value. In a terminal, run
+Starting `JS8Call` in a special way makes it use your custom-crafted Hamlib.  That special way is simple: Set an environment variable `LD_LIBRARY_PATH` to an appropriate value. In a terminal, run
 
 ```bash
 export LD_LIBRARY_PATH=/opt/hamlib-for-JS8Call-improved/lib
 ```
 
-and then start `JS8Call-improved` **in that same terminal**.
+and then start `JS8Call` **in that same terminal**.
 
 To verify which version of `hamlib` is actually being used, run
 
@@ -219,7 +221,7 @@ To verify which version of `hamlib` is actually being used, run
 ldd JS8Call | grep hamlib
 ```
 
-If you compiled and installed `JS8Call-improved` yourself and the terminal's shell doesn't find it (it ought to, though!), you can push its nose at the program by typing the full path `/opt/JS8Call-improved/bin/JS8Call` rather than just `JS8Call`.
+If you compiled and installed `JS8Call` yourself and the terminal's shell doesn't find it (it ought to, though!), you can push its nose at the program by typing the full path `/opt/JS8Call-improved/bin/JS8Call` rather than just `JS8Call`.
 
 
 ## Cross-building
