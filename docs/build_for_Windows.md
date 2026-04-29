@@ -9,24 +9,6 @@ Windows 10 or 11
 > [!note]
 > Js8Call-improved is the name of the Github repository and will be present in your paths, the program is JS8Call.
 
-## Set up the JTSDK64-Tools build environment
-
-> [!note]
-> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work (newer Qt versions will not work with OmniRig), however we no longer recommend enabling OmniRig as it presents a security risk for Windows.
-
-1) Install the JTSDK (Hamlib-SDK) 4.1.0 the latest version from [hamlib-sdk](https://sourceforge.net/projects/hamlib-sdk) as of this writing
-2) In the `C:\JTSDK64-Tools\config` directory, set the Hamlib file marker name to "hlnone", the qt file marker name to "qt6.6.3", and the source file marker name to "src-none"
-3) Edit the Versions.ini file to change the following lines thusly:
-   ```
-   boostv=1.88.0
-   pulllatest=No
-   cpuusage=All
-   qt6v=6.9.3
-   ```
-
-4) Run the JTSDK64-Setup script to install all the components per the instructions and install Qt6.9.3, then close the powershell window
-5) Run the JTSDK64-Tools, and run `Deploy-Boost` to install Boost 1.88.0 (may take a while!), then close the powershell window
-6) Open JTSDK64-Tools, run mingw64 and `menu` and build Dynamic Hamlib (the default latest will install if you make no changes). To control the version installed, interrupt the Hamlib build process with a CTRL-C and open the Hamlib src directory (e.g., using Git Bash in Windows) and `git checkout 4.6.5` to set the version in source.  To see what versions of Hamlib are available, while in the hamlib directory, type `git branch -r` or `git tag` to get a list.  If you interrupted the build to select a specific Hamlib version, run mingw64 again then type `menu` and proceed to build Dynamic Hamlib.
 
 ## Building JS8Call 2.4 and later with Qt Creator
 
@@ -80,7 +62,28 @@ If you wish to do another build later simply go to Build in the menu and select 
 
 Note that this can not be a complete tutorial on how to use Qt Creator, only a general guide as to what is required to build JS8Call-improved 2.4 or later.
 
-## Building JS8Call without QT Creator
+## Building JS8Call with JTSDK64-Tools
+
+### Set up the JTSDK64-Tools build environment
+
+> [!note]
+> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work (newer Qt versions will not work with OmniRig), however we no longer recommend enabling OmniRig as it presents a security risk for Windows.
+
+1) Install the JTSDK (Hamlib-SDK) 4.1.0 the latest version from [hamlib-sdk](https://sourceforge.net/projects/hamlib-sdk) as of this writing
+2) In the `C:\JTSDK64-Tools\config` directory, set the Hamlib file marker name to "hlnone", the qt file marker name to "qt6.6.3", and the source file marker name to "src-none"
+3) Edit the Versions.ini file to change the following lines thusly:
+   ```
+   boostv=1.88.0
+   pulllatest=No
+   cpuusage=All
+   qt6v=6.9.3
+   ```
+
+4) Run the JTSDK64-Setup script to install all the components per the instructions and install Qt6.9.3, then close the powershell window
+5) Run the JTSDK64-Tools, and run `Deploy-Boost` to install Boost 1.88.0 (may take a while!), then close the powershell window
+6) Open JTSDK64-Tools, run mingw64 and `menu` and build Dynamic Hamlib (the default latest will install if you make no changes). To control the version installed, interrupt the Hamlib build process with a CTRL-C and open the Hamlib src directory (e.g., using Git Bash in Windows) and `git checkout 4.6.5` to set the version in source.  To see what versions of Hamlib are available, while in the hamlib directory, type `git branch -r` or `git tag` to get a list.  If you interrupted the build to select a specific Hamlib version, run mingw64 again then type `menu` and proceed to build Dynamic Hamlib.
+
+### Building JS8Call
 
 > [!note]
 > The JTSDK64-Tools build system will not package JS8Call with the "jtbuild package" command. There will be packaging errors presented when the build is finished. As of this writing, the JTSDK64-Tools 4.1.1 jtbuild.ps1 script includes an option to "jtbuild noinstall" which will not present packaging errors. If packaging is needed, the Inno Installer mentioned below is a good option.
@@ -90,10 +93,14 @@ Note that this can not be a complete tutorial on how to use Qt Creator, only a g
 
 1) Obtain the JS8Call source and place it in a folder named `wsjtx` in `C:\JTSDK64-Tools\tmp`, or open a Git Bash window in the `C:\JTSDK64-Tools\tmp` directory and issue a `git clone https://github.com/JS8Call-improved/JS8Call-improved.git wsjtx` command.  As with Hamlib, you can change the version of JS8Call you wish to build by opening a Git Bash command-line window in the wsjtx folder and issue the `git checkout <version>` command.  To see what versions are available in the repository, issue `git branch -r`
 2) After Hamlib is built, close the powershell window, then re-open JTSDK64-Tools and build JS8Call with the "jtbuild noinstall" command.
-3) For JS8Call to run properly, the `JS8Call.exe` file will need to be copied into the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3<version #>\Release\build\js8call` folder. Also, the following three dll files will need to be copied from the `C:\JTSDK64-Tools\tools\hamlib\bin` directory to the above-mentioned js8call folder: `libhamlib-4.dll, libusb-1.0.dll, and libwinpthread-1.dll`. In addition, `libfftw3f-3.dll` will need to be copied from the `C:\JTSDK64-Tools\tools\fftw\3.3.10` folder to the js8call folder. Then `JS8Call.exe` will execute properly.
-4) If you wish to package JS8Call, we suggest that you install the [Inno Installer](https://github.com/jrsoftware/issrc).  Details of how to setup and develop an Inno installer script is beyond the scope of this document.  However, when setting up an installer, we have found that you must pull four .dll files into the JS8Call bin directory as follows:
-   ```
-   libfftw3f-3.dll from C:\JTSDK64-Tools\tools\fftw\3.3.10
-   libhamlib-4.dll, libusb-1.0.dll, and libwinpthread-1.dll from C:\JTSDK64-Tools\tools\hamlib\bin
-   ```
-5) To run JS8Call from the build directory, the above-mentioned four .dll files will need to be copied into the binary directory (e.g., `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build\JS8Call`), and the JS8Call.exe file in the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build` directory will need to be copied into the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build\JS8Call` directory. JS8Call.exe in the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.6.0\Release\build\JS8Call` directory can now be executed.
+3) For JS8Call to run properly, the `JS8Call.exe` file will need to be copied into the `C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call` folder. Also, the following three dll files will need to be copied from the `C:\JTSDK64-Tools\tools\hamlib\bin` directory to the above-mentioned js8call folder: `libhamlib-4.dll, libusb-1.0.dll, and libwinpthread-1.dll`. In addition, `libfftw3f-3.dll` will need to be copied from the `C:\JTSDK64-Tools\tools\fftw\3.3.10` folder to the js8call folder. Then `JS8Call.exe` will execute properly. Replace `6.9.3` above and below with your version of QT6 if you use a different version, also, replace `<js8call version #>` with the version number of JS8Call.
+
+For an example of the files required to copy:
+```
+copy C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\2.5.0\Release\build\JS8Call.exe C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call\
+copy C:\JTSDK64-Tools\tools\hamlib\bin\libhamlib-4.dll C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call\
+copy C:\JTSDK64-Tools\tools\hamlib\bin\libusb-1.0.dll C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call\
+copy C:\JTSDK64-Tools\tools\hamlib\bin\libwinpthread-1.dll C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call\
+copy C:\JTSDK64-Tools\tools\fftw\3.3.10 C:\JTSDK64-Tools\tmp\wsjtx-output\qt\6.9.3\<js8call version #>\Release\build\js8call\
+```
+4) If you wish to package JS8Call, we suggest that you install the [Inno Installer](https://github.com/jrsoftware/issrc). Details of how to setup and develop an Inno installer script is beyond the scope of this document. You can find our Inno Installer script [here](https://github.com/JS8Call-improved/JS8Call-improved/blob/master/.github/workflows/scripts/ci-windows-installer.iss).
