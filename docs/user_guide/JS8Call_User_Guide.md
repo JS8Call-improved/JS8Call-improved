@@ -4,27 +4,31 @@
 <tbody>
 <tr class="odd">
 <td><img src="JS8Call_User_Guide_html_e18288a9.png" style="width:0.7465in;height:0.7465in" /></td>
-<td><p><span id="anchor"></span><span id="anchor-1"></span>JS8Call de KN4CRD</p><p>2026-03-12 - v3.0 
+<td><p><span id="anchor"></span><span id="anchor-1"></span>JS8Call de KN4CRD</p><p>2026-03-12 - v3.0.0
 <!-- TODO: change to User Guide release date following approval and remove 'partially updated' warning below | assignee: @Aqueum --> </p></td>
 </tr>
 </tbody>
 </table>
-**This is the User Guide from the repo master and contains items currently in development. We have marked items not released yet.**
+<b>This is the User Guide from the repo master and contains items currently in development. We have marked items that have not been released yet.</b>
 <hr>
-To save an offline copy of the User Guide as PDF [download from here](https://js8call-improved.github.io/downloads/JS8Call_User_Guide.pdf)
+
+To save an offline copy of the User Guide as PDF download from [here](https://js8call-improved.github.io/downloads/JS8Call_User_Guide.pdf)
+
 <hr>
- JS8Call is an experiment in combining the robustness of FT8 (a weak-signal mode by K1JT) with a messaging and network protocol layer for weak signal *communication*. The open source software is designed for connecting amateur radio operators who are operating under weak signal conditions and offers real-time keyboard-to-keyboard messaging, stored (inbox) messaging, message relay, and automatic station announcements. JS8Call is heavily inspired by [WSJT-X](https://wsjt.sourceforge.io/wsjtx.html), [Fldigi](http://www.w1hkj.org/), and [FSQCall](http://www.qsl.net/zl1bpu/MFSK/FSQweb.htm) and would not exist without the hard work and dedication of the many developers in the amateur radio community.
+
+ JS8Call is an experiment in combining the robustness of FT8 (a weak-signal mode by K1JT) with a messaging and network protocol layer for weak signal <b>communication</b>. The open source software is designed for connecting amateur radio operators who are operating under weak signal conditions and offers real-time keyboard-to-keyboard messaging, stored (inbox) messaging, message relay, and automatic station announcements. JS8Call is heavily inspired by [WSJT-X](https://wsjt.sourceforge.io/wsjtx.html), [Fldigi](http://www.w1hkj.org/), and [FSQCall](http://www.qsl.net/zl1bpu/MFSK/FSQweb.htm) and would not exist without the hard work and dedication of the many developers in the amateur radio community.
 
 <p>
-
-**JS8Call stands on the shoulders of giants...the takeoff angle is better up there.**
+ 
+ **JS8Call stands on the shoulders of giants...the takeoff angle is better up there.**
 <p>
 
 <hr>
-<center>Read more on the original [design inspiration here.](https://github.com/jsherer/ft8call)</center>
 
-<center>For release announcements and discussion, join the JS8Call mailing list here: [https://groups.io/g/js8Call](https://groups.io/g/js8call)
-</center>
+Read more on the original [design inspiration here.](https://github.com/jsherer/ft8call)
+
+For release announcements and discussion, join the JS8Call mailing list here: [https://groups.io/g/js8Call](https://groups.io/g/js8call)
+
 <hr>
 
 <center><img src="JS8Call_User_Guide_html_4c60ef75.jpg" style="width:5.1866in;height:3.7374in">
@@ -32,6 +36,7 @@ To save an offline copy of the User Guide as PDF [download from here](https://js
  © 2020 Jordan Sherer - This work is openly licensed via [*CC BY-SA*](https://creativecommons.org/share-your-work/cclicenses/).
 </center>
 </div>
+
 
  ## History
 
@@ -354,11 +359,11 @@ There are special directed messages that you can send to stations to have them a
   - When received in its entirety, the destination station will send an `ACK` reply to the message
   - Optionally, this message can be relayed to its final destination through multiple relay stations by prefixing additional callsigns to the message:
 
-    - `KN4CRD\>HELLO!` (will send the message to KN4CRD)
+    - `KN4CRD>HELLO!` (will send the message to KN4CRD)
 
-    - `KN4CRD\>DR4CNK\>HELLO!` (will send the message to DR4CNK through KN4CRD)
+    - `KN4CRD>DR4CNK>HELLO!` (will send the message to DR4CNK through KN4CRD)
 
-    - `KN4CRD\>DR4CNK\>J0Y\>HELLO!` (will send the message to J0Y through DR4CNK through KN4CRD)
+    - `KN4CRD>DR4CNK>J0Y>HELLO!` (will send the message to J0Y through DR4CNK through KN4CRD)
 
   - Stations will respond to a subset of commands issued through forwarded messages (SNR, INFO, GRID, MSG, MSG TO:, etc) and will reply using the relay path provided.
 
@@ -416,7 +421,7 @@ If we wanted to ask DR4CNK what their station information was, we'd send:
 
 If we wanted to transmit a "relay" message to OH8STN through DR4CNK, we could use the relay command and send:
 
-- `DR4CNK\>OH8STN\>HELLO JULIAN!`
+- `DR4CNK>OH8STN>HELLO JULIAN!`
 
   - During relay, at each hop the originating sender's call is appended to the message.
 
@@ -424,11 +429,11 @@ If we wanted to transmit a "relay" message to OH8STN through DR4CNK, we could us
 
     - KN4 station sends:
 
-        `KN4CRD: DR4CNK\>OH8STN\>HELLO JULIAN!`
+        `KN4CRD: DR4CNK>OH8STN>HELLO JULIAN!`
 
     - DR4 station relays:
 
-        ` DR4CNK: OH8STN\>HELLO JULIAN! DE KN4CRD`
+        ` DR4CNK: OH8STN>HELLO JULIAN! DE KN4CRD`
 
 You can also mix and match standard and free text messages, but most of the time you won't need to.
 
