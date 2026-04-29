@@ -15,7 +15,7 @@ Alternatively, you can obtain Qt 6.9.3 from qt.io by downloading and using the Q
 
 This file contains build instructions for
 
-* Debian 12 or newer, or Debian derivatives, e.g., Mint 22.1, Ubuntu 24.04, MX Linux, Raspberry Pi OS (64-bit)
+* Debian 12 or newer, or Debian derivatives, e.g., Mint 22.1, Ubuntu 22.04 or newer, MX Linux, Raspberry Pi OS (64-bit)
 * Fedora 41 or newer.
 
 ## Compile prerequisites
@@ -89,7 +89,7 @@ cmake -D CMAKE_INSTALL_PREFIX=/opt/JS8Call-improved ../JS8Call-improved &&
 cmake --build . -- -j 4
 ```
 
-The final `-- -j 4` part instructs the build to do up to multiple different things in parallel. This is not essential, but speeds up the build process considerably. You can tune this by changing the 4 to some other number. To stay on the safe side, use a number that is less than the total amount of RAM in GByte of the computer that runs the build, and also less than the number of CPU kernels. Other than slowness, it never hurts to use 1.  Build instability can result if you use too high a number.
+The final `-- -j 4` part instructs the build to do up to four different things in parallel. This is not essential, but speeds up the build process considerably. You can tune this by changing the 4 to some other number, including leaving it blank. To stay on the safe side, use a number that is less than the total amount of RAM in GByte of the computer that runs the build, and also less than the number of CPU kernels. Other than slowness, it never hurts to use 1.  Build instability can result if you use too high a number.
 
 This builds `JS8Call-improved` (which takes a while), but does not install it yet.  For quick experiments, you can skip that still-missing installation step and run the `JS8Call` binary that the build has provided in the `build` directory:
 
@@ -98,10 +98,10 @@ cd $HOME/js8-build/build &&
 ./JS8Call
 ```
 
-
 ## Installation
 
-Note: These instructions only work with versions of JS8Call, 2.3.1 and earlier. CPack was deprecated in the JS8Call project after v2.3.1 and you must consult your distro documentation and use the native tools available in your linux distribution to package a distributable installer.
+> [!IMPORTANT]
+> These instructions only work with versions of JS8Call, 2.3.1 and earlier. CPack was deprecated in the JS8Call project after v2.3.1 and you must consult your distro documentation and use the native tools available in your linux distribution to package a distributable installer.
 
 ### Debian-based systems
 
@@ -272,4 +272,3 @@ The following caveats apply:
 * With just 1GB of RAM for a virtual Raspi, a build with the instructions as above was unstable with `-j 4`, leading to a `qemu` crash (eating CPU but no longer responding to `ssh` connection attempts; this may have triggered some `qemu` bug?).  Removing the entire `-- -j 4` stance and re-starting the build in a cleaned directory helped.
 
 In a separate experiment, it was tried to use `qemu-user`, `qemu-user-binfmt`, and `chroot` (on host Debian Bookworm). An environment for `chroot` was created via `losetup -P --show -f 2025-05-13-raspios-bookworm-arm64.img` and mounting `loopNp2`. It was not even possible to start a humble `bash` in the `chroot`-environment, the ubiquitous error message was &ldquo;file not found&rdquo;.
-
