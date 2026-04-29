@@ -1,7 +1,5 @@
 # Building JS8Call on Windows
 
-This is a general overview with some slight variations for building Qt6-compliant JS8Call using JTSDK64-Tools (HamlibSDK) - see the detailed instructions for JTSDK64-Tools at Sourceforge:  [https://hamlib-sdk.sourceforge.io/](https://hamlib-sdk.sourceforge.io/)
-
 ## Prerequisites
 
 Windows 10 or 11
@@ -36,10 +34,12 @@ Windows 10 or 11
 - To get started with a CMake project in Qt Creator, open the program and select Open Project. Simply navigate to the CMakeLists.txt in `C:\development\JS8Call-improved` and select it. When the project window opens your available “kits” will be listed on the left side. Simply click the `+` button by the kits you want to use for this project (6.9.3). Qt Creator will create what is called an Initial Configuration. You can select to hide the inactive kits if you installed more than one version of Qt.
 - You can select Manage Kits at the top left to make sure you have a valid compiler (which should be MinGW) for each one. The default build will be Debug. Under Build Settings select Add, and add a Release configuration and name it Release.
 - Qt Creator automatically creates a build folder in the source tree. Inside the build folder Creator makes folders for each kit and build type. DO NOT delete these. They contain your project build configuration settings for each build type. At present Creator will say there’s no configuration for Release found. Don’t worry about that. We’re going to fix it in the next step where we move to the CMake keys.
-- In the CMake configure settings pane (the center one) switch from Initial Configuration tab to Current Configuration. Then make the following changes……
-- Change CMAKE_GENERATOR to MinGW Makefiles
-- Change CMAKE_INSTALL_PREFIX to Program Files (not x86)
-- Replace the entire CMAKE_PREFIX_PATH with the following
+- In the CMake configure settings pane (the center one) switch from Initial Configuration tab to Current Configuration. Then make the following changes:
+
+
+1) Change CMAKE_GENERATOR to MinGW Makefiles
+2) Change CMAKE_INSTALL_PREFIX to Program Files (not x86)
+3) Replace the entire CMAKE_PREFIX_PATH with the following
 ```
 %{Qt:QT_INSTALL_PREFIX};C:\development\js8lib\lib64-msvc-14.3\cmake\Boost-1.89.0;C:\development\js8lib;C:\development\js8lib\bin
 ```
@@ -47,7 +47,8 @@ Windows 10 or 11
 
 ### Some information on this to better understand Qt Creator
 
-The Initial Configuration is what the raw CMake run generates. The Current Configuration is your custom configs with the prefix for the libraries and final build settings. It is what will be actually built. But we need to add two more steps to the build yet.
+The Initial Configuration is what the raw CMake run generates. The Current Configuration is your custom configs with the prefix for the libraries and final build settings. It is what will actually be built. But we need to add two more steps to the build:
+
 1) Move down to Build Steps and click on Add Build Step -> Custom Process Step. In the Command enter `cmd.exe`  Remove the entry from the Working directory and leave it blank. Then copy and paste this to the Arguments box
 ```
 cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && move JS8Call.exe .\JS8Call
@@ -56,18 +57,20 @@ cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release &
 ```
 cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && copy C:\development\js8lib\dll\*.dll .\JS8Call
 ```
-You can now click on the hammer in the lower left and the JS8Call-improved project should build. After the build completes you will find a folder inside the build -> (kit name) directory called JS8Call-improved. It will contain all the libraries the program needs to run, along with the JS8Call-improved executable. At this point you can use a Windows Installer package creator like NSIS or Inno Setup to create a Windows installer if you wish. Or if you are building only for your local computer you can move the JS8Call folder to `C:\Program Files`, create a shortcut to the `JS8Call.exe` executable, and place the shortcut on your desktop to launch the program.
+You can now click on the hammer in the lower left and the JS8Call-improved project should build. After the build completes you will find a folder inside the build -> (kit name) directory called JS8Call-improved. It will contain all the libraries the program needs to run, along with the JS8Call-improved executable. At this point, you can use a Windows Installer package creator like NSIS or Inno Setup to create a Windows installer if you wish. Or if you are building only for your local computer, you can move the JS8Call folder to `C:\Program Files`, create a shortcut to the `JS8Call.exe` executable, and place the shortcut on your desktop to launch the program.
 
-If you wish to do another build later simply go to Build in the menu and select Clean Build Folder and it will remove all old build artifacts so you can do another build without reconfiguration of Qt Creator. The program will save your build setup as long as you don't delete the folders inside the `build` folder. But during a Clean Build Folder it will not remove the built JS8Call product folder. That must be deleted manually, or moved, before doing another build.
+If you wish to do another build later simply go to Build in the menu and select Clean Build Folder and it will remove all old build artifacts so you can do another build without the reconfiguration of Qt Creator. The program will save your build setup as long as you don't delete the folders inside the `build` folder. But doing a Clean Build Folder, it will not remove the built JS8Call product folder. That must be deleted manually, or moved, before doing another build.
 
 Note that this can not be a complete tutorial on how to use Qt Creator, only a general guide as to what is required to build JS8Call-improved 2.4 or later.
 
 ## Building JS8Call with JTSDK64-Tools
 
+This is a general overview with some slight variations for building Qt6-compliant JS8Call using JTSDK64-Tools (HamlibSDK). See the detailed instructions for [JTSDK64-Tools](https://hamlib-sdk.sourceforge.io/) at Sourceforge.
+
 ### Set up the JTSDK64-Tools build environment
 
 > [!note]
-> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work (newer Qt versions will not work with OmniRig), however we no longer recommend enabling OmniRig as it presents a security risk for Windows.
+> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work, newer Qt versions will not work with OmniRig. We no longer recommend enabling OmniRig, as it presents a security risk for Windows.
 
 1) Install the JTSDK (Hamlib-SDK) 4.1.0 the latest version from [hamlib-sdk](https://sourceforge.net/projects/hamlib-sdk) as of this writing
 2) In the `C:\JTSDK64-Tools\config` directory, set the Hamlib file marker name to "hlnone", the qt file marker name to "qt6.6.3", and the source file marker name to "src-none"
@@ -81,7 +84,7 @@ Note that this can not be a complete tutorial on how to use Qt Creator, only a g
 
 4) Run the JTSDK64-Setup script to install all the components per the instructions and install Qt6.9.3, then close the powershell window
 5) Run the JTSDK64-Tools, and run `Deploy-Boost` to install Boost 1.88.0 (may take a while!), then close the powershell window
-6) Open JTSDK64-Tools, run mingw64 and `menu` and build Dynamic Hamlib (the default latest will install if you make no changes). To control the version installed, interrupt the Hamlib build process with a CTRL-C and open the Hamlib src directory (e.g., using Git Bash in Windows) and `git checkout 4.6.5` to set the version in source.  To see what versions of Hamlib are available, while in the hamlib directory, type `git branch -r` or `git tag` to get a list.  If you interrupted the build to select a specific Hamlib version, run mingw64 again then type `menu` and proceed to build Dynamic Hamlib.
+6) Open JTSDK64-Tools, run mingw64 and `menu` and build Dynamic Hamlib (the default latest will install if you make no changes). To control the version installed, interrupt the Hamlib build process with a CTRL-C and open the Hamlib src directory (e.g., using Git Bash in Windows) and `git checkout 4.7.1` to set the version in source.  To see what versions of Hamlib are available, while in the hamlib directory, type `git branch -r` or `git tag` to get a list.  If you interrupted the build to select a specific Hamlib version, run mingw64 again then type `menu` and proceed to build Dynamic Hamlib.
 
 ### Building JS8Call
 
