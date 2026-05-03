@@ -1,4 +1,4 @@
-/** \file
+/** @file
  * @brief member function of the UI_Constructor class
  *  process HB ACK rate limiting
  */
@@ -6,6 +6,11 @@
 #include "JS8_UI/mainwindow.h"
 
 void UI_Constructor::processHeartbeatRateLimit(const QString &callsign) {
+    // Feature disabled in settings
+    if (!m_config.hb_rate_limit()) {
+        return;
+    }
+
     constexpr int BLOCK_WINDOW_SECS = 55 * 60;
 
     HBBlockingDB db(hbBlockingPath());
