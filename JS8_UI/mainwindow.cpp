@@ -3421,19 +3421,11 @@ bool UI_Constructor::ensureCreateMessageReady(const QString &text) {
 
     if (!ensureKeyNotStuck(text)) {
         on_stopTxButton_clicked();
-
-        ui->monitorButton->setChecked(false);
-        ui->monitorTxButton->setChecked(false);
-        on_monitorButton_clicked(false);
-        on_monitorTxButton_toggled(false);
-
-        foreach (auto obj, this->children()) {
-            if (obj->isWidgetType()) {
-                auto wid = qobject_cast<QWidget *>(obj);
-                wid->setEnabled(false);
-            }
-        }
-
+        JS8MessageBox::warning_message(
+            this,
+            tr("Message Not Sent"),
+            tr("It appears you may have a stuck key (more than 5 repeated characters). "
+               "Please check your keyboard and try again."));
         return false;
     }
 
