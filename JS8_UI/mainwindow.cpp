@@ -3489,6 +3489,15 @@ QString UI_Constructor::createMessageTransmitQueue(QString const &text,
     return lines.join("");
 }
 
+// automatic HB ACK suppression, creates and queries a sqlite3 database that
+// that keeps track of last heard HB's.
+QString UI_Constructor::hbBlockingPath() const {
+    return QDir::toNativeSeparators(
+        m_config.writeable_data_dir().absoluteFilePath("hb_blocking.db3"));
+}
+
+void processHeartbeatRateLimit(const QString &callsign); // JS8_Mainwindow/processHeartbeatRateLimit.cpp
+
 void UI_Constructor::restoreMessage() {
     if (m_lastTxMessage.isEmpty()) {
         return;

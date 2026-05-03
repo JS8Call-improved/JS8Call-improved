@@ -18,6 +18,7 @@
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/FrequencyList.h"
 #include "JS8_Main/Geodesic.h"
+#include "JS8_Main/HBBlockingDB.h"
 #include "JS8_Main/HelpTextWindow.h"
 #include "JS8_Main/Inbox.h"
 #include "JS8_Main/JS8MessageBox.h"
@@ -1024,7 +1025,9 @@ class UI_Constructor : public QMainWindow {
     void processCompoundActivity();
     void processBufferedActivity();
     void processCommandActivity();
+    void processHeartbeatRateLimit(const QString &callsign);
     QString inboxPath();
+    QString hbBlockingPath() const;
     void refreshInboxCounts();
     bool hasMessageHistory(QString call);
     int addCommandToMyInbox(CommandDetail d);

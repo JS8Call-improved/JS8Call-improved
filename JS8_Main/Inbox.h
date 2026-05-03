@@ -6,12 +6,14 @@
  **/
 
 #include "Message.h"
-#include "vendor/sqlite3/sqlite3.h"
 
 #include <QObject>
 #include <QPair>
 #include <QString>
 #include <QVariant>
+
+struct sqlite3;
+struct sqlite3_stmt;
 
 class Inbox {
   public:

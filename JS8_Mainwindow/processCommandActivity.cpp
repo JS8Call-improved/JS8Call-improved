@@ -5,6 +5,7 @@
  *  processes JS8 commands
  */
 
+#include "JS8_Main/HBBlockingDB.h"
 #include "JS8_UI/mainwindow.h"
 
 void UI_Constructor::processCommandActivity() {
@@ -708,8 +709,16 @@ void UI_Constructor::processCommandActivity() {
                 }
             }
 
-            // TODO: require confirmation?
-            sendHeartbeatAck(d.from, d.snr, extra);
+            // Rate-limit HB ACKs — records timestamp on first contact;
+            // blocks and purges callsign from the database if the
+            // station HB's again within 55 minutes.
+            processHeartbeatRateLimit(d.from);
+
+            if (!m_config.hb_blacklist().contains(d.from) &&
+                !m_config.hb_blacklist().contains(
+                    Radio::base_callsign(d.from))) {
+                sendHeartbeatAck(d.from, d.snr, extra);
+            }
 
             if (isAllCall) {
                 // since all pings are technically @ALLCALL, let's bump the

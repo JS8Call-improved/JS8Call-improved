@@ -1218,6 +1218,15 @@ QSet<QString> Configuration::auto_blacklist() const {
                          m_->auto_blacklist_.end());
 }
 
+// automatic HB ACK suppression, adds callsigns to the blacklist
+// that send out HB's at intervals less than 55 minutes
+void Configuration::addToHbBlacklist(const QString &callsign) {
+    if (!m_->hb_blacklist_.contains(callsign)) {
+        m_->hb_blacklist_.append(callsign);
+        m_->write_settings();
+    }
+}
+
 QSet<QString> Configuration::hb_blacklist() const {
     return QSet<QString>(m_->hb_blacklist_.begin(), m_->hb_blacklist_.end());
 }

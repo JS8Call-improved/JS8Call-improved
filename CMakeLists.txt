@@ -271,6 +271,7 @@ target_sources(
   JS8_Main/FrequencyLineEdit.cpp
   JS8_Main/FrequencyList.cpp
   JS8_Main/Geodesic.cpp
+  JS8_Main/HBBlockingDB.cpp
   JS8_Main/HelpTextWindow.cpp
   JS8_Main/IARURegions.cpp
   JS8_Main/Inbox.cpp
@@ -312,6 +313,7 @@ target_sources(
   JS8_Mainwindow/processBufferedActivity.cpp
   JS8_Mainwindow/processCommandActivity.cpp
   JS8_Mainwindow/processDecodeEvent.cpp
+  JS8_Mainwindow/processHeartbeatRateLimit.cpp
   JS8_Mainwindow/processRxActivity.cpp
   JS8_Mainwindow/UI_Constructor.cpp
   JS8_Mode/DecodedText.cpp
