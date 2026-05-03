@@ -1443,6 +1443,7 @@ void UI_Constructor::createStatusBar() // createStatusBar
     auto_reply_label.setMinimumSize(QSize{110, 18});
     auto_reply_label.setStyleSheet(statusLabelStyle());
     QString autoReplyState = ui->actionModeAutoreply->isChecked() ? "On" : "Off";
+    auto_reply_label.setText(QString("Auto Reply: %1").arg(autoReplyState));
     statusBar()->addWidget(&auto_reply_label);
 
     statusBar()->addPermanentWidget(&progressBar);
