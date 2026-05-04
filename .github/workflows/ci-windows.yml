@@ -40,7 +40,7 @@ jobs:
   build_windows-2025:
     runs-on: windows-2025
     permissions: write-all
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment || 'CI' }}
    
     steps:
     - run: git config --global core.autocrlf input
