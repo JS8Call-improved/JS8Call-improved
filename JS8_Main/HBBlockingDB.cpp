@@ -31,6 +31,7 @@ bool HBBlockingDB::open() {
 
     rc = sqlite3_exec(db_, SCHEMA, nullptr, nullptr, nullptr);
     if (rc != SQLITE_OK) {
+        close();
         return false;
     }
 
