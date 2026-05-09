@@ -3110,12 +3110,17 @@ void UI_Constructor::displayTextForFreq(QString text, int freq, QDateTime date,
         }
         // Suppress continuation frames from a blocked offset
         if (m_rxBlockedOffsets.contains(freq)) {
-            if (isLast) {
+            if (isLast || isNewLine) {
                 m_rxBlockedOffsets.remove(freq);
+                if (!isNewLine) {
+                    return;
+                }
+            } else {
+                return;
             }
-            return;
         }
     }
+
     int lowFreq = freq / 10 * 10;
     int highFreq = lowFreq + 10;
 
