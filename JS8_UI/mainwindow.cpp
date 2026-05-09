@@ -3094,6 +3094,28 @@ void UI_Constructor::createGroupCallsignTableRows(QTableWidget *table,
 void UI_Constructor::displayTextForFreq(QString text, int freq, QDateTime date,
                                         bool isTx, bool isNewLine,
                                         bool isLast) {
+    // Don't display RX messages from blocked callsigns.
+    // TX frames (our own transmissions) are never suppressed.
+    if (!isTx) {
+        auto const &blocklist = m_config.rx_callsign_blocklist();
+        if (!blocklist.isEmpty()) {
+            auto const sender = text.section(':', 0, 0).trimmed().toUpper();
+            auto const senderBase = Radio::base_callsign(sender);
+            if (!sender.isEmpty() &&
+                (blocklist.contains(sender) ||
+                 blocklist.contains(senderBase))) {
+                m_rxBlockedOffsets.insert(freq);
+                return;
+            }
+        }
+        // Suppress continuation frames from a blocked offset
+        if (m_rxBlockedOffsets.contains(freq)) {
+            if (isLast) {
+                m_rxBlockedOffsets.remove(freq);
+            }
+            return;
+        }
+    }
     int lowFreq = freq / 10 * 10;
     int highFreq = lowFreq + 10;
 

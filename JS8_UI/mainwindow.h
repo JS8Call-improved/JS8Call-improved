@@ -945,6 +945,8 @@ class UI_Constructor : public QMainWindow {
 
     QDateTime m_dateTimeQSOOn;
     QDateTime m_dateTimeLastTX;
+    
+    QSet<int> m_rxBlockedOffsets; //callsign blocking
 
     LogBook m_logBook;
     unsigned m_msAudioOutputBuffered;

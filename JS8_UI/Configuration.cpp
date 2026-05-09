@@ -641,6 +641,7 @@ class Configuration::impl final : public QDialog {
     QStringList auto_blacklist_;
     QStringList hb_blacklist_;
     QStringList spot_blacklist_;
+    QStringList rx_callsign_blocklist_;
     QStringList primary_highlight_words_;
     QStringList secondary_highlight_words_;
     QString eot_;
@@ -1238,6 +1239,11 @@ QSet<QString> Configuration::spot_blacklist() const {
                          m_->spot_blacklist_.end());
 }
 
+QSet<QString> Configuration::rx_callsign_blocklist() const {
+    return QSet<QString>(m_->rx_callsign_blocklist_.begin(),
+                         m_->rx_callsign_blocklist_.end());
+}
+
 QSet<QString> Configuration::primary_highlight_words() const {
     return QSet<QString>(m_->primary_highlight_words_.begin(),
                          m_->primary_highlight_words_.end());
@@ -1803,6 +1809,7 @@ void Configuration::impl::initialize_models() {
     ui_->hb_blacklist_line_edit->setText(hb_blacklist_.join(", "));
     ui_->hb_rate_limit_check_box->setChecked(hb_rate_limit_);
     ui_->spot_blacklist_line_edit->setText(spot_blacklist_.join(", "));
+    ui_->rx_blocklist_line_edit->setText(rx_callsign_blocklist_.join(", "));
     ui_->primaryHighlightLineEdit->setText(primary_highlight_words_.join(", "));
     ui_->secondaryHighlightLineEdit->setText(
         secondary_highlight_words_.join(", "));
@@ -2123,6 +2130,8 @@ void Configuration::impl::read_settings() {
     hb_rate_limit_ = settings_->value("HBRateLimit", false).toBool();
     spot_blacklist_ =
         settings_->value("SpotBlacklist", QStringList{}).toStringList();
+    rx_callsign_blocklist_ =
+        settings_->value("RXCallsignBlocklist", QStringList{}).toStringList();
     primary_highlight_words_ =
         settings_->value("PrimaryHighlightWords", QStringList{}).toStringList();
     secondary_highlight_words_ =
@@ -2584,6 +2593,7 @@ void Configuration::impl::write_settings() {
     settings_->setValue("HBBlacklist", hb_blacklist_);
     settings_->setValue("HBRateLimit", hb_rate_limit_);
     settings_->setValue("SpotBlacklist", spot_blacklist_);
+    settings_->setValue("RXCallsignBlocklist", rx_callsign_blocklist_);
     settings_->setValue("PrimaryHighlightWords", primary_highlight_words_);
     settings_->setValue("SecondaryHighlightWords", secondary_highlight_words_);
     settings_->setValue("EOTCharacter", eot_);
@@ -3294,6 +3304,8 @@ void Configuration::impl::accept() {
         splitWords(ui_->hb_blacklist_line_edit->text().toUpper().trimmed());
     spot_blacklist_ =
         splitWords(ui_->spot_blacklist_line_edit->text().toUpper().trimmed());
+    rx_callsign_blocklist_ =
+        splitWords(ui_->rx_blocklist_line_edit->text().toUpper().trimmed());
     primary_highlight_words_ =
         splitWords(ui_->primaryHighlightLineEdit->text().toUpper().trimmed());
     secondary_highlight_words_ =

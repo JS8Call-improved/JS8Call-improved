@@ -108,6 +108,7 @@ class Configuration final : public QObject {
     QSet<QString> auto_blacklist() const;
     QSet<QString> hb_blacklist() const;
     QSet<QString> spot_blacklist() const;
+    QSet<QString> rx_callsign_blocklist() const;
     QSet<QString> primary_highlight_words() const;
     QSet<QString> secondary_highlight_words() const;
     int activity_aging() const;
