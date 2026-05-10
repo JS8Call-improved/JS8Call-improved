@@ -5624,7 +5624,11 @@ void UI_Constructor::postDecode(bool is_new, QString const &) {
 }
 
 void UI_Constructor::tryNotify(QString const &key) {
-    if (auto const path = m_config.notification_path(key); !path.isEmpty()) {
+    // During configuration dialog, use live UI state
+    auto const path = m_config.is_active()
+        ? m_config.test_notification_path(key)
+        : m_config.notification_path(key);
+    if (!path.isEmpty()) {
         emit playNotification(path);
     }
 }

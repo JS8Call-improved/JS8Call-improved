@@ -2063,10 +2063,7 @@ void Configuration::impl::initialize_models() {
         buttonLayout->addWidget(testPushButton);
 
         connect(testPushButton, &QPushButton::pressed, this,
-                [this, key, pathLabel]() {
-                    // hack for testing...
-                    notifications_enabled_[key] = true;
-                    notifications_paths_[key] = pathLabel->text();
+                [this, key]() {
                     emit this->self_->test_notify(key);
                 });
 
@@ -5170,6 +5167,21 @@ QString Configuration::impl::dump_devices(QString const& title,
     }
     ts << "\n";
     return s;
+}
+
+QString Configuration::test_notification_path(const QString &key) const {
+    if (!m_->ui_->notifications_check_box->isChecked()) {
+        return "";
+    }
+    // Walk the live table to find the path label for this key
+    for (int i = 0; i < m_->ui_->notifications_table_widget->rowCount(); i++) {
+        auto item = m_->ui_->notifications_table_widget->item(i, 0);
+        if (!item || item->data(Qt::UserRole).toString() != key) continue;
+        auto label = qobject_cast<QLabel *>(
+            m_->ui_->notifications_table_widget->cellWidget(i, 2));
+        if (label) return label->text();
+    }
+    return "";
 }
 
 #if !defined(QT_NO_DEBUG_STREAM)
