@@ -737,7 +737,22 @@ void UI_Constructor::processCommandActivity() {
 
         // PROCESS CQ
         else if (d.cmd == " CQ") {
-            qCDebug(mainwindow_js8) << "skipping incoming cq" << d.text;
+            CallDetail cd = {};
+            cd.bits = d.bits;
+            cd.call = d.from;
+            cd.dial = d.dial;
+            cd.offset = d.offset;
+            cd.grid = d.grid;
+            cd.snr = d.snr;
+            cd.tdrift = d.tdrift;
+            cd.submode = d.submode;
+            cd.utcTimestamp = d.utcTimestamp;
+            cd.cqTimestamp = d.utcTimestamp.isValid()
+                                 ? d.utcTimestamp
+                                 : DriftingDateTime::currentDateTimeUtc();
+
+            logCallActivity(cd, true);
+            logHeardGraph(d.from, d.to);
             continue;
         }
 
