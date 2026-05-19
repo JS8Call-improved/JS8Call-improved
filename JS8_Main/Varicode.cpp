@@ -2273,7 +2273,8 @@ Varicode::buildMessageFrames(QString const &mycall, QString const &mygrid,
 
 #if 1
                     bool skipAprsChecksum =
-                        (dirTo.compare("@APRSIS", Qt::CaseInsensitive) == 0);
+                        (dirTo.compare("@APRSIS", Qt::CaseInsensitive) == 0 &&
+                         (dirCmd == " MSG" || dirCmd == " MSG TO:"));
                     int checksumSize =
                         skipAprsChecksum
                             ? 0
