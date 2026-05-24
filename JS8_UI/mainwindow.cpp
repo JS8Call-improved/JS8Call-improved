@@ -101,7 +101,10 @@ void copyMessage(QStringView const string, char *const array,
 
 } // namespace
 
-void UI_Constructor(); // explicit member function of the UI_Constructor class
+// explicit member function of the UI_Constructor class
+// this is the forward declaration of the constructor contained in
+// JS8_Mainwindow/UI_Constructor.cpp
+void UI_Constructor();
 
 void UI_Constructor::ensureMessageDock()
 {
@@ -152,18 +155,12 @@ void UI_Constructor::ensureMessageDock()
         });
 }
 
-bool checkVersion(); // JS8_Mainwindow/checkVersion.cpp
-
 void UI_Constructor::checkStartupWarnings() {
     if (m_config.check_for_updates()) {
         checkVersion(false);
     }
     ensureCallsignSet(false);
 }
-
-void initializeDummyData(); // JS8_Mainwindow/initializeDummyData.cpp
-
-void initializeGroupMessage(); // JS8_Mainwindow/initializeGroupMessage.cpp
 
 void UI_Constructor::initialize_fonts() {
     set_application_font(m_config.text_font());
@@ -676,8 +673,6 @@ void UI_Constructor::set_application_font(QFont const &font) {
         widget->updateGeometry();
     }
 }
-
-void dataSink(); // JS8_Mainwindow/dataSink.cpp
 
 void UI_Constructor::showSoundInError(const QString &errorMsg) {
     JS8MessageBox::critical_message(this, tr("Error in Sound Input"), errorMsg);
@@ -2199,8 +2194,6 @@ QDateTime UI_Constructor::nextTransmitCycle() {
     return timestamp;
 }
 
-void processDecodeEvent(); // JS8_Mainwindow/processDecodeEvent.cpp
-
 bool UI_Constructor::hasExistingMessageBufferToMe(int *const pOffset) {
     for (auto const [offset, buffer] : m_messageBuffer.asKeyValueRange()) {
         // if this is a valid buffer and it's to me...
@@ -3317,45 +3310,6 @@ void UI_Constructor::addMessageText(QString text, bool clear,
     ui->extFreeTextMsgEdit->setFocus();
 }
 
-void UI_Constructor::confirmThenEnqueueMessage(int timeout, int priority,
-                                               QString message, int offset,
-                                               Callback c) {
-    // CRITICAL: called from decoder thread → QTimer/sendNetworkMessage must run in GUI thread
-    QMetaObject::invokeMethod(this, [this, timeout, priority, message, offset, c]() {
-        int id = m_nextConfirmId++;
-        PendingConfirmation pc;
-        pc.id = id;
-        pc.priority = priority;
-        pc.message = message;
-        pc.offset = offset;
-        pc.callback = c;
-
-        // Timer auto-reject after timeout
-        pc.timer = new QTimer(this);
-        pc.timer->setSingleShot(true);
-        connect(pc.timer, &QTimer::timeout, this, [this, id]() {
-            if (m_pendingConfirmations.contains(id)) {
-                auto pc = m_pendingConfirmations.take(id);
-                delete pc.timer;
-                sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_EXPIRED", "",
-                    {{"_ID", QVariant(-1)},
-                     {"CONFIRM_ID", QVariant(id)},
-                     {"MESSAGE", QVariant(pc.message)}});
-            }
-        });
-        pc.timer->start(timeout * 1000);
-
-        m_pendingConfirmations.insert(id, pc);
-
-        sendNetworkMessage("STATION.AUTOREPLY_CONFIRM_REQUEST", message,
-            {{"_ID", QVariant(-1)},
-             {"CONFIRM_ID", QVariant(id)},
-             {"PRIORITY", QVariant(priority)},
-             {"OFFSET", QVariant(offset)},
-             {"TIMEOUT", QVariant(timeout)}});
-    });
-}
-
 void UI_Constructor::enqueueMessage(int priority, QString message, int offset,
                                     Callback c) {
     m_txMessageQueue.enqueue(PrioritizedMessage{
@@ -3514,8 +3468,6 @@ QString UI_Constructor::hbBlockingPath() const {
     return QDir::toNativeSeparators(
         m_config.writeable_data_dir().absoluteFilePath("hb_blocking.db3"));
 }
-
-void processHeartbeatRateLimit(const QString &callsign); // JS8_Mainwindow/processHeartbeatRateLimit.cpp
 
 void UI_Constructor::restoreMessage() {
     if (m_lastTxMessage.isEmpty()) {
@@ -4828,8 +4780,6 @@ void UI_Constructor::buildCallActivitySortByMenu(QMenu *menu) {
                      {"Mode Speed (slowest first)", "submode"},
                      {"Mode Speed (fastest first)", "-submode"}});
 }
-
-void buildQueryMenu(); // JS8_Mainwindow/buildQueryMenu.cpp
 
 void UI_Constructor::buildRelayMenu(QMenu *menu) {
     auto now = DriftingDateTime::currentDateTimeUtc();
@@ -6195,8 +6145,6 @@ void UI_Constructor::processIdleActivity() {
     }
 }
 
-void processRxActivity(); // JS8_Mainwindow/processRxActivity.cpp
-
 void UI_Constructor::processCompoundActivity() {
     if (m_messageBuffer.isEmpty()) {
         return;
@@ -6296,10 +6244,6 @@ void UI_Constructor::processCompoundActivity() {
         m_lastClosedMessageBufferOffset = freq;
     }
 }
-
-void processBufferedActivity(); // JS8_Mainwindow/processBufferedActivity.cpp
-
-void processCommandActivity(); // JS8_Mainwindow/processCommandActivity.cpp
 
 QString UI_Constructor::inboxPath() {
     return QDir::toNativeSeparators(
@@ -6719,12 +6663,6 @@ void UI_Constructor::displayActivity(bool force) {
     m_rxDisplayDirty = false;
 }
 
-// updateBandActivity
-void displayBandActivity(); // JS8_Mainwindow/displayBandActivity.cpp
-
-// updateCallActivity
-void displayCallActivity(); // JS8_Mainwindow/displayCallActivity.cpp
-
 void UI_Constructor::emitPTT(bool on) {
     qCDebug(mainwindow_js8) << "Setting PTT to" << (on ? "on" : "off");
 
@@ -6780,8 +6718,6 @@ void UI_Constructor::tcpNetworkMessage(Message const &message) {
 
     networkMessage(message);
 }
-
-void networkMessage(); // JS8_Mainwindow/networkMessage.cpp
 
 bool UI_Constructor::canSendNetworkMessage() {
     return m_config.udpEnabled() || m_config.tcpEnabled();

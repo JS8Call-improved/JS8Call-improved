@@ -224,7 +224,7 @@ class UI_Constructor : public QMainWindow {
     void showSoundInError(const QString &errorMsg);
     void showSoundOutError(const QString &errorMsg);
     void showStatusMessage(const QString &statusMsg);
-    void dataSink(qint64 frames);
+    void dataSink(qint64 frames); // JS8_Mainwindow/dataSink.cpp
     /**
      * The name `guiUpdate` suggests updating of the views from the models
      * (in MVC terms, but we don't do MVC in this project), animations and
@@ -264,13 +264,13 @@ class UI_Constructor : public QMainWindow {
     void addMessageText(QString text, bool clear = false,
                         bool selectFirstPlaceholder = false);
     void confirmThenEnqueueMessage(int timeout, int priority, QString message,
-                                   int offset, Callback c);
+                                   int offset, Callback c); // JS8_Mainwindow/confirmThenEnqueueMessage.cpp
     void enqueueMessage(int priority, QString message, int offset, Callback c);
     void resetMessage();
     void resetMessageUI();
     void restoreMessage();
-    void initializeDummyData();
-    void initializeGroupMessage();
+    void initializeDummyData(); // JS8_Mainwindow/initializeDummyData.cpp
+    void initializeGroupMessage(); // JS8_Mainwindow/initializeGroupMessage.cpp
     bool ensureCallsignSet(bool alert = true);
     bool ensureKeyNotStuck(QString const &text);
     bool ensureNotIdle();
@@ -284,7 +284,7 @@ class UI_Constructor : public QMainWindow {
     void resetMessageTransmitQueue();
     QPair<QString, int> popMessageFrame();
     void tryNotify(const QString &key);
-    void processDecodeEvent(JS8::Event::Variant const &);
+    void processDecodeEvent(JS8::Event::Variant const &); // JS8_Mainwindow/processDecodeEvent.cpp
 
     void updateCQButtonDisplay();
     void updateHBButtonDisplay();
@@ -397,7 +397,7 @@ class UI_Constructor : public QMainWindow {
                          QList<QPair<QString, QString>> values);
     void buildBandActivitySortByMenu(QMenu *menu);
     void buildCallActivitySortByMenu(QMenu *menu);
-    void buildQueryMenu(QMenu *, QString callsign);
+    void buildQueryMenu(QMenu *, QString callsign); // JS8_Mainwindow/buildQueryMenu.cpp
     QMap<QString, QString> buildMacroValues();
     void buildColumnLabelMap();
     void buildSuggestionsMenu(QMenu *menu, QTextEdit *edit,
@@ -450,14 +450,14 @@ class UI_Constructor : public QMainWindow {
     void emitTones();
     void udpNetworkMessage(Message const &message);
     void tcpNetworkMessage(Message const &message);
-    void networkMessage(Message const &message);
+    void networkMessage(Message const &message); // JS8_Mainwindow/networkMessage.cpp
     bool canSendNetworkMessage();
     void sendNetworkMessage(QString const &type, QString const &message);
     void sendNetworkMessage(QString const &type, QString const &message,
                             const QVariantMap &params);
     void pskReporterError(QString const &);
     void TxAgain();
-    void checkVersion(bool alertOnUpToDate);
+    void checkVersion(bool alertOnUpToDate); // JS8_Mainwindow/checkVersion.cpp
     void checkStartupWarnings();
     void clearCallsignSelected();
     void refreshTextDisplay();
@@ -912,7 +912,7 @@ class UI_Constructor : public QMainWindow {
     QMap<QString, QMap<QString, QSet<QString>>>
         m_heardGraphIncomingBandCache; // band -> heard out
 
-    // Pending autoreply confirmations (TCP-based, remplace Qt dialog en headless)
+    // Pending autoreply confirmations (network API and local UI notification)
     struct PendingConfirmation {
         int id;
         int priority;
@@ -920,6 +920,7 @@ class UI_Constructor : public QMainWindow {
         int offset;
         Callback callback;
         QTimer *timer;
+        SelfDestructMessageBox *box;
     };
     int m_nextConfirmId = 0;
     QMap<int, PendingConfirmation> m_pendingConfirmations;
@@ -1022,12 +1023,12 @@ class UI_Constructor : public QMainWindow {
     void clearOffsetDirected(int offset);
     void processActivity(bool force = false);
     void resetTimeDeltaAverage();
-    void processRxActivity();
+    void processRxActivity(); // JS8_Mainwindow/processRxActivity.cpp
     void processIdleActivity();
     void processCompoundActivity();
-    void processBufferedActivity();
-    void processCommandActivity();
-    void processHeartbeatRateLimit(const QString &callsign);
+    void processBufferedActivity(); // JS8_Mainwindow/processBufferedActivity.cpp
+    void processCommandActivity(); // JS8_Mainwindow/processCommandActivity.cpp
+    void processHeartbeatRateLimit(const QString &callsign); // JS8_Mainwindow/processHeartbeatRateLimit.cpp
     QString inboxPath();
     QString hbBlockingPath() const;
     void refreshInboxCounts();
@@ -1048,8 +1049,8 @@ class UI_Constructor : public QMainWindow {
     void processSpots();
     void processTxQueue();
     void displayActivity(bool force = false);
-    void displayBandActivity();
-    void displayCallActivity();
+    void displayBandActivity(); // JS8_Mainwindow/displayBandActivity.cpp
+    void displayCallActivity(); // JS8_Mainwindow/displayCallActivity.cpp
     void enable_DXCC_entity(bool on);
     void setRig(Frequency = 0); // zero frequency means no change
     QDateTime nextTransmitCycle();
