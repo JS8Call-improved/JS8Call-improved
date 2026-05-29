@@ -203,6 +203,8 @@
 
 #include "moc_Configuration.cpp"
 
+#include <hamlib/rig.h>
+
 namespace {
 const QRegularExpression message_alphabet{"[^\\x00-\\x1F]*"};
 
@@ -460,6 +462,7 @@ class Configuration::impl final : public QDialog {
                (rig_params_.split_mode != TransceiverFactory::split_mode_none);
     }
     void set_cached_mode();
+
     bool open_rig(bool force = false);
     // bool set_mode ();
     void close_rig();
@@ -802,15 +805,51 @@ void Configuration::select_tab(int index) {
 }
 int Configuration::exec() { return m_->exec(); }
 bool Configuration::is_active() const { return m_->isVisible(); }
+bool Configuration::is_tci_rig_selected() const
+{
+    /*
+     * Literal is ugly here, but do we want to include TCITransceiver
+     * just so we can
+     * return rig_name() == TCITransceiver::transceiver_name_;
+     */
+    return rig_name() == QStringLiteral("TCI");
+}
+QUrl Configuration::tci_url() const
+{
+    QString endpoint = m_->rig_params_.network_port.trimmed();
 
-QAudioDevice const &Configuration::audio_input_device() const {
-    return m_->audio_input_device_;
+    if (endpoint.isEmpty())
+        endpoint = QStringLiteral("127.0.0.1:40001");
+
+    if (endpoint.startsWith(QStringLiteral("ws://"), Qt::CaseInsensitive) ||
+        endpoint.startsWith(QStringLiteral("wss://"), Qt::CaseInsensitive)) {
+        return QUrl(endpoint);
+        }
+
+    return QUrl(QStringLiteral("ws://%1").arg(endpoint));
+}
+void Configuration::set_tci_session(TCISession *session)
+{
+    m_->transceiver_factory_.set_tci_session(session);
+}
+AudioInputDevice Configuration::audio_input_device() const
+{
+    if (is_tci_rig_selected()) {
+        return AudioInputDevice::tci(tci_url());
+    }
+
+    return AudioInputDevice::system(m_->audio_input_device_);
 }
 AudioDevice::Channel Configuration::audio_input_channel() const {
     return m_->audio_input_channel_;
 }
-QAudioDevice const &Configuration::audio_output_device() const {
-    return m_->audio_output_device_;
+AudioOutputDevice Configuration::audio_output_device() const
+{
+    if (is_tci_rig_selected()) {
+        return AudioOutputDevice::tci(tci_url());
+    }
+
+    return AudioOutputDevice::system(m_->audio_output_device_);
 }
 AudioDevice::Channel Configuration::audio_output_channel() const {
     return m_->audio_output_channel_;
