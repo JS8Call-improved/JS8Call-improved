@@ -1358,6 +1358,7 @@ void UI_Constructor::displayDialFrequency() {
     }
 
     freqOffsetWidget->setValue(audio_frequency);
+    m_wideGraph->setFreq(audio_frequency);
 
     auto const onAir = dial_frequency + audio_frequency;
         frequency_label.setText(QString("Freq: %1").arg(Radio::pretty_frequency_MHz_string(onAir)));
