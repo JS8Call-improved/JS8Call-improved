@@ -48,100 +48,61 @@ jobs:
     steps:
     - run: git config --global core.autocrlf input
     - uses: actions/checkout@v5
-    - uses: msys2/setup-msys2@v2
-      with:
-        update: true
-        cache: true
-        install: >-
-          git python base-devel make unzip zip tar
-        pacboy: >-
-          toolchain:p
-          autotools:p
-          cmake:p
-          ninja:p
-          libusb:p
-          wget:p
-          boost:p
-          fftw:p
-          sqlite3:p
-          python:p
 
     - name: Setup build directory
-      shell: msys2 {0}
-      run: mkdir -p build
+      run: mkdir build
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.9.3'
         target: 'desktop'
-        arch: 'win64_mingw'
+        arch: 'win64_llvm_mingw'
+        tools: 'tools_llvm_mingw1706'
         modules: 'qtmultimedia qtserialport'
         cache: true
         dir: 'D:/a/JS8Call-improved/JS8Call-improved/local/qt693'
 
-# hamlib
-    - name: Cache Check Hamlib 4.7.1
-      id: cache-hamlib
-      uses: actions/cache/restore@v5
-      with:
-        path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
-        key: ${{ runner.os }}-${{ runner.arch }}-hamlib471
-
-    - name: Install Hamlib 4.7.1
-      if: steps.cache-hamlib.outputs.cache-hit != 'true'
+    - name: Fetch js8lib
       run: |
-        curl --location --output 'D:/a/_temp/hamlib-w64-4.7.1.zip' https://github.com/Hamlib/Hamlib/releases/download/4.7.1/hamlib-w64-4.7.1.zip
-        cd 'D:/a/_temp/'
-        unzip hamlib-w64-4.7.1.zip
-        mv 'D:/a/_temp/hamlib-w64-4.7.1' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
-        mv 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/gcc/libhamlib.dll.a' 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/lib/libhamlib.dll.a'
+        curl -L -o js8lib.zip "https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0_Win64.zip"
         
-    - name: Save Hamlib cache
-      if: steps.cache-hamlib.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
-      with:
-        key: ${{ runner.os }}-${{ runner.arch }}-hamlib471
-        path: 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib'
+    - name: Expand js8lib archive
+      run: |
+        Expand-Archive js8lib.zip -DestinationPath .
         
     - name: Configure JS8Call
-      shell: msys2 {0}
       run: |
-        cd ./build
-        cmake -DCMAKE_PREFIX_PATH='D:/a/JS8Call-improved/JS8Call-improved/local/hamlib;D:/a/JS8Call-improved/JS8Call-improved/local/qt693/Qt/6.9.3/mingw_64' ..
-
-    - name: Build JS8Call (CI build)
-      if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
-      shell: msys2 {0}
-      run: |
-        cd ./build
-        cmake --build . --config Debug
+        $env:Path = "$env:GITHUB_WORKSPACE\js8lib\bin;$env:Path"
+        $qt6dir = $env:Qt6_DIR
+        $workspace = $env:GITHUB_WORKSPACE
+        $llvm = "$env:IQTA_TOOLS\llvm-mingw1706_64\bin"
+        $env:Path = "$llvm;$env:Path"
+        cmake -G "Ninja Multi-Config" `
+          -DCMAKE_C_COMPILER="$llvm\clang.exe" `
+          -DCMAKE_CXX_COMPILER="$llvm\clang++.exe" `
+          -DQt6_DIR="$qt6dir" `
+          -DCMAKE_PREFIX_PATH="$workspace/js8lib;$workspace/js8lib/lib64-msvc-14.3/cmake/Boost-1.89.0" ..
 
     - name: Build JS8Call (Release build)
       if: ${{ inputs.environment == 'Release' }}
-      shell: msys2 {0}
       run: |
         cd ./build
         cmake --build . --config Release
 
     - name: Move exe into install directory
-      shell: msys2 {0}
       run: |
-        cp ./build/JS8Call.exe ./build/JS8Call/
+        cp ./build/Release/JS8Call.exe ./build/JS8Call/
         
     - name: Move libraries and License to install directory
       shell: msys2 {0}
       run: |
         cd ./build/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/LICENSE' JS8Call/
-        cp /mingw64/bin/libfftw3f-3.dll JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libhamlib-4.dll' JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libusb-1.0.dll' JS8Call/
-        cp 'D:/a/JS8Call-improved/JS8Call-improved/local/hamlib/bin/libwinpthread-1.dll' JS8Call/
+        cp $env:GITHUB_WORKSPACE/LICENSE JS8Call/
+        cp $env:GITHUB_WORKSPACE/js8lib/dll/*.dll JS8Call/
 
     - name: Get secrets (CI)
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
-      shell: pwsh
       run: |
         echo "${{ secrets.CI_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
         certutil -decode 'D:/a/JS8Call-improved/cert.base64' 'D:/a/JS8Call-improved/certificate.pfx'
@@ -149,7 +110,6 @@ jobs:
 
     - name: Get secrets (Release)
       if: ${{ inputs.environment == 'Release' }}
-      shell: pwsh
       run: |
         echo "${{ secrets.RELEASE_CODE_SIGNING_PFX_BASE64 }}" > 'D:/a/JS8Call-improved/cert.base64'
         certutil -decode 'D:/a/JS8Call-improved/cert.base64' 'D:/a/JS8Call-improved/certificate.pfx'
@@ -157,7 +117,6 @@ jobs:
 
     - name: Sign JS8Call (CI)
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
-      shell: pwsh
       env: 
         PFX_CERTIFICATE_PASSWORD: ${{ secrets.CI_PFX_CERTIFICATE_PASSWORD }}
       run: |
@@ -187,13 +146,13 @@ jobs:
       if: ${{ (inputs.environment == 'Release') && (inputs.release-ver) }}
       run: |
         cd ./build/
-        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-${{ inputs.release-ver }}_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
-
+        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-${{ inputs.release-ver }}" ../.github/workflows/scripts/ci-windows-installer.iss
+ 
     - name: INNO Setup (CI build)
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       run: |
         cd ./build/
-        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel_${{ runner.arch }}" ../.github/workflows/scripts/ci-windows-installer.iss
+        & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' /F"JS8Call-installer-devel" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: Installer signtool run (CI build)
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
@@ -231,7 +190,6 @@ jobs:
       if: ${{ !(inputs.environment) || (inputs.environment == 'CI') }}
       uses: actions/upload-artifact@v6
       with:
-        name: "JS8call-improved_devel_${{ runner.arch }}_win64"
+        name: "JS8call-improved_devel"
         path: |
           ./build/JS8Call/JS8Call-installer*
-          ./build/JS8Call/
