@@ -95,7 +95,6 @@ jobs:
         cp ./build/Release/JS8Call.exe ./build/JS8Call/
         
     - name: Move libraries and License to install directory
-      shell: msys2 {0}
       run: |
         cd ./build/
         cp $env:GITHUB_WORKSPACE/LICENSE JS8Call/
