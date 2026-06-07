@@ -40,8 +40,8 @@ env:
 # Please try to quit forgetting that! i know who I'm talking about, you in the mirror!
 
 jobs:
-  build_windows-2025:
-    runs-on: windows-2025
+  build_windows-2022:
+    runs-on: windows-2022
     permissions: write-all
     environment: ${{ inputs.environment || 'CI' }}
    
