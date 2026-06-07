@@ -69,7 +69,7 @@ jobs:
         
     - name: Expand js8lib archive
       run: |
-        Expand-Archive js8lib.zip -DestinationPath .
+        Expand-Archive -Path js8lib.zip -DestinationPath .
         
     - name: Configure JS8Call
       run: |
