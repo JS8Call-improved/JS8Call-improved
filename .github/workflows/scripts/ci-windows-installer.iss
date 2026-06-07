@@ -60,9 +60,11 @@ Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\avformat-61.dll"; 
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\avutil-59.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\D3Dcompiler_47.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libfftw3f-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libgcc_s_seh-1.dll"; DestDir: "{app}"; Flags: ignoreversion
+; Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libgcc_s_seh-1.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libhamlib-4.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libstdc++-6.dll"; DestDir: "{app}"; Flags: ignoreversion
+; Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libstdc++-6.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libc++.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libunwind.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libusb-1.0.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\libwinpthread-1.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "D:\a\JS8Call-improved\JS8Call-improved\build\JS8Call\opengl32sw.dll"; DestDir: "{app}"; Flags: ignoreversion
