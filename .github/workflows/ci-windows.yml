@@ -101,8 +101,9 @@ jobs:
         & 'C:/Program Files (x86)/Inno Setup 6/ISCC.exe' $issArg "/FJS8Call-$safeVer-installer" ../.github/workflows/scripts/ci-windows-installer.iss
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: "JS8Call-${{ env.JS8_SAFE_VER }}-installer"
         path: ./build/JS8Call/JS8Call-*-installer.exe
+        archive: false
 

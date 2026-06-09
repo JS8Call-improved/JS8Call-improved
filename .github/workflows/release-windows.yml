@@ -133,7 +133,8 @@ jobs:
         subject-path: '${{ github.workspace }}/build/JS8Call/*'
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: "JS8Call-${{ env.JS8_SAFE_VER }}-installer"
         path: ./build/JS8Call/JS8Call-*-installer.exe
+        archive: false
