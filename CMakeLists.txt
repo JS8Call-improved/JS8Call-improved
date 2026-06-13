@@ -286,7 +286,6 @@ target_sources(
   JS8_Main/RDP.cpp
   JS8_Main/StationList.cpp
   JS8_Main/TxLoop.cpp
-  JS8_Main/WF.cpp
   JS8_Main/fileutils.cpp
   JS8_Main/main.cpp
   JS8_Main/Modes.cpp
@@ -345,6 +344,7 @@ target_sources(
   JS8_UI/mainwindow.cpp
   JS8_UI/MessageReplyDialog.cpp
   JS8_UI/MessagePanel.cpp
+  JS8_UI/WF.cpp
   JS8_UI/WideGraph.cpp
   JS8_Widgets/CheckableItemComboBox.cpp
   JS8_Widgets/LazyFillComboBox.cpp
