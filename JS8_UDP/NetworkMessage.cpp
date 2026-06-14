@@ -31,16 +31,12 @@ void Builder::common_initialization(Type type, QString const &id,
     if (schema <= 1) {
         setVersion(QDataStream::Qt_5_0); // Qt schema version
     }
-#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
     else if (schema <= 2) {
         setVersion(QDataStream::Qt_5_2); // Qt schema version
     }
-#endif
-#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
     else if (schema <= 3) {
         setVersion(QDataStream::Qt_5_4); // Qt schema version
     }
-#endif
     else {
         throw std::runtime_error{"Unrecognized message schema"};
     }
@@ -68,16 +64,12 @@ class Reader::impl {
         if (schema_ <= 1) {
             parent->setVersion(QDataStream::Qt_5_0);
         }
-#if QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
         else if (schema_ <= 2) {
             parent->setVersion(QDataStream::Qt_5_2);
         }
-#endif
-#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
         else if (schema_ <= 3) {
             parent->setVersion(QDataStream::Qt_5_4);
         }
-#endif
         quint32 type;
         *parent >> type >> id_;
         if (type >= maximum_message_type_) {

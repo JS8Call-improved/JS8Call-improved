@@ -133,18 +133,9 @@ void LogQSO::resetAdditionalFields() {
     if (!m_additionalFieldsControls.isEmpty()) {
         auto layout =
             static_cast<QFormLayout *>(ui->additionalFields->layout());
-
-#if QT_VERSION >= 0x050800
         for (int i = 0, count = layout->rowCount(); i < count; i++) {
             layout->removeRow(0);
         }
-#else
-        QLayoutItem *child;
-        while ((child = layout->takeAt(0)) != 0) {
-            delete child;
-        }
-#endif
-
         m_additionalFieldsControls.clear();
     }
 

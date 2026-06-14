@@ -101,6 +101,7 @@
 #include <QStandardPaths>
 #include <QStringBuilder>
 #include <QStyleFactory>
+#include <QtCore/QtGlobal>
 #include <QTableWidget>
 #include <QTextEdit>
 #include <QThread>
@@ -130,6 +131,10 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 9, 3)
+#error "Qt >= 6.9.3 is required to build JS8Call. Please upgrade your Qt toolchain."
+#endif
 
 Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
 

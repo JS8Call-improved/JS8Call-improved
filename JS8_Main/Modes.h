@@ -64,12 +64,6 @@ class Modes final : public QAbstractListModel {
 // Qt boilerplate to make the Modes::Mode enumeration a type that can
 // be streamed and queued as a signal argument as well as showing the
 // human readable string when output to debug streams.
-#if QT_VERSION < 0x050500
-// Qt 5.5 introduces the Q_ENUM macro which automatically registers
-// the meta-type
-Q_DECLARE_METATYPE(Modes::Mode);
-#endif
-
 #if !defined(QT_NO_DEBUG_STREAM)
 ENUM_QDEBUG_OPS_DECL(Modes, Mode);
 #endif

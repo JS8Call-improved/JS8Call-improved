@@ -46,30 +46,9 @@
             mo.enumerator(mo.indexOfEnumerator(#ENUM)).valueToKey(m)};         \
     }
 
-#if QT_VERSION >= 0x050500
-
-// Qt 5.5 now has Q_ENUM which registers enumns better
+// Q_ENUM registers enums with the meta-object system
 #define ENUM_QDEBUG_OPS_DECL(CLASS, ENUM)
 #define ENUM_QDEBUG_OPS_IMPL(CLASS, ENUM)
-
-#else
-
-#define Q_ENUM(E)
-
-#include <QDebug>
-
-class QVariant;
-
-#define ENUM_QDEBUG_OPS_DECL(CLASS, ENUM)                                      \
-    QDebug operator<<(QDebug, CLASS::ENUM const &);
-
-#define ENUM_QDEBUG_OPS_IMPL(CLASS, ENUM)                                      \
-    QDebug operator<<(QDebug d, CLASS::ENUM const &m) {                        \
-        auto const &mo = CLASS::staticMetaObject;                              \
-        return d << mo.enumerator(mo.indexOfEnumerator(#ENUM)).valueToKey(m);  \
-    }
-
-#endif
 
 inline void throw_qstring(QString const &qs) {
     throw std::runtime_error{qs.toLocal8Bit().constData()};
@@ -97,23 +76,11 @@ template <class T> class VPtr {
 Q_DECLARE_METATYPE(QHostAddress);
 
 inline bool is_broadcast_address(QHostAddress const &host_addr) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 11, 0)
     return host_addr.isBroadcast();
-#else
-    bool ok;
-    return host_addr.toIPv4Address(&ok) == 0xffffffffu && ok;
-#endif
 }
 
 inline bool is_multicast_address(QHostAddress const &host_addr) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
     return host_addr.isMulticast();
-#else
-    bool ok;
-    return (((host_addr.toIPv4Address(&ok) & 0xf0000000u) == 0xe0000000u) &&
-            ok) ||
-           host_addr.toIPv6Address()[0] == 0xff;
-#endif
 }
 
 #endif

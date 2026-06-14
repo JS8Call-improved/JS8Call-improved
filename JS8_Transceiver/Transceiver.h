@@ -158,9 +158,6 @@ class Transceiver : public QObject {
 };
 
 Q_DECLARE_METATYPE(Transceiver::TransceiverState);
-#if QT_VERSION < 0x050500
-Q_DECLARE_METATYPE(Transceiver::MODE);
-#endif
 
 #if !defined(QT_NO_DEBUG_STREAM)
 ENUM_QDEBUG_OPS_DECL(Transceiver, MODE);

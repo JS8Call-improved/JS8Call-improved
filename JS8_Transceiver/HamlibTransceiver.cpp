@@ -250,11 +250,7 @@ HamlibTransceiver::HamlibTransceiver(
         // user defined Hamlib settings
         //
         auto settings_file_name = QStandardPaths::locate(
-#if QT_VERSION >= 0x050500
-            QStandardPaths::AppConfigLocation
-#else
-            QStandardPaths::ConfigLocation
-#endif
+                    QStandardPaths::AppConfigLocation
             ,
             "hamlib_settings.json");
         if (!settings_file_name.isEmpty()) {

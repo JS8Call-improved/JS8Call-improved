@@ -3554,12 +3554,8 @@ void Configuration::impl::on_notifications_check_box_toggled(bool checked) {
 }
 
 void Configuration::impl::on_font_push_button_clicked() {
-    next_font_ = QFontDialog::getFont(0, next_font_, this, tr("Font Chooser")
-#if QT_VERSION >= 0x050201
-                                                               ,
-                                      QFontDialog::DontUseNativeDialog
-#endif
-    );
+    next_font_ = QFontDialog::getFont(0, next_font_, this, tr("Font Chooser"),
+                                      QFontDialog::DontUseNativeDialog);
     ui_->font_push_button->setText(QString("Application Font (%1 %2)")
                                        .arg(next_font_.family())
                                        .arg(next_font_.pointSize()));
@@ -3585,12 +3581,8 @@ void Configuration::impl::on_style_push_button_clicked() {
 
 void Configuration::impl::on_tableFontButton_clicked() {
     next_table_font_ =
-        QFontDialog::getFont(0, next_table_font_, this, tr("Font Chooser")
-#if QT_VERSION >= 0x050201
-                                                            ,
-                             QFontDialog::DontUseNativeDialog
-#endif
-        );
+        QFontDialog::getFont(0, next_table_font_, this, tr("Font Chooser"),
+                             QFontDialog::DontUseNativeDialog);
 
     ui_->tableFontButton->setText(QString("Font (%1 %2)")
                                       .arg(next_table_font_.family())
@@ -3783,12 +3775,8 @@ void Configuration::impl::on_rxForegroundButton_clicked() {
 
 void Configuration::impl::on_rxFontButton_clicked() {
     next_rx_text_font_ =
-        QFontDialog::getFont(0, next_rx_text_font_, this, tr("Font Chooser")
-#if QT_VERSION >= 0x050201
-                                                              ,
-                             QFontDialog::DontUseNativeDialog
-#endif
-        );
+        QFontDialog::getFont(0, next_rx_text_font_, this, tr("Font Chooser"),
+                             QFontDialog::DontUseNativeDialog);
     ui_->rxFontButton->setText(QString("Font (%1 %2)")
                                    .arg(next_rx_text_font_.family())
                                    .arg(next_rx_text_font_.pointSize()));
@@ -3835,13 +3823,9 @@ void Configuration::impl::on_txForegroundButton_clicked() {
 }
 
 void Configuration::impl::on_txFontButton_clicked() {
-    next_tx_text_font_ =
-        QFontDialog::getFont(0, next_tx_text_font_, this, tr("Font Chooser")
-#if QT_VERSION >= 0x050201
-                                                              ,
-                             QFontDialog::DontUseNativeDialog
-#endif
-        );
+    next_tx_text_font_ = QFontDialog::getFont(
+        0, next_tx_text_font_, this, tr("Font Chooser"),
+        QFontDialog::DontUseNativeDialog);
 
     ui_->txFontButton->setText(QString("Font (%1 %2)")
                                    .arg(next_tx_text_font_.family())
@@ -3850,12 +3834,8 @@ void Configuration::impl::on_txFontButton_clicked() {
 
 void Configuration::impl::on_composeFontButton_clicked() {
     next_compose_text_font_ = QFontDialog::getFont(
-        0, next_compose_text_font_, this, tr("Font Chooser")
-#if QT_VERSION >= 0x050201
-                                              ,
-        QFontDialog::DontUseNativeDialog
-#endif
-    );
+        0, next_compose_text_font_, this, tr("Font Chooser"),
+        QFontDialog::DontUseNativeDialog);
     ui_->composeFontButton->setText(
         QString("Font (%1 %2)")
             .arg(next_compose_text_font_.family())

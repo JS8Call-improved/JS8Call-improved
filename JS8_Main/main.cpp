@@ -37,11 +37,6 @@
 #include <stdexcept>
 #include <string>
 
-#if QT_VERSION >= 0x050200
-#include <QCommandLineOption>
-#include <QCommandLineParser>
-#endif
-
 Q_DECLARE_LOGGING_CATEGORY(main_js8)
 
 namespace {
@@ -94,7 +89,6 @@ int main(int argc, char *argv[]) {
         // Apply platform-specific styles from styles.h
         a.setStyleSheet(buttonStyle());
 
-#if QT_VERSION >= 0x050200
         QCommandLineParser parser;
         parser.setApplicationDescription("\n" PROJECT_SUMMARY_DESCRIPTION);
         auto help_option = parser.addHelpOption();
@@ -203,7 +197,6 @@ int main(int argc, char *argv[]) {
                 throw std::runtime_error{"Failed to access lock file"};
             }
         }
-#endif
 
 #if WSJT_QDEBUG_TO_FILE
         // Open a trace file

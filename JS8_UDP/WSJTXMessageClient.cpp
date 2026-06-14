@@ -162,13 +162,8 @@ void WSJTXMessageClient::impl::set_server(
     if (server_.isNull() && server_name.size()) // DNS lookup required
     {
         // queue a host address lookup
-#if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)
-        dns_lookup_id_ = QHostInfo::lookupHost(
-            server_name, this, &WSJTXMessageClient::impl::host_info_results);
-#else
-        dns_lookup_id_ = QHostInfo::lookupHost(
-            server_name, this, SLOT(host_info_results(QHostInfo)));
-#endif
+        dns_lookup_id_ = QHostInfo::lookupHost(server_name, this, &WSJTXMessageClient::impl::host_info_results);
+
     } else {
         start();
     }
@@ -455,13 +450,7 @@ WSJTXMessageClient::WSJTXMessageClient(
     QStringList const &network_interface_names, int TTL, QObject *self)
     : QObject{self}, m_{id, version, revision, server_port, TTL, this} {
     connect(&*m_
-#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
-            ,
-            static_cast<void (impl::*)(impl::SocketError)>(&impl::error),
-            [this](impl::SocketError e)
-#else
-           , &impl::errorOccurred, [this] (impl::SocketError e)
-#endif
+        , &impl::errorOccurred, [this] (impl::SocketError e)
             {
 #if defined(Q_OS_WIN)
                 if (e != impl::NetworkError &&

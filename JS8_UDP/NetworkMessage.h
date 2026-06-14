@@ -571,16 +571,9 @@ class Builder : public QDataStream {
   public:
     static quint32 constexpr magic{0xadbccbda}; // never change this
 
-    // increment this if a newer Qt schema is required and add decode
-    // logic to the Builder and Reader class implementations
-#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+    // increment this when the log schema changes; add decode logic to
+    // Builder and Reader class implementations
     static quint32 constexpr schema_number{3};
-#elif QT_VERSION >= QT_VERSION_CHECK(5, 2, 0)
-    static quint32 constexpr schema_number{2};
-#else
-    // Schema 1 (Qt_5_0) is broken
-#error "Qt version 5.2 or greater required"
-#endif
 
     explicit Builder(QIODevice *, Type, QString const &id, quint32 schema);
     explicit Builder(QByteArray *, Type, QString const &id, quint32 schema);

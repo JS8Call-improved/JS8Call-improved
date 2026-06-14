@@ -431,10 +431,6 @@ class Configuration final : public QObject {
     pimpl<impl> m_;
 };
 
-#if QT_VERSION < 0x050500
-Q_DECLARE_METATYPE(Configuration::DataMode);
-#endif
-
 #if !defined(QT_NO_DEBUG_STREAM)
 ENUM_QDEBUG_OPS_DECL(Configuration, DataMode);
 #endif

@@ -19,7 +19,6 @@ class LazyFillComboBox : public QComboBox {
 
     explicit LazyFillComboBox(QWidget *parent = nullptr) : QComboBox{parent} {}
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     void showPopup() override {
         Q_EMIT about_to_show_popup();
         QComboBox::showPopup();
@@ -29,17 +28,6 @@ class LazyFillComboBox : public QComboBox {
         QComboBox::hidePopup();
         Q_EMIT popup_hidden();
     }
-#else
-    void mousePressEvent(QMouseEvent *e) override {
-        Q_EMIT about_to_show_popup();
-        QComboBox::mousePressEvent(e);
-    }
-
-    void mouseReleaseEvent(QMouseEvent *e) override {
-        QComboBox::mouseReleaseEvent(e);
-        Q_EMIT popup_hidden();
-    }
-#endif
 };
 
 #endif

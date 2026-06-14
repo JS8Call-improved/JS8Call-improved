@@ -163,15 +163,6 @@ inline bool operator!=(TransceiverFactory::ParameterPack const &lhs,
 // boilerplate routines to make enum types useable and debuggable in
 // Qt
 //
-#if QT_VERSION < 0x050500
-Q_DECLARE_METATYPE(TransceiverFactory::DataBits);
-Q_DECLARE_METATYPE(TransceiverFactory::StopBits);
-Q_DECLARE_METATYPE(TransceiverFactory::Handshake);
-Q_DECLARE_METATYPE(TransceiverFactory::PTTMethod);
-Q_DECLARE_METATYPE(TransceiverFactory::TXAudioSource);
-Q_DECLARE_METATYPE(TransceiverFactory::SplitMode);
-#endif
-
 #if !defined(QT_NO_DEBUG_STREAM)
 ENUM_QDEBUG_OPS_DECL(TransceiverFactory, DataBits);
 ENUM_QDEBUG_OPS_DECL(TransceiverFactory, StopBits);
