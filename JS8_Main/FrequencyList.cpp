@@ -214,9 +214,10 @@ void FrequencyList_v3::filter(Region region, Mode mode) {
     if (m_->region_filter_ == region && m_->mode_filter_ == mode)
         return;
 
+    beginFilterChange();
     m_->region_filter_ = region;
     m_->mode_filter_   = mode;
-    invalidateFilter();
+    endFilterChange();
 }
 
 bool FrequencyList_v3::filterAcceptsRow(

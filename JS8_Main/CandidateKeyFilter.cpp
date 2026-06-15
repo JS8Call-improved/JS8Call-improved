@@ -50,11 +50,12 @@ CandidateKeyFilter::~CandidateKeyFilter() {}
 
 void CandidateKeyFilter::set_active_key(QModelIndex const &index) {
     if (m_->referencing_) {
+        beginFilterChange();
         if (index.isValid()) {
             Q_ASSERT(index.column() == m_->referencing_key_column_);
             m_->active_key_ = index;
         }
-        invalidateFilter();
+        endFilterChange();
     }
 }
 
@@ -82,3 +83,4 @@ bool CandidateKeyFilter::filterAcceptsRow(
                 m_->referencing_key_role_, candidate_key, 1, Qt::MatchExactly)
         .isEmpty();
 }
+

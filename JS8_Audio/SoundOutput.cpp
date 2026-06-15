@@ -22,27 +22,22 @@ bool SoundOutput::checkStream() const {
     Q_ASSERT_X(m_stream, "SoundOutput", "programming error");
     if (m_stream) {
         switch (m_stream->error()) {
-        case QAudio::OpenError:
+        case QtAudio::OpenError:
             Q_EMIT error(
                 tr("An error opening the audio output device has occurred."));
             break;
 
-        case QAudio::IOError:
+        case QtAudio::IOError:
             Q_EMIT error(tr(
                 "An error occurred during write to the audio output device."));
             break;
 
-        case QAudio::UnderrunError:
-            Q_EMIT error(tr("Audio data not being fed to the audio output "
-                            "device fast enough."));
-            break;
-
-        case QAudio::FatalError:
+        case QtAudio::FatalError:
             Q_EMIT error(tr("Non-recoverable error, audio output device not "
                             "usable at this time."));
             break;
 
-        case QAudio::NoError:
+        case QtAudio::NoError:
             result = true;
             break;
         }
@@ -137,7 +132,7 @@ void SoundOutput::restart(QIODevice *source) {
  * @brief Suspends audio output.
  */
 void SoundOutput::suspend() {
-    if (m_stream && QAudio::ActiveState == m_stream->state()) {
+    if (m_stream && QtAudio::ActiveState == m_stream->state()) {
         m_stream->suspend();
         checkStream();
     }
@@ -147,7 +142,7 @@ void SoundOutput::suspend() {
  * @brief Resumes audio output.
  */
 void SoundOutput::resume() {
-    if (m_stream && QAudio::SuspendedState == m_stream->state()) {
+    if (m_stream && QtAudio::SuspendedState == m_stream->state()) {
         m_stream->resume();
         checkStream();
     }
@@ -196,8 +191,6 @@ QAudioFormat SoundOutput::format() const { return m_format; }
 void SoundOutput::setAttenuation(qreal a) {
     Q_ASSERT(0. <= a && a <= 999.);
     m_volume = qPow(10.0, -a / 20.0);
-    // qCDebug (soundout_js8) << "SoundOut: attn = " << a << ", vol = " <<
-    // m_volume;
     if (m_stream) {
         m_stream->setVolume(m_volume);
     }
@@ -217,21 +210,21 @@ void SoundOutput::resetAttenuation() {
  * @brief Handles state changes of the audio output.
  * @param newState The new state of the audio output.
  */
-void SoundOutput::handleStateChanged(QAudio::State newState) const {
+void SoundOutput::handleStateChanged(QtAudio::State newState) const {
     switch (newState) {
-    case QAudio::IdleState:
+    case QtAudio::IdleState:
         Q_EMIT status(tr("Idle"));
         break;
 
-    case QAudio::ActiveState:
+    case QtAudio::ActiveState:
         Q_EMIT status(tr("Sending"));
         break;
 
-    case QAudio::SuspendedState:
+    case QtAudio::SuspendedState:
         Q_EMIT status(tr("Suspended"));
         break;
 
-    case QAudio::StoppedState:
+    case QtAudio::StoppedState:
         if (!checkStream()) {
             Q_EMIT status(tr("Error"));
         } else {
