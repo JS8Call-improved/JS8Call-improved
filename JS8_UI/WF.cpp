@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 /******************************************************************************/
 // Private Implementation
@@ -234,7 +235,7 @@ class Designer : public QDialog {
             QFile file{file_name};
             if (file.open(QFile::WriteOnly | QFile::Truncate | QFile::Text)) {
                 QTextStream stream{&file};
-                Q_FOREACH (auto colour, colours_) {
+                for (auto colour : std::as_const(colours_)) {
                     stream << colour.red() << ';' << colour.green() << ';'
                            << colour.blue() << Qt::endl;
                 }

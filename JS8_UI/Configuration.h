@@ -13,6 +13,8 @@
 #include <QLineEdit>
 #include <QObject>
 
+#include <utility>
+
 class QSettings;
 class QWidget;
 class QAudioDevice;

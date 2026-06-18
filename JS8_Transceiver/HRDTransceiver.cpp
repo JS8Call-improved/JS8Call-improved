@@ -16,6 +16,8 @@
 #include <QTcpSocket>
 #include <QThread>
 
+#include <utility>
+
 Q_DECLARE_LOGGING_CATEGORY(hrdtransceiver_js8)
 
 namespace {
@@ -159,15 +161,15 @@ int HRDTransceiver::do_start() {
     }
 
     HRD_info << "Radios:\n";
-    Q_FOREACH (auto const &radio, radios) {
-        HRD_info << "\t" << radio << "\n";
-        auto entries = radio.trimmed().split(':', Qt::SkipEmptyParts);
+    for (const auto &radio_str : radios) {
+        HRD_info << "\t" << radio_str << "\n";
+        auto entries = radio_str.trimmed().split(':', Qt::SkipEmptyParts);
         radios_.push_back(
             std::forward_as_tuple(entries[0].toUInt(), entries[1]));
     }
 
     TRACE_CAT("HRDTransceiver", "radios:-");
-    Q_FOREACH (auto const &radio, radios_) {
+    for (const auto &radio : radios_) {
         TRACE_CAT("HRDTransceiver",
                   "\t[" << std::get<0>(radio) << "] " << std::get<1>(radio));
     }
@@ -194,7 +196,7 @@ int HRDTransceiver::do_start() {
         send_command("get dropdowns").trimmed().split(',', Qt::SkipEmptyParts);
     TRACE_CAT("HRDTransceiver", "Dropdowns:");
     HRD_info << "Dropdowns:\n";
-    Q_FOREACH (auto const &dd, dropdown_names_) {
+    for (auto const &dd : std::as_const(dropdown_names_)) {
         auto selections =
             send_command("get dropdown-list {" + dd + "}").trimmed().split(',');
         TRACE_CAT("HRDTransceiver",
@@ -209,7 +211,7 @@ int HRDTransceiver::do_start() {
                         .replaceInStrings(" ", "~");
     TRACE_CAT("HRDTransceiver", "Sliders:-");
     HRD_info << "Sliders:\n";
-    Q_FOREACH (auto const &s, slider_names_) {
+    for (auto const &s : std::as_const(slider_names_)) {
         auto range =
             send_command("get slider-range " + current_radio_name + " " + s)
                 .trimmed()

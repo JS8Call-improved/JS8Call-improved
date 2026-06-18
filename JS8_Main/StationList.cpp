@@ -150,7 +150,7 @@ bool StationList::removeDisjointRows(QModelIndexList rows) {
 
     // reverse sort by row
     std::sort(rows.begin(), rows.end(), row_is_higher);
-    Q_FOREACH (auto index, rows) {
+    for (auto index : std::as_const(rows)) {
         if (result && !m_->removeRow(index.row())) {
             result = false;
         }
@@ -533,7 +533,7 @@ QMimeData *StationList::impl::mimeData(QModelIndexList const &items) const {
     QByteArray encoded_data;
     QDataStream stream{&encoded_data, QIODevice::WriteOnly};
 
-    Q_FOREACH (auto const &item, items) {
+    for (auto const &item : std::as_const(items)) {
         if (item.isValid()) {
             stream << QString{data(item, Qt::DisplayRole).toString()};
         }

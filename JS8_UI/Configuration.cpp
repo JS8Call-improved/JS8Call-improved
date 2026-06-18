@@ -1400,7 +1400,7 @@ Configuration::impl::impl(Configuration *self, QDir const &temp_directory,
         source_dir.cd(samples_dir);
         auto list = source_dir.entryInfoList(QStringList{{"*.wav"}},
                                              QDir::Files | QDir::Readable);
-        Q_FOREACH (auto const &item, list) {
+        for (auto const &item : std::as_const(list)) {
             if (!dest_dir.exists(item.fileName())) {
                 QFile file{item.absoluteFilePath()};
                 file.copy(dest_dir.absoluteFilePath(item.fileName()));
@@ -4035,7 +4035,7 @@ void Configuration::impl::delete_selected_macros(
               });
 
     // now delete them
-    Q_FOREACH (auto index, selected_rows) {
+    for (auto index : std::as_const(selected_rows)) {
         next_macros_.removeRow(index.row());
     }
 }
@@ -4592,6 +4592,7 @@ QAudioDevice Configuration::impl::find_audio_device(QAudioDevice::Mode const mod
             if (!allow_monitors && is_monitor(p))
                 continue;
 #endif
+            Q_UNUSED(allow_monitors);
             matches.push_back(p);
         }
 
@@ -4660,6 +4661,7 @@ void Configuration::impl::load_audio_devices(QAudioDevice::Mode const mode,
         if (mode == QAudioDevice::Input && !show_monitors && is_monitor(p))
             continue;
 #endif
+        Q_UNUSED(show_monitors);
         descCounts[p.description()] += 1;
     }
 
@@ -4806,7 +4808,7 @@ void Configuration::impl::enumerate_rigs() {
 void Configuration::impl::fill_port_combo_box(QComboBox *cb) {
     auto current_text = cb->currentText();
     cb->clear();
-    Q_FOREACH (auto const &p, QSerialPortInfo::availablePorts()) {
+    for (auto const &p : QSerialPortInfo::availablePorts()) {
         if (!p.portName().contains("NULL")) // virtual serial port pairs
         {
             // remove possibly confusing Windows device path (OK because

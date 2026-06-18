@@ -117,7 +117,7 @@ auto FrequencyList_v3::frequency_list() const -> FrequencyItems const & {
 auto FrequencyList_v3::frequency_list(
     QModelIndexList const &model_index_list) const -> FrequencyItems {
     FrequencyItems list;
-    Q_FOREACH (auto const &index, model_index_list) {
+    for (auto const &index : std::as_const(model_index_list)) {
         list << m_->frequency_list_[mapToSource(index).row()];
     }
     return list;
@@ -202,7 +202,7 @@ bool FrequencyList_v3::removeDisjointRows(QModelIndexList rows) {
 
     // reverse sort by row
     std::sort(rows.begin(), rows.end(), row_is_higher);
-    Q_FOREACH (auto index, rows) {
+    for (auto index : std::as_const(rows)) {
         if (result && !m_->removeRow(index.row())) {
             result = false;
         }
@@ -551,7 +551,7 @@ FrequencyList_v3::impl::mimeData(QModelIndexList const &items) const {
     QByteArray encoded_data;
     QDataStream stream{&encoded_data, QIODevice::WriteOnly};
 
-    Q_FOREACH (auto const &item, items) {
+    for (auto const &item : std::as_const(items)) {
         if (item.isValid() && frequency_column == item.column()) {
             stream << frequency_list_.at(item.row());
         }
