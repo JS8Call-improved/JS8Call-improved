@@ -28,8 +28,8 @@ else
 fi
 
 # --- Tarball URLs ---
-JS8LIB_URL="https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0-Linux_${JS8_ARCH}_pkg.tar.gz"
-QT_URL="https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/Qt6.9.3_Linux_${JS8_ARCH}_pkg.tar.gz"
+JS8LIB_URL="https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/js8lib4.0-Linux_${JS8_ARCH}_pkg.tar.gz"
+QT_URL="https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/Qt6.11.1_Linux_${JS8_ARCH}_pkg.tar.gz"
 
 # --- Directories ---
 BUILD_DIR="$HOME/js8call-deb-build"

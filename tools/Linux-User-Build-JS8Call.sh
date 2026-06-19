@@ -198,7 +198,7 @@ uninstall it? Selecting No will overwrite it with the new version."
   if [ "${UNINSTALL}" = "y" ]; then
     echo "Removing JS8Call binary..."
     sudo rm -f /usr/bin/JS8Call
-    echo "Removing Qt 6.9.3..."
+    echo "Removing Qt 6.11.1..."
     sudo rm -rf "${JS8_QT_DIR}"
     echo "Removing libraries..."
     sudo rm -rf "${JS8_INSTALL_PREFIX}"
@@ -231,17 +231,17 @@ read -p "Press Enter to continue" </dev/tty
 
 clear
 echo "NOTES:
-The newest versions of JS8Call require Qt v6.9.3 to run correctly. Most
-linux distributions do not package Qt6.9.3. The JS8Call project provides
-pre-compiled Qt6.9.3 libraries that this script will fetch and install to
+The newest versions of JS8Call require Qt v6.11.1 to run correctly. Most
+linux distributions do not package Qt6.11.1. The JS8Call project provides
+pre-compiled Qt6.11.1 libraries that this script will fetch and install to
 /usr/lib/js8call/Qt. This will not affect whatever version of Qt you have
 installed from your distribution. The two versions can co-exist and
-JS8Call will be linked with the Qt6.9.3 installation only.
+JS8Call will be linked with the Qt6.11.1 installation only.
 
 JS8Call and its libraries install to:
   Binary    : /usr/bin/JS8Call
   Libraries : /usr/lib/js8call
-  Qt 6.9.3  : /usr/lib/js8call/Qt
+  Qt 6.11.1  : /usr/lib/js8call/Qt
 
 This is consistent with the JS8Call .deb package. If you have previously
 installed JS8Call via the .deb package this script will overwrite it.
@@ -311,7 +311,7 @@ divider
 sleep 2
 
 # --- Fetch Qt6 and js8lib if not already installed ---
-echo "Checking for Qt 6.9.3..."
+echo "Checking for Qt 6.11.1..."
 divider
 sleep 2
 
@@ -319,21 +319,21 @@ cd "$HOME/development"
 
 if [ ! -d "${JS8_QT_DIR}" ]; then
   if [ "${JS8_ARCH}" = "aarch64" ]; then
-    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/Qt6.9.3_Linux_aarch64_pkg.tar.gz
-    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0-Linux_aarch64_pkg.tar.gz
-    sudo tar -xzvf Qt6.9.3_Linux_aarch64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}"
-    rm Qt6.9.3_Linux_aarch64_pkg.tar.gz
-    sudo tar -xzvf js8lib3.0-Linux_aarch64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}" --strip-components=1
-    rm js8lib3.0-Linux_aarch64_pkg.tar.gz
+    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/Qt6.11.1_Linux_aarch64_pkg.tar.gz
+    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/js8lib4.0-Linux_aarch64_pkg.tar.gz
+    sudo tar -xzvf Qt6.11.1_Linux_aarch64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}"
+    rm Qt6.11.1_Linux_aarch64_pkg.tar.gz
+    sudo tar -xzvf js8lib4.0-Linux_aarch64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}" --strip-components=1
+    rm js8lib4.0-Linux_aarch64_pkg.tar.gz
   else
-    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/Qt6.9.3_Linux_x86_64_pkg.tar.gz
-    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0-Linux_x86_64_pkg.tar.gz
-    sudo tar -xzvf Qt6.9.3_Linux_x86_64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}"
-    rm Qt6.9.3_Linux_x86_64_pkg.tar.gz
-    sudo tar -xzvf js8lib3.0-Linux_x86_64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}" --strip-components=1
-    rm js8lib3.0-Linux_x86_64_pkg.tar.gz
+    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/Qt6.11.1_Linux_x86_64_pkg.tar.gz
+    wget -c https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/js8lib4.0-Linux_x86_64_pkg.tar.gz
+    sudo tar -xzvf Qt6.11.1_Linux_x86_64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}"
+    rm Qt6.11.1_Linux_x86_64_pkg.tar.gz
+    sudo tar -xzvf js8lib4.0-Linux_x86_64_pkg.tar.gz -C "${JS8_INSTALL_PREFIX}" --strip-components=1
+    rm js8lib4.0-Linux_x86_64_pkg.tar.gz
   fi
-  echo "Qt 6.9.3 and library archives extracted and removed."
+  echo "Qt 6.11.1 and library archives extracted and removed."
 
   # Register private library paths with the system linker
   # This allows JS8Call to find its bundled libraries at runtime
@@ -342,7 +342,7 @@ if [ ! -d "${JS8_QT_DIR}" ]; then
   sudo ldconfig
 
 else
-  echo "Qt 6.9.3 already installed — skipping download."
+  echo "Qt 6.11.1 already installed — skipping download."
   divider
   sleep 2
 fi
@@ -373,7 +373,7 @@ BRANCH=$(git branch --show-current)
 clear
 divider
 echo "JS8Call Build Details:
-  Qt version : 6.9.3 with FFmpeg audio (requires PulseAudio or PipeWire)
+  Qt version : 6.11.1 with FFmpeg audio (requires PulseAudio or PipeWire)
   Branch     : JS8Call-improved ${BRANCH}
   Distro     : ${DISTRO} / ${JS8_ARCH}"
 divider

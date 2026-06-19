@@ -5,7 +5,7 @@ set -e
 ####### Ubuntu 24.04 Server only  #######
 
 # --- Qt version to build ---
-QT_VERSION="6.9.3"
+QT_VERSION="6.11.1"
 QT_TAG="v${QT_VERSION}"
 
 clear

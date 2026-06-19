@@ -107,7 +107,7 @@ export PKG_CONFIG_PATH=/usr/local/ffmpeg/lib/pkgconfig:$PKG_CONFIG_PATH
 cd "$HOME/development"
 git clone https://github.com/qt/qt5.git Qt6
 cd Qt6
-git checkout v6.9.3
+git checkout v6.11.1
 ./init-repository --module-subset=qtbase,qtshadertools,qtmultimedia,\
 qtimageformats,qtserialport,qtsvg,qtwebsockets,qtwayland,\
 qtdeclarative,qttools,qtpositioning,qttranslations,qtlanguageserver,\
@@ -159,7 +159,7 @@ echo "libicu libraries bundled successfully."
 echo "######################################################################"
 
 # --- Create tar.gz archive ---
-TARBALL="Qt6.9.3_Linux_${BUILD_ARCH}_pkg.tar.gz"
+TARBALL="Qt6.11.1_Linux_${BUILD_ARCH}_pkg.tar.gz"
 echo "Creating archive $HOME/${TARBALL}..."
 tar -czf "$HOME/${TARBALL}" -C "/usr/lib/js8call" Qt
 
