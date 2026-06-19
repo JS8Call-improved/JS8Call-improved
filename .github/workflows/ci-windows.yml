@@ -1,5 +1,5 @@
-name: CI Build for Windows 10+ x64
-run-name: ${{ github.event.pull_request.title || github.ref_name }} CI Build for Windows 10+ x64
+name: CI Build for Windows 11 amd64
+run-name: ${{ github.event.pull_request.title || github.ref_name }} CI Build for Windows 11
 
 on:
   push:
@@ -35,21 +35,35 @@ jobs:
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730
-      with:
-        version: '6.9.3'
-        target: 'desktop'
-        arch: 'win64_llvm_mingw'
-        modules: 'qtmultimedia qtserialport qtwebsockets qtshadertools'
-        tools: 'tools_llvm_mingw1706'
-        cache: true
-        dir: 'D:/a/JS8Call-improved/JS8Call-improved/local/qt693'
+    - name: Setup llvm-mingw toolchain
+      shell: pwsh
+      run: |
+        # Pinned to llvm-mingw 20231128 (LLVM/clang 17.0.6) to match the
+        # toolchain bundled with Qt Creator. Bump deliberately, not silently.
+        curl -L -o llvm-mingw.zip "https://github.com/mstorsjo/llvm-mingw/releases/download/20231128/llvm-mingw-20231128-ucrt-x86_64.zip"
+        Expand-Archive llvm-mingw.zip -DestinationPath .
+        $extracted = Get-ChildItem -Directory -Filter "llvm-mingw-*" | Select-Object -First 1
+        Rename-Item $extracted.FullName "llvm-mingw"
+        echo "$env:GITHUB_WORKSPACE\llvm-mingw\bin" >> $env:GITHUB_PATH
+
+    - name: Ensure Ninja is available
+      shell: pwsh
+      run: |
+        if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
+          choco install ninja -y
+        }
+
+    - name: Fetch Qt
+      shell: pwsh
+      run: |
+        curl -L -o qt611.zip "https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/qt-6.11.1-windows-x64.zip"
+        Expand-Archive qt611.zip -DestinationPath qt611
+        echo "$env:GITHUB_WORKSPACE\qt611\bin" >> $env:GITHUB_PATH
 
     - name: Fetch js8lib
       shell: pwsh
       run: |
-        curl -L -o js8lib.zip "https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0_Win64.zip"
+        curl -L -o js8lib.zip "https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/js8lib4.0_Win64.zip"
         Expand-Archive js8lib.zip -DestinationPath .
 
     - name: Setup build directory
@@ -61,15 +75,14 @@ jobs:
       run: |
         cd build
         $env:Path = "$env:GITHUB_WORKSPACE\js8lib\bin;$env:Path"
-        $qt6dir = $env:Qt6_DIR
         $workspace = $env:GITHUB_WORKSPACE
-        $llvm = "$env:IQTA_TOOLS\llvm-mingw1706_64\bin"
-        $env:Path = "$llvm;$env:Path"
-        cmake -G "Ninja Multi-Config" `
-          -DCMAKE_C_COMPILER="$llvm\clang.exe" `
-          -DCMAKE_CXX_COMPILER="$llvm\clang++.exe" `
-          -DQt6_DIR="$qt6dir" `
-          -DCMAKE_PREFIX_PATH="$workspace/js8lib/boost-1.88;$workspace/js8lib/hamlib-4.7.1;$workspace/js8lib/fftw3;$workspace/js8lib/libusb-1.0.29" ..
+        cmake -G "Ninja" `
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_C_COMPILER=x86_64-w64-mingw32-clang `
+          -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ `
+          -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres `
+          -DQt6_DIR="$workspace/qt611/lib/cmake/Qt6" `
+          -DCMAKE_PREFIX_PATH="$workspace/qt611;$workspace/js8lib/boost-1.88;$workspace/js8lib/hamlib-4.7.1;$workspace/js8lib/fftw3;$workspace/js8lib/libusb-1.0.29" ..
 
     - name: Extract version
       shell: pwsh
@@ -89,15 +102,28 @@ jobs:
       shell: pwsh
       run: |
         cd build
-        cmake --build . --config Release
+        cmake --build .
 
     - name: Move exe and libraries to install directory
       shell: pwsh
       run: |
         cd build
-        cp Release\JS8Call.exe JS8Call\
+        $exePath = if (Test-Path "Release\JS8Call.exe") { "Release\JS8Call.exe" } else { "JS8Call.exe" }
+        cp $exePath JS8Call\
         cp $env:GITHUB_WORKSPACE\js8lib\dll\*.dll JS8Call\
         cp $env:GITHUB_WORKSPACE\LICENSE JS8Call\
+
+        # js8lib's libc++.dll / libunwind.dll came from Qt 6.9.3's bundled toolchain,
+        # not the llvm-mingw build used to compile JS8Call here.
+        $mingwRuntimeDir = "$env:GITHUB_WORKSPACE\llvm-mingw\x86_64-w64-mingw32\bin"
+        foreach ($dll in @("libc++.dll", "libunwind.dll")) {
+          $src = Join-Path $mingwRuntimeDir $dll
+          if (Test-Path $src) {
+            cp $src JS8Call\ -Force
+          } else {
+            Write-Warning "Expected llvm runtime DLL not found: $src"
+          }
+        }
 
     - name: INNO Setup
       shell: pwsh
@@ -115,4 +141,3 @@ jobs:
         name: "JS8Call-${{ env.JS8_SAFE_VER }}-installer"
         path: ./build/JS8Call/JS8Call-*-installer.exe
         archive: false
-

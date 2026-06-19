@@ -1,5 +1,5 @@
-name: CI Build for MacOS 26 Arm64 (M1 and higher)
-run-name: ${{ github.event.pull_request.title || github.ref_name }} CI Build for MacOS M1
+name: CI Build for MacOS Apple silicon
+run-name: ${{ github.event.pull_request.title || github.ref_name }} CI Build for MacOS
 
 on:
   push:
@@ -33,12 +33,12 @@ jobs:
 
     - name: Grab build dependencies
       run: |
-        curl --location --output /tmp/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz
+        curl --location --output /tmp/js8lib4.0-MacOS_with_Qt.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/js8lib4.0-MacOS_with_Qt.tar.gz
         cd /tmp
-        tar zxf /tmp/js8lib3.0-MacOS_AppleSilicon_Qt.tar.gz
+        tar zxf /tmp/js8lib4.0-MacOS_with_Qt.tar.gz
         sudo mv /tmp/js8lib /usr/local/js8lib
 
-        curl --location --output /tmp/ffmpeg_MacOS_arm64.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F3.0/ffmpeg_MacOS_arm64.tar.gz
+        curl --location --output /tmp/ffmpeg_MacOS_arm64.tar.gz https://github.com/JS8Call-improved/js8lib/releases/download/lib%2F4.0/ffmpeg_MacOS_arm64.tar.gz
         tar zxf /tmp/ffmpeg_MacOS_arm64.tar.gz
         sudo mv /tmp/ffmpeg /usr/local/ffmpeg
 

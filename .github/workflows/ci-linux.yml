@@ -3,8 +3,8 @@ permissions:
   attestations: write
   id-token: write
 
-name: CI Build for Linux
-run-name: ${{ (github.event.inputs.environment) || (github.event.pull_request.title) || 'CI' }} Build for Linux
+name: CI Build for Linux amd64/aarch64
+run-name: ${{ github.event.pull_request.title || github.ref_name }} CI Build for Linux
 
 on:
   push:

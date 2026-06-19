@@ -9,6 +9,8 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
+set -euo pipefail
+
 # --- Variables ---
 JS8_ARCH=$(uname -m)
 JS8_SOURCE="https://github.com/JS8Call-improved/JS8Call-improved.git"
@@ -60,7 +62,8 @@ sudo apt-get install -y \
     libpulse-dev \
     libxcb-shape0-dev libxcb-randr0-dev libxcb-sync-dev \
     libxcb-xfixes0-dev libxcb-xkb-dev libxcb-xinput-dev \
-    libasound2-dev || sudo apt-get install -y libasound2t64
+    libasound2-dev || sudo apt-get install -y libasound2t64 \
+    clang-18 lld-18
     
 # libjpeg-turbo ships as .so.62 on Debian but linuxdeploy-plugin-qt
 # expects .so.8 — create a symlink if needed
@@ -167,6 +170,8 @@ echo "######################################################################"
 mkdir build && cd build
 
 cmake \
+    -DCMAKE_C_COMPILER=clang-18 \
+    -DCMAKE_CXX_COMPILER=clang++-18 \
     -DCMAKE_PREFIX_PATH="/usr/lib/js8call;/usr/lib/js8call/Qt" \
     -DHAMLIB_ROOT="/usr/lib/js8call" \
     -DCMAKE_BUILD_TYPE=Release \
@@ -235,7 +240,7 @@ cp "$BUILD_DIR/JS8Call-improved/.github/workflows/misc/JS8Call.appdata.xml" \
 # QMAKE points it at our private Qt 6.11.1, not the system Qt,
 # so it bundles the right version
 cd "$BUILD_DIR"
-export EXTRA_PLATFORM_PLUGINS="libqwayland-generic.so;libqwayland-egl.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
+export EXTRA_PLATFORM_PLUGINS="libqwayland.so;libqoffscreen.so;libqeglfs.so;libqlinuxfb.so;libqminimalegl.so;libqminimal.so"
 export EXTRA_QT_MODULES="waylandcompositor"
 export QMAKE=/usr/lib/js8call/Qt/bin/qmake
 
@@ -255,8 +260,12 @@ find "$APPDIR" -type f \( -name "*.so*" -o -name "JS8Call" \) \
 
 # linuxdeploy names the output based on the .desktop file Name= field
 # and the ARCH env var. Rename to our preferred convention.
-mv "$BUILD_DIR"/JS8Call-*.AppImage \
-    "$HOME/JS8Call-${JS8_VERSION}-${APPIMAGE_ARCH}.AppImage" 2>/dev/null || true
+APPIMAGE_FILE=$(ls "$BUILD_DIR"/JS8Call-*.AppImage 2>/dev/null | head -1)
+if [ -z "$APPIMAGE_FILE" ]; then
+    echo "ERROR: No AppImage was produced by linuxdeploy." >&2
+    exit 1
+fi
+mv "$APPIMAGE_FILE" "$HOME/JS8Call-${JS8_VERSION}-${APPIMAGE_ARCH}.AppImage"
 
 echo "######################################################################"
 echo " DONE!"
