@@ -36,7 +36,10 @@ class MHzValidator : public QDoubleValidator {
 
 FrequencyLineEdit::FrequencyLineEdit(QWidget *parent) : QLineEdit(parent) {
     setValidator(new MHzValidator{
-        0., std::numeric_limits<Radio::Frequency>::max() / 10.e6, this});
+        0.,
+        static_cast<double>(std::numeric_limits<Radio::Frequency>::max()) /
+            10.e6,
+        this});
 }
 
 auto FrequencyLineEdit::frequency() const -> Frequency {
@@ -49,9 +52,9 @@ void FrequencyLineEdit::frequency(Frequency f) {
 
 FrequencyDeltaLineEdit::FrequencyDeltaLineEdit(QWidget *parent)
     : QLineEdit(parent) {
-    setValidator(new MHzValidator{
-        -std::numeric_limits<FrequencyDelta>::max() / 10.e6,
-        std::numeric_limits<FrequencyDelta>::max() / 10.e6, this});
+    const auto delta_max =
+        static_cast<double>(std::numeric_limits<FrequencyDelta>::max());
+    setValidator(new MHzValidator{-delta_max / 10.e6, delta_max / 10.e6, this});
 }
 
 auto FrequencyDeltaLineEdit::frequency_delta() const -> FrequencyDelta {

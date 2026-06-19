@@ -39,7 +39,7 @@ Frequency frequency(QVariant const &v, int scale, bool *ok,
     }
     value *= std::pow(10., scale);
     if (ok) {
-        if (value < 0. || value > std::numeric_limits<Frequency>::max()) {
+        if (value < 0. || value >= static_cast<double>(std::numeric_limits<Frequency>::max())) {
             value = 0.;
             *ok = false;
         }
@@ -59,8 +59,8 @@ FrequencyDelta frequency_delta(QVariant const &v, int scale, bool *ok,
     }
     value *= std::pow(10., scale);
     if (ok) {
-        if (value < -std::numeric_limits<Frequency>::max() ||
-            value > std::numeric_limits<Frequency>::max()) {
+        auto const limit = static_cast<double>(std::numeric_limits<Frequency>::max());
+        if (value <= -limit || value >= limit) {
             value = 0.;
             *ok = false;
         }
