@@ -126,7 +126,7 @@ cmake_dependent_option(
 find_package(Boost 1.77 REQUIRED)
 find_package(FFTW3      REQUIRED COMPONENTS single threads)
 find_package(Hamlib     REQUIRED)
-find_package(Qt6  6.9.3 REQUIRED COMPONENTS Multimedia Network SerialPort Widgets)
+find_package(Qt6  6.11  REQUIRED COMPONENTS Multimedia Network SerialPort Widgets)
 
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${FFTW3_INCLUDE_DIRS})
