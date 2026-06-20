@@ -123,9 +123,7 @@ if [ -n "${GITHUB_WORKSPACE:-}" ]; then
     # Clone locally from the runner's pre-checked-out workspace.
     git clone "$GITHUB_WORKSPACE" JS8Call-improved
     cd JS8Call-improved
-
-    # Extract and log the actual branch name from the cloned workspace
-    ACTIVE_BRANCH=$(git branch --show-current)
+    ACTIVE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-unknown}}"
     echo "Active CI Target Branch: $ACTIVE_BRANCH"
 
 else
