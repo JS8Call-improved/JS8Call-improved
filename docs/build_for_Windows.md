@@ -2,37 +2,37 @@
 
 ## Prerequisites
 
-Windows 10 or 11
+Windows 11
 
 > [!note]
 > Js8Call-improved is the name of the Github repository and will be present in your paths, the program is JS8Call.
 
 
-## Building JS8Call 2.4 and later with Qt Creator
+## Building JS8Call with Qt Creator
 
 ### Set up the build environment
 
 1) Download and install [CMake 4.1.1](https://www.kitware.com/cmake-4-1-1-available-for-download/) from Kitware.
 2) Download and install [git for Windows](https://git-scm.com/install/windows) from GitHub.
 3) Download and install the [Qt Online Installer](https://doc.qt.io/qt-6/qt-online-installation.html) from qt.io. To do this you must create a free account with Qt and log into your new account and you will be able to download it.
-4) After installation of Qt use the Qt Maintenance Tool to install Qt 6.9.3
+4) After installation of Qt use the Qt Maintenance Tool to install Qt 6.11.1
 
 ### Notes On Installation of Qt6
 
 - Recommended location for your Qt install is `C:\Qt`
-- During installation of Qt, select under Additional Libraries to get Qt Image Formats, Qt Multimedia, Qt Network Authorization and Qt Serial Port
-- Select to install MinGW 13, and under Build Tools make sure MinGW 13 is checked. At the bottom of the list make sure to get Qt Creator.
+- During installation of Qt, select under Additional Libraries to get Qt Multimedia, QtSerialPort, QtWebSockets and get the LLVM-MINGW 17.0.6 toolchain.
+- At the bottom of the list make sure to get Qt Creator.
 
 ### Files, Directories and Libraries
 
 - Create a directory called `development` at `C:\development`
-- Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F3.0) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call.
+- Download the Windows JS8Call-improved development library [here](https://github.com/JS8Call-improved/js8lib/releases/tag/lib%2F4.0) and unzip the library inside of the development folder. This will create a folder called `js8lib` which contains the necessary development libraries to build JS8Call.
 - Next we need to get the JS8Call-improved source code with git. This requires use of the Windows Command shell (installing the Windows PowerShell is recommended). Change to the `C:\development` folder and type `git clone https://github.com/JS8Call-improved/JS8Call-improved.git` This will create a folder called JS8Call-improved which contains the source code.
 
 ### Setting up Qt Creator
 
-- To get started with a CMake project in Qt Creator, open the program and select Open Project. Simply navigate to the CMakeLists.txt in `C:\development\JS8Call-improved` and select it. When the project window opens your available “kits” will be listed on the left side. Simply click the `+` button by the kits you want to use for this project (6.9.3). Qt Creator will create what is called an Initial Configuration. You can select to hide the inactive kits if you installed more than one version of Qt.
-- You can select Manage Kits at the top left to make sure you have a valid compiler (which should be MinGW) for each one. The default build will be Debug. Under Build Settings select Add, and add a Release configuration and name it Release.
+- To get started with a CMake project in Qt Creator, open the program and select Open Project. Simply navigate to the CMakeLists.txt in `C:\development\JS8Call-improved` and select it. When the project window opens your available “kits” will be listed on the left side. Simply click the `+` button by the kits you want to use for this project (6.11.1). Qt Creator will create what is called an Initial Configuration. You can select to hide the inactive kits if you installed more than one version of Qt.
+- You can select Manage Kits at the top left to make sure you have a valid compiler (which should be LLVM-clang) for each one. The default build will be Debug. Under Build Settings select Add, and add a Release configuration and name it Release.
 - Qt Creator automatically creates a build folder in the source tree. Inside the build folder Creator makes folders for each kit and build type. DO NOT delete these. They contain your project build configuration settings for each build type. At present Creator will say there’s no configuration for Release found. Don’t worry about that. We’re going to fix it in the next step where we move to the CMake keys.
 - In the CMake configure settings pane (the center one) switch from Initial Configuration tab to Current Configuration. Then make the following changes:
 
@@ -41,7 +41,7 @@ Windows 10 or 11
 2) Change CMAKE_INSTALL_PREFIX to Program Files (not x86)
 3) Replace the entire CMAKE_PREFIX_PATH with the following
 ```
-%{Qt:QT_INSTALL_PREFIX};C:\development\js8lib\lib64-msvc-14.3\cmake\Boost-1.89.0;C:\development\js8lib;C:\development\js8lib\bin
+%{Qt:QT_INSTALL_PREFIX};C:\development\js8lib\boost-1.88;C:\development\js8lib\hamlib-4.7.1;C:\development\js8lib\fftw3;C:\development\js8lib\libusb-1.0.29
 ```
 -  Click on the Run CMake button just below the CMake Settings and you should get a successful configuration for this kit
 
@@ -51,11 +51,11 @@ The Initial Configuration is what the raw CMake run generates. The Current Confi
 
 1) Move down to Build Steps and click on Add Build Step -> Custom Process Step. In the Command enter `cmd.exe`  Remove the entry from the Working directory and leave it blank. Then copy and paste this to the Arguments box
 ```
-cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && move JS8Call.exe .\JS8Call
+cd C:\development\JS8Call-improved\build\Desktop_Qt_6_11_1_llvm_mingw_64_bit-Release && move JS8Call.exe .\JS8Call
 ```
 2) Add another Build Step and in the Command box enter `cmd.exe` then copy and paste this to the Arguments box
 ```
-cd C:\development\JS8Call-improved\build\Desktop_Qt_6_8_3_MinGW_64_bit-Release && copy C:\development\js8lib\dll\*.dll .\JS8Call
+cd C:\development\JS8Call-improved\build\Desktop_Qt_6_11_1_llvm_mingw_64_bit-Release && copy C:\development\js8lib\dll\*.dll .\JS8Call
 ```
 You can now click on the hammer in the lower left and the JS8Call-improved project should build. After the build completes you will find a folder inside the build -> (kit name) directory called JS8Call-improved. It will contain all the libraries the program needs to run, along with the JS8Call-improved executable. At this point, you can use a Windows Installer package creator like NSIS or Inno Setup to create a Windows installer if you wish. Or if you are building only for your local computer, you can move the JS8Call folder to `C:\Program Files`, create a shortcut to the `JS8Call.exe` executable, and place the shortcut on your desktop to launch the program.
 
@@ -64,6 +64,8 @@ If you wish to do another build later simply go to Build in the menu and select 
 Note that this can not be a complete tutorial on how to use Qt Creator, only a general guide as to what is required to build JS8Call-improved 2.4 or later.
 
 ## Building JS8Call with JTSDK64-Tools
+> [!note]
+> These instructions only apply to older versions of JS8Call, v3.0.2 and earlier. JTSDK-Tools does not have the proper toolchain to build JS8Call 4.0. So these instructions can be considered to be deprecated, left here for reference sake only.
 
 This is a general overview with some slight variations for building Qt6-compliant JS8Call using JTSDK64-Tools (HamlibSDK). See the detailed instructions for [JTSDK64-Tools](https://hamlib-sdk.sourceforge.io/) at Sourceforge.
 
