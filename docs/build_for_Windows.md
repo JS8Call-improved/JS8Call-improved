@@ -72,7 +72,7 @@ This is a general overview with some slight variations for building Qt6-complian
 ### Set up the JTSDK64-Tools build environment
 
 > [!note]
-> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work, newer Qt versions will not work with OmniRig. We no longer recommend enabling OmniRig, as it presents a security risk for Windows.
+> As of this writing, Qt6.6.3 is **required** for OmniRig functionality to work, newer Qt versions will not work with OmniRig so it has been deprecated in JS8Call
 
 1) Install the JTSDK (Hamlib-SDK) 4.1.0 the latest version from [hamlib-sdk](https://sourceforge.net/projects/hamlib-sdk) as of this writing
 2) In the `C:\JTSDK64-Tools\config` directory, set the Hamlib file marker name to "hlnone", the qt file marker name to "qt6.6.3", and the source file marker name to "src-none"

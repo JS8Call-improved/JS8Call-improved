@@ -44,8 +44,7 @@ class TransceiverFactory : public QObject {
         PortType port_type_;
         bool has_CAT_PTT_;
         bool has_CAT_PTT_mic_data_;
-        bool has_CAT_indirect_serial_PTT_; // OmniRig controls RTS/DTR via COM
-                                           // interface
+        bool has_CAT_indirect_serial_PTT_;
         bool asynchronous_;
     };
 
@@ -98,7 +97,7 @@ class TransceiverFactory : public QObject {
     bool has_CAT_PTT_mic_data(
         QString const &name) const; // Tx audio port is switchable via CAT
     bool has_CAT_indirect_serial_PTT(QString const &name)
-        const; // Can PTT via CAT port use DTR or RTS (OmniRig for example)
+        const; // Can PTT via CAT port use DTR or RTS
     bool has_asynchronous_CAT(
         QString const &name) const; // CAT asynchronous rather than polled
 

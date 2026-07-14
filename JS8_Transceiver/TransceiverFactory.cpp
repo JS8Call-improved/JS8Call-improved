@@ -9,10 +9,6 @@
 #include "HRDTransceiver.h"
 #include "HamlibTransceiver.h"
 
-#if defined(Q_OS_WIN) && ENABLE_OMNIRIG
-#include "JS8_Deprecated/OmniRigTransceiver.h"
-#endif
-
 #include <QMetaType>
 
 #include "moc_TransceiverFactory.cpp"
@@ -29,8 +25,6 @@ enum // supported non-hamlib radio interfaces
     NonHamlibBaseId = 9899,
     CommanderId,
     HRDId,
-    OmniRigOneId,
-    OmniRigTwoId
 };
 }
 
@@ -39,12 +33,6 @@ TransceiverFactory::TransceiverFactory() {
     DXLabSuiteCommanderTransceiver::register_transceivers(&transceivers_,
                                                           CommanderId);
     HRDTransceiver::register_transceivers(&transceivers_, HRDId);
-
-#if defined(Q_OS_WIN) && ENABLE_OMNIRIG
-    // OmniRig is ActiveX/COM server so only on Windows
-    OmniRigTransceiver::register_transceivers(&transceivers_, OmniRigOneId,
-                                              OmniRigTwoId);
-#endif
 }
 
 TransceiverFactory::~TransceiverFactory() {
@@ -128,52 +116,6 @@ TransceiverFactory::create(ParameterPack const &params,
             result->moveToThread(target_thread);
         }
     } break;
-
-#if defined(Q_OS_WIN) && ENABLE_OMNIRIG
-    case OmniRigOneId: {
-        std::unique_ptr<TransceiverBase> basic_transceiver;
-        if (PTT_method_CAT != params.ptt_type && "CAT" != params.ptt_port) {
-            // we start with a dummy HamlibTransceiver object instance that can
-            // support direct PTT
-            basic_transceiver.reset(
-                new HamlibTransceiver{params.ptt_type, params.ptt_port});
-            if (target_thread) {
-                basic_transceiver.get()->moveToThread(target_thread);
-            }
-        }
-
-        // wrap the basic Transceiver object instance with a decorator object
-        // that talks to OmniRig rig one
-        result.reset(new OmniRigTransceiver{std::move(basic_transceiver),
-                                            OmniRigTransceiver::One,
-                                            params.ptt_type, params.ptt_port});
-        if (target_thread) {
-            result->moveToThread(target_thread);
-        }
-    } break;
-
-    case OmniRigTwoId: {
-        std::unique_ptr<TransceiverBase> basic_transceiver;
-        if (PTT_method_CAT != params.ptt_type && "CAT" != params.ptt_port) {
-            // we start with a dummy HamlibTransceiver object instance that can
-            // support direct PTT
-            basic_transceiver.reset(
-                new HamlibTransceiver{params.ptt_type, params.ptt_port});
-            if (target_thread) {
-                basic_transceiver.get()->moveToThread(target_thread);
-            }
-        }
-
-        // wrap the basic Transceiver object instance with a decorator object
-        // that talks to OmniRig rig two
-        result.reset(new OmniRigTransceiver{std::move(basic_transceiver),
-                                            OmniRigTransceiver::Two,
-                                            params.ptt_type, params.ptt_port});
-        if (target_thread) {
-            result->moveToThread(target_thread);
-        }
-    } break;
-#endif
 
     default:
         result.reset(new HamlibTransceiver{

@@ -448,50 +448,7 @@ if (APPLE)
   )
 endif (APPLE)
 
-#------------------------------------------------------------------------------#
-# On Windows, we want to conditionally enable OmniRig, as frankly, it's at
-# present got a foot in the grave and another on a banana peel, we we must
-# be prepared to eliminate the integration if nothing changes for the better.
-#------------------------------------------------------------------------------#
-
 if (WIN32)
-
-  option(ENABLE_OMNIRIG "Enable OmniRig COM integration" OFF)
-
-  if (ENABLE_OMNIRIG)
-    include(QtAxMacros)
-    find_package(Qt6 REQUIRED COMPONENTS AxContainer AxServer)
-    find_program(DUMPCPP dumpcpp HINTS "${QT_BIN_DIR}")
-    execute_process(
-      COMMAND "${DUMPCPP}" -getfile {4FE359C5-A58F-459D-BE95-CA559FB4F270}
-      OUTPUT_VARIABLE AXSERVER
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      ERROR_QUIET
-    )
-    string(STRIP "${AXSERVER}" AXSERVER)
-    if (AXSERVER)
-      string(REPLACE "\"" "" AXSERVER "${AXSERVER}")
-      file(TO_CMAKE_PATH "${AXSERVER}" AXSERVERSRCS)
-
-      wrap_ax_server(GENAXSRCS "${AXSERVERSRCS}")
-
-      target_compile_definitions(${TARGET}
-        PRIVATE ENABLE_OMNIRIG=$<BOOL:${ENABLE_OMNIRIG}>
-      )
-
-      target_sources(${TARGET} PRIVATE
-        JS8_Deprecated/OmniRigTransceiver.cpp
-        ${GENAXSRCS}
-      )
-
-      target_link_libraries(${TARGET} PRIVATE
-        Qt::AxContainer
-        Qt::AxServer
-      )
-    else()
-      message(STATUS "OmniRig not installed; skipping OmniRig integration.")
-    endif()
-  endif()
 
   # Windows icons require an RC file.
 
