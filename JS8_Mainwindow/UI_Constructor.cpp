@@ -217,7 +217,12 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     connect(this, &UI_Constructor::initializeAudioOutputStream, m_soundOutput,
             &SoundOutput::setFormat);
     connect(m_soundOutput, &SoundOutput::error, this,
-            &UI_Constructor::showSoundOutError);
+            [this](QString const &errorMsg) {
+                if (m_config.audio_output_device().isNull() || m_config.is_active()) {
+                    return; // nothing configured yet, or user is fixing it in Settings
+                }
+                showSoundOutError(errorMsg);
+            });
     connect(m_soundOutput, &SoundOutput::error, &m_config,
             &Configuration::invalidate_audio_output_device);
     connect(this, &UI_Constructor::outAttenuationChanged, m_soundOutput,
@@ -253,7 +258,12 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             &SoundInput::resume);
     connect(this, &UI_Constructor::finished, m_soundInput, &SoundInput::stop);
     connect(m_soundInput, &SoundInput::error, this,
-            &UI_Constructor::showSoundInError);
+        [this](QString const &errorMsg) {
+            if (m_config.audio_input_device().isNull() || m_config.is_active()) {
+                return;
+            }
+            showSoundInError(errorMsg);
+        });
     connect(m_soundInput, &SoundInput::error, &m_config,
             &Configuration::invalidate_audio_input_device);
     // connect(m_soundInput, &SoundInput::status, this,
@@ -643,15 +653,21 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     m_notificationAudioThread.start(m_notificationAudioThreadPriority);
     m_decoder.start(m_decoderThreadPriority);
 
-    Q_EMIT startAudioInputStream(m_config.audio_input_device(),
-                                 m_framesAudioInputBuffered, m_detector,
-                                 m_config.audio_input_channel());
-    Q_EMIT initializeAudioOutputStream(
-        m_config.audio_output_device(),
-        AudioDevice::Mono == m_config.audio_output_channel() ? 1 : 2,
-        m_msAudioOutputBuffered);
-    Q_EMIT initializeNotificationAudioOutputStream(
-        m_config.notification_audio_output_device(), m_msAudioOutputBuffered);
+    if (!m_config.audio_input_device().isNull()) {
+        Q_EMIT startAudioInputStream(m_config.audio_input_device(),
+            m_framesAudioInputBuffered, m_detector,
+            m_config.audio_input_channel());
+    }
+    if (!m_config.audio_output_device().isNull()) {
+        Q_EMIT initializeAudioOutputStream(
+            m_config.audio_output_device(),
+            AudioDevice::Mono == m_config.audio_output_channel() ? 1 : 2,
+            m_msAudioOutputBuffered);
+    }
+    if (!m_config.notification_audio_output_device().isNull()) {
+        Q_EMIT initializeNotificationAudioOutputStream(
+            m_config.notification_audio_output_device(), m_msAudioOutputBuffered);
+    }
     Q_EMIT transmitFrequency(freq() + m_XIT);
 
     enable_DXCC_entity(
