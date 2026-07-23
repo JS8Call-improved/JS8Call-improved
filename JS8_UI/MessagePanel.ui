@@ -118,27 +118,42 @@
       </column>
       <column>
        <property name="text">
-        <string>Date</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Frequency</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
         <string>From</string>
+       </property>
+       <property name="textAlignment">
+        <set>AlignLeading|AlignVCenter</set>
        </property>
       </column>
       <column>
        <property name="text">
         <string>To</string>
        </property>
+       <property name="textAlignment">
+        <set>AlignLeading|AlignVCenter</set>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Date</string>
+       </property>
+       <property name="textAlignment">
+        <set>AlignLeading|AlignVCenter</set>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Frequency</string>
+       </property>
+       <property name="textAlignment">
+        <set>AlignLeading|AlignVCenter</set>
+       </property>
       </column>
       <column>
        <property name="text">
         <string>Message</string>
+       </property>
+       <property name="textAlignment">
+        <set>AlignLeading|AlignVCenter</set>
        </property>
       </column>
      </widget>

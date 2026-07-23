@@ -62,7 +62,7 @@ MessagePanel::MessagePanel(QString inboxPath, QWidget *parent)
   // Now that the custom header is installed; indicator state will stick
   {
     QSignalBlocker b(hdr);
-    hdr->setSortIndicator(2, Qt::DescendingOrder);
+    hdr->setSortIndicator(1, Qt::DescendingOrder);
   }
 
   refresh();
@@ -91,8 +91,8 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
       ui->messageTableWidget->horizontalHeader());
 
   // Remember sort state (avoid sorting by unread flag column 0)
-  const int rememberedCol = hdr->sortIndicatorSection() >= 0 ? hdr->sortIndicatorSection() : 2;
-  const int sortCol = (rememberedCol == 0 ? 2 : rememberedCol);
+  const int rememberedCol = hdr->sortIndicatorSection() >= 0 ? hdr->sortIndicatorSection() : 1;
+  const int sortCol = (rememberedCol == 0 ? 1 : rememberedCol);
   const Qt::SortOrder sortOrder = hdr->sortIndicatorOrder();
 
   // Freeze behavior while populating
@@ -128,34 +128,34 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
       midItem->setTextAlignment(Qt::AlignCenter);
       ui->messageTableWidget->setItem(row, col++, midItem);
 
+      auto path = params.value("PATH").toString();
+      auto segs = pathSegs(path);
+      auto fromItem = new QTableWidgetItem(segs.join(" via "));
+      fromItem->setData(Qt::UserRole, path);
+      fromItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+      ui->messageTableWidget->setItem(row, col++, fromItem);
+
+      auto to = params.value("TO").toString();
+      auto toItem = new QTableWidgetItem(to);
+      toItem->setData(Qt::UserRole, to);
+      toItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+      ui->messageTableWidget->setItem(row, col++, toItem);
+
       const auto dateStr = params.value("UTC").toString();
       QDateTime ts = QDateTime::fromString(dateStr, "yyyy-MM-dd HH:mm:ss");
       ts.setTimeZone(QTimeZone::utc());
 
       auto *dateItem = new DateItem(ts.toString("ddd MMM d HH:mm:ss yyyy"));
       dateItem->setData(Qt::UserRole, ts.toSecsSinceEpoch());   // sort key
-      dateItem->setTextAlignment(Qt::AlignCenter);
+      dateItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
       ui->messageTableWidget->setItem(row, col++, dateItem);
 
       auto dial = (quint64)params.value("DIAL").toInt();
       auto dialItem = new QTableWidgetItem();
       dialItem->setData(Qt::EditRole, dial);
       dialItem->setData(Qt::DisplayRole, QString("%1 MHz").arg(Radio::pretty_frequency_MHz_string(dial)));
-      dialItem->setTextAlignment(Qt::AlignCenter);
+      dialItem->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
       ui->messageTableWidget->setItem(row, col++, dialItem);
-
-      auto path = params.value("PATH").toString();
-      auto segs = pathSegs(path);
-      auto fromItem = new QTableWidgetItem(segs.join(" via "));
-      fromItem->setData(Qt::UserRole, path);
-      fromItem->setTextAlignment(Qt::AlignCenter);
-      ui->messageTableWidget->setItem(row, col++, fromItem);
-
-      auto to = params.value("TO").toString();
-      auto toItem = new QTableWidgetItem(to);
-      toItem->setData(Qt::UserRole, to);
-      toItem->setTextAlignment(Qt::AlignCenter);
-      ui->messageTableWidget->setItem(row, col++, toItem);
 
       auto text = params.value("TEXT").toString();
       auto textItem = new QTableWidgetItem(text);
@@ -337,7 +337,7 @@ void MessagePanel::on_replyPushButton_clicked() {
 
   // from column
   auto item = ui->messageTableWidget->item(
-      row, ui->messageTableWidget->columnCount() - 3);
+      row, ui->messageTableWidget->columnCount() - 5);
   if (!item) {
     return;
   }
