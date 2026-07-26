@@ -6490,27 +6490,6 @@ int UI_Constructor::countGroupUnreadForCallsign(const QString &group_name,
     return inbox.countGroupUnreadForCallsign(group_name, callsign);
 }
 
-// Facade for Inbox::markGroupMsgDeliveredForCallsign
-bool UI_Constructor::markGroupMsgDeliveredForCallsign(int msgId,
-                                                      QString callsign) {
-    Inbox inbox(inboxPath());
-    if (!inbox.open()) {
-        return false;
-    }
-
-    return inbox.markGroupMsgDeliveredForCallsign(msgId, callsign);
-}
-
-bool UI_Constructor::markMsgDelivered(int mid, Message msg) {
-    Inbox inbox(inboxPath());
-    if (!inbox.open()) {
-        return false;
-    }
-
-    msg.setType("DELIVERED");
-    return inbox.set(mid, msg);
-}
-
 QStringList UI_Constructor::parseRelayPathCallsigns(QString from,
                                                     QString text) {
     QStringList calls;

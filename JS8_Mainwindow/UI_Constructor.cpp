@@ -1466,3 +1466,30 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     if (!m_valid)
         throw std::runtime_error{"Fatal initialization exception"};
 }
+
+bool UI_Constructor::markMsgDelivered(int mid, Message msg) {
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return false;
+    }
+
+    msg.setType("DELIVERED");
+    bool ok = inbox.set(mid, msg);
+    if (ok) {
+        emit messageAdded(mid);
+    }
+    return ok;
+}
+
+bool UI_Constructor::markGroupMsgDeliveredForCallsign(int msgId, QString callsign) {
+    Inbox inbox(inboxPath());
+    if (!inbox.open()) {
+        return false;
+    }
+
+    bool ok = inbox.markGroupMsgDeliveredForCallsign(msgId, callsign);
+    if (ok) {
+        emit messageAdded(msgId);
+    }
+    return ok;
+}
