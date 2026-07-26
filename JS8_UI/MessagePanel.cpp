@@ -100,11 +100,10 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
   const bool wasSorting = ui->messageTableWidget->isSortingEnabled();
   ui->messageTableWidget->setSortingEnabled(false);
 
-  for (int i = ui->messageTableWidget->rowCount(); i >= 0; i--) {
+  for (int i = ui->messageTableWidget->rowCount() - 1; i >= 0; --i) {
     ui->messageTableWidget->removeRow(i);
   }
 
-  ui->messageTableWidget->setUpdatesEnabled(false);
   {
     foreach (auto pair, msgs) {
       auto mid = pair.first;
@@ -163,27 +162,25 @@ void MessagePanel::populateMessages(QList<QPair<int, Message>> msgs) {
       textItem->setTextAlignment(Qt::AlignVCenter);
       ui->messageTableWidget->setItem(row, col++, textItem);
     }
-
-    ui->messageTableWidget->resizeColumnToContents(0);
-    ui->messageTableWidget->resizeColumnToContents(1);
-    ui->messageTableWidget->resizeColumnToContents(2);
-    ui->messageTableWidget->resizeColumnToContents(3);
-    ui->messageTableWidget->resizeColumnToContents(4);
-    ui->messageTableWidget->resizeColumnToContents(5);
   }
 
-  ui->messageTableWidget->setUpdatesEnabled(true);
+  if (wasSorting) {
+    ui->messageTableWidget->sortItems(sortCol, sortOrder);
+  }
 
-  // Unfreeze + restore sort once, at the end
+  ui->messageTableWidget->resizeColumnToContents(0);
+  ui->messageTableWidget->resizeColumnToContents(1);
+  ui->messageTableWidget->resizeColumnToContents(2);
+  ui->messageTableWidget->resizeColumnToContents(3);
+  ui->messageTableWidget->resizeColumnToContents(4);
+  ui->messageTableWidget->resizeColumnToContents(5);
+
   ui->messageTableWidget->setSortingEnabled(wasSorting);     // or true if you want arrows always
   ui->messageTableWidget->setUpdatesEnabled(true);
 
   if (hdr) {
     QSignalBlocker b(hdr);
     hdr->setSortIndicator(sortCol, sortOrder);
-  }
-  if (wasSorting) {
-    ui->messageTableWidget->sortItems(sortCol, sortOrder);
   }
 
   ui->messageTableWidget->viewport()->update();

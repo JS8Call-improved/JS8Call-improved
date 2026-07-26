@@ -108,6 +108,7 @@
 #include <QTime>
 #include <QTimeZone>
 #include <QTimer>
+#include <QToolButton>
 #include <QToolTip>
 #include <QUdpSocket>
 #include <QUrl>
@@ -132,8 +133,8 @@
 #include <unordered_map>
 #include <vector>
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 9, 3)
-#error "Qt >= 6.9.3 is required to build JS8Call. Please upgrade your Qt toolchain."
+#if QT_VERSION < QT_VERSION_CHECK(6,11, 1)
+#error "Qt >= 6.11.1 is required to build JS8Call. Please upgrade your Qt toolchain."
 #endif
 
 Q_DECLARE_LOGGING_CATEGORY(mainwindow_js8)
@@ -577,6 +578,7 @@ class UI_Constructor : public QMainWindow {
     QDockWidget* messageDock_ = nullptr;
     MessagePanel* messagePanel_ = nullptr;
     QDialog* messageFloatDialog_ = nullptr;
+    QLineEdit* m_inboxFilterEdit_ = nullptr;
 
     enum class MessageHost { Dock, Dialog };
     MessageHost messageHost_ = MessageHost::Dock;
@@ -1076,3 +1078,4 @@ class UI_Constructor : public QMainWindow {
 };
 
 #endif // MAINWINDOW_H
+

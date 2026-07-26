@@ -1145,42 +1145,52 @@ UI_Constructor::UI_Constructor(QString const &program_info,
         displayActivity(true);
     });
 
-    connect(ui->actionShow_Message_Inbox, &QAction::toggled, this,
-            [this](bool checked) {
+    connect(
+        ui->actionShow_Message_Inbox, &QAction::toggled, this,
+        [this](bool checked) {
+            if (checked) {
+                ensureMessageDock();
+                messageDock_->show();
+                messageDock_->raise();
 
-        if (checked) {
-            ensureMessageDock();
-            messageDock_->show();
-            messageDock_->raise();
+                ui->tableWidgetCalls->setContextMenuPolicy(
+                    Qt::CustomContextMenu);
+                ui->tableWidgetCalls->horizontalHeader()->setContextMenuPolicy(
+                    Qt::CustomContextMenu);
 
-            /*
-             * Disable the automatic selected call filter now that the inbox lives
-             * in a dockable panel
-            QString selectedCall = callsignSelected();
-            if (selectedCall.isEmpty()) selectedCall = "%";
-            messagePanel_->setCall(selectedCall);
-            */
-          messagePanel_->setCall("%");
-        } else {
-            if (messageDock_) {
-                // pick ONE: hide or close; for docks, hide is simplest
-                messageDock_->hide();
+                if (m_inboxFilterEdit_) {
+                    m_inboxFilterEdit_->clear();
+                }
+                if (messagePanel_)
+                    messagePanel_->setCall("%");
+            } else {
+                if (messageDock_) {
+                    messageDock_->hide();
+                }
             }
-        }
-    });
+        });
 
     // When a message is added to the inbox, refresh the message panel
-    connect(this, &UI_Constructor::messageAdded, messagePanel_, &MessagePanel::refresh);
+    connect(this, &UI_Constructor::messageAdded, messagePanel_,
+            &MessagePanel::refresh);
 
     auto historyAction =
         new QAction(QString("Show Message Inbox..."), ui->tableWidgetCalls);
     connect(historyAction, &QAction::triggered, this, [this]() {
-      ensureMessageDock();
-      messageDock_->show();
-      messageDock_->raise();
+        ensureMessageDock();
+        messageDock_->show();
+        messageDock_->raise();
 
-      QString selectedCall = callsignSelected();
-      messagePanel_->setCall(selectedCall);
+        ui->tableWidgetCalls->setContextMenuPolicy(Qt::CustomContextMenu);
+        ui->tableWidgetCalls->horizontalHeader()->setContextMenuPolicy(
+            Qt::CustomContextMenu);
+
+        QString selectedCall = callsignSelected();
+        if (m_inboxFilterEdit_) {
+            m_inboxFilterEdit_->setText(selectedCall);
+        } else if (messagePanel_) {
+            messagePanel_->setCall(selectedCall);
+        }
     });
 
     auto localMessageAction =

@@ -106,55 +106,6 @@ void copyMessage(QStringView const string, char *const array,
 // JS8_Mainwindow/UI_Constructor.cpp
 void UI_Constructor();
 
-void UI_Constructor::ensureMessageDock()
-{
-    if (messageDock_) return;
-
-    messagePanel_ = new MessagePanel(inboxPath(), this);
-
-    messageDock_ = new QDockWidget(tr("Message Inbox"), this);
-    messageDock_->setObjectName("messageInboxDock"); // important for save/restoreState
-    messageDock_->setWidget(messagePanel_);
-
-    // Choose where it can dock:
-    messageDock_->setAllowedAreas(Qt::LeftDockWidgetArea |
-                                  Qt::RightDockWidgetArea |
-                                  Qt::BottomDockWidgetArea);
-
-    // Choose behavior:
-    messageDock_->setFeatures(QDockWidget::DockWidgetMovable |
-                              QDockWidget::DockWidgetFloatable |
-                              QDockWidget::DockWidgetClosable);
-
-    // Initial placement:
-    addDockWidget(Qt::RightDockWidgetArea, messageDock_);
-
-    // Optional: closing hides (default); ensure no auto-delete:
-    messageDock_->setAttribute(Qt::WA_DeleteOnClose, false);
-
-    // Make the menu action reflect visibility automatically:
-    ui->actionShow_Message_Inbox->setCheckable(true);
-    ui->actionShow_Message_Inbox->setChecked(messageDock_->isVisible());
-    connect(messageDock_, &QDockWidget::visibilityChanged, this,
-            [this](bool visible) {
-                QSignalBlocker b(ui->actionShow_Message_Inbox);
-                ui->actionShow_Message_Inbox->setChecked(visible);
-            });
-
-    // Handle reply function
-    connect(messagePanel_, &MessagePanel::replyMessage, this,
-                [this](const QString &text) {
-                    addMessageText(text, true, true);
-                    refreshInboxCounts();
-                    displayCallActivity();
-                });
-
-    connect(messagePanel_, &MessagePanel::countsUpdated, this, [this]() {
-            refreshInboxCounts();
-            displayCallActivity();
-        });
-}
-
 void UI_Constructor::checkStartupWarnings() {
     if (m_config.check_for_updates()) {
         checkVersion(false);
@@ -468,6 +419,15 @@ void UI_Constructor::readSettings() {
     m_geometryNoControls =
         m_settings->value("geometryNoControls", saveGeometry()).toByteArray();
     restoreState(m_settings->value("state", saveState()).toByteArray());
+    
+    // If messagePanel is docked ensure that it refreshes on program startup
+    if (messagePanel_) {
+        QTimer::singleShot(0, messagePanel_, [this]() {
+            if (messagePanel_) {
+                messagePanel_->refresh();
+            }
+        });
+    }
 
     auto mainSplitterState = m_settings->value("MainSplitter").toByteArray();
     if (!mainSplitterState.isEmpty()) {
