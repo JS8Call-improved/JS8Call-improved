@@ -50,7 +50,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
+set(CMAKE_OSX_DEPLOYMENT_TARGET 14.4)
 
 #------------------------------------------------------------------------------#
 # Project configuration. The software build version is set here. If the version
