@@ -1,5 +1,3 @@
-
-
 /** \file
  * @brief member function of the UI_Constructor class
  *  processes JS8 commands
@@ -848,6 +846,24 @@ void UI_Constructor::processCommandActivity() {
             // notification for ack
             tryNotify("ack");
 
+            // stored MSG push notifications use the format "ACK MSG ID"
+#define SHOW_ALERT_FOR_ACK_MSG 1
+#if SHOW_ALERT_FOR_ACK_MSG
+            if (d.text.startsWith("MSG ID")) {
+                QString idText = d.text.trimmed();
+                QMessageBox *m = new QMessageBox(
+                    QMessageBox::Information,
+                    "Stored Message Available",
+                    QString("A stored message was announced at %1 UTC by %2 (%3)")
+                        .arg(d.utcTimestamp.time().toString())
+                        .arg(d.from)
+                        .arg(idText),
+                    QMessageBox::Ok,
+                    this);
+                m->show();
+            }
+#endif
+
             // make sure this is explicit
             continue;
         }
@@ -1161,3 +1177,4 @@ void UI_Constructor::processCommandActivity() {
         }
     }
 }
+

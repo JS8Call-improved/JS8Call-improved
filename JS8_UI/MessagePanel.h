@@ -24,6 +24,7 @@ signals:
   void countsUpdated();
   void requestFloat();
   void requestDock();
+  void messageDeleted(int id);
 
 public slots:
   void setCall(const QString &call);
@@ -34,6 +35,7 @@ public slots:
 private slots:
   void messageTableSelectionChanged(const QItemSelection & /*selected*/,
                                     const QItemSelection & /*deselected*/);
+  void on_replyPushButton_clicked();
 
 private:
   void configureReplyButton(int row, const QString &messageText);
