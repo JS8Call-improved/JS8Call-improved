@@ -210,7 +210,7 @@ void SpotClient::enqueueCmd(QString const &cmd, QString const &from,
                             QString const &to, QString const &relayPath,
                             QString const &text, QString const &grid,
                             QString const &extra, int const submode,
-                            int const dial, int const offset, int const snr) {
+                            Radio::Frequency dial, int const offset, int const snr) {
     if (m_->valid_) {
         m_->queue_.enqueue({"RX.DIRECTED",
                             "",
@@ -241,7 +241,7 @@ void SpotClient::enqueueCmd(QString const &cmd, QString const &from,
  * @param snr The signal-to-noise ratio.
  */
 void SpotClient::enqueueSpot(QString const &callsign, QString const &grid,
-                             int const submode, int const dial,
+                             int const submode, Radio::Frequency dial,
                              int const offset, int const snr) {
     if (m_->valid_) {
         m_->queue_.enqueue({"RX.SPOT",

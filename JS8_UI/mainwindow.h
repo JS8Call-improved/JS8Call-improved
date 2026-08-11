@@ -503,9 +503,9 @@ class UI_Constructor : public QMainWindow {
 
     Q_SIGNAL void spotClientSetLocalStation(QString, QString, QString);
     Q_SIGNAL void spotClientEnqueueCmd(QString, QString, QString, QString,
-                                       QString, QString, QString, int, int, int,
+                                       QString, QString, QString, int, Frequency, int,
                                        int);
-    Q_SIGNAL void spotClientEnqueueSpot(QString, QString, int, int, int, int);
+    Q_SIGNAL void spotClientEnqueueSpot(QString, QString, int, Frequency, int, int);
 
     Q_SIGNAL void decodedLineReady(QByteArray t);
     Q_SIGNAL void playNotification(const QString &name);
@@ -702,7 +702,7 @@ class UI_Constructor : public QMainWindow {
         QString call;
         QString through;
         QString grid;
-        int dial;
+        Frequency dial;
         int offset;
         QDateTime cqTimestamp;
         QDateTime ackTimestamp;
@@ -719,7 +719,7 @@ class UI_Constructor : public QMainWindow {
         QString from;
         QString to;
         QString cmd;
-        int dial;
+        Frequency dial;
         int offset;
         QDateTime utcTimestamp;
         int snr;
@@ -738,7 +738,7 @@ class UI_Constructor : public QMainWindow {
         bool isDirected;
         bool isBuffered;
         int bits;
-        int dial;
+        Frequency dial;
         int offset;
         QString text;
         QDateTime utcTimestamp;
@@ -997,14 +997,14 @@ class UI_Constructor : public QMainWindow {
     void spotSetLocal();
     void pskSetLocal();
     void aprsSetLocal();
-    void spotReport(int submode, int dial, int offset, int snr,
+    void spotReport(int submode, Frequency dial, int offset, int snr,
                     QString const &callsign, QString const &grid);
     void spotCmd(CommandDetail const &cmd);
     void spotAprsCmd(CommandDetail const &cmd);
-    void pskLogReport(QString const &mode, int dial, int offset, int snr,
+    void pskLogReport(QString const &mode, Frequency dial, int offset, int snr,
                       QString const &callsign, QString const &grid,
                       QDateTime const &utcTimestamp);
-    void spotAprsGrid(int dial, int offset, int snr, QString callsign,
+    void spotAprsGrid(Frequency dial, int offset, int snr, QString callsign,
                       QString grid);
     Radio::Frequency dialFrequency();
     void setSubmode(int submode);

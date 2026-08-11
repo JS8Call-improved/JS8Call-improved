@@ -574,7 +574,7 @@ void UI_Constructor::readSettings() {
 
             auto snr = values.value("snr", -64).toInt();
             auto grid = values.value("grid", "").toString();
-            auto dial = values.value("dial", 0).toInt();
+            auto dial = values.value("dial", 0).value<Frequency>();
             auto freq = values.value("freq", 0).toInt();
             auto tdrift = values.value("tdrift", 0).toFloat();
 
@@ -2328,7 +2328,7 @@ QString UI_Constructor::lookupCallInCompoundCache(QString const &call) {
     return m_compoundCallCache.value(call, call);
 }
 
-void UI_Constructor::spotReport(int const submode, int const dial,
+void UI_Constructor::spotReport(int const submode, Frequency dial,
                                 int const offset, int const snr,
                                 QString const &callsign, QString const &grid) {
     if (!m_config.spot_to_reporting_networks() ||
@@ -2382,7 +2382,7 @@ void UI_Constructor::spotAprsCmd(CommandDetail const &cmd) {
     emit aprsClientEnqueueThirdParty(by_call, from_call, cmd.text);
 }
 
-void UI_Constructor::spotAprsGrid(int dial, int offset, int snr,
+void UI_Constructor::spotAprsGrid(Frequency dial, int offset, int snr,
                                   QString callsign, QString grid) {
     if (!m_config.spot_to_reporting_networks())
         return;
@@ -2413,7 +2413,7 @@ void UI_Constructor::spotAprsGrid(int dial, int offset, int snr,
     emit aprsClientEnqueueSpot(by_call, from_call, grid, comment);
 }
 
-void UI_Constructor::pskLogReport(QString const &mode, int const dial,
+void UI_Constructor::pskLogReport(QString const &mode, Frequency dial,
                                   int const offset, int const snr,
                                   QString const &callsign, QString const &grid,
                                   QDateTime const &utcTimestamp) {
@@ -6263,7 +6263,7 @@ void UI_Constructor::refreshInboxCounts() {
             if (!m_callActivity.contains(from)) {
                 auto const utc = params.value("UTC").toString();
                 auto const snr = params.value("SNR").toInt();
-                auto const dial = params.value("DIAL").toInt();
+                auto const dial = params.value("DIAL").value<Frequency>();
                 auto const offset = params.value("OFFSET").toInt();
                 auto const tdrift = params.value("TDRIFT").toInt();
                 auto const submode = params.value("SUBMODE").toInt();

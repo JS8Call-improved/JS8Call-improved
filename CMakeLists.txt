@@ -237,6 +237,17 @@ target_precompile_headers(
 )
 
 #------------------------------------------------------------------------------#
+# Suppress noisy narrowing-conversion warnings from vendored sqlite3.c.
+# It's third-party code we don't maintain; no need to see 78 warnings
+# on every build.
+#------------------------------------------------------------------------------#
+set_source_files_properties(
+  vendor/sqlite3/sqlite3.c
+  PROPERTIES
+    COMPILE_OPTIONS "-Wno-shorten-64-to-32"
+)
+
+#------------------------------------------------------------------------------#
 # Source files common to all platforms.
 #------------------------------------------------------------------------------#
 
