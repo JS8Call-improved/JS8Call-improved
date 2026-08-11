@@ -4,6 +4,7 @@
  *        inbox_v2 schema. On first open, if a legacy inbox_v1 (JSON-blob)
  *        table is present, its rows are migrated into inbox_v2 once;
  *        inbox_v1 itself is left untouched and is never written to again.
+ * @see migrateV1ToV2() with associated notes on deprecation of v1
  * @author Chris-AC9KH (C) 2026 - All Rights Reserved
  */
 
@@ -197,11 +198,19 @@ bool Inbox::ensureSchemaAndMigrate() {
     return true;
 }
 
+/**
+ * @deprecated The inbox_v1 (JSON-blob) schema was deprecated as of JS8Call
+ *             3.0.3 in favor of inbox_v2's normalized columns. This method
+ *             exists solely as a one-time upgrade path for databases created
+ *             by pre-3.0.3 versions of the software: it is invoked once from
+ *             ensureSchemaAndMigrate() when inbox_v2 does not yet exist and a
+ *             legacy inbox_v1 table is found. inbox_v1 is read here but never
+ *             written to, and is otherwise left in place untouched (removal
+ *             is left for a future release). New code should not read from
+ *             or write to inbox_v1; use inbox_v2 via the query helpers below
+ *             instead.
+ */
 bool Inbox::migrateV1ToV2() {
-    // Read every row out of the legacy JSON-blob table and re-insert it into
-    // inbox_v2 as normalized columns, preserving the original row id exactly
-    // (it's referenced by value elsewhere: inbox_group_recip_v2.msg_id, and
-    // the separate msg_notify_v1.msg_id table).
     const char* selectSql = "SELECT id, blob FROM inbox_v1 ORDER BY id ASC;";
     sqlite3_stmt* sel = nullptr;
     int rc = sqlite3_prepare_v2(db_, selectSql, -1, &sel, nullptr);
