@@ -393,7 +393,6 @@ target_link_libraries(
   Qt::SerialPort
   Qt::WebSockets
   Qt::Widgets
-  Qt::WebSockets
 )
 
 #------------------------------------------------------------------------------#
