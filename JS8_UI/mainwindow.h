@@ -3,9 +3,12 @@
 #define MAINWINDOW_H
 
 #include "JS8_Audio/AudioDevice.h"
+#include "JS8_Audio/AudioInputDevice.h"
+#include "JS8_Audio/AudioInputManager.h"
+#include "JS8_Audio/AudioOutputDevice.h"
+#include "JS8_Audio/AudioOutputManager.h"
 #include "JS8_Audio/NotificationAudio.h"
 #include "JS8_Audio/SoundInput.h"
-#include "JS8_Audio/SoundOutput.h"
 #include "JS8_Include/EventFilter.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Include/qpriorityqueue.h"
@@ -45,6 +48,7 @@
 #include "JS8_Network/NetworkAccessManager.h"
 #include "JS8_Network/PSKReporter.h"
 #include "JS8_Network/SpotClient.h"
+#include "JS8_Network/TCISession.h"
 #include "JS8_Network/TCPClient.h"
 #include "JS8_Transceiver/Transceiver.h"
 #include "JS8_Transceiver/TransceiverFactory.h"
@@ -52,8 +56,8 @@
 #include "JS8_UDP/WSJTXMessageMapper.h"
 #include "JS8_UI/About.h"
 #include "JS8_UI/Configuration.h"
-#include "JS8_UI/WideGraph.h"
 #include "JS8_UI/MessagePanel.h"
+#include "JS8_UI/WideGraph.h"
 #include "LogQSO.h"
 #include "MessageReplyDialog.h"
 #include "styles.h"
@@ -173,7 +177,6 @@ class Transceiver;
 class MessageClient;
 class QTime;
 class HelpTextWindow;
-class SoundOutput;
 class Modulator;
 class SoundInput;
 class Detector;
@@ -511,12 +514,13 @@ class UI_Constructor : public QMainWindow {
     Q_SIGNAL void playNotification(const QString &name);
     Q_SIGNAL void initializeNotificationAudioOutputStream(const QAudioDevice &,
                                                           unsigned) const;
-    Q_SIGNAL void initializeAudioOutputStream(QAudioDevice, unsigned channels,
-                                              unsigned msBuffered) const;
+    Q_SIGNAL void initializeAudioOutputStream(AudioOutputDevice const &,
+                                          unsigned channels,
+                                          unsigned msBuffered) const;
     Q_SIGNAL void stopAudioOutputStream() const;
-    Q_SIGNAL void startAudioInputStream(QAudioDevice const &,
-                                        int framesPerBuffer, AudioDevice *sink,
-                                        AudioDevice::Channel) const;
+    Q_SIGNAL void startAudioInputStream(AudioInputDevice const &, int framesPerBuffer,
+                                       AudioDevice *sink,
+                                       AudioDevice::Channel channel) const;
     Q_SIGNAL void suspendAudioInputStream() const;
     Q_SIGNAL void resumeAudioInputStream() const;
     Q_SIGNAL void startDetector(AudioDevice::Channel) const;
@@ -526,8 +530,9 @@ class UI_Constructor : public QMainWindow {
     Q_SIGNAL void transmitFrequency(double) const;
     Q_SIGNAL void endTransmitMessage(bool quick = false) const;
     Q_SIGNAL void tune(bool = true) const;
-    Q_SIGNAL void sendMessage(double frequency, int submode, double txDelay,
-                              SoundOutput *, AudioDevice::Channel) const;
+    Q_SIGNAL void sendMessage(double audioFrequency, int submode, double txDelay,
+                 AudioOutputStream *stream,
+                 AudioDevice::Channel channel);
     Q_SIGNAL void outAttenuationChanged(qreal) const;
     Q_SIGNAL void toggleShorthand() const;
     Q_SIGNAL void submodeChanged(Varicode::SubmodeType) const;
@@ -595,9 +600,9 @@ class UI_Constructor : public QMainWindow {
 
     Detector *m_detector;
     unsigned m_FFTSize;
-    SoundInput *m_soundInput;
+    AudioInputManager *m_audioInput;
     Modulator *m_modulator;
-    SoundOutput *m_soundOutput;
+    AudioOutputManager *m_audioOutput;
     NotificationAudio *m_notification;
 
     // Configuration might one day offer to send a txDelayChanged signal.
@@ -981,6 +986,7 @@ class UI_Constructor : public QMainWindow {
     PSKReporter *m_pskReporter;
     SpotClient *m_spotClient;
     APRSISClient *m_aprsClient;
+    TCISession *m_tciSession = nullptr;
     AprsInboundRelay *m_aprsInboundRelay;
     QVariantHash m_pwrBandTxMemory; // Remembers power level by band
     QVariantHash

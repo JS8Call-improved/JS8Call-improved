@@ -6,7 +6,7 @@
 #include <QAudio>
 #include <QPointer>
 
-class SoundOutput;
+class AudioOutputStream;
 
 /**
  * Audio device that generates PCM audio frames that encode a message.
@@ -52,8 +52,8 @@ class Modulator final : public AudioDevice {
 
     // Slots
 
-    Q_SLOT void start(double audioFrequency, int submode, double tx_delay,
-                      SoundOutput *stream, Channel channel);
+  Q_SLOT void start(double audioFrequency, int submode, double tx_delay,
+                AudioOutputStream *stream, Channel channel);
     Q_SLOT void stop(bool quick = false);
     Q_SLOT void tune(bool state = true);
 
@@ -78,7 +78,7 @@ class Modulator final : public AudioDevice {
   private:
     // Data members
 
-    QPointer<SoundOutput> m_stream;
+    QPointer<AudioOutputStream> m_stream;
     std::atomic<State> m_state = State::Idle;
     bool m_quickClose = false;
     bool m_tuning = false;

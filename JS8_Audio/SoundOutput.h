@@ -2,6 +2,8 @@
 #ifndef SOUNDOUT_H__
 #define SOUNDOUT_H__
 
+#include "JS8_Audio/AudioOutputStream.h"
+
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QAudioSink>
@@ -10,11 +12,12 @@
 
 // An instance of this sends audio data to a specified soundcard.
 
-class SoundOutput : public QObject {
+class SoundOutput : public AudioOutputStream {
     Q_OBJECT;
 
   public:
-    SoundOutput() = default;
+    explicit SoundOutput(QObject *parent = nullptr)
+    : AudioOutputStream(parent) {}
 
     qreal attenuation() const;
     QAudioFormat format() const;
@@ -24,11 +27,11 @@ class SoundOutput : public QObject {
                    unsigned msBuffered = 0u);
     void setDeviceFormat(QAudioDevice const &device, QAudioFormat const &format,
                          unsigned msBuffered = 0u);
-    void restart(QIODevice *);
-    void suspend();
-    void resume();
-    void reset();
-    void stop();
+    void restart(QIODevice *) override;
+    void suspend() override;
+    void resume() override;
+    void reset() override;
+    void stop() override;
     void setAttenuation(qreal); /* unsigned */
     void resetAttenuation();    /* to zero */
 
