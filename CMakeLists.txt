@@ -260,16 +260,13 @@ target_sources(
   JS8_Audio/AudioOutputStream.h
   JS8_Audio/AudioInputManager.cpp
   JS8_Audio/AudioOutputDevice.h
-  JS8_Audio/AudioOutputManager.h
   JS8_Audio/AudioOutputManager.cpp
   JS8_Audio/BWFFile.cpp
   JS8_Audio/NotificationAudio.cpp
   JS8_Audio/NotificationSoundOutput.cpp
   JS8_Audio/SoundInput.cpp
   JS8_Audio/SoundOutput.cpp
-  JS8_Audio/TCIAudioInput.h
   JS8_Audio/TCIAudioInput.cpp
-  JS8_Audio/TCIAudioOutput.h
   JS8_Audio/TCIAudioOutput.cpp
   JS8_JSC/JSC.cpp
   JS8_JSC/JSC_checker.cpp
