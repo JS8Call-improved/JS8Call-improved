@@ -248,7 +248,7 @@ void UI_Constructor::tryBandHop() {
             m->show();
 
 #if 0
-		  // TODO: jsherer - this is totally a hack because of the signal that gets emitted to clearActivity on band change...
+          // TODO: jsherer - this is totally a hack because of the signal that gets emitted to clearActivity on band change...
           QTimer *t = new QTimer(this);
           t->setInterval(250);
           t->setSingleShot(true);
@@ -321,7 +321,8 @@ void UI_Constructor::writeSettings() {
     m_settings->setValue("TimeDrift", DriftingDateTime::drift());
     m_settings->setValue("ShowTooltips", ui->actionShow_Tooltips->isChecked());
     m_settings->setValue("ShowStatusbar", ui->statusBar->isVisible());
-    m_settings->setValue("RXActivity", ui->textEditRX->toHtml());
+    // RXActivity now lives in activity.db3 (see ActivityDB); the legacy
+    // ini key is left unwritten so older builds can still read it.
 
     m_settings->endGroup();
 
@@ -357,40 +358,9 @@ void UI_Constructor::writeSettings() {
 
     m_settings->endGroup();
 
-    auto now = DriftingDateTime::currentDateTimeUtc();
-    int callsignAging = m_config.callsign_aging();
-
-    m_settings->beginGroup("CallActivity");
-    m_settings->remove(""); // remove all keys in current group
-    foreach (auto cd, m_callActivity.values()) {
-        if (cd.call.trimmed().isEmpty()) {
-            continue;
-        }
-        if (callsignAging &&
-            cd.utcTimestamp.secsTo(now) / 60 >= callsignAging) {
-            continue;
-        }
-        m_settings->setValue(
-            cd.call.trimmed(),
-            QVariantMap{
-                {"snr", QVariant(cd.snr)},
-                {"grid", QVariant(cd.grid)},
-                {"dial", QVariant(cd.dial)},
-                {"freq", QVariant(cd.offset)},
-                {"tdrift", QVariant(cd.tdrift)},
-#if CACHE_CALL_DATETIME_AS_STRINGS
-                {"ackTimestamp",
-                 QVariant(cd.ackTimestamp.toString("yyyy-MM-dd hh:mm:ss"))},
-                {"utcTimestamp",
-                 QVariant(cd.utcTimestamp.toString("yyyy-MM-dd hh:mm:ss"))},
-#else
-                {"ackTimestamp", QVariant(cd.ackTimestamp)},
-                {"utcTimestamp", QVariant(cd.utcTimestamp)},
-#endif
-                {"submode", QVariant(cd.submode)},
-            });
-    }
-    m_settings->endGroup();
+    // Call activity now lives in activity.db3, written row-by-row as
+    // stations are heard; the legacy [CallActivity] group is imported
+    // once (importLegacyActivityIfNeeded) and left unwritten thereafter.
 }
 
 void UI_Constructor::applyPillSettings() {
@@ -419,7 +389,7 @@ void UI_Constructor::readSettings() {
     m_geometryNoControls =
         m_settings->value("geometryNoControls", saveGeometry()).toByteArray();
     restoreState(m_settings->value("state", saveState()).toByteArray());
-    
+
     // If messagePanel is docked ensure that it refreshes on program startup
     if (messagePanel_) {
         QTimer::singleShot(0, messagePanel_, [this]() {
@@ -462,10 +432,8 @@ void UI_Constructor::readSettings() {
     ui->actionShow_Statusbar->setChecked(
         m_settings->value("ShowStatusbar", true).toBool());
     ui->statusBar->setVisible(ui->actionShow_Statusbar->isChecked());
-    ui->textEditRX->setHtml(
-        m_config.reset_activity()
-            ? ""
-            : m_settings->value("RXActivity", "").toString());
+    // RX text is loaded per-band once the dial frequency is known - see
+    // restoreActivity() (fixes #267: activity attributed to the wrong band)
     QTimer::singleShot(0, this, [this](){
         ui->textEditRX->verticalScrollBar()->setValue(
             ui->textEditRX->verticalScrollBar()->maximum());
@@ -564,51 +532,27 @@ void UI_Constructor::readSettings() {
         8);
     m_settings->endGroup();
 
-    if (m_config.reset_activity()) {
-        // NOOP
-    } else {
-        m_settings->beginGroup("CallActivity");
-        foreach (auto call, m_settings->allKeys()) {
+    // Call activity is imported into activity.db3 once, band-attributed by
+    // each record's dial frequency (fixes #267), then loaded per-band.
+    bool const activityReady = m_activityStorage->importLegacyActivityIfNeeded();
 
-            auto values = m_settings->value(call).toMap();
-
-            auto snr = values.value("snr", -64).toInt();
-            auto grid = values.value("grid", "").toString();
-            auto dial = values.value("dial", 0).value<Frequency>();
-            auto freq = values.value("freq", 0).toInt();
-            auto tdrift = values.value("tdrift", 0).toFloat();
-
-#if CACHE_CALL_DATETIME_AS_STRINGS
-            auto ackTimestampStr = values.value("ackTimestamp", "").toString();
-            auto ackTimestamp =
-                QDateTime::fromString(ackTimestampStr, "yyyy-MM-dd hh:mm:ss");
-            ackTimestamp.setUtcOffset(0);
-
-            auto utcTimestampStr = values.value("utcTimestamp", "").toString();
-            auto utcTimestamp =
-                QDateTime::fromString(utcTimestampStr, "yyyy-MM-dd hh:mm:ss");
-            utcTimestamp.setUtcOffset(0);
-#else
-            auto ackTimestamp = values.value("ackTimestamp").toDateTime();
-            auto utcTimestamp = values.value("utcTimestamp").toDateTime();
-#endif
-            auto submode =
-                values.value("submode", Varicode::JS8CallNormal).toInt();
-
-            CallDetail cd = {};
-            cd.call = call;
-            cd.snr = snr;
-            cd.grid = grid;
-            cd.dial = dial;
-            cd.offset = freq;
-            cd.tdrift = tdrift;
-            cd.ackTimestamp = ackTimestamp;
-            cd.utcTimestamp = utcTimestamp;
-            cd.submode = submode;
-
-            logCallActivity(cd, false);
-        }
+    // Preload the last-known band so the panes have data before (or
+    // without) a rig connection; updateCurrentBand() corrects the guess
+    // once the rig reports. Skipped if a requested reset failed to apply.
+    if (activityReady || !m_config.reset_activity()) {
+        m_settings->beginGroup("Common");
+        auto const dial =
+            m_settings
+                ->value("DialFreq", QVariant::fromValue<Frequency>(
+                                        Default::DIAL_FREQUENCY))
+                .value<Frequency>();
         m_settings->endGroup();
+        // must run before the seed below, or its aging filter won't see
+        // unread senders as exempt
+        refreshInboxCounts();
+        m_activityStorage->beginStartupGrace();
+        restoreActivity(m_config.bands()->find(dial));
+        m_activityStorage->showLegacyRxTextIfDegraded();
     }
 
     QTimer::singleShot(0, this, [this]{
@@ -786,8 +730,26 @@ void UI_Constructor::on_actionFocus_Call_Activity_Table_triggered() {
     ui->tableWidgetCalls->setFocus();
 }
 
+// The Clear actions also drop the matching rows from activity.db3;
+// clearActivity() itself never deletes stored rows, since it also runs
+// during ordinary band changes.
 void UI_Constructor::on_actionClear_All_Activity_triggered() {
+    // permanently deletes every band's stored history, so it asks first
+    if (QMessageBox::Yes !=
+        QMessageBox::question(
+            this, tr("Clear All Activity"),
+            tr("Clear all call activity and RX history for every "
+               "band?\n\n"
+               "This permanently deletes the stored history, not just "
+               "what is on screen."),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No)) {
+        return;
+    }
+
+    // panes clear first: clearActivity()'s inbox refresh re-persists
+    // unread senders, which would otherwise repopulate the store post-wipe
     clearActivity();
+    m_activityStorage->clearAllActivity();
 }
 
 void UI_Constructor::on_actionClear_Band_Activity_triggered() {
@@ -795,11 +757,11 @@ void UI_Constructor::on_actionClear_Band_Activity_triggered() {
 }
 
 void UI_Constructor::on_actionClear_RX_Activity_triggered() {
-    clearRXActivity();
+    m_activityStorage->clearRxActivity();
 }
 
 void UI_Constructor::on_actionClear_Call_Activity_triggered() {
-    clearCallActivity();
+    m_activityStorage->clearCallActivity();
 }
 
 void UI_Constructor::on_actionSetOffset_triggered() {
@@ -976,7 +938,6 @@ void UI_Constructor::on_actionSettings_triggered() { openSettings(); }
 
 void UI_Constructor::openSettings(int tab) {
     m_config.select_tab(tab);
-    
     // Save scroll position before opening settings
     QScrollBar *bar = ui->textEditRX->verticalScrollBar();
     const bool wasAtBottom = (bar->value() == bar->maximum());
@@ -1041,7 +1002,7 @@ void UI_Constructor::openSettings(int tab) {
 
         m_opCall = m_config.opCall();
     }
-    
+
     // Restore scroll position after settings dialog
     QTimer::singleShot(0, this, [this, wasAtBottom, savedPos](){
         QScrollBar *bar = ui->textEditRX->verticalScrollBar();
@@ -1233,16 +1194,14 @@ void UI_Constructor::updateCurrentBand() {
     auto const &band_name = m_config.bands()->find(dial_frequency);
 
     if (m_lastBand == band_name) {
+        // panes may still show the startup-guessed bucket; move them
+        // to the rig's actual bucket even though the band name agrees
+        m_activityStorage->bandUnchanged(band_name);
         return;
     }
 
-    cacheActivity(m_lastBand);
-
-    // clear activity on startup if asked or on when the previous band is not
-    // empty
-    if (m_config.reset_activity() || !m_lastBand.isEmpty()) {
-        clearActivity();
-    }
+    // switch panes before the WSJT-X status datagram below reads them
+    m_activityStorage->bandChanged(band_name);
 
     m_wideGraph->setBand(band_name);
 
@@ -1294,7 +1253,6 @@ void UI_Constructor::updateCurrentBand() {
     m_lastBand = band_name;
 
     band_changed();
-    restoreActivity(m_lastBand);
 }
 
 void UI_Constructor::displayDialFrequency() {
@@ -1442,6 +1400,7 @@ void UI_Constructor::closeEvent(QCloseEvent *e) {
     }
     m_valid = false; // suppresses subprocess errors
     m_config.transceiver_offline();
+    m_activityStorage->flushOnClose();
     writeSettings();
     m_guiTimer.stop();
     m_prefixes.reset();
@@ -2278,6 +2237,10 @@ void UI_Constructor::logCallActivity(CallDetail d, bool spot) {
         }
     }
 
+    // mirror the row to activity.db3 as it changes, so it survives any
+    // kind of exit (write-on-change, not write-on-close)
+    m_activityStorage->persistCallActivity(d);
+
     // enqueue for spotting to psk reporter
     if (spot) {
         m_rxCallQueue.append(d);
@@ -2895,6 +2858,10 @@ void UI_Constructor::stopTx2() {
 
 void UI_Constructor::TxAgain() { auto_tx_mode(true); }
 
+// The RAM band caches are the session's display layer, exactly as on
+// master: hops restore the panes verbatim, with or without a working
+// store. activity.db3 sits underneath as a write-through store plus a
+// once-per-session seed of each bucket's history (seedActivityForBand).
 void UI_Constructor::cacheActivity(QString key) {
     m_callActivityBandCache[key] = m_callActivity;
     m_bandActivityBandCache[key] = m_bandActivity;
@@ -2904,25 +2871,36 @@ void UI_Constructor::cacheActivity(QString key) {
 }
 
 void UI_Constructor::restoreActivity(QString key) {
-    if (m_callActivityBandCache.contains(key)) {
-        m_callActivity = m_callActivityBandCache[key];
+    // re-entering the bucket on screen: live panes are newer than any cache
+    bool const sameBucket = m_activityStorage->isBucketLoaded() &&
+                            key == m_activityStorage->currentBucket();
+
+    if (!sameBucket) {
+        if (m_bandActivityBandCache.contains(key)) {
+            m_bandActivity = m_bandActivityBandCache[key];
+        }
+        if (m_heardGraphIncomingBandCache.contains(key)) {
+            m_heardGraphIncoming = m_heardGraphIncomingBandCache[key];
+        }
+        if (m_heardGraphOutgoingBandCache.contains(key)) {
+            m_heardGraphOutgoing = m_heardGraphOutgoingBandCache[key];
+        }
+        if (m_callActivityBandCache.contains(key)) {
+            m_callActivity = m_callActivityBandCache[key];
+        }
+        if (m_rxTextBandCache.contains(key)) {
+            ui->textEditRX->setHtml(m_rxTextBandCache[key]);
+        }
+        // the document was rebuilt: block indexes remembered for
+        // in-progress multi-frame messages point into the old document
+        m_rxFrameBlockNumbers.clear();
+        QTimer::singleShot(0, this, [this]() {
+            ui->textEditRX->verticalScrollBar()->setValue(
+                ui->textEditRX->verticalScrollBar()->maximum());
+        });
     }
 
-    if (m_bandActivityBandCache.contains(key)) {
-        m_bandActivity = m_bandActivityBandCache[key];
-    }
-
-    if (m_rxTextBandCache.contains(key)) {
-        ui->textEditRX->setHtml(m_rxTextBandCache[key]);
-    }
-
-    if (m_heardGraphIncomingBandCache.contains(key)) {
-        m_heardGraphIncoming = m_heardGraphIncomingBandCache[key];
-    }
-
-    if (m_heardGraphOutgoingBandCache.contains(key)) {
-        m_heardGraphOutgoing = m_heardGraphOutgoingBandCache[key];
-    }
+    m_activityStorage->bucketRestored(key, !sameBucket);
 
     displayActivity(true);
 }
@@ -2939,6 +2917,8 @@ void UI_Constructor::clearActivity() {
     m_rxCommandQueue.clear();
     m_lastTxMessage.clear();
 
+    // before the clears: with senders still in the map this hits the
+    // update branch, not the create branch that would notify per sender
     refreshInboxCounts();
     resetTimeDeltaAverage();
 
@@ -5322,18 +5302,16 @@ void UI_Constructor::qsy(int const hzDelta) {
 
     m_bandActivity.swap(bandActivity);
 
-    // Adjust call activity frequencies.
-
-    for (auto [key, value] : m_callActivity.asKeyValueRange()) {
-        value.offset -= hzDelta;
-    }
+    // mirrors the offset rewrite to the store, or stale offsets return
+    // at the next band round-trip and clicked decodes stop resolving
+    m_activityStorage->adjustCallActivityOffsets(hzDelta);
 
     displayActivity(true);
 }
 
 void UI_Constructor::onDriftChanged(qint64 /*new_drift_ms*/) {
-    // here we reset the buffer position without clearing the buffer
-    // this makes the detected emit the correct k when drifting time
+    // resets k without clearing the buffer, so the detector emits the
+    // correct k across a drift change
     qCDebug(mainwindow_js8) << "Processing drift change.";
     m_detector->resetBufferPosition();
 }
@@ -5444,6 +5422,9 @@ void UI_Constructor::handle_transceiver_update(
 
     // ensure frequency display is correct
     // setRig();
+    // "state" is set AFTER this call: the rig's first report can be bogus
+    // (e.g. hamlib's dummy backend with Rig=None), and updateCurrentBand()
+    // discards it via the !state.isValid() guard below.
     updateCurrentBand();
     displayDialFrequency();
     update_dynamic_property(ui->readFreq, "state", "ok");
@@ -5900,9 +5881,19 @@ QString UI_Constructor::callsignSelected(bool) {
         auto const offsetLo = selectedOffset - threshold;
         auto const offsetHi = selectedOffset + threshold;
 
+        // Skip aged-out stations rather than let the reply/remove/block
+        // action silently target a neighbouring station instead.
+        auto const aging = m_config.callsign_aging();
+        auto const now = DriftingDateTime::currentDateTimeUtc();
+
         for (auto const &key : keys) {
             if (auto const &d = m_callActivity[key];
                 offsetLo <= d.offset && d.offset <= offsetHi) {
+                if (aging && m_rxInboxCountCache.value(d.call, 0) <= 0 &&
+                    d.utcTimestamp.isValid() &&
+                    d.utcTimestamp.secsTo(now) / 60 >= aging) {
+                    return QString();
+                }
                 return d.call;
             }
         }
@@ -6066,6 +6057,9 @@ void UI_Constructor::processActivity(bool force) {
         return;
     }
 
+    // batch: avoid one autocommit per station across this whole drain
+    m_activityStorage->beginBatch();
+
     // Recent Rx Activity
     processRxActivity();
 
@@ -6083,6 +6077,8 @@ void UI_Constructor::processActivity(bool force) {
 
     // Process PSKReporter Spots
     processSpots();
+
+    m_activityStorage->endBatch();
 
     m_rxDirty = false;
 }
@@ -6240,6 +6236,8 @@ QString UI_Constructor::inboxPath() {
 void UI_Constructor::refreshInboxCounts() {
     auto inbox = Inbox(inboxPath());
     if (inbox.open()) {
+        // batch: each synthesized sender below persists via logCallActivity
+        m_activityStorage->beginBatch();
         // reset inbox counts
         m_rxInboxCountCache.clear();
 
@@ -6265,10 +6263,10 @@ void UI_Constructor::refreshInboxCounts() {
                 auto const snr = params.value("SNR").toInt();
                 auto const dial = params.value("DIAL").value<Frequency>();
                 auto const offset = params.value("OFFSET").toInt();
-                auto const tdrift = params.value("TDRIFT").toInt();
+                auto const tdrift = params.value("TDRIFT").toFloat();
                 auto const submode = params.value("SUBMODE").toInt();
 
-                CallDetail cd;
+                CallDetail cd = {};
                 cd.call = from;
                 cd.snr = snr;
                 cd.dial = dial;
@@ -6288,6 +6286,8 @@ void UI_Constructor::refreshInboxCounts() {
         foreach (auto key, groupMessageCounts.keys()) {
             m_rxInboxCountCache[key] = groupMessageCounts[key];
         }
+
+        m_activityStorage->endBatch();
     }
 }
 

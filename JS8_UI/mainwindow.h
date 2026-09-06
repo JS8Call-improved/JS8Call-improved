@@ -12,8 +12,10 @@
 #include "JS8_JSC/JSC_checker.h"
 #include "JS8_Logbook/LogBook.h"
 #include "JS8_Main/APRSISClient.h"
+#include "JS8_Main/ActivityStorageController.h"
 #include "JS8_Main/AprsInboundRelay.h"
 #include "JS8_Main/Bands.h"
+#include "JS8_Main/CallDetail.h"
 #include "JS8_Main/DirectedMessageHighlighter.h"
 #include "JS8_Main/DriftingDateTime.h"
 #include "JS8_Main/FrequencyList.h"
@@ -127,6 +129,7 @@
 #include <cstring>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
@@ -193,7 +196,9 @@ class UI_Constructor : public QMainWindow {
     friend class WSJTXMessageMapper; // Allow WSJTXMessageMapper to access
                                      // private members
 
-    struct CallDetail;
+    // Defined in JS8_Main/CallDetail.h so the activity storage layer can
+    // convert to and from it without including this header.
+    using CallDetail = ::CallDetail;
     struct CommandDetail;
 
   public:
@@ -593,6 +598,11 @@ class UI_Constructor : public QMainWindow {
     Frequency m_lastDialFreq;
     QString m_lastBand;
 
+    // Per-band persistent activity storage (activity.db3) - issue #267.
+    // Everything above ActivityDB lives in the controller; the window
+    // keeps only this pointer and thin delegating calls.
+    std::unique_ptr<ActivityStorageController> m_activityStorage;
+
     Detector *m_detector;
     unsigned m_FFTSize;
     SoundInput *m_soundInput;
@@ -697,21 +707,6 @@ class UI_Constructor : public QMainWindow {
     QString m_rptRcvd;
     QString m_msgSent0;
     QString m_opCall;
-
-    struct CallDetail {
-        QString call;
-        QString through;
-        QString grid;
-        Frequency dial;
-        int offset;
-        QDateTime cqTimestamp;
-        QDateTime ackTimestamp;
-        QDateTime utcTimestamp;
-        int snr;
-        int bits;
-        float tdrift;
-        int submode;
-    };
 
     struct CommandDetail {
         bool isCompound;
@@ -910,11 +905,16 @@ class UI_Constructor : public QMainWindow {
 
     QMap<QString, int> m_rxInboxCountCache; // call -> count
 
+    // The RAM band caches remain the session's display layer, exactly as
+    // on master: band round-trips restore the panes verbatim, with or
+    // without a working store. activity.db3 sits underneath as a
+    // write-through store plus a once-per-session seed of each bucket's
+    // history (see seedActivityForBand).
     QMap<QString, QMap<QString, CallDetail>>
-        m_callActivityBandCache; // band -> call activity
+        m_callActivityBandCache; // bucket -> call activity
+    QMap<QString, QString> m_rxTextBandCache; // bucket -> rx text
     QMap<QString, QMap<int, QList<ActivityDetail>>>
         m_bandActivityBandCache;              // band -> band activity
-    QMap<QString, QString> m_rxTextBandCache; // band -> rx text
     QMap<QString, QMap<QString, QSet<QString>>>
         m_heardGraphOutgoingBandCache; // band -> heard in
     QMap<QString, QMap<QString, QSet<QString>>>

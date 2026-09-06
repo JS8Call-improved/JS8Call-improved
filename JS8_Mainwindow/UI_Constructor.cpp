@@ -71,6 +71,55 @@ UI_Constructor::UI_Constructor(QString const &program_info,
       m_aprsClient{new APRSISClient{"rotate.aprs2.net", 14580}},
       m_aprsInboundRelay{nullptr} {
     ui->setupUi(this);
+
+    // Per-band persistent activity storage (activity.db3) - issue #267.
+    // Built as soon as the panes exist, because readSettings() below runs
+    // the one-time legacy import and the startup preload through it.
+    {
+        ActivityStorageController::Context context;
+        context.config = &m_config;
+        context.settings = m_settings;
+        context.defaultDial = Default::DIAL_FREQUENCY;
+        context.rxTextEdit = ui->textEditRX;
+        context.callActivity = &m_callActivity;
+        context.inboxCounts = &m_rxInboxCountCache;
+        context.callActivityBandCache = &m_callActivityBandCache;
+        context.rxTextBandCache = &m_rxTextBandCache;
+        context.showStatusMessage = [this](QString const &message) {
+            showStatusMessage(message);
+        };
+        context.displayActivity = [this]() { displayActivity(true); };
+        context.clearRxFrameBlockNumbers = [this]() {
+            m_rxFrameBlockNumbers.clear();
+        };
+        context.clearActivityPanes = [this]() { clearActivity(); };
+        context.clearRxPane = [this]() { clearRXActivity(); };
+        context.clearCallActivityPane = [this]() { clearCallActivity(); };
+        context.cacheActivity = [this](QString const &key) {
+            cacheActivity(key);
+        };
+        context.restoreActivity = [this](QString const &key) {
+            restoreActivity(key);
+        };
+        context.clearBandCaches = [this]() {
+            m_callActivityBandCache.clear();
+            m_rxTextBandCache.clear();
+            m_bandActivityBandCache.clear();
+            m_heardGraphIncomingBandCache.clear();
+            m_heardGraphOutgoingBandCache.clear();
+        };
+        context.dropBandCache = [this](QString const &key) {
+            m_callActivityBandCache.remove(key);
+            m_rxTextBandCache.remove(key);
+            m_bandActivityBandCache.remove(key);
+            m_heardGraphIncomingBandCache.remove(key);
+            m_heardGraphOutgoingBandCache.remove(key);
+        };
+        // no QObject parent: the unique_ptr is the sole owner
+        m_activityStorage =
+            std::make_unique<ActivityStorageController>(std::move(context));
+    }
+
     ui->frame->setStyleSheet(logFrameStyle());
     ui->logWidget->setStyleSheet(Styles::LogWidgetStyle);
     ui->dialFreqUpButton->setStyleSheet(Styles::DialFreqUpDownButtonStyle);
@@ -807,21 +856,13 @@ UI_Constructor::UI_Constructor(QString const &program_info,
 
     auto clearActionAll = new QAction(QString("Clear All Lists"), nullptr);
     connect(clearActionAll, &QAction::triggered, this, [this]() {
-        if (QMessageBox::Yes !=
-            QMessageBox::question(
-                this, "Clear All Activity",
-                "Are you sure you would like to clear all activity?",
-                QMessageBox::Yes | QMessageBox::No)) {
-            return;
-        }
-
-        clearActivity();
+        on_actionClear_All_Activity_triggered();
     });
 
     // setup tablewidget context menus
     auto clearAction1 = new QAction(QString("Clear"), ui->textEditRX);
     connect(clearAction1, &QAction::triggered, this,
-            [this]() { clearRXActivity(); });
+            [this]() { on_actionClear_RX_Activity_triggered(); });
 
     auto saveAction = new QAction(QString("Save As..."), ui->textEditRX);
     connect(saveAction, &QAction::triggered, this, [this]() {
@@ -850,6 +891,8 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             stream << text;
         }
     });
+
+    m_activityStorage->setupRxTextAutosave();
 
     ui->textEditRX->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(
@@ -1078,7 +1121,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
     auto clearAction4 =
         new QAction(QString("Clear Entire List"), ui->tableWidgetCalls);
     connect(clearAction4, &QAction::triggered, this,
-            [this]() { clearCallActivity(); });
+            [this]() { on_actionClear_Call_Activity_triggered(); });
 
     auto addStation = new QAction(QString("Add New Station or Group..."),
                                   ui->tableWidgetCalls);
@@ -1107,9 +1150,13 @@ UI_Constructor::UI_Constructor(QString const &program_info,
 
         } else {
             if (Varicode::isValidCallsign(callsign, nullptr)) {
-                CallDetail cd = {};
-                cd.call = callsign;
-                m_callActivity[callsign] = cd;
+                if (!m_callActivity.contains(callsign)) {
+                    CallDetail cd = {};
+                    cd.call = callsign;
+                    m_callActivity[callsign] = cd;
+                    // manual add: current band
+                    m_activityStorage->persistCallActivity(cd, true);
+                }
             } else {
                 JS8MessageBox::critical_message(
                     this, QString("%1 is not a valid callsign or group")
@@ -1134,6 +1181,7 @@ UI_Constructor::UI_Constructor(QString const &program_info,
             m_config.removeGroup(selectedCall);
         } else if (m_callActivity.contains(selectedCall)) {
             m_callActivity.remove(selectedCall);
+            m_activityStorage->removeStoredCall(selectedCall);
         }
 
         displayActivity(true);
