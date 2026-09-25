@@ -706,6 +706,13 @@ Sets the currently set transmit mode speed
 
 * Sometimes it comes back with the first form.
 
+> [!NOTE]
+> `API >= 3.1`: the speed cannot be changed while a message is transmitting, the same rule that greys out the speeds in the GUI's Mode menu. A `MODE.SET_SPEED` sent then is refused: the response carries the unchanged `SPEED` and an `ERROR`, and nothing changes. To restore a speed after a transmission, retry after `TX.END` or `RIG.PTT` off until the returned `SPEED` is the one you asked for. Text that `TX.SEND_MESSAGE` only places in the message window (autoreply off) goes out at the speed set when the operator sends it.
+
+| Response |
+|----------|
+|{"params":{"ERROR":"Cannot change speed while transmitting","SPEED":0,"_ID":270412242558},"type":"MODE.SET_SPEED","value":""}|
+
 
 ## MODE Speeds
 | Mode      | Number |
