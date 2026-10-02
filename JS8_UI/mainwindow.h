@@ -457,7 +457,7 @@ class UI_Constructor : public QMainWindow {
     void emitTones();
     void udpNetworkMessage(Message const &message);
     void tcpNetworkMessage(Message const &message);
-    void networkMessage(Message const &message); // JS8_Mainwindow/networkMessage.cpp
+    void networkMessage(Message const &message, bool internal = false); // JS8_Mainwindow/networkMessage.cpp
     bool canSendNetworkMessage();
     void sendNetworkMessage(QString const &type, QString const &message);
     void sendNetworkMessage(QString const &type, QString const &message,
@@ -747,6 +747,7 @@ class UI_Constructor : public QMainWindow {
     int m_txFrameCountEstimate;
     int m_txFrameCount;
     int m_txFrameCountSent;
+    bool m_txEventStarted = false;
     QTimer m_txTextDirtyDebounce;
     bool m_txTextDirty;
     QString m_txTextDirtyLastText;
