@@ -8,8 +8,11 @@
 #include "JS8.h"
 #include "JS8_Include/commons.h"
 #include "JS8_Mode/FrequencyTracker.h"
+#include "JS8_Mode/coherent_likelihood.h"
 #include "JS8_Mode/whitening_processor.h"
+#include "decoder_aided_redemod.h"
 #include "ldpc_feedback.h"
+#include "optional_work.h"
 #include "soft_combiner.h"
 
 #include <QDebug>
@@ -30,6 +33,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <cstdlib>
 #include <fftw3.h>
 #include <initializer_list>
@@ -186,9 +190,12 @@ constexpr int KK = 87;           // Information bits (75 + CRC12)
 constexpr int ND = 58;           // Data symbols
 constexpr int NS = 21;           // Sync symbols (3 @ Costas 7x7)
 constexpr int NN = NS + ND;      // Total channel symbols (79)
-constexpr float ASYNCMIN = 1.5f; // Minimum sync
+constexpr float ASYNCMIN = 1.5f; // Normal coarse-sync threshold
+constexpr float ASYNCDEEP = 1.20f; // Bounded fallback coarse-sync threshold
+constexpr float SOFT_COSTAS_MIN = 1.5f; // Minimum soft Costas power ratio
 constexpr int NFSRCH = 5; // Search frequency range in Hz (i.e., +/- 2.5 Hz)
-constexpr std::size_t NMAXCAND = 300; // Maxiumum number of candidate signals
+constexpr std::size_t NMAXCAND = 300; // Maximum normal candidates
+constexpr std::size_t NMAXDEEP = 24; // Maximum deep-search candidates
 constexpr int NFILT = 1400;           // Filter length
 constexpr int NROWS = 8;
 constexpr int NFOS = 2;
@@ -542,6 +549,13 @@ struct Sync {
         : freq(freq), step(step), sync(sync) {}
 };
 
+struct SyncCandidates {
+    std::vector<Sync> normal;
+    std::vector<Sync> deep;
+
+    bool empty() const noexcept { return normal.empty() && deep.empty(); }
+};
+
 // Tag structs so that we can refer to multi index container indices
 // by a descriptive tag instead of by the index of the index. These
 // don't need to be anything but a name.
@@ -592,7 +606,34 @@ class Decode {
 namespace {
 constexpr int BP_MAX_ROWS = 7;        // Max rows per column in Nm
 constexpr int BP_MAX_CHECKS = 3;      // Max checks per bit in Mn
-constexpr int BP_MAX_ITERATIONS = 30; // Max iterations in BP decoder
+constexpr int BP_MAX_ITERATIONS = 30; // Max iterations in normal BP decoder
+constexpr int BP_RESCUE_ITERATIONS = 80; // Extended iterations for near misses
+constexpr int BP_RESCUE_MAX_CHECKS = 12; // Maximum best syndrome for rescue
+constexpr int BP_RESCUE_BUDGET = 4;      // Maximum rescued candidates per decode
+constexpr std::array<float, 3> BP_RESCUE_LLR_SCALES = {1.0f, 0.8f, 1.25f};
+
+struct BPOptions {
+    int maxIterations = BP_MAX_ITERATIONS;
+    bool earlyAbort = true;
+    float llrScale = 1.0f;
+    std::function<bool()> const *shouldCancel = nullptr;
+};
+
+struct BPResult {
+    int hardErrors = -1;
+    int iterations = 0;
+    int finalChecks = M;
+    int bestChecks = M + 1;
+    bool earlyAborted = false;
+    bool cancelled = false;
+    // Minimum-syndrome hard word observed during this call (first minimum
+    // wins ties deterministically). Exposed for decoder-aided
+    // re-demodulation WITHOUT changing the normal `cw` output: on failure
+    // `cw` keeps last-iteration semantics while `bestCw` carries the best
+    // word, so ordinary LDPC feedback never depends on it.
+    std::array<int8_t, N> bestCw{};
+    bool bestCwValid = false;
+};
 
 constexpr std::array<std::array<int, BP_MAX_CHECKS>, N> Mn = {
     {{0, 24, 68},  {1, 4, 72},   {2, 31, 67},  {3, 50, 60},  {5, 62, 69},
@@ -724,118 +765,259 @@ constexpr std::array<CheckNode, M> Nm = {{{6, {0, 29, 59, 88, 117, 146, 0}},
                                           {6, {6, 54, 82, 100, 130, 167, 0}},
                                           {6, {23, 49, 77, 105, 142, 148, 0}}}};
 
+// Reciprocal positions of each edge in the fixed (174,87) parity graph.
+// Only lookup work is moved out of BP: all message updates keep their
+// original traversal and floating-point operation order.
+struct BPEdgeSlots {
+    std::array<std::array<std::uint8_t, BP_MAX_ROWS>, M> inBit{};
+    std::array<std::array<std::uint8_t, BP_MAX_CHECKS>, N> inCheck{};
+    bool valid = true;
+};
+
+constexpr BPEdgeSlots BP_EDGE_SLOTS = [] {
+    BPEdgeSlots edges;
+    constexpr std::uint8_t missing = 0xff;
+    for (auto &row : edges.inBit)
+        row.fill(missing);
+    for (auto &row : edges.inCheck)
+        row.fill(missing);
+
+    for (int check = 0; check < M; ++check) {
+        if (Nm[check].valid_neighbors < 0 ||
+            Nm[check].valid_neighbors > BP_MAX_ROWS) {
+            edges.valid = false;
+            continue;
+        }
+        for (int edge = 0; edge < Nm[check].valid_neighbors; ++edge) {
+            int const bit = Nm[check].neighbors[edge];
+            if (bit < 0 || bit >= N) {
+                edges.valid = false;
+                continue;
+            }
+            int matches = 0;
+            for (int bitEdge = 0; bitEdge < BP_MAX_CHECKS; ++bitEdge) {
+                if (Mn[bit][bitEdge] != check)
+                    continue;
+                ++matches;
+                edges.inBit[check][edge] =
+                    static_cast<std::uint8_t>(bitEdge);
+                if (edges.inCheck[bit][bitEdge] != missing)
+                    edges.valid = false;
+                edges.inCheck[bit][bitEdge] =
+                    static_cast<std::uint8_t>(edge);
+            }
+            if (matches != 1)
+                edges.valid = false;
+        }
+    }
+    for (int bit = 0; bit < N; ++bit)
+        for (int bitEdge = 0; bitEdge < BP_MAX_CHECKS; ++bitEdge)
+            if (Mn[bit][bitEdge] < 0 || Mn[bit][bitEdge] >= M ||
+                edges.inCheck[bit][bitEdge] == missing)
+                edges.valid = false;
+    return edges;
+}();
+static_assert(BP_EDGE_SLOTS.valid,
+              "every BP edge must occur exactly once in both parity tables");
+
 // Belief Propagation Decoder
 
-int bpdecode174(std::array<float, N> const &llr, std::array<int8_t, K> &decoded,
-                std::array<int8_t, N> &cw) {
-    // Initialize messages and variables
-    std::array<std::array<float, BP_MAX_CHECKS>, N> tov =
-        {}; // Messages to variable nodes
-    std::array<std::array<float, BP_MAX_ROWS>, M> toc =
-        {}; // Messages to check nodes
-    std::array<std::array<float, BP_MAX_ROWS>, M> tanhtoc =
-        {}; // Tanh of messages
+BPResult bpdecode174(std::array<float, N> const &llr,
+                     std::array<int8_t, K> &decoded,
+                     std::array<int8_t, N> &cw,
+                     BPOptions const options = {}) {
+#ifdef JS8_CPU_BENCHMARK
+    BenchmarkScope benchmarkScope{benchmarkBpCalls, benchmarkBpNanos};
+    static thread_local std::uint32_t samplingState = 0xa1d30fc5u;
+    samplingState = samplingState * 1664525u + 1013904223u;
+    bool const samplePhases = (samplingState >> 26) == 0;
+    if (samplePhases)
+        ++benchmarkBpProfiledCalls;
+    auto phaseStarted = samplePhases ? std::chrono::steady_clock::now()
+                                     : std::chrono::steady_clock::time_point{};
+    auto recordPhase = [&](std::atomic<std::uint64_t> &counter) {
+        if (!samplePhases)
+            return;
+        auto const now = std::chrono::steady_clock::now();
+        counter += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                       now - phaseStarted)
+                       .count();
+        phaseStarted = now;
+    };
+#endif
+    std::array<float, N> scaledLlr = {};
+    for (int i = 0; i < N; ++i)
+        scaledLlr[i] = llr[i] * options.llrScale;
 
-    std::array<float, N> zn = {}; // Bit log likelihood ratios
-    std::array<int, M> synd = {}; // Syndrome for checks
+    // Initialize messages and variables.
+    std::array<std::array<float, BP_MAX_CHECKS>, N> tov = {};
+    std::array<std::array<float, BP_MAX_ROWS>, M> toc = {};
+    std::array<std::array<float, BP_MAX_ROWS>, M> tanhtoc = {};
+    std::array<float, N> zn = {};
+    std::array<int, M> synd = {};
 
+    BPResult result;
     int ncnt = 0;
     int nclast = 0;
 
-    // Initialize toc (messages from bits to checks)
+    // Initialize toc (messages from bits to checks).
     for (int i = 0; i < M; ++i) {
-        for (int j = 0; j < Nm[i].valid_neighbors; ++j) {
-            toc[i][j] = llr[Nm[i].neighbors[j]];
-        }
+        for (int j = 0; j < Nm[i].valid_neighbors; ++j)
+            toc[i][j] = scaledLlr[Nm[i].neighbors[j]];
     }
+#ifdef JS8_CPU_BENCHMARK
+    if (samplePhases)
+        phaseStarted = std::chrono::steady_clock::now();
+#endif
 
-    // Iterative decoding
-    for (int iter = 0; iter <= BP_MAX_ITERATIONS; ++iter) {
-        // Update bit log likelihood ratios
+    // Preserve the legacy inclusive iteration bound for the normal decoder.
+    for (int iter = 0; iter <= options.maxIterations; ++iter) {
+        if (options.shouldCancel && (*options.shouldCancel)()) {
+            result.cancelled = true;
+            return result;
+        }
+        result.iterations = iter;
+
+        // Update bit log likelihood ratios.
         for (int i = 0; i < N; ++i) {
-            zn[i] =
-                llr[i] + std::accumulate(tov[i].begin(),
-                                         tov[i].begin() + BP_MAX_CHECKS, 0.0f);
+            zn[i] = scaledLlr[i] +
+                    std::accumulate(tov[i].begin(),
+                                    tov[i].begin() + BP_MAX_CHECKS, 0.0f);
         }
 
-        // Check if we have a valid codeword
         for (int i = 0; i < N; ++i)
             cw[i] = zn[i] > 0 ? 1 : 0;
+#ifdef JS8_CPU_BENCHMARK
+        recordPhase(benchmarkBpVariableNanos);
+#endif
 
         int ncheck = 0;
         for (int i = 0; i < M; ++i) {
             synd[i] = 0;
-            for (int j = 0; j < Nm[i].valid_neighbors; ++j) {
+            for (int j = 0; j < Nm[i].valid_neighbors; ++j)
                 synd[i] += cw[Nm[i].neighbors[j]];
-            }
             if (synd[i] % 2 != 0)
                 ++ncheck;
         }
 
+        result.finalChecks = ncheck;
+        if (ncheck < result.bestChecks) {
+            result.bestChecks = ncheck;
+            result.bestCw = cw;
+            result.bestCwValid = true;
+        }
+#ifdef JS8_CPU_BENCHMARK
+        recordPhase(benchmarkBpSyndromeNanos);
+#endif
+
         if (ncheck == 0) {
-            // Extract decoded bits (last N-M bits of codeword)
             std::copy(cw.begin() + M, cw.end(), decoded.begin());
 
-            // Count errors
             int nerr = 0;
             for (int i = 0; i < N; ++i) {
-                if ((2 * cw[i] - 1) * llr[i] < 0.0f) {
+                if ((2 * cw[i] - 1) * llr[i] < 0.0f)
                     ++nerr;
-                }
             }
 
-            return nerr;
+            result.hardErrors = nerr;
+            result.bestCw = cw;
+            result.bestCwValid = true;
+            return result;
         }
 
-        // Early stopping criterion
+        // The normal decoder retains its legacy early stopping behavior. The
+        // bounded rescue decoder disables it so near-converged trapping states
+        // can continue iterating.
         if (iter > 0) {
-            int nd = ncheck - nclast;
+            int const nd = ncheck - nclast;
             ncnt = (nd < 0) ? 0 : ncnt + 1;
-            if (ncnt >= 5 && iter >= 10 && ncheck > 15) {
-                return -1;
+            if (options.earlyAbort && ncnt >= 5 && iter >= 10 && ncheck > 15) {
+                result.earlyAborted = true;
+                // Deliberately leave `cw` at the last-iteration state: the
+                // minimum-syndrome word is available via `result.bestCw`
+                // without changing normal output semantics.
+                return result;
             }
         }
         nclast = ncheck;
 
-        // Send messages from bits to check nodes
+        // Send messages from bits to check nodes.
         for (int i = 0; i < M; ++i) {
             for (int j = 0; j < Nm[i].valid_neighbors; ++j) {
-                int ibj = Nm[i].neighbors[j];
+                int const ibj = Nm[i].neighbors[j];
                 toc[i][j] = zn[ibj];
+#ifdef JS8_BENCHMARK_LINEAR_BP_EDGES
                 for (int k = 0; k < BP_MAX_CHECKS; ++k) {
-                    if (Mn[ibj][k] == i) {
+                    if (Mn[ibj][k] == i)
                         toc[i][j] -= tov[ibj][k];
-                    }
                 }
+#else
+                toc[i][j] -= tov[ibj][BP_EDGE_SLOTS.inBit[i][j]];
+#endif
             }
         }
+#ifdef JS8_CPU_BENCHMARK
+        recordPhase(benchmarkBpBitToCheckNanos);
+#endif
 
-        // Send messages from check nodes to variable nodes
+        // Send messages from check nodes to variable nodes.
         for (int i = 0; i < M; ++i) {
-            for (int j = 0; j < 7;
-                 ++j) { // Fixed range [0, 7) to match Fortran's 1:7, could be
-                        // nrw[j], or 7 logically
+#ifdef JS8_BENCHMARK_FULL_BP_TANH
+            for (int j = 0; j < 7; ++j)
+#else
+            // Padded check-node slots are never read by the message update.
+            for (int j = 0; j < Nm[i].valid_neighbors; ++j)
+#endif
                 tanhtoc[i][j] = std::tanh(-toc[i][j] / 2.0f);
-            }
         }
+#ifdef JS8_CPU_BENCHMARK
+        recordPhase(benchmarkBpTanhNanos);
+#endif
 
+        // Each outgoing message reads only the completed tanhtoc array; no
+        // other outgoing message is an input to this phase. Visit check edges
+        // contiguously while keeping the exact left-to-right product for each
+        // message. The old bit-centric order is available for A/B benchmarks.
+#ifdef JS8_BENCHMARK_ORIGINAL_CHECK_TO_BIT_LOOP
         for (int i = 0; i < N; ++i) {
             for (int j = 0; j < BP_MAX_CHECKS; ++j) {
-                int ichk = Mn[i][j];
+                int const ichk = Mn[i][j];
                 if (ichk >= 0) {
                     float Tmn = 1.0f;
                     for (int k = 0; k < Nm[ichk].valid_neighbors; ++k) {
-                        if (Nm[ichk].neighbors[k] != i) {
+#ifdef JS8_BENCHMARK_MAPPED_BP_CHECK_TO_BIT
+                        if (k != BP_EDGE_SLOTS.inCheck[i][j])
+#else
+                        if (Nm[ichk].neighbors[k] != i)
+#endif
                             Tmn *= tanhtoc[ichk][k];
-                        }
                     }
                     tov[i][j] = 2.0f * std::atanh(-Tmn);
                 }
             }
         }
+#else
+        for (int ichk = 0; ichk < M; ++ichk) {
+            for (int edge = 0; edge < Nm[ichk].valid_neighbors; ++edge) {
+                float Tmn = 1.0f;
+                for (int k = 0; k < Nm[ichk].valid_neighbors; ++k)
+                    if (k != edge)
+                        Tmn *= tanhtoc[ichk][k];
+                int const bit = Nm[ichk].neighbors[edge];
+                tov[bit][BP_EDGE_SLOTS.inBit[ichk][edge]] =
+                    2.0f * std::atanh(-Tmn);
+            }
+        }
+#endif
+#ifdef JS8_CPU_BENCHMARK
+        recordPhase(benchmarkBpCheckToBitNanos);
+#endif
     }
 
-    return -1; // Decoding failed
+    // Exhausted iterations without converging: `cw` intentionally keeps the
+    // last-iteration state (legacy semantics for ordinary LDPC feedback).
+    // Callers needing the closest word use `result.bestCw` instead.
+    return result;
 }
 } // namespace
 
@@ -1064,9 +1246,14 @@ template <typename Mode> class DecodeMode {
     // Data members
 
     std::array<float, Mode::NFFT1> nuttal;
-    std::array<std::array<std::array<std::complex<float>, Mode::NDOWNSPS>, 7>,
-               3>
-        csyncs;
+    using SyncWaveforms =
+        std::array<std::array<std::array<std::complex<float>, Mode::NDOWNSPS>,
+                              7>,
+                   3>;
+    SyncWaveforms csyncs;
+    // The coarse frequency grid is identical for all timing offsets and
+    // candidates of this mode. Construct each exact pilot reference once.
+    std::array<SyncWaveforms, 2 * NFSRCH + 1> coarseCsyncs;
     alignas(64) std::array<std::complex<float>, Mode::NDOWNSPS> csymb;
     alignas(64) std::array<std::complex<float>, Mode::NMAX> filter;
     alignas(64) std::array<std::complex<float>, Mode::NMAX> cfilt;
@@ -1081,7 +1268,14 @@ template <typename Mode> class DecodeMode {
     js8::SoftCombiner<N> m_softCombiner;
     bool m_enableFreqTracking = true;
     bool m_enableTimingTracking = true;
+    bool m_enableDeepSearch = true;
+    bool m_enableLdpcRescue = true;
+    bool m_enableCoherentData = true;
+    bool m_enableAidedRedemod = true;
     float m_llrErasureThreshold = js8::llrErasureThreshold();
+    float m_llrScale = js8::llrGlobalScale();
+    bool m_normalizeLlrsForBenchmark =
+        std::getenv("JS8_LLR_FRAME_NORMALIZATION") != nullptr;
     bool m_enableLdpcFeedback = js8::ldpcFeedbackEnabled();
     int m_maxLdpcPasses = js8::ldpcFeedbackMaxPasses();
 
@@ -1138,9 +1332,282 @@ template <typename Mode> class DecodeMode {
                                         Coefficients::SizeAtCompileTime / 2>{});
     }
 
+    /** First-pass and aided re-demodulation share these LLR outputs. */
+    struct ToneBinLlrs {
+        std::array<float, N> llr0; ///< Normalized LLRs (0-hypothesis vector).
+        std::array<float, N> llr1; ///< Normalized LLRs (1-hypothesis vector).
+        js8::CoherentLikelihoodTelemetry coherentTelemetry; ///< Coherent path.
+    };
+
+    // Shared tone-bin to LLR stack: magnitudes -> winners -> Costas-only
+    // coherent blend -> whitening -> LLRs -> erasure. Both the first-pass
+    // demodulation and the decoder-aided re-demodulation call this same
+    // implementation with their own freshly demodulated bins, so the aided
+    // pass regenerates likelihoods through the identical processing rather
+    // than a simplified copy.
+    ToneBinLlrs processToneBins(
+        std::array<std::array<float, NN>, NROWS> const &s2,
+        std::array<std::array<std::complex<float>, NN>, NROWS> const
+            &complexS2,
+        std::array<int, NN> const &symbolBaseStarts,
+        std::array<int, NN> const &symbolTimingShifts,
+        std::array<float, NN> const &symbolTrackerHz) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkToneBinsCalls,
+                                      benchmarkToneBinsNanos};
+#endif
+        constexpr float FS2 = 12000.0f / Mode::NDOWN;
+
+        std::array<std::array<float, ND>, NROWS> s1;
+
+        // Fill s1 from s2, excluding the Costas arrays.
+
+        for (int row = 0; row < NROWS; ++row) {
+            std::copy(s2[row].begin() + 7, s2[row].begin() + 36,
+                      s1[row].begin());
+            std::copy(s2[row].begin() + 43, s2[row].begin() + 72,
+                      s1[row].begin() + 29);
+        }
+
+        // Identify winning tones (max magnitude) for each data symbol.
+        std::array<int, ND> symbolWinners = {};
+
+        for (int j = 0; j < ND; ++j) {
+            int winner = 0;
+            float best = s1[0][j];
+
+            for (int i = 1; i < NROWS; ++i) {
+                if (s1[i][j] > best) {
+                    best = s1[i][j];
+                    winner = i;
+                }
+            }
+
+            symbolWinners[j] = winner;
+        }
+
+        std::optional<js8::CoherentBlend<NROWS, ND>> coherentBlend;
+        js8::CoherentLikelihoodTelemetry coherentTelemetry;
+
+        if (m_enableCoherentData) {
+            static_assert(NROWS == 8, "coherent path expects 8 FSK tones");
+            double const downsampledRate =
+                static_cast<double>(FS2);
+
+            // Known Costas pilot observations with full phase metadata.
+            // Coverage of at least four pilots per Costas block is required
+            // before trusting a fit.
+            std::vector<js8::CoherentPilot> pilots;
+            pilots.reserve(NS);
+            std::array<int, 3> blockValid{};
+            for (int block = 0; block < 3; ++block) {
+                for (int column = 0; column < 7; ++column) {
+                    int const symbolIndex = block * 36 + column;
+                    int const expectedTone = Costas[block][column];
+                    std::complex<float> const bin =
+                        complexS2[expectedTone][symbolIndex];
+                    double const magnitude = std::abs(bin);
+                    if (!std::isfinite(magnitude) || !(magnitude > 0.0f))
+                        continue;
+                    // The helper adds timingShiftSamples/sampleRateHz itself to
+                    // obtain the effective extraction timestamp.
+                    double const startSeconds =
+                        static_cast<double>(
+                            symbolBaseStarts[symbolIndex]) /
+                        downsampledRate;
+                    if (!std::isfinite(startSeconds))
+                        continue;
+                    pilots.push_back(js8::CoherentPilot{
+                        startSeconds,
+                        std::complex<double>{bin.real(), bin.imag()},
+                        expectedTone, symbolIndex,
+                        static_cast<double>(
+                            symbolTimingShifts[symbolIndex]),
+                        static_cast<double>(
+                            symbolTrackerHz[symbolIndex])});
+                    ++blockValid[static_cast<std::size_t>(block)];
+                }
+            }
+
+            bool const pilotCoverage = blockValid[0] >= 4 &&
+                                       blockValid[1] >= 4 &&
+                                       blockValid[2] >= 4;
+            if (pilotCoverage) {
+                // Data symbols use the same s1 layout as the magnitude path:
+                // globals 7..35 then 43..71.
+                std::vector<js8::CoherentDataSymbol> dataSymbols;
+                dataSymbols.reserve(ND);
+                bool dataValid = true;
+                for (int j = 0; j < ND && dataValid; ++j) {
+                    int const symbolIndex = j < 29 ? j + 7 : j + 14;
+                    // As for pilots, retain the nominal start here; the helper
+                    // adds timingShiftSamples/sampleRateHz itself to obtain
+                    // the effective extraction time.
+                    double const startSeconds =
+                        static_cast<double>(
+                            symbolBaseStarts[symbolIndex]) /
+                        downsampledRate;
+                    if (!std::isfinite(startSeconds)) {
+                        dataValid = false;
+                        break;
+                    }
+                    js8::CoherentDataSymbol dataSymbol;
+                    dataSymbol.baseTimeSeconds = startSeconds;
+                    dataSymbol.timingShiftSamples = static_cast<double>(
+                        symbolTimingShifts[symbolIndex]);
+                    dataSymbol.trackerHz = static_cast<double>(
+                        symbolTrackerHz[symbolIndex]);
+                    for (int tone = 0; tone < NROWS; ++tone) {
+                        dataSymbol.bins[static_cast<std::size_t>(tone)] =
+                            complexS2[tone][symbolIndex];
+                        if (!std::isfinite(
+                                dataSymbol.bins[static_cast<std::size_t>(tone)]
+                                    .real()) ||
+                            !std::isfinite(
+                                dataSymbol.bins[static_cast<std::size_t>(tone)]
+                                    .imag())) {
+                            dataValid = false;
+                            break;
+                        }
+                    }
+                    dataSymbols.push_back(dataSymbol);
+                }
+
+                if (dataValid) {
+                    double const frameSpanSeconds =
+                        (static_cast<double>(symbolBaseStarts[NN - 1]) +
+                         static_cast<double>(symbolTimingShifts[NN - 1]) -
+                         static_cast<double>(symbolBaseStarts[0]) -
+                         static_cast<double>(symbolTimingShifts[0])) /
+                        downsampledRate;
+                    if (std::isfinite(frameSpanSeconds) &&
+                        frameSpanSeconds > 0.0) {
+#ifdef JS8_CPU_BENCHMARK
+                        auto const coherentStarted =
+                            std::chrono::steady_clock::now();
+#endif
+                        js8::CoherentToneResult const coherent =
+                            js8::computeCoherentToneScores(
+                                pilots, dataSymbols, 12,
+                                0.5 * frameSpanSeconds, Mode::NDOWNSPS,
+                                static_cast<double>(FS2));
+#ifdef JS8_CPU_BENCHMARK
+                        ++benchmarkCoherentCalls;
+                        benchmarkCoherentNanos +=
+                            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                std::chrono::steady_clock::now() -
+                                coherentStarted)
+                                .count();
+#endif
+                        coherentTelemetry = coherent.telemetry;
+                        if (!coherent.coherentNumerators.empty() &&
+                            coherent.alpha > 0.0) {
+                            js8::CoherentBlend<NROWS, ND> blend;
+                            blend.amplitude = coherent.amplitude;
+                            blend.alpha =
+                                static_cast<float>(coherent.alpha);
+                            for (int tone = 0; tone < NROWS; ++tone)
+                                for (int j = 0; j < ND; ++j)
+                                    blend.numerators[static_cast<std::size_t>(tone)]
+                                                    [static_cast<std::size_t>(j)] =
+                                        coherent.coherentNumerators
+                                            [static_cast<std::size_t>(j)]
+                                            [static_cast<std::size_t>(tone)];
+                            coherentBlend = blend;
+                        }
+                    }
+                }
+            }
+        }
+
+        auto const whitening = js8::WhiteningProcessor<NROWS, ND, N>::process(
+            s1, symbolWinners, m_llrErasureThreshold,
+            decoder_js8().isDebugEnabled(), coherentBlend, m_llrScale,
+            m_normalizeLlrsForBenchmark
+                ? js8::WhiteningProcessor<NROWS, ND, N>::Normalization::FrameSigma283
+                : js8::WhiteningProcessor<NROWS, ND, N>::Normalization::None);
+
+        if (decoder_js8().isDebugEnabled()) {
+            qCDebug(decoder_js8)
+                << "coherent likelihood"
+                << "coherentEnabled" << coherentTelemetry.enabled
+                << "pilotCount" << coherentTelemetry.pilotCount
+                << "pilotPhaseRmsRad" << coherentTelemetry.phaseRmsRad
+                << "pilotPhaseRmsDeg" << coherentTelemetry.phaseRmsDeg
+                << "coherentWeight" << coherentTelemetry.alpha
+                << "fittedPhaseRad" << coherentTelemetry.phi0
+                << "fittedResidualHz" << coherentTelemetry.deltaF
+                << "fittedDriftHzPerSec" << coherentTelemetry.fdot
+                << "pilotAmplitude" << coherentTelemetry.pilotAmplitude
+                << "avgCoherentToneMargin"
+                << coherentTelemetry.avgCoherentToneMargin.value_or(-1.0)
+                << "avgNoncoherentToneMargin"
+                << coherentTelemetry.avgNoncoherentToneMargin.value_or(-1.0);
+        }
+
+        auto llr0 = whitening.llr0;
+        auto llr1 = whitening.llr1;
+
+        // Only apply a second erasure threshold pass if whitening didn't
+        // already zero low-magnitude LLRs using the configured threshold.
+        if (!whitening.erasureApplied) {
+            std::size_t erasuresAfterThreshold = 0;
+            double sumAbsPreErasure = 0.0;
+            double sumAbsPostErasure = 0.0;
+
+            auto const applyErasureThreshold = [&](auto &llr) {
+                for (auto const value : llr)
+                    sumAbsPreErasure += std::abs(value);
+
+                if (m_llrErasureThreshold > 0.0f) {
+                    for (auto &value : llr) {
+                        if (std::abs(value) < m_llrErasureThreshold) {
+                            value = 0.0f;
+                            ++erasuresAfterThreshold;
+                        }
+
+                        sumAbsPostErasure += std::abs(value);
+                    }
+                } else {
+                    for (auto const value : llr)
+                        sumAbsPostErasure += std::abs(value);
+                }
+            };
+
+            applyErasureThreshold(llr0);
+            applyErasureThreshold(llr1);
+
+            if (decoder_js8().isDebugEnabled()) {
+                auto const total =
+                    static_cast<double>(llr0.size() + llr1.size());
+                double const avgPre =
+                    total > 0.0 ? sumAbsPreErasure / total : 0.0;
+                double const avgPost =
+                    total > 0.0 ? sumAbsPostErasure / total : 0.0;
+
+                qCDebug(decoder_js8)
+                    << "LLR erasure threshold" << m_llrErasureThreshold
+                    << "erasures:" << erasuresAfterThreshold
+                    << "avg|LLR| pre/post:" << avgPre << avgPost;
+            }
+        }
+
+        ToneBinLlrs out;
+        out.llr0 = llr0;
+        out.llr1 = llr1;
+        out.coherentTelemetry = coherentTelemetry;
+        return out;
+    }
+
     std::optional<Decode> js8dec(bool const syncStats, bool const lsubtract,
-                                 float &f1, float &xdt, int &nharderrors,
-                                 float &xsnr, JS8::Event::Emitter emitEvent) {
+                                  float &f1, float &xdt, int &nharderrors,
+                                  float &xsnr, int &ldpcRescueBudget,
+                                  JS8::Event::Emitter emitEvent,
+                                  js8::OptionalWorkBudget *optional,
+                                  bool optionalCandidate = false) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkDecodeCalls, benchmarkDecodeNanos};
+#endif
         constexpr float FR = 12000.0f / Mode::NFFT1; // Frequency resolution
         constexpr float FS2 = 12000.0f / Mode::NDOWN;
         constexpr float DT2 = 1.0f / FS2;
@@ -1162,19 +1629,35 @@ template <typename Mode> class DecodeMode {
 
         js8_downsample(f1);
 
-        // Initial guess for the start of the signal.
+        // Jointly search timing and coarse residual frequency. Coherent
+        // integration across seven symbols is much more sensitive to residual
+        // frequency error than the legacy per-symbol metric, so timing cannot
+        // safely be selected at delf=0 alone.
 
         int i0 = static_cast<int>(std::round((xdt + Mode::ASTART) * FS2));
         float smax = 0.0f;
 
-        // Search for the best synchronization offset.
-
         for (int idt = i0 - Mode::NQSYMBOL; idt <= i0 + Mode::NQSYMBOL; ++idt) {
-            float const sync = syncjs8d(idt, 0.0f);
+            for (int ifr = -NFSRCH; ifr <= NFSRCH; ++ifr) {
+                float const delf = ifr * 0.5f;
+#ifdef JS8_BENCHMARK_ORIGINAL_COARSE_SYNC
+                float const candidateSync = syncjs8d(idt, delf);
+#else
+                float const candidateSync = syncjs8d<true>(
+                    idt, delf, &coarseCsyncs[ifr + NFSRCH]);
+#endif
+#ifdef JS8_BENCHMARK_VERIFY_COARSE_SYNC
+                float const originalSync = syncjs8d(idt, delf);
+                if (std::memcmp(&candidateSync, &originalSync,
+                                sizeof(candidateSync)) != 0)
+                    ++benchmarkSyncMismatches;
+#endif
 
-            if (sync > smax) {
-                smax = sync;
-                ibest = idt;
+                if (candidateSync > smax) {
+                    smax = candidateSync;
+                    ibest = idt;
+                    delfbest = delf;
+                }
             }
         }
 
@@ -1182,17 +1665,19 @@ template <typename Mode> class DecodeMode {
 
         float const xdt2 = ibest * DT2;
 
-        // Fine frequency synchronization
+        // Refine frequency around the best 0.5 Hz grid point with 0.1 Hz
+        // spacing, keeping timing fixed at the jointly selected offset.
 
         i0 = static_cast<int>(std::round(xdt2 * FS2));
+        float const coarseDelf = delfbest;
         smax = 0.0f;
 
-        for (int ifr = -NFSRCH; ifr <= NFSRCH; ++ifr) {
-            float const delf = ifr * 0.5f;
-            float const sync = syncjs8d(i0, delf);
+        for (int ifr = -5; ifr <= 5; ++ifr) {
+            float const delf = coarseDelf + ifr * 0.1f;
+            float const candidateSync = syncjs8d(i0, delf);
 
-            if (sync > smax) {
-                smax = sync;
+            if (candidateSync > smax) {
+                smax = candidateSync;
                 delfbest = delf;
             }
         }
@@ -1218,6 +1703,16 @@ template <typename Mode> class DecodeMode {
         float const sync = syncjs8d(i0, 0.0f);
 
         std::array<std::array<float, NN>, NROWS> s2;
+        // Scaled complex tone bins kept alongside the magnitude matrix so the
+        // coherent likelihood path can use phases. `s2` is still populated
+        // exactly as before; `abs(complexS2)` reproduces it up to fp rounding.
+        std::array<std::array<std::complex<float>, NN>, NROWS> complexS2;
+        // Per-symbol phase metadata for tracker normalization: nominal
+        // (pre-tracker-shift) start, effective extraction displacement, and
+        // the FrequencyTracker estimate applied to that symbol.
+        std::array<int, NN> symbolBaseStarts;
+        std::array<int, NN> symbolTimingShifts;
+        std::array<float, NN> symbolTrackerHz;
 
         js8::FrequencyTracker freqTracker;
         if (m_enableFreqTracking) {
@@ -1318,6 +1813,11 @@ template <typename Mode> class DecodeMode {
             return std::norm(acc);
         };
 
+#ifdef JS8_CPU_BENCHMARK
+        {
+            BenchmarkScope benchmarkScope{benchmarkDemodCalls,
+                                          benchmarkDemodNanos};
+#endif
         for (int k = 0; k < NN; ++k) {
             // Calculate the starting index for the current symbol.
 
@@ -1351,6 +1851,17 @@ template <typename Mode> class DecodeMode {
 
             for (int i = 0; i < NROWS; ++i) {
                 s2[i][k] = std::abs(csymb[i]) / 1000.0f;
+            }
+
+            if (m_enableCoherentData) {
+                for (int i = 0; i < NROWS; ++i)
+                    complexS2[i][k] = csymb[i] / 1000.0f;
+                symbolBaseStarts[k] = i1Base;
+                symbolTimingShifts[k] = i1 - i1Base;
+                symbolTrackerHz[k] = freqTracker.enabled()
+                                         ? static_cast<float>(
+                                               freqTracker.currentHz())
+                                         : 0.0f;
             }
 
             if (freqTracker.enabled() || timingTracker.enabled()) {
@@ -1400,39 +1911,68 @@ template <typename Mode> class DecodeMode {
                 }
             }
         }
+#ifdef JS8_CPU_BENCHMARK
+        }
+#endif
 
-        // Sync quality check using Costas tone patterns.
+        // Compute a soft Costas quality metric using all pilot-bin power. Keep
+        // the legacy winner count for UI/debugging, but do not use it as the
+        // acceptance gate.
 
         int nsync = 0;
+        double expectedPower = 0.0;
+        double alternativePower = 0.0;
 
         for (std::size_t costas = 0; costas < Costas.size(); ++costas) {
             auto const offset = costas * 36;
 
             for (std::size_t column = 0; column < 7; ++column) {
-                // Find the row containing the maximum value in the
-                // current column.
+                auto const symbolIndex = offset + column;
+                int const expectedTone = Costas[costas][column];
 
                 auto const max_row = std::distance(
                     s2.begin(),
                     std::max_element(s2.begin(), s2.end(),
-                                     [index = offset + column](
-                                         auto const &rowA, auto const &rowB) {
-                                         return rowA[index] < rowB[index];
+                                     [symbolIndex](auto const &rowA,
+                                                   auto const &rowB) {
+                                         return rowA[symbolIndex] <
+                                                rowB[symbolIndex];
                                      }));
 
-                // Check if the max row matches the Costas pattern.
-
-                if (Costas[costas][column] == max_row)
+                if (expectedTone == max_row)
                     ++nsync;
+
+                for (int tone = 0; tone < NROWS; ++tone) {
+                    double const magnitude = s2[tone][symbolIndex];
+                    double const power = magnitude * magnitude;
+
+                    if (tone == expectedTone)
+                        expectedPower += power;
+                    else
+                        alternativePower += power;
+                }
             }
         }
 
-        // If the sync quality isn't at least 7, this one's a loser.
+        float const softCostas = static_cast<float>(
+            expectedPower / (alternativePower / 7.0 + 1e-12));
 
-        if (nsync <= 6) {
+        if (decoder_js8().isDebugEnabled()) {
+            qCDebug(decoder_js8)
+                << "coherent sync" << sync << "residualHz" << delfbest
+                << "nsync" << nsync << "softCostas" << softCostas;
+        }
+
+        if (!std::isfinite(softCostas) || softCostas < SOFT_COSTAS_MIN) {
             logTracker("sync_fail");
             return std::nullopt;
         }
+
+        // A deep candidate is optional. Check before touching the combiner or
+        // starting its full BP sequence, so a pending frame cannot inherit
+        // partial evidence from an abandoned attempt.
+        if (optionalCandidate && optional && optional->stop())
+            return std::nullopt;
 
         if (syncStats)
             emitEvent(
@@ -1442,84 +1982,14 @@ template <typename Mode> class DecodeMode {
                                       xdt,
                                       {.candidate = nsync}});
 
-        std::array<std::array<float, ND>, NROWS> s1;
-
-        // Fill s1 from s2, excluding the Costas arrays.
-
-        for (int row = 0; row < NROWS; ++row) {
-            std::copy(s2[row].begin() + 7, s2[row].begin() + 36,
-                      s1[row].begin());
-            std::copy(s2[row].begin() + 43, s2[row].begin() + 72,
-                      s1[row].begin() + 29);
-        }
-
-        // Identify winning tones (max magnitude) for each data symbol.
-        std::array<int, ND> symbolWinners = {};
-
-        for (int j = 0; j < ND; ++j) {
-            int winner = 0;
-            float best = s1[0][j];
-
-            for (int i = 1; i < NROWS; ++i) {
-                if (s1[i][j] > best) {
-                    best = s1[i][j];
-                    winner = i;
-                }
-            }
-
-            symbolWinners[j] = winner;
-        }
-
-        auto const whitening = js8::WhiteningProcessor<NROWS, ND, N>::process(
-            s1, symbolWinners, m_llrErasureThreshold,
-            decoder_js8().isDebugEnabled());
-
-        auto llr0 = whitening.llr0;
-        auto llr1 = whitening.llr1;
-
-        // Only apply a second erasure threshold pass if whitening didn't
-        // already zero low-magnitude LLRs using the configured threshold.
-        if (!whitening.erasureApplied) {
-            std::size_t erasuresAfterThreshold = 0;
-            double sumAbsPreErasure = 0.0;
-            double sumAbsPostErasure = 0.0;
-
-            auto const applyErasureThreshold = [&](auto &llr) {
-                for (auto const value : llr)
-                    sumAbsPreErasure += std::abs(value);
-
-                if (m_llrErasureThreshold > 0.0f) {
-                    for (auto &value : llr) {
-                        if (std::abs(value) < m_llrErasureThreshold) {
-                            value = 0.0f;
-                            ++erasuresAfterThreshold;
-                        }
-
-                        sumAbsPostErasure += std::abs(value);
-                    }
-                } else {
-                    for (auto const value : llr)
-                        sumAbsPostErasure += std::abs(value);
-                }
-            };
-
-            applyErasureThreshold(llr0);
-            applyErasureThreshold(llr1);
-
-            if (decoder_js8().isDebugEnabled()) {
-                auto const total =
-                    static_cast<double>(llr0.size() + llr1.size());
-                double const avgPre =
-                    total > 0.0 ? sumAbsPreErasure / total : 0.0;
-                double const avgPost =
-                    total > 0.0 ? sumAbsPostErasure / total : 0.0;
-
-                qCDebug(decoder_js8)
-                    << "LLR erasure threshold" << m_llrErasureThreshold
-                    << "erasures:" << erasuresAfterThreshold
-                    << "avg|LLR| pre/post:" << avgPre << avgPost;
-            }
-        }
+        // Shared tone-bin to LLR stack (magnitudes -> winners -> Costas-only
+        // coherent blend -> whitening -> LLRs -> erasure). The first pass and
+        // the decoder-aided re-demodulation use this same implementation.
+        ToneBinLlrs const toneBins = processToneBins(
+            s2, complexS2, symbolBaseStarts, symbolTimingShifts,
+            symbolTrackerHz);
+        auto llr0 = toneBins.llr0;
+        auto llr1 = toneBins.llr1;
 
         auto const ttl = std::chrono::seconds{Mode::NTXDUR * 2};
 
@@ -1532,19 +2002,126 @@ template <typename Mode> class DecodeMode {
         auto llr0Combined = combined.llr0;
         auto llr1Combined = combined.llr1;
 
-        std::array<int8_t, K> decoded;
-        std::array<int8_t, N> cw;
+        std::array<int8_t, K> decoded = {};
+        std::array<int8_t, N> cw = {};
+        std::array<float, N> bestRescueLlr = {};
+        // Best tentative hard codeword across LDPC/rescue attempts, kept in
+        // lockstep with bestRescueChecks so decoder-aided re-demodulation can
+        // use the actual near-miss word as a waveform hypothesis.
+        std::array<int8_t, N> bestRescueCw = {};
 
         int totalLdpcPasses = 0;
         bool usedFeedbackPass = false;
         bool feedbackTurnedSuccess = false;
         int feedbackConfident = 0;
         int feedbackUncertain = 0;
+        int bestRescueChecks = M + 1;
+        int bestRescuePass = 0;
+        bool rescueAttempted = false;
+
+#ifndef JS8_BENCHMARK_DISABLE_BP_CACHE
+        // The current two LLR families are identical, so pass 2 often repeats
+        // the same normal BP calls as pass 1. Cache only this candidate's two
+        // first-pass snapshots; do not change the pass schedule or bookkeeping.
+        struct BPSnapshot {
+            std::array<float, N> input{};
+            BPOptions options{};
+            BPResult result{};
+            std::array<int8_t, N> word{};
+            std::array<int8_t, K> decoded{};
+        };
+        std::array<BPSnapshot, 2> firstPassBP{};
+        int cachedBP = 0;
+#endif
+
+        auto const rememberRescueInput =
+            [&](std::array<float, N> const &llrInput, int ipass,
+                BPResult const &bp) {
+                if (bp.bestChecks < bestRescueChecks) {
+                    bestRescueChecks = bp.bestChecks;
+                    bestRescuePass = ipass;
+                    bestRescueLlr = llrInput;
+                    // The tentative word is the minimum-syndrome word reported
+                    // by this call (first minimum wins ties
+                    // deterministically), independent of the normal `cw`
+                    // output semantics.
+                    if (bp.bestCwValid)
+                        bestRescueCw = bp.bestCw;
+                }
+            };
+
+        // Explicit synchronization context for finalizing a successful
+        // decode. Normal call sites omit it and finalize with the existing
+        // f1/xdt2 exactly as before; the aided pass supplies its refined
+        // physical estimate so reporting and SIC subtraction use the sync
+        // that actually produced the success. Never mutated to trick the
+        // path: failure behavior is identical with or without it.
+        struct FinalizeSync {
+            float frequencyHz;
+            float xdtSeconds;
+        };
 
         auto const tryDecode = [&](std::array<float, N> const &llrInput,
-                                   int ipass) -> std::optional<Decode> {
-            nharderrors = bpdecode174(llrInput, decoded, cw);
+                                   int ipass, BPOptions const options,
+                                   bool const rememberForRescue,
+                                   BPResult *bpOut = nullptr,
+                                   std::optional<FinalizeSync> const
+                                       &finalize = std::nullopt)
+            -> std::optional<Decode> {
+            BPResult bp;
+            std::array<int8_t, N> savedCw{};
+            std::array<int8_t, K> savedDecoded{};
+            if (options.shouldCancel) {
+                savedCw = cw;
+                savedDecoded = decoded;
+            }
+#ifndef JS8_BENCHMARK_DISABLE_BP_CACHE
+            bool reused = false;
+            if (ipass == 2 && rememberForRescue &&
+                std::isfinite(options.llrScale)) {
+                for (int slot = 0; slot < cachedBP; ++slot) {
+                    auto const &saved = firstPassBP[slot];
+                    if (options.maxIterations == saved.options.maxIterations &&
+                        options.earlyAbort == saved.options.earlyAbort &&
+                        options.llrScale == saved.options.llrScale &&
+                        std::memcmp(llrInput.data(), saved.input.data(),
+                                    sizeof(float) * N) == 0) {
+                        bp = saved.result;
+                        cw = saved.word; // last iterate on a failed BP pass
+                        if (bp.hardErrors >= 0)
+                            decoded = saved.decoded;
+                        reused = true;
+                        break;
+                    }
+                }
+            }
+            if (!reused) {
+#endif
+                bp = bpdecode174(llrInput, decoded, cw, options);
+#ifndef JS8_BENCHMARK_DISABLE_BP_CACHE
+                if (ipass == 1 && rememberForRescue && cachedBP < 2 &&
+                    std::isfinite(options.llrScale) &&
+                    std::all_of(llrInput.begin(), llrInput.end(),
+                                [](float v) { return std::isfinite(v); })) {
+                    firstPassBP[cachedBP++] =
+                        {llrInput, options, bp, cw, decoded};
+                }
+            }
+#endif
+            if (bp.cancelled) {
+                cw = savedCw;
+                decoded = savedDecoded;
+                if (bpOut)
+                    *bpOut = bp;
+                return std::nullopt;
+            }
+            if (bpOut != nullptr)
+                *bpOut = bp;
+            nharderrors = bp.hardErrors;
             xsnr = -99.0f;
+
+            if (rememberForRescue)
+                rememberRescueInput(llrInput, ipass, bp);
 
             if (std::all_of(cw.begin(), cw.end(),
                             [](int x) { return x == 0; })) {
@@ -1556,12 +2133,17 @@ template <typename Mode> class DecodeMode {
                 !(ipass > 2 && nharderrors > 39) &&
                 !(ipass == 4 && nharderrors > 30)) {
                 if (checkCRC12(decoded)) {
+                    // Success-only sync: normal decodes use f1/xdt2 exactly
+                    // as before; aided decodes use the supplied refined
+                    // estimate for both reporting and SIC seeding.
+                    FinalizeSync const fs =
+                        finalize.value_or(FinalizeSync{f1, xdt2});
                     if (syncStats)
                         emitEvent(JS8::Event::SyncState{
                             JS8::Event::SyncState::Type::DECODED,
                             Mode::NSUBMODE,
-                            f1,
-                            xdt2,
+                            fs.frequencyHz,
+                            fs.xdtSeconds,
                             {.decoded = sync}});
 
                     auto message = extractmessage174(decoded);
@@ -1574,13 +2156,13 @@ template <typename Mode> class DecodeMode {
                     JS8::encode(i3bit, Costas, message.data(), itone.data());
 
                     if (lsubtract)
-                        subtractjs8(genjs8refsig(itone, f1), xdt2);
+                        subtractjs8(genjs8refsig(itone, fs.frequencyHz),
+                                    fs.xdtSeconds);
 
                     float xsig = 0.0f;
 
-                    for (std::size_t i = 0; i < itone.size(); ++i) {
+                    for (std::size_t i = 0; i < itone.size(); ++i)
                         xsig += std::pow(s2[itone[i]][i], 2);
-                    }
 
                     xsnr =
                         std::max(10.0f * std::log10(std::max(
@@ -1600,12 +2182,13 @@ template <typename Mode> class DecodeMode {
             return std::nullopt;
         };
 
-        // Loop over decoding passes
+        // Run the existing decode and feedback sequence first. Failed BP runs
+        // leave cw at the last-iteration state; the existing feedback pass
+        // uses that word with no extra CPU cost.
         for (int ipass = 1; ipass <= 4 && totalLdpcPasses < m_maxLdpcPasses;
              ++ipass) {
             auto &llr = ipass == 2 ? llr1Combined : llr0Combined;
 
-            // Zero ranges for certain passes to mirror legacy behavior.
             if (ipass == 3)
                 std::fill(llr0Combined.begin(), llr0Combined.begin() + 24,
                           0.0f);
@@ -1614,14 +2197,13 @@ template <typename Mode> class DecodeMode {
                           0.0f);
 
             std::array<float, N> llrPrimary = llr;
-            if (auto result = tryDecode(llrPrimary, ipass)) {
+            if (auto result =
+                    tryDecode(llrPrimary, ipass, BPOptions{}, true)) {
                 ++totalLdpcPasses;
                 return result;
             }
             ++totalLdpcPasses;
 
-            // Feedback refinement and second attempt, if enabled and budget
-            // allows.
             if (m_enableLdpcFeedback && totalLdpcPasses < m_maxLdpcPasses) {
                 std::array<float, N> llrRefined;
                 int confident = 0;
@@ -1641,7 +2223,8 @@ template <typename Mode> class DecodeMode {
                 feedbackConfident += confident;
                 feedbackUncertain += uncertain;
 
-                if (auto result = tryDecode(llrRefined, ipass)) {
+                if (auto result =
+                        tryDecode(llrRefined, ipass, BPOptions{}, true)) {
                     ++totalLdpcPasses;
                     feedbackTurnedSuccess = true;
                     if (decoder_js8().isDebugEnabled()) {
@@ -1658,13 +2241,430 @@ template <typename Mode> class DecodeMode {
             }
         }
 
+        // Spend the bounded rescue budget only on a genuinely close near miss.
+        // We retry the single best LLR variant with a longer BP run, no early
+        // abort, and three modest LLR temperatures to escape trapping states.
+        bool const rescueEligible = m_enableLdpcRescue && ldpcRescueBudget > 0 &&
+                                    bestRescuePass > 0 &&
+                                    bestRescueChecks <= BP_RESCUE_MAX_CHECKS;
+        bool const rescueAllowed =
+            rescueEligible &&
+            (!optional || optional->allow(js8::OptionalStage::Rescue));
+        if (rescueEligible && !rescueAllowed)
+            qCDebug(decoder_js8) << "adaptive optional skip rescue";
+        if (rescueAllowed) {
+            auto const rescueStarted = js8::OptionalWorkBudget::Clock::now();
+            --ldpcRescueBudget;
+            rescueAttempted = true;
+            std::function<bool()> const cancelRescue = [optional] {
+                return optional && optional->stop();
+            };
+
+            if (decoder_js8().isDebugEnabled()) {
+                qCDebug(decoder_js8)
+                    << "LDPC rescue start"
+                    << "bestChecks" << bestRescueChecks
+                    << "ipass" << bestRescuePass
+                    << "budgetRemaining" << ldpcRescueBudget;
+            }
+
+            for (float const scale : BP_RESCUE_LLR_SCALES) {
+                if (optional && optional->stop())
+                    break;
+                BPOptions options;
+                options.maxIterations = BP_RESCUE_ITERATIONS;
+                options.earlyAbort = false;
+                options.llrScale = scale;
+                options.shouldCancel = optional ? &cancelRescue : nullptr;
+                BPResult rescueBp;
+
+                // Remember rescue attempts as well so bestRescueChecks (and the
+                // associated bestRescueCw snapshot) reflect the best syndrome
+                // across all bounded LDPC/rescue attempts. This only updates
+                // the best-input bookkeeping with the same LLRs; no decode
+                // behavior changes.
+                if (auto result = tryDecode(bestRescueLlr, bestRescuePass,
+                                            options, true, &rescueBp)) {
+                    if (optional)
+                        optional->observe(js8::OptionalStage::Rescue,
+                                          rescueStarted);
+                    if (decoder_js8().isDebugEnabled()) {
+                        qCDebug(decoder_js8)
+                            << "LDPC rescue succeeded"
+                            << "scale" << scale
+                            << "bestChecks" << bestRescueChecks;
+                    }
+                    return result;
+                }
+                if (rescueBp.cancelled)
+                    break;
+            }
+            if (optional)
+                optional->observe(js8::OptionalStage::Rescue, rescueStarted);
+        }
+
+        // Decoder-aided re-demodulation. When the normal bounded LDPC/rescue
+        // sequence fails with a genuinely close near miss (best syndrome in
+        // (0, 4]), the best tentative codeword becomes a waveform hypothesis:
+        // its 58 data tones plus the 21 known Costas tones refine
+        // timing/residual-frequency/drift relative to the ACTUAL first-pass
+        // tracked extraction (recorded starts plus tracker corrections) using
+        // this candidate's received samples (cd0, i.e. the current SIC-pass
+        // buffer after coarse correction), and the refined sync drives ONE
+        // fresh 8-tone re-demodulation producing new LLRs for a final LDPC
+        // attempt. Extended rescue scales obey the existing rescue enable and
+        // budget (one unit per aided group). Only a valid CRC can accept the
+        // result; any failure falls through to the normal failure path with
+        // the original outputs restored.
+        bool const aidedEligible = m_enableAidedRedemod &&
+                                   bestRescueChecks > 0 &&
+                                   bestRescueChecks <=
+                                       js8::aided::kMaxSyndrome;
+        bool const aidedAllowed =
+            aidedEligible &&
+            (!optional || optional->allow(js8::OptionalStage::Aided));
+        if (aidedEligible && !aidedAllowed)
+            qCDebug(decoder_js8) << "adaptive optional skip aided";
+        if (aidedAllowed) {
+            auto const aidedStarted = js8::OptionalWorkBudget::Clock::now();
+            static_assert(js8::aided::kCodeBits == N &&
+                              js8::aided::kDataSymbols == ND &&
+                              js8::aided::kTotalSymbols == NN &&
+                              js8::aided::kTones == NROWS,
+                          "aided helper sizes must match decoder");
+
+            // Tentative-word validity: an all-zero word carries no tone
+            // information, and non-finite LLRs must never steer the fit.
+            bool tentValid =
+                !std::all_of(bestRescueCw.begin(), bestRescueCw.end(),
+                             [](int8_t x) { return x == 0; });
+            for (float v : bestRescueLlr)
+                tentValid = tentValid && std::isfinite(v);
+
+            // Recorded first-pass extraction per symbol: nominal base plus the
+            // TimingTracker integer shift actually applied, with the
+            // FrequencyTracker estimate applied to that symbol. The
+            // refinement baseline replays this tracked extraction exactly;
+            // search hypotheses refine relative to it.
+            std::array<js8::aided::SymbolBaseline, NN> aidedBaselines{};
+            for (int k = 0; k < NN; ++k) {
+                aidedBaselines[static_cast<std::size_t>(k)].startSamples =
+                    symbolBaseStarts[static_cast<std::size_t>(k)] +
+                    symbolTimingShifts[static_cast<std::size_t>(k)];
+                aidedBaselines[static_cast<std::size_t>(k)].trackerHz =
+                    symbolTrackerHz[static_cast<std::size_t>(k)];
+            }
+
+            bool const boundsOk =
+                tentValid && js8::aided::symbolBoundsValid(
+                                 aidedBaselines, Mode::NDOWNSPS, NP2,
+                                 js8::aided::kTimingDeltaMax);
+            // Gate reason for telemetry: 0 = searched, 1 = tentative
+            // word/LLRs unusable, 2 = candidate sample bounds invalid.
+            int const skipCode =
+                !tentValid ? 1 : (!boundsOk ? 2 : 0);
+
+            std::optional<Decode> aidedResult;
+            int aidedUsed = 0;
+            double aidedMeanConf = 0.0;
+            int aidedDt = 0;
+            double aidedDf = 0.0;
+            double aidedDd = 0.0;
+            double aidedBase =
+                std::numeric_limits<double>::quiet_NaN();
+            double aidedRef = std::numeric_limits<double>::quiet_NaN();
+            int aidedBoundary = 0;
+            int aidedBestChecks = -1;
+            int aidedAccepted = 0;
+            double aidedFinalizeF1 =
+                std::numeric_limits<double>::quiet_NaN();
+            double aidedFinalizeXdt =
+                std::numeric_limits<double>::quiet_NaN();
+            double aidedPhysResidual =
+                std::numeric_limits<double>::quiet_NaN();
+            double aidedMidTime = std::numeric_limits<double>::quiet_NaN();
+            double aidedTrackerMid =
+                std::numeric_limits<double>::quiet_NaN();
+            std::optional<FinalizeSync> aidedFinalizeSync;
+            int aidedScales = 0;
+            int const aidedBudgetBefore = ldpcRescueBudget;
+            int aidedBudgetAfter = ldpcRescueBudget;
+            double const initLlrNorm = js8::aided::llrNorm(bestRescueLlr);
+            double aidedLlrNorm = 0.0;
+
+            if (boundsOk) {
+                std::array<int, NN> expectedTones{};
+                js8::aided::codewordToTones(bestRescueCw, Costas,
+                                            expectedTones);
+                auto const conf =
+                    js8::aided::tentativeConfidences(bestRescueLlr);
+                std::array<float, NN> symWeights{};
+                js8::aided::buildSymbolWeights(conf, symWeights);
+                aidedUsed = conf.used;
+                aidedMeanConf = conf.mean;
+
+#ifdef JS8_CPU_BENCHMARK
+                auto const refinementStarted =
+                    std::chrono::steady_clock::now();
+#endif
+                js8::aided::Refinement const refinement =
+                    js8::aided::refineSync(
+                        cd0.data(), NP2, aidedBaselines, Mode::NDOWNSPS,
+                        static_cast<double>(FS2), expectedTones, symWeights,
+                        [optional] { return optional && optional->stop(); });
+#ifdef JS8_CPU_BENCHMARK
+                ++benchmarkRefineCalls;
+                benchmarkRefineNanos +=
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - refinementStarted)
+                        .count();
+#endif
+                aidedBase = refinement.baselineMetric;
+                aidedRef = refinement.best.metric;
+                aidedBoundary = refinement.atBoundary ? 1 : 0;
+                // Report the best hypothesis found regardless of the gate so
+                // telemetry shows what the search preferred; the gate outcome
+                // is conveyed by atBoundary/gainDb/aidedBestChecks.
+                aidedDt = refinement.best.deltaSamples;
+                aidedDf = refinement.best.deltaHz;
+                aidedDd = refinement.best.driftHzPerSec;
+
+                if (js8::aided::refinementAccepted(refinement) &&
+                    (!optional || !optional->stop())) {
+
+                    // Fresh full 79-symbol re-demodulation from cd0: recorded
+                    // first-pass start plus the refined timing delta, exact
+                    // replay of the recorded tracker correction, then the
+                    // refined residual derotation phase(t) = 2*pi*df*t +
+                    // pi*dd*t^2 (negative-exponent convention matches the
+                    // coarse cd0 correction), then the same in-place FFT and
+                    // magnitude scaling as the first pass. The Costas-only
+                    // coherent fit downstream absorbs small leftovers; the
+                    // recorded trackerHz metadata is passed through unchanged
+                    // so its model stays consistent with the first pass.
+                    std::array<std::array<float, NN>, NROWS> s2Aided{};
+                    std::array<std::array<std::complex<float>, NN>, NROWS>
+                        complexAided{};
+                    std::array<int, NN> baseStartsAided{};
+                    std::array<int, NN> shiftsAided{};
+                    std::array<float, NN> trackerHzAided{};
+                    double const rateHz = static_cast<double>(FS2);
+                    for (int k = 0; k < NN; ++k) {
+                        std::size_t const kk = static_cast<std::size_t>(k);
+                        int const firstStart =
+                            aidedBaselines[kk].startSamples;
+                        int i1 = firstStart + aidedDt;
+                        if (i1 < 0) {
+                            i1 = 0;
+                        } else if (i1 + Mode::NDOWNSPS > NP2) {
+                            i1 = NP2 - Mode::NDOWNSPS;
+                        }
+                        baseStartsAided[kk] = symbolBaseStarts[kk];
+                        shiftsAided[kk] = i1 - symbolBaseStarts[kk];
+                        trackerHzAided[kk] = symbolTrackerHz[kk];
+                        for (int n = 0; n < Mode::NDOWNSPS; ++n)
+                            csymb[static_cast<std::size_t>(n)] =
+                                cd0[static_cast<std::size_t>(i1 + n)];
+                        if (!js8::aided::replayTrackerCorrection(
+                                csymb.data(), Mode::NDOWNSPS,
+                                aidedBaselines[kk].trackerHz, rateHz)) {
+                            // Corrupt window: zero-fill so downstream
+                            // finite/magnitude guards handle it
+                            // deterministically.
+                            csymb.fill(ZERO);
+                        }
+                        for (int n = 0; n < Mode::NDOWNSPS; ++n) {
+                            double const t =
+                                static_cast<double>(i1 + n) / rateHz;
+                            double const angle =
+                                2.0 * std::numbers::pi * aidedDf * t +
+                                std::numbers::pi * aidedDd * t * t;
+                            float const ang = static_cast<float>(angle);
+                            csymb[static_cast<std::size_t>(n)] *=
+                                std::polar(1.0f, -ang);
+                        }
+
+                        fftwf_execute(plans[Plan::CS]);
+
+                        for (int i = 0; i < NROWS; ++i) {
+                            s2Aided[static_cast<std::size_t>(i)]
+                                   [static_cast<std::size_t>(k)] =
+                                       std::abs(csymb[static_cast<std::size_t>(
+                                           i)]) /
+                                       1000.0f;
+                            complexAided[static_cast<std::size_t>(i)]
+                                        [static_cast<std::size_t>(k)] =
+                                            csymb[static_cast<std::size_t>(
+                                                i)] /
+                                            1000.0f;
+                        }
+                    }
+
+                    // Identical downstream stack as the first pass (shared
+                    // helper): Costas-pilots-only coherent fit, whitening,
+                    // LLRs. Tentative data never enters the coherent fit.
+                    ToneBinLlrs const aidedBins = processToneBins(
+                        s2Aided, complexAided, baseStartsAided, shiftsAided,
+                        trackerHzAided);
+                    aidedLlrNorm = js8::aided::llrNorm(aidedBins.llr0);
+
+                    // Final physical sync if this attempt succeeds: the
+                    // scalar timing seed moves with the global aided delta;
+                    // the scalar frequency seed is f1 plus the Costas-only
+                    // physical residual at the frame midpoint
+                    // (tracker-aware, drift included via aidedDd*tMid).
+                    // Falls back to the normal sync if degenerate; the same
+                    // context feeds reporting, subtraction seeding, and the
+                    // f1/xdt update below.
+                    {
+                        float const xdtCand = js8::aided::aidedFrameXdt(
+                            xdt2, aidedDt, DT2);
+                        std::array<float, NN> costasW{};
+                        js8::aided::buildCostasWeights(costasW);
+                        js8::aided::MidpointResidual const mid =
+                            js8::aided::aidedPhysicalResidualAtMidpoint(
+                                aidedDf, aidedDd, aidedBaselines,
+                                Mode::NDOWNSPS, rateHz, costasW);
+                        float aidedF1 = f1;
+                        float aidedXdtOut = xdt2;
+                        if (std::isfinite(xdtCand) && mid.valid) {
+                            aidedXdtOut = xdtCand;
+                            aidedF1 =
+                                f1 + static_cast<float>(mid.residualHz);
+                            aidedFinalizeF1 = aidedF1;
+                            aidedFinalizeXdt = aidedXdtOut;
+                            aidedPhysResidual = mid.residualHz;
+                            aidedMidTime = mid.midpointSeconds;
+                            aidedTrackerMid = mid.trackerHzAtMid;
+                        }
+                        aidedFinalizeSync = FinalizeSync{aidedF1, aidedXdtOut};
+                    }
+
+                    // The aided LLRs measure the SAME frame, so they must not
+                    // go through SoftCombiner::combine() (that would add one
+                    // frame twice as independent evidence). Run LDPC locally
+                    // on the fresh LLRs; the combiner entry keeps the initial
+                    // observation, and markDecoded() inside tryDecode evicts
+                    // it on success exactly like the normal path.
+                    int const savedNhard = nharderrors;
+                    float const savedXsnr = xsnr;
+                    auto const savedS2 = s2;
+                    s2 = s2Aided; // aided xsnr uses aided magnitudes
+                    int aidedBest = M + 1;
+                    BPResult aidedBp;
+                    std::function<bool()> const cancelAided = [optional] {
+                        return optional && optional->stop();
+                    };
+                    BPOptions aidedOptions;
+                    aidedOptions.shouldCancel = optional ? &cancelAided : nullptr;
+                    if (auto res = tryDecode(aidedBins.llr0, 1, aidedOptions,
+                                              false, &aidedBp,
+                                              aidedFinalizeSync)) {
+                        aidedBest = aidedBp.bestChecks;
+                        aidedAccepted = 1;
+                        aidedResult = res;
+                    } else if (!aidedBp.cancelled) {
+                        aidedBest = std::min(aidedBest, aidedBp.bestChecks);
+                        // Extended rescue scales stay inside the decoder's
+                        // existing bounded rescue policy: one normal BP is
+                        // always allowed on the fresh LLRs, but the scale
+                        // group runs only with rescue enabled and budget
+                        // remaining, consuming exactly one unit for the whole
+                        // aided group like the normal rescue group.
+                        if (m_enableLdpcRescue && ldpcRescueBudget > 0 &&
+                            (!optional ||
+                             optional->allow(js8::OptionalStage::Rescue))) {
+                            --ldpcRescueBudget;
+                            for (float const scale : BP_RESCUE_LLR_SCALES) {
+                                if (optional && optional->stop())
+                                    break;
+                                ++aidedScales;
+                                BPOptions options;
+                                options.maxIterations = BP_RESCUE_ITERATIONS;
+                                options.earlyAbort = false;
+                                options.llrScale = scale;
+                                options.shouldCancel =
+                                    optional ? &cancelAided : nullptr;
+                                BPResult retryBp;
+                                if (auto retry =
+                                        tryDecode(aidedBins.llr0, 1, options,
+                                                  false, &retryBp,
+                                                  aidedFinalizeSync)) {
+                                    aidedBest = std::min(aidedBest,
+                                                         retryBp.bestChecks);
+                                    aidedAccepted = 1;
+                                    aidedResult = retry;
+                                    break;
+                                }
+                                if (retryBp.cancelled)
+                                    break;
+                                aidedBest = std::min(aidedBest,
+                                                     retryBp.bestChecks);
+                            }
+                        }
+                    }
+                    aidedBestChecks = aidedBest <= M ? aidedBest : -1;
+                    aidedBudgetAfter = ldpcRescueBudget;
+
+                    if (!aidedResult) {
+                        // Failed aided attempts leave no trace: original
+                        // outputs and failure path are preserved.
+                        nharderrors = savedNhard;
+                        xsnr = savedXsnr;
+                        s2 = savedS2;
+                    }
+                }
+            }
+
+            if (decoder_js8().isDebugEnabled()) {
+                qCDebug(decoder_js8)
+                    << "Decoder-aided re-demod"
+                    << "initialBestChecks" << bestRescueChecks << "attempted"
+                    << (boundsOk ? 1 : 0) << "skipCode" << skipCode
+                    << "dataUsed" << aidedUsed
+                    << "meanConf" << aidedMeanConf << "dtSmpl" << aidedDt
+                    << "dfHz" << aidedDf << "ddotHz" << aidedDd
+                    << "baseMetric" << aidedBase << "refMetric" << aidedRef
+                    << "gainDb"
+                    << js8::aided::metricGainDb(aidedRef, aidedBase)
+                    << "atBoundary" << aidedBoundary << "aidedBestChecks"
+                    << aidedBestChecks << "crcAccepted" << aidedAccepted
+                    << "aidedScales" << aidedScales << "budgetBefore"
+                    << aidedBudgetBefore << "budgetAfter" << aidedBudgetAfter
+                    << "finalizeF1Hz" << aidedFinalizeF1 << "finalizeXdt"
+                    << aidedFinalizeXdt << "physicalResidualHz"
+                    << aidedPhysResidual << "midpointTime" << aidedMidTime
+                    << "trackerHzMidOrFit" << aidedTrackerMid
+                    << "f1SeedHz" << f1 << "xdt2Seed" << xdt2
+                    << "initLlrNorm" << initLlrNorm << "aidedLlrNorm"
+                    << aidedLlrNorm;
+            }
+
+            if (aidedResult) {
+                if (optional)
+                    optional->observe(js8::OptionalStage::Aided, aidedStarted);
+                // The aided sync produced this CRC success: expose it as the
+                // decode's sync (reporting and SIC seed already used the same
+                // context inside tryDecode). Only touched after acceptance;
+                // failures preserve the original f1/xdt exactly.
+                FinalizeSync const fs = aidedFinalizeSync.value_or(
+                    FinalizeSync{f1, xdt2});
+                f1 = fs.frequencyHz;
+                xdt = fs.xdtSeconds;
+                return aidedResult;
+            }
+            if (optional)
+                optional->observe(js8::OptionalStage::Aided, aidedStarted);
+        }
+
         if (decoder_js8().isDebugEnabled()) {
             qCDebug(decoder_js8)
                 << "LDPC feedback summary"
                 << "used" << usedFeedbackPass << "success"
                 << feedbackTurnedSuccess << "confident" << feedbackConfident
                 << "uncertain" << feedbackUncertain << "passes"
-                << totalLdpcPasses;
+                << totalLdpcPasses << "bestChecks" << bestRescueChecks
+                << "rescueAttempted" << rescueAttempted;
         }
 
         logTracker("fail");
@@ -1693,6 +2693,10 @@ template <typename Mode> class DecodeMode {
     // `savg` with the baseline.
 
     void baselinejs8(int const ia, int const ib) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkBaselineCalls,
+                                      benchmarkBaselineNanos};
+#endif
         // Data referenced in savg is defined by the closed range [bmin, bmax].
         // From this we can derive the size of the closed range and the number
         // of points in each of the arms on either side of a node. All of these
@@ -1779,10 +2783,14 @@ template <typename Mode> class DecodeMode {
     // frequency-domain filtering process for downsampling the JS8 signal.
     // After the FFT, the resulting frequency-domain data (ds_cx) can be
     // manipulated (e.g., band-pass filtered or shifted). Subsequent inverse
-    // FFT operations convert the filtered data back to the time domain at
+    // FFT operations convert the filtered data back into the time domain at
     // a lower sample rate, achieving the desired downsampling.
 
     void computeBasebandFFT() {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkBasebandCalls,
+                                      benchmarkBasebandNanos};
+#endif
         // ds_dx is an array of complex<float>; we're going to do an in-place
         // FFT, so we'll interpret the first half of the array as if they were
         // floats, which they are.
@@ -1805,6 +2813,10 @@ template <typename Mode> class DecodeMode {
     // processing in the JS8 decoding pipeline.
 
     void js8_downsample(float const f0) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkDownsampleCalls,
+                                      benchmarkDownsampleNanos};
+#endif
         // Frequency band extraction; identifies a narrow frequency band around
         // the target frequency (f0) based on a predefined range (8.5 baud above
         // and 1.5 baud below). The indices of this range in the
@@ -1877,7 +2889,7 @@ template <typename Mode> class DecodeMode {
     //     multiplied by
     //       a Nuttall window to reduce spectral leakage.
     //     - An FFT is performed on each windowed segment to obtain the
-    //     frequency-domain
+    //       frequency-domain
     //       representation.
     //     - The power spectrum of each segment is computed, and the average
     //     spectrum is
@@ -1902,10 +2914,10 @@ template <typename Mode> class DecodeMode {
     //     synchronization
     //       power using a Costas waveform.
     //     - Sync metric is computed over the index range, considering all
-    //     combinations
+    //       combinations
     //       of Costas patterns.
     //     - The maximum sync value and its corresponding offset are recorded
-    //     for each
+    //       for each
     //       frequency bin.
     //
     // 5.  Normalization:
@@ -1920,12 +2932,12 @@ template <typename Mode> class DecodeMode {
     //     - Candidates with a strong sync metric (above a defined threshold)
     //     are extracted.
     //     - Near-duplicate candidates of lesser synchronization power, based on
-    //     frequency
+    //       frequency
     //       proximity, are eliminated.
     //
     // 7.  Output:
     //
-    //	   - Returns a vector of the most promising signal candidates, sorted by
+    //\t   - Returns a vector of the most promising signal candidates, sorted by
     // their
     //       synchronization power. It's expected that these will be re-sorted
     //       by the caller into a desirable order, but synchronization power
@@ -1937,11 +2949,20 @@ template <typename Mode> class DecodeMode {
     //       references `s`, so it was effectively a somewhat expensive dead
     //       store. It's been eliminated in this version.
 
-    std::vector<Sync> syncjs8(int nfa, int nfb) {
+    SyncCandidates syncjs8(int nfa, int nfb) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkCandidateGenCalls,
+                                      benchmarkCandidateGenNanos};
+#endif
         // Compute symbol spectra
 
         savg.fill(0.0f);
 
+#ifdef JS8_CPU_BENCHMARK
+        {
+            BenchmarkScope benchmarkScope{benchmarkSpectrumCalls,
+                                          benchmarkSpectrumNanos};
+#endif
         for (int j = 0; j < Mode::NHSYM; ++j) {
             int const ia = j * Mode::NSTEP;
             int const ib = ia + Mode::NFFT1;
@@ -1963,6 +2984,9 @@ template <typename Mode> class DecodeMode {
                 savg[i] += power;
             }
         }
+#ifdef JS8_CPU_BENCHMARK
+        }
+#endif
 
         // Filter edge sanity measures
 
@@ -1991,12 +3015,21 @@ template <typename Mode> class DecodeMode {
 
         // Compute and populate the sync index.
 
+#ifdef JS8_BENCHMARK_VERIFY_RANK_SCAN
+        std::uint64_t comparedScores = 0;
+#endif
+#ifdef JS8_CPU_BENCHMARK
+        {
+            BenchmarkScope benchmarkScope{benchmarkRankScoreCalls,
+                                          benchmarkRankScoreNanos};
+#endif
         sync.clear();
 
         for (int i = ia; i <= ib; ++i) {
             float max_value = -std::numeric_limits<float>::infinity();
             int max_index = -Mode::JZ;
 
+#ifdef JS8_BENCHMARK_ORIGINAL_RANK_SCAN
             for (int j = -Mode::JZ; j <= Mode::JZ; ++j) {
                 std::array<std::array<float, 3>, 2> t{};
 
@@ -2047,10 +3080,96 @@ template <typename Mode> class DecodeMode {
                     max_index = j;
                 }
             }
+#else
+            // Each timing offset has independent accumulators. Visit the
+            // spectrum by pilot/tone first so adjacent timing samples of a
+            // frequency row are read together. For EACH timing offset, the
+            // pilots and seven alternative tones still enter its float sums
+            // in precisely the original p/n/freq order.
+            std::array<std::array<std::array<float, 3>, 2>,
+                       2 * Mode::JZ + 1>
+                byTiming{};
+            for (int p = 0; p < 3; ++p) {
+                for (int n = 0; n < 7; ++n) {
+                    int const base = Mode::JSTRT + NSSY * n + p * 36 * NSSY;
+                    int const first = std::max(-Mode::JZ, -base);
+                    int const last =
+                        std::min(Mode::JZ, Mode::NHSYM - 1 - base);
+                    for (int j = first; j <= last; ++j)
+                        byTiming[j + Mode::JZ][0][p] +=
+                            s[i + NFOS * Costas[p][n]][j + base];
+                    for (int freq = 0; freq < 7; ++freq) {
+                        auto const &row = s[i + NFOS * freq];
+                        for (int j = first; j <= last; ++j)
+                            byTiming[j + Mode::JZ][1][p] += row[j + base];
+                    }
+                }
+            }
+            for (int j = -Mode::JZ; j <= Mode::JZ; ++j) {
+                auto const &t = byTiming[j + Mode::JZ];
+                auto const compute_sync = [&t](int start, int end) {
+                    float tx = 0.0f;
+                    float t0 = 0.0f;
+                    for (int block = start; block <= end; ++block) {
+                        tx += t[0][block];
+                        t0 += t[1][block];
+                    }
+                    return tx / ((t0 - tx) / 6.0f);
+                };
+                float const sync_value =
+                    std::max({compute_sync(0, 2), compute_sync(0, 1),
+                              compute_sync(1, 2)});
+#ifdef JS8_BENCHMARK_VERIFY_RANK_SCAN
+                // Verify the entire score surface, including cells that
+                // never become the winning candidate. This is deliberately
+                // off in timed builds.
+                std::array<std::array<float, 3>, 2> original{};
+                for (int p = 0; p < 3; ++p)
+                    for (int n = 0; n < 7; ++n) {
+                        int const offset =
+                            j + Mode::JSTRT + NSSY * n + p * 36 * NSSY;
+                        if (offset >= 0 && offset < Mode::NHSYM) {
+                            original[0][p] +=
+                                s[i + NFOS * Costas[p][n]][offset];
+                            for (int freq = 0; freq < 7; ++freq)
+                                original[1][p] +=
+                                    s[i + NFOS * freq][offset];
+                        }
+                    }
+                auto const originalSync = [&original](int start, int end) {
+                    float tx = 0.0f;
+                    float t0 = 0.0f;
+                    for (int block = start; block <= end; ++block) {
+                        tx += original[0][block];
+                        t0 += original[1][block];
+                    }
+                    return tx / ((t0 - tx) / 6.0f);
+                };
+                float const reference =
+                    std::max({originalSync(0, 2), originalSync(0, 1),
+                              originalSync(1, 2)});
+                if (std::memcmp(&sync_value, &reference, sizeof(sync_value)))
+                    ++benchmarkRankMismatches;
+                ++comparedScores;
+#endif
+                if (sync_value > max_value) {
+                    max_value = sync_value;
+                    max_index = j;
+                }
+            }
+#endif
 
             sync.emplace(Mode::DF * i, Mode::TSTEP * (max_index + 0.5f),
                          max_value);
         }
+#ifdef JS8_BENCHMARK_VERIFY_RANK_SCAN
+        benchmarkRankComparedScores += comparedScores;
+#endif
+#ifdef JS8_CPU_BENCHMARK
+        }
+        BenchmarkScope benchmarkIndexScope{benchmarkRankIndexCalls,
+                                           benchmarkRankIndexNanos};
+#endif
 
         // If we found nothing, we're done here.
 
@@ -2078,27 +3197,34 @@ template <typename Mode> class DecodeMode {
             freqIndex.modify(it, normalize);
         }
 
-        // Extract candidates.
+        // Extract normal candidates first, while retaining a small bounded
+        // fallback band below ASYNCMIN. Because syncIndex is ordered from
+        // strongest to weakest, normal candidates always win duplicate
+        // suppression before a deep-search candidate can claim the same
+        // frequency neighborhood.
 
-        std::vector<Sync> candidates;
+        SyncCandidates candidates;
 
-        for (auto it = syncIndex.begin();
-             it != syncIndex.end() && candidates.size() < NMAXCAND;
+        for (auto it = syncIndex.begin(); it != syncIndex.end();
              it = syncIndex.begin()) {
-            // Stop iteration if below threshold or invalid; as the
-            // index is sorted by sync, any subsequent entries will
-            // also be below the threshold or invalid.
-
-            if (it->sync < ASYNCMIN || std::isnan(it->sync))
+            if (std::isnan(it->sync) || it->sync < ASYNCDEEP)
                 break;
 
-            // Good value, relatively strong; save the candidate.
+            if (it->sync >= ASYNCMIN) {
+                if (candidates.normal.size() >= NMAXCAND)
+                    break;
 
-            candidates.push_back(*it);
+                candidates.normal.push_back(*it);
+            } else {
+                if (!m_enableDeepSearch || candidates.deep.size() >= NMAXDEEP)
+                    break;
 
-            // Remove the candidate and any near-duplicates based
-            // on frequency. This invalidates `it`, so we reset it
-            // to the index begin in the loop increment condition.
+                candidates.deep.push_back(*it);
+            }
+
+            // Remove the candidate and any near-duplicates based on
+            // frequency. This invalidates `it`, so the loop restarts at the
+            // strongest remaining entry.
 
             freqIndex.erase(freqIndex.lower_bound(it->freq - Mode::AZ),
                             freqIndex.upper_bound(it->freq + Mode::AZ));
@@ -2112,60 +3238,56 @@ template <typename Mode> class DecodeMode {
     // frequency adjustment. Used to identify the best alignment for further
     // decoding.
 
-    float syncjs8d(int const i0, float const delf) {
-        constexpr float BASE_DPHI = TAU * (1.0f / (12000.0f / Mode::NDOWN));
+    template <bool Cached = false>
+    float syncjs8d(int const i0, float const delf,
+                   SyncWaveforms const *const cached = nullptr) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkSyncCalls, benchmarkSyncNanos};
+#endif
+        constexpr float FS2 = 12000.0f / Mode::NDOWN;
+        std::complex<float> freqStep;
+        if constexpr (!Cached) {
+            float const dphi = TAU * delf / FS2;
+            freqStep = std::polar(1.0f, dphi);
+        }
+        float syncPower = 0.0f;
 
-        // If delta frequency is non-zero, compute the frequency
-        // adjustment array, otherwise, use what'll be an identity
-        // transfrom when multiplied.
+        // Correlate coherently across each full 7-symbol Costas block. Reset
+        // the residual-frequency phase between blocks, then combine the three
+        // block powers noncoherently because phase across the intervening data
+        // symbols is not known reliably enough to preserve.
+        for (int block = 0; block < 3; ++block) {
+            std::complex<float> blockCorrelation{0.0f, 0.0f};
+            std::complex<float> freqPhase{1.0f, 0.0f};
+            bool complete = true;
 
-        std::array<std::complex<float>, Mode::NDOWNSPS> freqAdjust;
+            for (int symbol = 0; symbol < 7; ++symbol) {
+                int const offset =
+                    36 * block * Mode::NDOWNSPS + i0 + symbol * Mode::NDOWNSPS;
 
-        if (delf != 0.0f) {
-            float const dphi = BASE_DPHI * delf;
-            float phi = 0.0f;
+                if (offset < 0 || offset + Mode::NDOWNSPS > Mode::NP2) {
+                    complete = false;
+                    break;
+                }
 
-            // std::fmod() is almost like Fortran's mod(), but not quite;
-            // Since delf can be negative, we must ensure that phi stays
-            // within [0, TAU), which Fortran's mod() handles by itself.
-
-            for (int i = 0; i < Mode::NDOWNSPS; ++i) {
-                freqAdjust[i] = std::polar(1.0f, phi);
-                if (phi = std::fmod(phi + dphi, TAU); phi < 0.0f) {
-                    phi += TAU;
+                for (int sample = 0; sample < Mode::NDOWNSPS; ++sample) {
+                    std::complex<float> reference;
+                    if constexpr (Cached)
+                        reference = (*cached)[block][symbol][sample];
+                    else
+                        reference = freqPhase * csyncs[block][symbol][sample];
+                    blockCorrelation +=
+                        cd0[offset + sample] * std::conj(reference);
+                    if constexpr (!Cached)
+                        freqPhase *= freqStep;
                 }
             }
-        } else {
-            freqAdjust.fill(std::complex<float>{1.0f, 0.0f});
+
+            if (complete)
+                syncPower += std::norm(blockCorrelation);
         }
 
-        // Compute sync power by looping over the Costas indices for
-        // each of the 3 Costas blocks, accumulating as we go.
-
-        float sync = 0.0f;
-
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 7; ++j) {
-                if (auto const offset =
-                        36 * i * Mode::NDOWNSPS + i0 + j * Mode::NDOWNSPS;
-                    offset >= 0 && offset + Mode::NDOWNSPS <= Mode::NP2) {
-                    sync += std::norm(std::transform_reduce(
-                        freqAdjust.begin(),    // Range start
-                        freqAdjust.end(),      // Range end
-                        cd0.begin() + offset,  // Data start
-                        std::complex<float>{}, // Initial reduction value
-                        std::plus<>{},         // Reduction by accumulation
-                        [&](auto const &fa,    // Conjugate and multiply
-                            auto const &cd) {
-                            return cd *
-                                   std::conj(
-                                       fa * csyncs[i][j][&fa - &freqAdjust[0]]);
-                        }));
-                }
-            }
-        }
-
-        return sync;
+        return syncPower;
     }
 
     // Generate a reference signal, based on the provided tone sequence and
@@ -2174,6 +3296,10 @@ template <typename Mode> class DecodeMode {
 
     std::vector<std::complex<float>>
     genjs8refsig(std::array<int, NN> const &itone, float const f0) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkReferenceCalls,
+                                      benchmarkReferenceNanos};
+#endif
         // Precompute the base frequency contribution; full circle in
         // radians, multipled by the base frequency, multiplied by the
         // sampling interval, i.e., the time step between samples, which
@@ -2216,42 +3342,225 @@ template <typename Mode> class DecodeMode {
 
     void subtractjs8(std::vector<std::complex<float>> const &cref,
                      float const dt) {
+#ifdef JS8_CPU_BENCHMARK
+        BenchmarkScope benchmarkScope{benchmarkSicCalls, benchmarkSicNanos};
+#endif
         auto const nstart = static_cast<int>(dt * 12000.0f);
         std::size_t const cref_start =
             (nstart < 0) ? static_cast<std::size_t>(-nstart) : 0;
         std::size_t const dd_start =
             (nstart > 0) ? static_cast<std::size_t>(nstart) : 0;
+
+        if (cref_start >= cref.size() || dd_start >= dd.size())
+            return;
+
         auto const size =
             std::min(cref.size() - cref_start, dd.size() - dd_start);
 
-        // Populate complex filter with the conjugate of the reference signal.
+        if (size == 0)
+            return;
 
+        // Mixed (demodulated) envelope shared by both channel candidates.
+        // mixed(i) = dd(i) * conj(cref(i)) is the complex signal we estimate.
+        auto const mixed = [&](std::size_t i) -> std::complex<float> {
+            return dd[dd_start + i] * std::conj(cref[cref_start + i]);
+        };
+
+        // Candidate A: the established FFT low-pass filtered channel estimate.
+        // Its #5a architecture (mixed -> FFT -> filter -> IFFT) is unchanged.
         for (std::size_t i = 0; i < size; ++i) {
-            cfilt[i] = dd[dd_start + i] * std::conj(cref[cref_start + i]);
+            cfilt[i] = mixed(i);
         }
-
-        // Zero-fill the remainder, if any.
-
+        // Zero-fill the remainder, then low-pass the complex channel estimate.
         std::fill(cfilt.begin() + size, cfilt.end(), ZERO);
-
-        // FFT to the frequency domain.
-
         fftwf_execute(plans[Plan::CF]);
-
-        // Apply the filter in the frequency domain.
-
         std::transform(cfilt.begin(), cfilt.end(), filter.begin(),
                        cfilt.begin(), std::multiplies<>());
-
-        // Inverse FFT to return to the time domain.
-
         fftwf_execute(plans[Plan::CB]);
 
-        // Subtract the reconstructed signal.
+        // Candidate B: a constrained, slowly varying segmented channel. One
+        // complex coefficient per multi-symbol window, smoothed across windows
+        // and interpolated back to the sample grid. This can track slow fading
+        // the fixed LPF cannot, but it carries many loosely constrained
+        // parameters, so we only adopt it when it measurably beats the LPF
+        // candidate on the identical correlation metric.
+        std::vector<std::complex<float>> mixedVec(size);
+        for (std::size_t i = 0; i < size; ++i)
+            mixedVec[i] = mixed(i);
 
+        std::size_t const windowSamples =
+            std::clamp<std::size_t>(2 * Mode::NSPS, Mode::NSPS, 4 * Mode::NSPS);
+        std::size_t const windowCount =
+            std::max<std::size_t>(1, (size + windowSamples - 1) / windowSamples);
+
+        // Per-window complex coefficient (mean of the mixed signal). Windowing
+        // across several symbols keeps a competing weak signal from being
+        // trivially fitted as a single coefficient.
+        std::vector<std::complex<float>> coeff(windowCount, ZERO);
+        std::vector<double> centers(windowCount, 0.0);
+        for (std::size_t w = 0; w < windowCount; ++w) {
+            std::size_t const wBegin = w * windowSamples;
+            std::size_t const wEnd = std::min(wBegin + windowSamples, size);
+            std::complex<double> acc{};
+            for (std::size_t i = wBegin; i < wEnd; ++i)
+                acc += std::complex<double>{mixedVec[i].real(),
+                                            mixedVec[i].imag()};
+            std::size_t const span = wEnd - wBegin;
+            double const inv = 1.0 / static_cast<double>(span);
+            coeff[w] = std::complex<float>{static_cast<float>(acc.real() * inv),
+                                           static_cast<float>(acc.imag() * inv)};
+            centers[w] = static_cast<double>(wBegin) +
+                         0.5 * (static_cast<double>(span) - 1.0);
+        }
+
+        // Triangular smoothing across neighboring window coefficients.
+        std::vector<std::complex<float>> smoothed(windowCount, ZERO);
+        for (std::size_t w = 0; w < windowCount; ++w) {
+            std::complex<double> acc{};
+            double wt = 0.0;
+            for (int dw = -2; dw <= 2; ++dw) {
+                long long const j = static_cast<long long>(w) + dw;
+                if (j < 0 || j >= static_cast<long long>(windowCount))
+                    continue;
+                double const weight = 1.0 - std::abs(dw) * 0.25;
+                auto const coefficient =
+                    coeff[static_cast<std::size_t>(j)];
+                acc += std::complex<double>{coefficient.real(),
+                                            coefficient.imag()} *
+                       weight;
+                wt += weight;
+            }
+            smoothed[w] = std::complex<float>{static_cast<float>(acc.real() / wt),
+                                              static_cast<float>(acc.imag() / wt)};
+        }
+
+        // Interpolate the smoothed coefficients at the actual center sample of
+        // each measurement window, including a shorter final window. Samples
+        // outside the first and last centers reuse the nearest coefficient, so
+        // the channel remains continuous without stretching the trajectory.
+        std::vector<std::complex<float>> segmented(size, ZERO);
+        std::size_t segment = 0;
         for (std::size_t i = 0; i < size; ++i) {
-            dd[dd_start + i] -=
-                2.0f * std::real(cfilt[i] * cref[cref_start + i]);
+            double const sample = static_cast<double>(i);
+            while (segment + 1 < windowCount &&
+                   sample > centers[segment + 1])
+                ++segment;
+            if (segment + 1 >= windowCount || sample <= centers[segment]) {
+                segmented[i] = smoothed[segment];
+                continue;
+            }
+
+            double const fraction =
+                (sample - centers[segment]) /
+                (centers[segment + 1] - centers[segment]);
+            segmented[i] = std::complex<float>{
+                static_cast<float>(smoothed[segment].real() * (1.0 - fraction) +
+                                   smoothed[segment + 1].real() * fraction),
+                static_cast<float>(smoothed[segment].imag() * (1.0 - fraction) +
+                                   smoothed[segment + 1].imag() * fraction)};
+        }
+
+        // Per-symbol matched-correlation residual, identical for both
+        // candidates, so the selection reflects genuine cancellation quality.
+        auto afterMetricOf = [&](auto const &channel) {
+            std::array<std::complex<double>, NN> after{};
+            for (std::size_t i = 0; i < size; ++i) {
+                std::size_t const crefIndex = cref_start + i;
+                std::size_t const symbolIndex = crefIndex / Mode::NSPS;
+                auto const reference = std::complex<double>{cref[crefIndex].real(),
+                                                            cref[crefIndex].imag()};
+                float const reconstructed =
+                    2.0f * std::real(channel[i] * cref[crefIndex]);
+                float const residual = dd[dd_start + i] - reconstructed;
+                after[symbolIndex] +=
+                    static_cast<double>(residual) * std::conj(reference);
+            }
+            return std::accumulate(after.begin(), after.end(), 0.0,
+                                   [](double const t, auto const &v) {
+                                       return t + std::norm(v);
+                                   });
+        };
+
+        // Matched correlation of the untouched signal and of the LPF
+        // reconstruction, using the identical per-symbol metric.
+        std::array<std::complex<double>, NN> beforeCorrelation{};
+        for (std::size_t i = 0; i < size; ++i) {
+            std::size_t const crefIndex = cref_start + i;
+            std::size_t const symbolIndex = crefIndex / Mode::NSPS;
+            auto const reference = std::complex<double>{cref[crefIndex].real(),
+                                                        cref[crefIndex].imag()};
+            beforeCorrelation[symbolIndex] +=
+                static_cast<double>(dd[dd_start + i]) * std::conj(reference);
+        }
+        auto const correlationPower = [](auto const &correlation) {
+            return std::accumulate(
+                correlation.begin(), correlation.end(), 0.0,
+                [](double const total, auto const &value) {
+                    return total + std::norm(value);
+                });
+        };
+
+        double const beforeMetric = correlationPower(beforeCorrelation);
+        double const afterMetricLpf = afterMetricOf(cfilt);
+        double const afterMetricAdaptive = afterMetricOf(segmented);
+
+        // ~0.1% margin before adopting the more complex segmented model; keeps
+        // us from switching on floating-point noise alone.
+        double const adaptiveMargin = 0.001;
+        bool const lpfValid = std::isfinite(afterMetricLpf) &&
+                              afterMetricLpf > 0.0;
+        bool const adaptiveValid = std::isfinite(afterMetricAdaptive) &&
+                                    afterMetricAdaptive > 0.0;
+        bool const useAdaptive = adaptiveValid && lpfValid &&
+                                 afterMetricAdaptive <
+                                     afterMetricLpf * (1.0 - adaptiveMargin);
+        std::string_view channelModel =
+            useAdaptive ? std::string_view{"segmented"}
+                        : std::string_view{"lpf"};
+        double const selectedAfterMetric =
+            useAdaptive ? afterMetricAdaptive : afterMetricLpf;
+
+        // Unchanged #5a acceptance: subtract only if the selected candidate
+        // reduces the decoded waveform's correlation relative to the untouched
+        // signal. NaN/Inf metrics never pass, so no subtraction occurs.
+        bool const accepted =
+            std::isfinite(beforeMetric) &&
+            beforeMetric > std::numeric_limits<double>::epsilon() &&
+            std::isfinite(selectedAfterMetric) &&
+            selectedAfterMetric < beforeMetric;
+        double const suppressionDb = accepted
+            ? 10.0 * std::log10(beforeMetric /
+                                  std::max(selectedAfterMetric,
+                                           std::numeric_limits<double>::min()))
+            : 0.0;
+
+        if (decoder_js8().isDebugEnabled()) {
+            qCDebug(decoder_js8)
+                << "SIC subtraction"
+                << "beforeMetric" << beforeMetric
+                << "lpfAfterMetric" << afterMetricLpf
+                << "adaptiveAfterMetric" << afterMetricAdaptive
+                << "selectedAfterMetric" << selectedAfterMetric
+                << "channelModel" << channelModel
+                << "suppressionDb" << suppressionDb
+                << "accepted" << accepted;
+        }
+
+        // Do not damage the receive buffer when the selected reconstruction does
+        // not actually reduce the decoded waveform's matched-correlation power.
+        if (!accepted)
+            return;
+
+        if (useAdaptive) {
+            for (std::size_t i = 0; i < size; ++i) {
+                dd[dd_start + i] -=
+                    2.0f * std::real(segmented[i] * cref[cref_start + i]);
+            }
+        } else {
+            for (std::size_t i = 0; i < size; ++i) {
+                dd[dd_start + i] -=
+                    2.0f * std::real(cfilt[i] * cref[cref_start + i]);
+            }
         }
     }
 
@@ -2263,6 +3572,14 @@ template <typename Mode> class DecodeMode {
             std::getenv("JS8_DISABLE_FREQ_TRACKING") == nullptr;
         m_enableTimingTracking =
             std::getenv("JS8_DISABLE_TIMING_TRACKING") == nullptr;
+        m_enableDeepSearch =
+            std::getenv("JS8_DISABLE_DEEP_SEARCH") == nullptr;
+        m_enableLdpcRescue =
+            std::getenv("JS8_DISABLE_LDPC_RESCUE") == nullptr;
+        m_enableCoherentData =
+            std::getenv("JS8_DISABLE_COHERENT_DATA") == nullptr;
+        m_enableAidedRedemod =
+            std::getenv("JS8_DISABLE_REDEMOD") == nullptr;
 
         // Intialize the Nuttal window. In theory, we can do this as a
         // constexpr function at compile time, but doing so yield results
@@ -2324,36 +3641,42 @@ template <typename Mode> class DecodeMode {
             }
         }
 
-        // Compute a Hann-like window directly into the real part of the
-        // first NFILT + 1 elements in the filter, accumulating the sum
-        // as we go.
-
-        sum = 0.0f;
-
-        for (int j = -NFILT / 2; j <= NFILT / 2; ++j) {
-            int const index = j + NFILT / 2;
-            float const value = std::pow(std::cos(pi * j / NFILT), 2);
-
-            filter[index].real(value);
-            sum += value;
+        constexpr float FS2 = 12000.0f / Mode::NDOWN;
+        for (int ifr = -NFSRCH; ifr <= NFSRCH; ++ifr) {
+            float const delf = ifr * 0.5f;
+            float const dphi = TAU * delf / FS2;
+            std::complex<float> const freqStep = std::polar(1.0f, dphi);
+            auto &references = coarseCsyncs[ifr + NFSRCH];
+            for (int block = 0; block < 3; ++block) {
+                std::complex<float> phase{1.0f, 0.0f};
+                for (int symbol = 0; symbol < 7; ++symbol) {
+                    for (int sample = 0; sample < Mode::NDOWNSPS; ++sample) {
+                        references[block][symbol][sample] =
+                            phase * csyncs[block][symbol][sample];
+                        phase *= freqStep;
+                    }
+                }
+            }
         }
 
-        // Now that we've got the sum, create actual complex numbers using
-        // the normalized real values that we just populated and zero the
-        // rest of the filter.
+        // Construct the subtraction LPF as a zero-phase circular-convolution
+        // kernel. Positive-time taps live at the beginning of the FFT buffer
+        // and negative-time taps wrap to its end, matching the original
+        // Fortran layout.
 
-        std::fill(std::transform(filter.begin(), filter.begin() + NFILT + 1,
-                                 filter.begin(),
-                                 [sum](auto const value) {
-                                     return std::complex<float>(
-                                         value.real() / sum, 0.0f);
-                                 }),
-                  filter.end(), ZERO);
+        sum = 0.0f;
+        for (int j = -NFILT / 2; j <= NFILT / 2; ++j)
+            sum += std::pow(std::cos(pi * j / NFILT), 2);
 
-        // Shift to position the window.
-
-        std::rotate(filter.begin(), filter.begin() + NFILT / 2,
-                    filter.begin() + NFILT + 1);
+        filter.fill(ZERO);
+        for (int j = -NFILT / 2; j <= NFILT / 2; ++j) {
+            float const value =
+                std::pow(std::cos(pi * j / NFILT), 2) / sum;
+            std::size_t const index =
+                j >= 0 ? static_cast<std::size_t>(j)
+                       : filter.size() - static_cast<std::size_t>(-j);
+            filter[index] = std::complex<float>(value, 0.0f);
+        }
 
         // Transform the filter into the frequency domain.
 
@@ -2429,7 +3752,8 @@ template <typename Mode> class DecodeMode {
     // Decode entry point.
 
     std::size_t operator()(struct dec_data const &data, int const kpos,
-                           int const ksz, JS8::Event::Emitter emitEvent) {
+                           int const ksz, JS8::Event::Emitter emitEvent,
+                           js8::OptionalWorkBudget *optional = nullptr) {
         // Copy the relevant frames for decoding
 
         auto const pos = std::max(0, kpos);
@@ -2470,6 +3794,8 @@ template <typename Mode> class DecodeMode {
         auto const ttl = std::chrono::seconds{Mode::NTXDUR * 2};
         m_softCombiner.flush(ttl);
 
+        int ldpcRescueBudget = BP_RESCUE_BUDGET;
+
         for (int ipass = 1; ipass <= 3; ++ipass) {
             // Determine if there's anything worth considering in the signal.
             // If not, then we can just bail completely; more passes will not
@@ -2481,19 +3807,26 @@ template <typename Mode> class DecodeMode {
             if (candidates.empty())
                 break;
 
-            std::sort(
-                candidates.begin(), candidates.end(),
-                [nfqso = data.params.nfqso](auto const &a, auto const &b) {
-                    auto const a_dist = std::abs(a.freq - nfqso);
-                    auto const b_dist = std::abs(b.freq - nfqso);
+            auto const sortCandidates =
+                [nfqso = data.params.nfqso](auto &candidateList) {
+                    std::sort(
+                        candidateList.begin(), candidateList.end(),
+                        [nfqso](auto const &a, auto const &b) {
+                            auto const a_dist = std::abs(a.freq - nfqso);
+                            auto const b_dist = std::abs(b.freq - nfqso);
 
-                    if (a_dist < 10.0f && b_dist >= 10.0f)
-                        return true;
-                    if (b_dist < 10.0f && a_dist >= 10.0f)
-                        return false;
+                            if (a_dist < 10.0f && b_dist >= 10.0f)
+                                return true;
+                            if (b_dist < 10.0f && a_dist >= 10.0f)
+                                return false;
 
-                    return std::tie(a_dist, a.freq) < std::tie(b_dist, b.freq);
-                });
+                            return std::tie(a_dist, a.freq) <
+                                   std::tie(b_dist, b.freq);
+                        });
+                };
+
+            sortCandidates(candidates.normal);
+            sortCandidates(candidates.deep);
 
             // Recompute the baseband signal; subtraction during the last
             // pass might have changed the landscape.
@@ -2503,41 +3836,77 @@ template <typename Mode> class DecodeMode {
             bool const subtract = ipass < 3;
             bool improved = false;
 
-            for (auto [f1, xdt, sync] : candidates) {
-                float xsnr = 0.0f;
-                int nharderrors = -1;
+            auto const tryCandidates = [&](auto const &candidateList,
+                                           bool deep) {
+                for (auto [f1, xdt, sync] : candidateList) {
+                    if (deep && optional &&
+                        !optional->allow(js8::OptionalStage::Deep)) {
+                        qCDebug(decoder_js8) << "adaptive optional skip deep";
+                        break;
+                    }
+                    auto const optionalStarted =
+                        js8::OptionalWorkBudget::Clock::now();
+                    float xsnr = 0.0f;
+                    int nharderrors = -1;
 
-                if (auto decode = js8dec(data.params.syncStats, subtract, f1,
-                                         xdt, nharderrors, xsnr, emitEvent)) {
-                    // We don't need to be emitting duplicate events for
-                    // something that's effectively the same SNR as a previous
-                    // event.
+                    auto decode = js8dec(data.params.syncStats, subtract, f1,
+                                         xdt, nharderrors, xsnr,
+                                         ldpcRescueBudget, emitEvent, optional,
+                                         deep);
+                    if (deep && optional)
+                        optional->observe(js8::OptionalStage::Deep,
+                                          optionalStarted);
+                    if (decode) {
+                        // We don't need to be emitting duplicate events for
+                        // something that's effectively the same SNR as a
+                        // previous event.
 
-                    auto const snr = static_cast<int>(std::round(xsnr));
+                        auto const snr = static_cast<int>(std::round(xsnr));
 
-                    // If this decode is new, or it's a duplicate with a better
-                    // SNR than what we had before, then our situation has
-                    // improved and we must announce that we've had some
-                    // success.
+                        // If this decode is new, or it's a duplicate with a
+                        // better SNR than what we had before, then our situation
+                        // has improved and we must announce that we've had some
+                        // success.
 
-                    if (auto [it, inserted] =
-                            decodes.try_emplace(std::move(*decode), snr);
-                        inserted || it->second < snr) {
-                        improved = true;
+                        if (auto [it, inserted] =
+                                decodes.try_emplace(std::move(*decode), snr);
+                            inserted || it->second < snr) {
+                            improved = true;
 
-                        // Update the SNR if this is an improved decode.
+                            if (!inserted)
+                                it->second = snr;
 
-                        if (!inserted)
-                            it->second = snr;
-
-                        // Emit decoded events on new or improved decodes.
-
-                        emitEvent(JS8::Event::Decoded{
-                            data.params.nutc, snr, xdt - Mode::ASTART, f1,
-                            it->first.data, it->first.type,
-                            1.0f - nharderrors / 60.0f, Mode::NSUBMODE});
+                            emitEvent(JS8::Event::Decoded{
+                                data.params.nutc, snr, xdt - Mode::ASTART, f1,
+                                it->first.data, it->first.type,
+                                1.0f - nharderrors / 60.0f,
+                                Mode::NSUBMODE});
+                        }
                     }
                 }
+            };
+
+            // Preserve the existing fast path: normal candidates always get
+            // first shot. The lower coarse-sync band is only sent through the
+            // expensive coherent/fine decoder when the normal set produced no
+            // improvement, or on the final subtraction pass so weak independent
+            // signals are not permanently starved by stronger traffic.
+
+            tryCandidates(candidates.normal, false);
+
+            bool const tryDeep =
+                m_enableDeepSearch && !candidates.deep.empty() &&
+                (!improved || ipass == 3);
+
+            if (tryDeep) {
+                if (decoder_js8().isDebugEnabled()) {
+                    qCDebug(decoder_js8)
+                        << "deep sync fallback"
+                        << "pass" << ipass << "candidates"
+                        << candidates.deep.size();
+                }
+
+                tryCandidates(candidates.deep, true);
             }
 
             // If nothing from this pass improved our situation, there's no
@@ -2583,6 +3952,12 @@ class Worker : public QObject {
         // process it.
 
         struct dec_data &m_data;
+        js8::OptionalWorkSignal const *m_optionalSignal;
+        std::array<js8::OptionalWorkBudget::Duration, 5> m_modeCost{};
+        std::array<std::array<js8::OptionalWorkBudget::Duration,
+                              js8::OptionalWorkBudget::stages>, 5>
+            m_stageCost{};
+        std::array<bool, 5> m_modeObserved{};
 
         // Mode-specific decode strategy; we'll instantiate one of
         // these for each of the 5 modes; this class is an aggregate
@@ -2607,9 +3982,9 @@ class Worker : public QObject {
         // Since a strategy can be neither moved nor copied, we must
         // instantiate them in-place. Note that with the advent of the
         // multi-decoder, mode identifiers became a bitset instead of
-        // integral values. The order defined here is the order that
-        // the decode loop will run in; we're matching the Fortran
-        // version here in terms of faster modes first.
+        // integral values. The order defined here is the order that the
+        // decode loop will run in; we're matching the Fortran version here
+        // in terms of faster modes first.
 
         template <typename ModeType>
         DecodeEntry makeDecodeEntry(int shift, int &kpos, int &ksz) {
@@ -2628,7 +4003,9 @@ class Worker : public QObject {
       public:
         // Constructor
 
-        explicit Impl(struct dec_data &data) : m_data(data) {}
+        explicit Impl(struct dec_data &data,
+                      js8::OptionalWorkSignal const *signal)
+            : m_data(data), m_optionalSignal(signal) {}
 
         // Execute a decoding pass, using the supplied event emitter to
         // emit events as they occur.
@@ -2650,14 +4027,39 @@ class Worker : public QObject {
             // a mode-specific decode pass if the mode is scheduled for
             // decoding during this pass.
 
-            for (auto &entry : m_decodes) {
+            for (std::size_t index = 0; index < m_decodes.size(); ++index) {
+                auto &entry = m_decodes[index];
                 if ((set & entry.mode) == entry.mode) {
+                    js8::OptionalWorkBudget::Duration reserve{0};
+                    bool unknownMandatory = false;
+                    for (std::size_t later = index + 1; later < m_decodes.size();
+                         ++later) {
+                        if (!(set & m_decodes[later].mode))
+                            continue;
+                        if (!m_modeObserved[later])
+                            unknownMandatory = true;
+                        else
+                            reserve += m_modeCost[later];
+                    }
+                    js8::OptionalWorkBudget budget{
+                        m_optionalSignal, reserve, m_stageCost[index],
+                        unknownMandatory};
+                    auto const started =
+                        js8::OptionalWorkBudget::Clock::now();
                     std::visit(
                         [&](auto &&decode) {
                             sum += decode(m_data, entry.kpos, entry.ksz,
-                                          emitEvent);
+                                          emitEvent, &budget);
                         },
                         entry.decode);
+                    auto const duration =
+                        std::chrono::duration_cast<
+                            js8::OptionalWorkBudget::Duration>(
+                            js8::OptionalWorkBudget::Clock::now() - started);
+                    m_modeCost[index] =
+                        std::max(m_modeCost[index] * 9 / 10,
+                                 duration + duration / 4);
+                    m_modeObserved[index] = true;
                 }
             }
 
@@ -2671,16 +4073,20 @@ class Worker : public QObject {
     // Data members
 
     QSemaphore *m_semaphore;
+    js8::OptionalWorkSignal const *m_optionalSignal;
     std::atomic<bool> m_quit = false;
     struct dec_data m_data;
 
   public:
     // Constructor
 
-    explicit Worker(QSemaphore *semaphore, QObject *parent = nullptr)
-        : QObject(parent), m_semaphore(semaphore) {}
+    explicit Worker(QSemaphore *semaphore,
+                    js8::OptionalWorkSignal const *optionalSignal,
+                    QObject *parent = nullptr)
+        : QObject(parent), m_semaphore(semaphore),
+          m_optionalSignal(optionalSignal) {}
 
-    // Used to inform the worker that it's time to go; the next
+    // Used to inform the worker that it's time to quit; the next
     // time it wakes up due to the semaphore being released, it
     // will exit the runloop.
 
@@ -2712,7 +4118,9 @@ class Worker : public QObject {
         // can take a while. We only need the implementation while
         // we're running.
 
-        std::unique_ptr<Impl> impl = std::make_unique<Impl>(m_data);
+        std::unique_ptr<Impl> impl = std::make_unique<Impl>(
+            m_data, std::getenv("JS8_DISABLE_ADAPTIVE_OPTIONAL")
+                        ? nullptr : m_optionalSignal);
 
         // Wait until there's something that requires our attention,
         // which is going to either be needing to quit or needing to
@@ -2739,7 +4147,8 @@ class Worker : public QObject {
 #include "JS8.moc"
 
 JS8::Decoder::Decoder(QObject *parent)
-    : QObject(parent), m_semaphore(0), m_worker(new JS8::Worker(&m_semaphore)) {
+    : QObject(parent), m_semaphore(0),
+      m_worker(new JS8::Worker(&m_semaphore, &m_optionalPressure)) {
     m_worker->moveToThread(&m_thread);
 
     connect(&m_thread, &QThread::started, m_worker, &JS8::Worker::run);
@@ -2763,6 +4172,15 @@ void JS8::Decoder::decode() {
     m_semaphore.release();
 }
 
+void JS8::Decoder::pendingDecode(bool pending) noexcept {
+    m_optionalPressure.pending(pending);
+}
+
+void JS8::Decoder::nextDecodeReady(
+    std::chrono::steady_clock::time_point when) noexcept {
+    m_optionalPressure.nextReady(when);
+}
+
 /******************************************************************************/
 // Public Interface - Encoding
 /******************************************************************************/
@@ -2775,7 +4193,7 @@ namespace JS8 {
 
 void encode(int const type, Costas::Array const &costas,
             const char *const message, int *const tones) {
-    // Our initial goal here is an 87-bit message, for which a std::bitset
+    // Our initial goal here is an 87-bit JS8 message, for which a std::bitset
     // would be the obvious choice, but we've got to compute a checksum of
     // the first 75 bits; thus, an array instead.
     //

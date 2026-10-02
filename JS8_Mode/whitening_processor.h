@@ -1,9 +1,11 @@
 /**
  * @file whitening_processor.h
- * @brief Noise whitening and LLR normalization helper used by the JS8 decoder.
+ * @brief Noise whitening and soft likelihoods used by the JS8 decoder.
  */
 
 #pragma once
+
+#include "coherent_likelihood.h"
 
 #include <QDebug>
 #include <QLoggingCategory>
@@ -12,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <sstream>
@@ -23,15 +26,17 @@ namespace js8 {
 /**
  * @brief Compute per-tone/symbol noise medians and whiten LLRs for a JS8 frame.
  *
- * Given symbol magnitudes (sans Costas) and winners, produces normalized
- * LLR0/LLR1, optionally applying noise-based whitening and erasure. Fully
+ * Given symbol magnitudes (sans Costas) and winners, produces noise-scaled
+ * LLR0/LLR1, optionally applying whitening and erasure. Fully
  * templated on matrix dimensions, so it stays header-only; used inside the JS8
  * decoder per candidate.
  */
 template <int NROWS, int ND, int N> class WhiteningProcessor {
   public:
+    // Retained for paired benchmarks of the previous decoder behavior.
+    enum class Normalization { None, FrameSigma283 };
     /**
-     * @brief Result of a whitening/LRR normalization pass.
+     * @brief Result of a whitening/LLR pass.
      *
      * `llr0` and `llr1` are populated in column order (three outputs per
      * symbol) to match the decoder's expectations. The boolean flags indicate
@@ -46,12 +51,12 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
         bool whiteningApplied;             ///< True when whitening was applied
         bool erasureApplied;               ///< True when erasure was applied
         std::size_t erasures;              ///< Number of LLR elements erased
-        double avgAbsPre;                  ///< Aggregate |LLR| before whitening
-        double avgAbsPost;                 ///< Aggregate |LLR| after whitening
+        double avgAbsPre;                   ///< Aggregate |LLR| before whitening
+        double avgAbsPost;                  ///< Aggregate |LLR| after whitening
     };
 
     /**
-     * @brief Compute normalized LLR arrays for a single candidate frame.
+     * @brief Compute noise-scaled LLR arrays for a single candidate frame.
      *
      * The template parameters describe the matrix dimensions used by the
      * decoder: `NROWS` is the number of tones (rows), `ND` is the number of
@@ -65,13 +70,29 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
      * @param symbolWinners For each symbol column, the index [0..NROWS-1]
      *        identifying the winning tone.
      * @param erasureThreshold When > 0.0, magnitudes below this threshold
-     *        (after whitening) are erased (set to zero).
+     *        (after fixed scaling) are erased (set to zero).
      * @param debug When true, emits extra debug logging about noise metrics.
+     * @param coherentBlend Optional physical coherent numerators in
+     *        `s1` orientation (`[tone][symbol]`), holding
+     *        `A*projection - 0.5*A*A` per tone. The decoder scales them by its
+     *        own per-symbol `invSigma2` exactly like the noncoherent power
+     *        numerators, so no symbol is ever renormalized. When absent (or
+     *        when its alpha/amplitude is not usable) the legacy noncoherent
+     *        scores are used exactly.
+     * @param llrScale One fixed multiplier shared by every frame. Applied
+     *        before erasure; must be positive and finite.
+     * @param normalization Optional old per-frame normalization for benchmarks.
      * @return A `Result` containing `llr0`, `llr1` and processing statistics.
      */
     static Result process(std::array<std::array<float, ND>, NROWS> const &s1,
                           std::array<int, ND> const &symbolWinners,
-                          float erasureThreshold, bool debug) {
+                          float erasureThreshold, bool debug,
+                          std::optional<CoherentBlend<NROWS, ND>> const
+                              &coherentBlend = std::nullopt,
+                          float llrScale = 1.0f,
+                          Normalization normalization = Normalization::None) {
+        if (!(llrScale > 0.0f) || !std::isfinite(llrScale))
+            llrScale = 1.0f;
         auto const median =
             [](std::vector<float> &values) -> std::optional<float> {
             if (values.empty())
@@ -178,6 +199,31 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
 
         bool const disableWhitening =
             std::getenv("JS8_DISABLE_WHITENING") != nullptr;
+        // Coherent data is used only when the whole blended input validates:
+        // any non-finite numerator, amplitude, or weight falls back to the
+        // noncoherent path bit-identically (partial blends could otherwise
+        // produce a mix of incompatible evidence within one frame).
+        bool coherentUsable = false;
+        float coherentAlpha = 0.0f;
+        if (coherentBlend && coherentBlend->alpha > 0.0f &&
+            std::isfinite(coherentBlend->alpha) &&
+            std::isfinite(coherentBlend->amplitude) &&
+            coherentBlend->amplitude > 0.0f) {
+            coherentUsable = true;
+            for (auto const &row : coherentBlend->numerators) {
+                for (float const value : row) {
+                    if (!std::isfinite(value)) {
+                        coherentUsable = false;
+                        break;
+                    }
+                }
+                if (!coherentUsable)
+                    break;
+            }
+            if (coherentUsable)
+                coherentAlpha =
+                    std::clamp(coherentBlend->alpha, 0.0f, 1.0f);
+        }
         bool const whiteningAvailable = toneNoise && symbolNoise &&
                                         !symbolNoise->empty() &&
                                         !disableWhitening;
@@ -197,38 +243,88 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
             for (int i = 0; i < NROWS; ++i)
                 ps[i] = s1[i][j];
 
-            // Assign to `bmeta` in column order, with correct values
-            result.llr0[i1] = std::max({ps[4], ps[5], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[2], ps[3]}); // r4
-            result.llr0[i2] = std::max({ps[2], ps[3], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[4], ps[5]}); // r2
-            result.llr0[i4] = std::max({ps[1], ps[3], ps[5], ps[7]}) -
-                              std::max({ps[0], ps[2], ps[4], ps[6]}); // r1
+            // Common per-symbol noise-power estimate. When whitening is
+            // unavailable, fall back to unit variance so the calculation stays
+            // a Gaussian power likelihood rather than degenerating.
+            float const invSigma2 = whiteningAvailable ? 1.0f /
+                                       ((std::max(0.0f, (*toneNoise)[symbolWinners[j]]) *
+                                         std::max(0.0f, (*symbolNoise)[j])) +
+                                        1e-12f)
+                                                     : 1.0f;
 
-            for (auto &x : ps)
-                x = std::log(x + 1e-32f);
+            // Noise-normalized tone power. Under an AWGN model with per-symbol
+            // noise power sigma^2 = toneNoise * symbolNoise, ps^2/(2*sigma^2)
+            // is used as the Gaussian soft-likelihood metric for tone i.
+            std::array<float, NROWS> w;
 
-            // Assign to `bmetb` in column order, with correct values
-            result.llr1[i1] = std::max({ps[4], ps[5], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[2], ps[3]}); // r4
-            result.llr1[i2] = std::max({ps[2], ps[3], ps[6], ps[7]}) -
-                              std::max({ps[0], ps[1], ps[4], ps[5]}); // r2
-            result.llr1[i4] = std::max({ps[1], ps[3], ps[5], ps[7]}) -
-                              std::max({ps[0], ps[2], ps[4], ps[6]}); // r1
+            for (int i = 0; i < NROWS; ++i) {
+                float const power = ps[i] * ps[i];
+                w[i] = 0.5f * power * invSigma2;
+            }
+
+            // Optionally blend conservatively estimated coherent numerators.
+            // Both families share this symbol's invSigma2, so reliability
+            // information in their magnitudes is preserved; no symbol is ever
+            // renormalized. With no usable blend input, `w` above is used
+            // untouched, preserving the legacy path exactly.
+            if (coherentUsable) {
+                std::array<float, NROWS> coherentScores;
+                for (int i = 0; i < NROWS; ++i)
+                    coherentScores[i] =
+                        (*coherentBlend).numerators[i][j] * invSigma2;
+                std::array<float, NROWS> blended{};
+                if (js8::blendToneScores(w, coherentScores, coherentAlpha,
+                                         blended))
+                    w = blended;
+            }
+
+            // Stable log-sum-exp of the tones whose natural-binary encoding has
+            // bit `bit` set (given by `shift`) or clear, for a single bit group.
+            auto logSumExp = [&](int shift, int bit) -> float {
+                float m = -std::numeric_limits<float>::infinity();
+
+                for (int i = 0; i < NROWS; ++i)
+                    if (((i >> shift) & 1) == bit && w[i] > m)
+                        m = w[i];
+
+                if (std::isinf(m))
+                    return 0.0f; // empty group: contributes 0 to the diff
+
+                float s = 0.0f;
+
+                for (int i = 0; i < NROWS; ++i)
+                    if (((i >> shift) & 1) == bit)
+                        s += std::exp(w[i] - m);
+
+                return m + std::log(s);
+            };
+
+            // Each symbol emits three LLRs (one per bit) as the logsum-exp
+            // difference across the two bit groups, combining all tones in each
+            // group rather than using only the single largest magnitude.
+            result.llr0[i1] = logSumExp(2, 1) - logSumExp(2, 0);
+            result.llr0[i2] = logSumExp(1, 1) - logSumExp(1, 0);
+            result.llr0[i4] = logSumExp(0, 1) - logSumExp(0, 0);
+
+            // A global calibration preserves relative reliability between
+            // symbols and between strong and weak received frames.
+            for (int bit = i1; bit <= i4; ++bit)
+                result.llr0[bit] *= llrScale;
+
+            // llr0 and llr1 are unified: they carry the same, properly
+            // soft-calculated symbol information (pass diversity comes from the
+            // bit-range masking and LDPC feedback downstream).
+            result.llr1[i1] = result.llr0[i1];
+            result.llr1[i2] = result.llr0[i2];
+            result.llr1[i4] = result.llr0[i4];
 
             if (whiteningAvailable) {
-                int const winner = symbolWinners[j];
-                float const tn = std::max(0.0f, (*toneNoise)[winner]);
-                float const sn = std::max(0.0f, (*symbolNoise)[j]);
-                float const localNoise = std::sqrt(tn * sn + 1e-12f);
-
+                // The LLRs are already noise-normalized through invSigma2, so
+                // no further division is required here; only erasure and the
+                // pre/post magnitude metrics are collected.
                 auto const applyWhitening = [&](float &value) {
                     float const pre = std::abs(value);
                     sumAbsPre += pre;
-
-                    if (localNoise > 0.0f && std::isfinite(localNoise)) {
-                        value /= localNoise;
-                    }
 
                     if (applyErasureInWhitening &&
                         std::abs(value) < erasureThreshold) {
@@ -262,14 +358,16 @@ template <int NROWS, int ND, int N> class WhiteningProcessor {
             float const variance = llr2av - llrav * llrav;
             float const llrsig = std::sqrt(variance > 0.0f ? variance : llr2av);
 
-            for (float &val : llr)
-                val = (val / llrsig) * 2.83f;
+            if (llrsig > 0.0f && std::isfinite(llrsig))
+                for (float &val : llr)
+                    val = (val / llrsig) * 2.83f;
         };
 
-        // Normalize and process metrics
-
-        normalizeLLR(result.llr0);
-        normalizeLLR(result.llr1);
+        // Only the opt-in baseline reproduces the former per-frame rescaling.
+        if (normalization == Normalization::FrameSigma283) {
+            normalizeLLR(result.llr0);
+            normalizeLLR(result.llr1);
+        }
 
         if (whiteningAvailable && debug) {
             auto const total =
