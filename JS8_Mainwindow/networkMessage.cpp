@@ -806,10 +806,7 @@ void UI_Constructor::networkMessage(Message const &message, bool internal) {
                            });
         return;
     }
-    /** @brief MODE.SET_SPEED: Updates the transmission speed mode.
-     *  Refused while the Mode menu would be greyed out, using the menu's own
-     *  rule in on_menuModeJS8_aboutToShow().
-     *  @note API 3.1+ for the refusal while a message is transmitting. */
+    /** @brief MODE.SET_SPEED: Updates the transmission speed mode; refused while transmitting. */
     if (type == "MODE.SET_SPEED") {
         auto ok = false;
         auto const speed =
